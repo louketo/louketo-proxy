@@ -1,0 +1,86 @@
+{
+	"ImportPath": "github.com/gambol99/keycloak-proxy",
+	"GoVersion": "go1.5.1",
+	"Deps": [
+		{
+			"ImportPath": "github.com/coreos/go-systemd/journal",
+			"Comment": "v3-52-g6d2228f",
+			"Rev": "6d2228f4bf461b3987f0372d72e1b7fd7bca9f1c"
+		},
+		{
+			"ImportPath": "github.com/coreos/pkg/capnslog",
+			"Rev": "42a8c3b1a6f917bb8346ef738f32712a7ca0ede7"
+		},
+		{
+			"ImportPath": "github.com/coreos/pkg/health",
+			"Rev": "42a8c3b1a6f917bb8346ef738f32712a7ca0ede7"
+		},
+		{
+			"ImportPath": "github.com/coreos/pkg/httputil",
+			"Rev": "42a8c3b1a6f917bb8346ef738f32712a7ca0ede7"
+		},
+		{
+			"ImportPath": "github.com/coreos/pkg/timeutil",
+			"Rev": "42a8c3b1a6f917bb8346ef738f32712a7ca0ede7"
+		},
+		{
+			"ImportPath": "github.com/gambol99/go-oidc/http",
+			"Rev": "efd38adf1417e9cf746ab0e34a8374c16de965ce"
+		},
+		{
+			"ImportPath": "github.com/gambol99/go-oidc/jose",
+			"Rev": "efd38adf1417e9cf746ab0e34a8374c16de965ce"
+		},
+		{
+			"ImportPath": "github.com/gambol99/go-oidc/key",
+			"Rev": "efd38adf1417e9cf746ab0e34a8374c16de965ce"
+		},
+		{
+			"ImportPath": "github.com/gambol99/go-oidc/oauth2",
+			"Rev": "efd38adf1417e9cf746ab0e34a8374c16de965ce"
+		},
+		{
+			"ImportPath": "github.com/gambol99/go-oidc/oidc",
+			"Rev": "efd38adf1417e9cf746ab0e34a8374c16de965ce"
+		},
+		{
+			"ImportPath": "github.com/gin-gonic/gin",
+			"Comment": "v1.0rc1-148-g52fcc5d",
+			"Rev": "52fcc5dbf6e94df33ad313858fb94b713e9d1b4a"
+		},
+		{
+			"ImportPath": "github.com/golang/glog",
+			"Rev": "fca8c8854093a154ff1eb580aae10276ad6b1b5f"
+		},
+		{
+			"ImportPath": "github.com/jonboulle/clockwork",
+			"Rev": "fad208dd89dbc316a149043e332a192477f0e2a2"
+		},
+		{
+			"ImportPath": "github.com/manucorporat/sse",
+			"Rev": "fe6ea2c8e398672518ef204bf0fbd9af858d0e15"
+		},
+		{
+			"ImportPath": "github.com/mattn/go-colorable",
+			"Rev": "40e4aedc8fabf8c23e040057540867186712faa5"
+		},
+		{
+			"ImportPath": "github.com/stretchr/testify/assert",
+			"Comment": "v1.0-51-gf3960ab",
+			"Rev": "f3960ab1f9664ecc4e27c78af27cc9063d745a43"
+		},
+		{
+			"ImportPath": "golang.org/x/net/context",
+			"Rev": "195180cfebf7362bd243a52477697895128c8777"
+		},
+		{
+			"ImportPath": "gopkg.in/bluesuncorp/validator.v5",
+			"Comment": "v5.12",
+			"Rev": "d5acf1dac43705f8bfbb71d878e290e2bed3950b"
+		},
+		{
+			"ImportPath": "gopkg.in/yaml.v2",
+			"Rev": "49c95bdc21843256fb6c4e0d370a05f24a0bf213"
+		}
+	]
+}
