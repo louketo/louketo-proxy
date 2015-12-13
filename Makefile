@@ -38,11 +38,11 @@ deps:
 	@go get -d -v ./... $(DEPS)
 
 vet:
-	@echo "--> Running go tool vet $(VETARGS) ."
+	@echo "--> Running go vet $(VETARGS) ."
 	@go tool vet 2>/dev/null ; if [ $$? -eq 3 ]; then \
 		go get golang.org/x/tools/cmd/vet; \
 	fi
-	@go tool vet $(VETARGS) .
+	@go tool vet $(VETARGS) *.go
 
 lint:
 	@echo "--> Running golint"

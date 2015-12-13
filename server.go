@@ -82,10 +82,9 @@ func NewProxy(cfg *Config) (*KeycloakProxy, error) {
 func (r *KeycloakProxy) Run() error {
 	go func() {
 		var err error
-		switch r.config.TLSCertificate {
-		case "":
+		if r.config.TLSCertificate == "" {
 			err = r.router.Run(r.config.Listen)
-		default:
+		} else {
 			err = r.router.RunTLS(r.config.Listen, r.config.TLSCertificate, r.config.TLSPrivateKey)
 		}
 		if err != nil {
