@@ -123,7 +123,7 @@ func (r *KeycloakProxy) admissionHandler(cx *gin.Context) {
 			}
 			// step: we need to check the roles
 			if !hasRoles(resource.RolesAllowed, identity.roles) {
-				glog.Errorf("[denied] resource: %s invalid roles", resource)
+				glog.Errorf("[denied] resource: %s invalid roles, issued: %s", resource, identity.roles)
 				r.accessForbidden(cx)
 				return
 			}

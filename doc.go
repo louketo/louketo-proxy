@@ -60,6 +60,8 @@ var (
 	ErrInvalidSession = errors.New("invalid session identifier")
 	// ErrAccessTokenExpired indicates the access token has expired
 	ErrAccessTokenExpired = errors.New("the access token has expired")
+	// ErrRefreshTokenExpired indicates the refresh token as expired
+	ErrRefreshTokenExpired = errors.New("the refresh token has expired")
 )
 
 // KeycloakProxy is the sever component

@@ -46,6 +46,12 @@ func (r *KeycloakProxy) refreshUserSessionToken(cx *gin.Context) (jose.JWT, erro
 	// step: attempts to refresh the access token
 	token, expires, err := r.refreshAccessToken(state.refreshToken)
 	if err != nil {
+		// step: has the refresh token expired
+		if err == ErrRefreshTokenExpired {
+			glog.Warningf("the refresh token has expired: %s", token)
+			http.SetCookie(cx.Writer, createSessionStateCookie(token.Encode(), cx.Request.Host, time.Now()))
+		}
+
 		glog.Errorf("failed to refresh the access token, reason: %s", err)
 		return jose.JWT{}, err
 	}

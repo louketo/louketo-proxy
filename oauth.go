@@ -104,9 +104,27 @@ func (r *KeycloakProxy) callbackHandler(cx *gin.Context) {
 
 	// step: do we have session data to persist?
 	if r.config.RefreshSession {
+		// step: parse the token
+		_, ident, err := r.parseToken(response.RefreshToken)
+		if err != nil {
+			glog.Errorf("failed to parse the refresh token, reason: %s", err)
+			cx.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+
+		glog.Infof("retrieved the refresh token for user: %s, expires at: %s", identity, ident.ExpiresAt)
+
+		// step: create the state session
 		state := &SessionState{
 			refreshToken: response.RefreshToken,
-			expireOn:     time.Now().Add(r.config.MaxSessionDuration),
+		}
+
+		max_session := time.Now().Add(r.config.MaxSessionDuration)
+		switch max_session.After(ident.ExpiresAt) {
+		case true:
+			state.expireOn = ident.ExpiresAt
+		default:
+			state.expireOn = max_session
 		}
 
 		if err := r.createSessionState(state, cx); err != nil {
@@ -124,13 +142,18 @@ func (r *KeycloakProxy) refreshAccessToken(refreshToken string) (jose.JWT, time.
 	// step: refresh the access token
 	response, err := r.getToken(oauth2.GrantTypeRefreshToken, refreshToken)
 	if err != nil {
+		if strings.Contains(err.Error(), "token expired") {
+			return jose.JWT{}, time.Time{}, ErrRefreshTokenExpired
+		}
 		return jose.JWT{}, time.Time{}, err
 	}
 
+	// step: parse the access token
 	token, identity, err := r.parseToken(response.AccessToken)
 	if err != nil {
 		return jose.JWT{}, time.Time{}, err
 	}
+
 
 	return token, identity.ExpiresAt, nil
 }
