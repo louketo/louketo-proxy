@@ -6,7 +6,7 @@ DEPS=$(shell go list -f '{{range .TestImports}}{{.}} {{end}}' ./...)
 PACKAGES=$(shell go list ./...)
 VETARGS?=-asmdecl -atomic -bool -buildtags -copylocks -methods -nilfunc -printf -rangeloops -shift -structtags -unsafeptr
 
-.PHONY: test authors changelog build docker static release
+.PHONY: test authors changelog build docker static release lint cover vet
 
 default: build
 
