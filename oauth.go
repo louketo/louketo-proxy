@@ -158,7 +158,7 @@ func (r *KeycloakProxy) refreshAccessToken(refreshToken string) (jose.JWT, time.
 	return token, identity.ExpiresAt, nil
 }
 
-// parseAccessToken retrieve the user identity from the token
+// parseToken retrieve the user identity from the token
 func (r *KeycloakProxy) parseToken(accessToken string) (jose.JWT, *oidc.Identity, error) {
 	// step: parse and return the token
 	token, err := jose.ParseJWT(accessToken)

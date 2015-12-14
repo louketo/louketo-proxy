@@ -49,7 +49,8 @@ func (r *KeycloakProxy) refreshUserSessionToken(cx *gin.Context) (jose.JWT, erro
 		// step: has the refresh token expired
 		if err == ErrRefreshTokenExpired {
 			glog.Warningf("the refresh token has expired: %s", token)
-			http.SetCookie(cx.Writer, createSessionStateCookie(token.Encode(), cx.Request.Host, time.Now()))
+			// clear the session
+			clearSessionState(cx)
 		}
 
 		glog.Errorf("failed to refresh the access token, reason: %s", err)
@@ -59,6 +60,7 @@ func (r *KeycloakProxy) refreshUserSessionToken(cx *gin.Context) (jose.JWT, erro
 	// step: inject the refreshed access token
 	glog.V(10).Infof("injecting the refreshed access token into seesion, expires on: %s", expires)
 
+	// step: create the session
 	if err := r.createSession(token, expires, cx); err != nil {
 		return token, err
 	}
@@ -95,7 +97,6 @@ func (r *KeycloakProxy) getSessionState(cx *gin.Context) (*SessionState, error) 
 }
 
 // getUserContext parse the jwt token and extracts the various elements is order to construct
-// a UserContext for use
 func (r *KeycloakProxy) getUserContext(token jose.JWT) (*UserContext, error) {
 	// step: decode the claims from the tokens
 	claims, err := token.Claims()
@@ -218,6 +219,7 @@ func createSessionCookie(token, hostname string, expires time.Time) *http.Cookie
 		Path:     "/",
 		Expires:  expires,
 		HttpOnly: true,
+		// Secure:   true,
 		Value:    token,
 	}
 }
@@ -232,4 +234,14 @@ func createSessionStateCookie(token, hostname string, expires time.Time) *http.C
 		//Secure:   true,
 		Value: token,
 	}
+}
+
+// clearSessionState clears the session cookie
+func clearSessionState(cx *gin.Context) {
+	http.SetCookie(cx.Writer, createSessionStateCookie("", cx.Request.Host, time.Now()))
+}
+
+// clearSession clears the session cookie
+func clearSession(cx *gin.Context) {
+	http.SetCookie(cx.Writer, createSessionCookie("", cx.Request.Host, time.Now()))
 }
