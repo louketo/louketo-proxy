@@ -14,3 +14,52 @@ limitations under the License.
 */
 
 package main
+
+import (
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestGetUserContext(t *testing.T) {
+
+}
+
+func TestEncodeState(t *testing.T) {
+	proxy := newFakeKeycloakProxy(t)
+
+	state := &SessionState{
+		refreshToken: "this is a fake session",
+		expireOn:     time.Now(),
+	}
+
+	session, err := proxy.encodeState(state)
+	assert.NotEmpty(t, session)
+	assert.NoError(t, err)
+}
+
+func TestDecodeState(t *testing.T) {
+	proxy := newFakeKeycloakProxy(t)
+
+	fakeToken := "this is a fake session"
+	fakeExpiresOn := time.Now()
+
+	state := &SessionState{
+		refreshToken: fakeToken,
+		expireOn:     fakeExpiresOn,
+	}
+
+	session, err := proxy.encodeState(state)
+	assert.NotEmpty(t, session)
+	if err != nil {
+		t.Errorf("the encodeState() should not have handed an error")
+		t.FailNow()
+	}
+
+	decoded, err := proxy.decodeState(session)
+	assert.NotNil(t, decoded, "the session should not have been nil")
+	if assert.NoError(t, err, "the decodeState() should not have thrown an error") {
+		assert.Equal(t, fakeToken, decoded.refreshToken, "the token should been the same")
+	}
+}

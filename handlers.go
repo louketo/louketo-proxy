@@ -17,9 +17,8 @@ package main
 
 import (
 	"net/http"
-	"net/http/httputil"
-	"time"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
@@ -33,6 +32,7 @@ import (
 //  c) proxyHandler is responsible for handling the reverse proxy to the upstream endpoint
 //
 
+/*
 // loggingHandler is logging middleware
 func (r *KeycloakProxy) loggingHandler() gin.HandlerFunc {
 	return func(cx *gin.Context) {
@@ -42,6 +42,7 @@ func (r *KeycloakProxy) loggingHandler() gin.HandlerFunc {
 		}
 	}
 }
+*/
 
 // authenticationHandler is responsible for verifying the access token
 func (r *KeycloakProxy) authenticationHandler(cx *gin.Context) {
@@ -152,7 +153,7 @@ func (r *KeycloakProxy) proxyHandler(cx *gin.Context) {
 
 	// step: add the default headers
 	cx.Request.Header.Set("X-Forwarded-For", cx.Request.RemoteAddr)
-	
+
 	// step: is this connection upgrading?
 	if isUpgradedConnection(cx.Request) {
 		glog.V(10).Infof("upgrading the connnection to %s", cx.Request.Header.Get(headerUpgrade))

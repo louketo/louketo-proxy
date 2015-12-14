@@ -112,19 +112,19 @@ func (r *KeycloakProxy) callbackHandler(cx *gin.Context) {
 			return
 		}
 
-		glog.Infof("retrieved the refresh token for user: %s, expires at: %s", identity, ident.ExpiresAt)
+		glog.Infof("retrieved the refresh token for user: %s, expires at: %s", identity.Email, ident.ExpiresAt)
 
 		// step: create the state session
 		state := &SessionState{
 			refreshToken: response.RefreshToken,
 		}
 
-		max_session := time.Now().Add(r.config.MaxSessionDuration)
-		switch max_session.After(ident.ExpiresAt) {
+		maxSession := time.Now().Add(r.config.MaxSessionDuration)
+		switch maxSession.After(ident.ExpiresAt) {
 		case true:
 			state.expireOn = ident.ExpiresAt
 		default:
-			state.expireOn = max_session
+			state.expireOn = maxSession
 		}
 
 		if err := r.createSessionState(state, cx); err != nil {
@@ -153,7 +153,6 @@ func (r *KeycloakProxy) refreshAccessToken(refreshToken string) (jose.JWT, time.
 	if err != nil {
 		return jose.JWT{}, time.Time{}, err
 	}
-
 
 	return token, identity.ExpiresAt, nil
 }

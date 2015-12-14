@@ -26,10 +26,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestIsValidMethod(t *testing.T) {
-
-}
-
 func TestEncryptDataBlock(t *testing.T) {
 	testCase := []struct {
 		Text string
