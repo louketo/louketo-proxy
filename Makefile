@@ -1,5 +1,6 @@
 
 NAME=keycloak-proxy
+AUTHOR=gambol99
 HARDWARE=$(shell uname -m)
 VERSION=$(shell awk '/Version =/ { print $$3 }' doc.go | sed 's/"//g')
 DEPS=$(shell go list -f '{{range .TestImports}}{{.}} {{end}}' ./...)
@@ -19,6 +20,10 @@ static:
 	@echo "--> Compiling the static binary"
 	mkdir -p bin
 	CGO_ENABLED=0 GOOS=linux godep go build -a -tags netgo -ldflags '-w' -o bin/${NAME}
+
+docker: static
+	@echo "--> Building the docker image"
+	sudo docker build -t docker.io/${AUTHOR}/${NAME}:${VERSION} .
 
 release: static
 	mkdir -p release

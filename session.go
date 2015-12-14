@@ -58,7 +58,7 @@ func (r *KeycloakProxy) refreshUserSessionToken(cx *gin.Context) (jose.JWT, erro
 	}
 
 	// step: inject the refreshed access token
-	glog.V(10).Infof("injecting the refreshed access token into seesion, expires on: %s", expires)
+	glog.Infof("injecting the refreshed access token into seesion, expires on: %s", expires)
 
 	// step: create the session
 	if err := r.createSession(token, expires, cx); err != nil {
@@ -144,7 +144,7 @@ func (r *KeycloakProxy) getUserContext(token jose.JWT) (*UserContext, error) {
 
 // createSession creates a session cookie with the access token
 func (r *KeycloakProxy) createSession(token jose.JWT, expires time.Time, cx *gin.Context) error {
-	glog.V(10).Infof("creating a user session cookie, expires on: %s, token: %s", expires, token)
+	glog.V(10).Infof("creating a user session cookie, expires on: %s, token: %s", expires, token.Encode())
 	http.SetCookie(cx.Writer, createSessionCookie(token.Encode(), cx.Request.Host, expires))
 
 	return nil
@@ -220,7 +220,7 @@ func createSessionCookie(token, hostname string, expires time.Time) *http.Cookie
 		Expires:  expires,
 		HttpOnly: true,
 		// Secure:   true,
-		Value:    token,
+		Value: token,
 	}
 }
 

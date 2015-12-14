@@ -58,8 +58,6 @@ func NewProxy(cfg *Config) (*KeycloakProxy, error) {
 	glog.V(3).Infof("initializing the http router, listening: %s", cfg.Listen)
 
 	service.router = gin.Default()
-	service.router.Use(service.loggingHandler())
-
 	for _, resource := range cfg.Resources {
 		glog.Infof("protecting resource: %s", resource)
 		for _, method := range resource.Methods {
@@ -97,7 +95,7 @@ func (r *KeycloakProxy) Run() error {
 
 // redirectToURL redirects the user and aborts the context
 func (r KeycloakProxy) redirectToURL(url string, cx *gin.Context) {
-	glog.V(10).Infof("redirecting the client to: %s", url)
+	glog.Infof("redirecting the client to: %s", url)
 	cx.Redirect(http.StatusTemporaryRedirect, url)
 	cx.Abort()
 }
