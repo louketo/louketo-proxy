@@ -41,7 +41,7 @@ import (
 )
 
 var (
-	httpMethodRegex = regexp.MustCompile("^(GET|POST|DELETE|PATCH|HEAD|PUT|TRACE|CONNECT)$")
+	httpMethodRegex = regexp.MustCompile("^(ANY|GET|POST|DELETE|PATCH|HEAD|PUT|TRACE|CONNECT)$")
 )
 
 // encryptDataBlock encrypts the plaintext string with the key
@@ -88,7 +88,7 @@ func decryptDataBlock(cipherText, key []byte) ([]byte, error) {
 
 // initializeOpenID initializes the openID configuration, note: the redirection url is deliberately left blank
 // in order to retrieve it from the host header on request
-func initializeOpenID(discoveryURL, clientID, clientSecret string, scopes []string) (*oidc.Client, oidc.ClientConfig, error) {
+func initializeOpenID(discoveryURL, clientID, clientSecret, redirectURL string, scopes []string) (*oidc.Client, oidc.ClientConfig, error) {
 	var err error
 	var providerConfig oidc.ProviderConfig
 
@@ -116,7 +116,7 @@ func initializeOpenID(discoveryURL, clientID, clientSecret string, scopes []stri
 			ID:     clientID,
 			Secret: clientSecret,
 		},
-		RedirectURL: "http://127.0.0.1:3000/oauth/callback",
+		RedirectURL: fmt.Sprintf("%s/oauth/callback", redirectURL),
 		Scope:       append(scopes, oidc.DefaultScope...),
 	}
 
