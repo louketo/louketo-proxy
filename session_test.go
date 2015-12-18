@@ -46,14 +46,7 @@ func TestGetUserContext(t *testing.T) {
 			"resource_access": map[string]interface{}{
 				"openvpn": map[string]interface{}{
 					"roles": []string{
-						"vpn-user",
 						"dev-vpn",
-					},
-				},
-				"account": map[string]interface{}{
-					"roles": []string{
-						"view-profile",
-						"manage-account",
 					},
 				},
 			},
@@ -77,7 +70,7 @@ func TestGetUserContext(t *testing.T) {
 	assert.Equal(t, "1e11e539-8256-4b3b-bda8-cc0d56cddb48", context.id)
 	assert.Equal(t, "gambol99@gmail.com", context.email)
 	assert.Equal(t, "rjayawardene", context.preferredName)
-	roles := []string{"account:view-profile", "account:manage-account", "openvpn:vpn-user", "openvpn:dev-vpn"}
+	roles := []string{"openvpn:dev-vpn"}
 	if !reflect.DeepEqual(context.roles, roles) {
 		t.Errorf("the claims are not the same, %v <-> %v", context.roles, roles)
 	}
