@@ -32,105 +32,131 @@ import (
 //  c) proxyHandler is responsible for handling the reverse proxy to the upstream endpoint
 //
 
-/*
-// loggingHandler is logging middleware
-func (r *KeycloakProxy) loggingHandler() gin.HandlerFunc {
+const (
+	authRequired = "AUTH_REQUIRED"
+)
+
+// entrypointHandler checks to see if the request requires authentication
+func (r *KeycloakProxy) entrypointHandler() gin.HandlerFunc {
 	return func(cx *gin.Context) {
-		req, err := httputil.DumpRequest(cx.Request, true)
-		if err == nil {
-			glog.V(10).Infof("%s", req)
+		glog.V(10).Infof("entering the entrypoint handler, uri: %s", cx.Request.RequestURI)
+
+		// check if authentication is required
+		for _, resource := range r.config.Resources {
+			if strings.HasPrefix(cx.Request.RequestURI, resource.URL) {
+				if containedIn(cx.Request.Method, resource.Methods) {
+					cx.Set(authRequired, true)
+				} else if containedIn("ANY", resource.Methods) {
+					cx.Set(authRequired, true)
+				}
+
+				break
+			}
 		}
 	}
 }
-*/
 
 // authenticationHandler is responsible for verifying the access token
-func (r *KeycloakProxy) authenticationHandler(cx *gin.Context) {
-	glog.V(10).Infof("entering the authentication handler, uri: %s", cx.Request.RequestURI)
+func (r *KeycloakProxy) authenticationHandler() gin.HandlerFunc {
+	return func(cx *gin.Context) {
+		glog.V(10).Infof("entering the authentication handler, uri: %s", cx.Request.RequestURI)
 
-	// step: extract the token if there is one
-	// a) if there is no token, we check for session state and if so, we try to refresh the token
-	// b) there is no token or session state, we simple redirect to keycloak
-	session, err := r.getSessionToken(cx)
-	if err != nil {
-		// step: there isn't a session cookie, do we have refresh session cookie?
-		if err == ErrSessionNotFound && r.config.RefreshSession {
-			session, err = r.refreshUserSessionToken(cx)
-			if err != nil {
+		// step: is authentication required on this
+		if _, found := cx.Get(authRequired); !found {
+			return
+		}
+
+		// step: extract the token if there is one
+		// a) if there is no token, we check for session state and if so, we try to refresh the token
+		// b) there is no token or session state, we simple redirect to keycloak
+		session, err := r.getSessionToken(cx)
+		if err != nil {
+			// step: there isn't a session cookie, do we have refresh session cookie?
+			if err == ErrSessionNotFound && r.config.RefreshSession {
+				session, err = r.refreshUserSessionToken(cx)
+				if err != nil {
+					glog.Errorf("failed to refresh the access token, reason: %s", err)
+					r.redirectToAuthorization(cx)
+					return
+				}
+			} else {
+				glog.Errorf("failed to get session redirecting for authorization")
+				r.redirectToAuthorization(cx)
+				return
+			}
+		}
+
+		// step: retrieve the identity and inject in the context
+		userContext, err := r.getUserContext(session)
+		if err != nil {
+			glog.Errorf("failed to retrieve the identity from the token, reason: %s", err)
+			r.redirectToAuthorization(cx)
+			return
+		}
+		cx.Set(userContextName, userContext)
+
+		// step: verify the access token
+		if err := r.verifyToken(userContext.token); err != nil {
+			// step: if the error post verification is anything other than a token expired error
+			// we immediately throw an access forbidden - as there is something messed up in the token
+			if err != ErrAccessTokenExpired {
+				glog.Errorf("invalid access token, %s, reason: %s", userContext.token, err)
+				r.accessForbidden(cx)
+				return
+			}
+
+			// step: are we refreshing the access tokens?
+			if !r.config.RefreshSession {
+				glog.Errorf("the session has expired for user: %s and token refreshing is disabled", userContext)
+				r.redirectToAuthorization(cx)
+				return
+			}
+
+			// step: attempt to refresh the access token
+			if _, err := r.refreshUserSessionToken(cx); err != nil {
 				glog.Errorf("failed to refresh the access token, reason: %s", err)
 				r.redirectToAuthorization(cx)
 				return
 			}
-		} else {
-			glog.Errorf("failed to get session redirecting for authorization")
-			r.redirectToAuthorization(cx)
-			return
-		}
-	}
-
-	// step: retrieve the identity and inject in the context
-	userContext, err := r.getUserContext(session)
-	if err != nil {
-		glog.Errorf("failed to retrieve the identity from the token, reason: %s", err)
-		r.redirectToAuthorization(cx)
-		return
-	}
-	cx.Set(userContextName, userContext)
-
-	// step: verify the access token
-	if err := r.verifyToken(userContext.token); err != nil {
-		// step: if the error post verification is anything other than a token expired error
-		// we immediately throw an access forbidden - as there is something messed up in the token
-		if err != ErrAccessTokenExpired {
-			glog.Errorf("invalid access token, %s, reason: %s", userContext.token, err)
-			r.accessForbidden(cx)
-			return
-		}
-
-		// step: are we refreshing the access tokens?
-		if !r.config.RefreshSession {
-			glog.Errorf("the session has expired for user: %s and token refreshing is disabled", userContext)
-			r.redirectToAuthorization(cx)
-			return
-		}
-
-		// step: attempt to refresh the access token
-		if _, err := r.refreshUserSessionToken(cx); err != nil {
-			glog.Errorf("failed to refresh the access token, reason: %s", err)
-			r.redirectToAuthorization(cx)
-			return
 		}
 	}
 }
 
 // admissionHandler is responsible checking the access token against the protected resource
-func (r *KeycloakProxy) admissionHandler(cx *gin.Context) {
-	// step: grab the identity from the context
-	userContext, found := cx.Get(userContextName)
-	if !found {
-		panic("there is no identity in the request context")
-	}
-
-	identity := userContext.(*UserContext)
-
-	// step: validate the roles assigned to this token is valid for the resource
-	for _, resource := range r.config.Resources {
-		// step: check if it starts with the resource prefix
-		if strings.HasPrefix(cx.Request.RequestURI, resource.URL) {
-			// step: do we have any roles or do we need authentication only
-			if len(resource.RolesAllowed) <= 0 {
-				glog.V(4).Infof("[allowed] resource: %s authentication only, expires in: %s", resource, identity.expiresAt.Sub(time.Now()))
-				return
-			}
-			// step: we need to check the roles
-			if !hasRoles(resource.RolesAllowed, identity.roles) {
-				glog.Errorf("[denied] resource: %s invalid roles, issued: %s", resource, identity.roles)
-				r.accessForbidden(cx)
-				return
-			}
-
-			glog.V(10).Infof("[allowed] resource: %s, expires in: %s", resource, identity.expiresAt.Sub(time.Now()))
+func (r *KeycloakProxy) admissionHandler() gin.HandlerFunc {
+	return func(cx *gin.Context) {
+		// step: is authentication required on this
+		if _, found := cx.Get(authRequired); !found {
 			return
+		}
+
+		// step: grab the identity from the context
+		userContext, found := cx.Get(userContextName)
+		if !found {
+			panic("there is no identity in the request context")
+		}
+
+		identity := userContext.(*UserContext)
+
+		// step: validate the roles assigned to this token is valid for the resource
+		for _, resource := range r.config.Resources {
+			// step: check if it starts with the resource prefix
+			if strings.HasPrefix(cx.Request.RequestURI, resource.URL) {
+				// step: do we have any roles or do we need authentication only
+				if len(resource.RolesAllowed) <= 0 {
+					glog.V(4).Infof("[allowed] resource: %s authentication only, expires in: %s", resource, identity.expiresAt.Sub(time.Now()))
+					return
+				}
+				// step: we need to check the roles
+				if !hasRoles(resource.RolesAllowed, identity.roles) {
+					glog.Errorf("[denied] resource: %s invalid roles, issued: %s", resource, identity.roles)
+					r.accessForbidden(cx)
+					return
+				}
+
+				glog.V(10).Infof("[allowed] resource: %s, expires in: %s", resource, identity.expiresAt.Sub(time.Now()))
+				return
+			}
 		}
 	}
 }

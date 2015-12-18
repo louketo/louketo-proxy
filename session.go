@@ -105,7 +105,7 @@ func (r *KeycloakProxy) getUserContext(token jose.JWT) (*UserContext, error) {
 	}
 
 	// step: get the preferred name
-	preferredName, _, err := claims.StringClaim("preferred_name")
+	preferredName, _, err := claims.StringClaim("preferred_username")
 	if err != nil {
 		glog.Warningf("unable to extract the preferred name from the token claims, reason: %s", err)
 	}

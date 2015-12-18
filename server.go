@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strings"
 	"sync"
 
 	"github.com/gin-gonic/gin"
@@ -40,7 +39,8 @@ func NewProxy(cfg *Config) (*KeycloakProxy, error) {
 	}
 
 	// step: initialize the openid client
-	client, clientCfg, err := initializeOpenID(cfg.DiscoveryURL, cfg.ClientID, cfg.Secret, cfg.Scopes)
+	client, clientCfg, err := initializeOpenID(cfg.DiscoveryURL,
+		cfg.ClientID, cfg.Secret, cfg.RedirectionURL, cfg.Scopes)
 	if err != nil {
 		return nil, err
 	}
@@ -59,11 +59,9 @@ func NewProxy(cfg *Config) (*KeycloakProxy, error) {
 
 	service.router = gin.Default()
 	for _, resource := range cfg.Resources {
-		glog.Infof("protecting resource: %s", resource)
-		for _, method := range resource.Methods {
-			service.router.Handle(strings.ToUpper(method), resource.URL, service.authenticationHandler, service.admissionHandler)
-		}
+		glog.Infof("protecting resources under: %s", resource)
 	}
+	service.router.Use(service.entrypointHandler(), service.authenticationHandler(), service.admissionHandler())
 
 	// step: add the oauth handlers and health
 	service.router.GET(authorizationURL, service.authorizationHandler)

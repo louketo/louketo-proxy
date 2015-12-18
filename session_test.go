@@ -18,12 +18,62 @@ package main
 import (
 	"testing"
 	"time"
+	"reflect"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/gambol99/go-oidc/jose"
 )
 
 func TestGetUserContext(t *testing.T) {
+	proxy := newFakeKeycloakProxy(t)
 
+	testToken, err := jose.NewJWT(
+		jose.JOSEHeader{
+			"alg": "RS256",
+		},
+		jose.Claims{
+			"jti": "4ee75b8e-3ee6-4382-92d4-3390b4b4937b",
+			//"exp": "1450372969",
+			"nbf": 0,
+			"iat": "1450372669",
+			"iss": "https://keycloak.example.com/auth/realms/commons",
+			"aud": "test",
+			"sub": "1e11e539-8256-4b3b-bda8-cc0d56cddb48",
+			"typ": "Bearer",
+			"azp": "clientid",
+			"session_state": "98f4c3d2-1b8c-4932-b8c4-92ec0ea7e195",
+			"client_session": "f0105893-369a-46bc-9661-ad8c747b1a69",
+			"resource_access": map[string]interface{}{
+				"openvpn": map[string]interface{}{
+					"roles": []string{
+						"dev-vpn",
+					},
+				},
+			},
+			"email": "gambol99@gmail.com",
+			"name": "Rohith Jayawardene",
+			"family_name": "Jayawardene",
+			"preferred_username": "rjayawardene",
+			"given_name": "Rohith",
+		})
+
+	if assert.NoError(t, err, "should not have recieved an error parsing the token") {
+		t.Failed()
+	}
+	if !assert.NotNil(t, testToken, "should not have got nil from token") {
+		t.FailNow()
+	}
+
+	context, err := proxy.getUserContext(testToken)
+	assert.NoError(t, err)
+	assert.NotNil(t, context)
+	assert.Equal(t, "1e11e539-8256-4b3b-bda8-cc0d56cddb48", context.id)
+	assert.Equal(t, "gambol99@gmail.com", context.email)
+	assert.Equal(t, "rjayawardene", context.preferredName)
+	roles := []string{"openvpn:dev-vpn"}
+	if !reflect.DeepEqual(context.roles, roles) {
+		t.Errorf("the claims are not the same, %v <-> %v", context.roles, roles)
+	}
 }
 
 func TestEncodeState(t *testing.T) {
