@@ -132,7 +132,7 @@ func (r *KeycloakProxy) getUserContext(token jose.JWT) (*UserContext, error) {
 
 	return &UserContext{
 		id:            ident.ID,
-		name:          ident.Name,
+		name:          preferredName,
 		preferredName: preferredName,
 		email:         ident.Email,
 		expiresAt:     ident.ExpiresAt,

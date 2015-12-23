@@ -169,6 +169,7 @@ func (r *KeycloakProxy) proxyHandler(cx *gin.Context) {
 	if found {
 		id := identity.(*UserContext)
 		// step: inject the identity in the headers
+		cx.Request.Header.Add("KEYCLOAK_ID", id.id)
 		cx.Request.Header.Add("KEYCLOAK_SUBJECT", id.preferredName)
 		cx.Request.Header.Add("KEYCLOAK_USERNAME", id.name)
 		cx.Request.Header.Add("KEYCLOAK_EMAIL", id.email)

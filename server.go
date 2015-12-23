@@ -27,6 +27,8 @@ import (
 
 // NewProxy create's a new keycloak proxy from configuration
 func NewProxy(cfg *Config) (*KeycloakProxy, error) {
+	glog.Infof("starting the %s, version: %, author: %s", prog, version, author)
+
 	upstreamURL, err := url.Parse(cfg.Upstream)
 	if err != nil {
 		return nil, err
@@ -59,8 +61,9 @@ func NewProxy(cfg *Config) (*KeycloakProxy, error) {
 
 	service.router = gin.Default()
 	for _, resource := range cfg.Resources {
-		glog.Infof("protecting resources under: %s", resource)
+		glog.V(1).Infof("protecting resources under: %s", resource)
 	}
+
 	service.router.Use(service.entrypointHandler(), service.authenticationHandler(), service.admissionHandler())
 
 	// step: add the oauth handlers and health
@@ -93,7 +96,7 @@ func (r *KeycloakProxy) Run() error {
 
 // redirectToURL redirects the user and aborts the context
 func (r KeycloakProxy) redirectToURL(url string, cx *gin.Context) {
-	glog.Infof("redirecting the client to: %s", url)
+	glog.V(1).Infof("redirecting the client to: %s", url)
 	cx.Redirect(http.StatusTemporaryRedirect, url)
 	cx.Abort()
 }
