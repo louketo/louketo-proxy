@@ -27,14 +27,10 @@ import (
 )
 
 const (
-	// Prog is the name of the application
-	Prog = "keycloak-proxy"
-	// Version is the release version
-	Version = "v0.0.1"
-	// Author is the writer
-	Author = "Rohith <gambol99@gmail.com>"
+	prog = "keycloak-proxy"
+	version = "v0.0.1"
+	author = "Rohith <gambol99@gmail.com>"
 
-	headerConnection       = "Connection"
 	headerUpgrade          = "Upgrade"
 	sessionCookieName      = "keycloak-access"
 	sessionStateCookieName = "keycloak-state"
@@ -64,7 +60,7 @@ var (
 	ErrRefreshTokenExpired = errors.New("the refresh token has expired")
 )
 
-// KeycloakProxy is the sever component
+// KeycloakProxy is the server component
 type KeycloakProxy struct {
 	config *Config
 	// the gin service
@@ -79,7 +75,7 @@ type KeycloakProxy struct {
 	upstreamURL *url.URL
 }
 
-// SessionState hold the state related data
+// SessionState holds the state related data
 type SessionState struct {
 	// the max time the session is permitted
 	expireOn time.Time
@@ -87,7 +83,7 @@ type SessionState struct {
 	refreshToken string
 }
 
-// UserContext defines the user
+// UserContext represents a user
 type UserContext struct {
 	// the id of the user
 	id string

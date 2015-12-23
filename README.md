@@ -100,13 +100,13 @@ resources:
       - <CLIENT_APP_NAME>:<ROLE_NAME>
       - <CLIENT_APP_NAME>:<ROLE_NAME>
 ```
-Below is a sample kubeconfig file with two contexts for dev and prod clusters, the file is placed / located at ~/.kube/config by default. You can find a cheat-sheet for the kubectl command [here](https://github.com/kubernetes/kubernetes/blob/master/docs/user-guide/kubectl-cheatsheet.md)
 
 #### **Upstream Headers**
 
 On protected resources the upstream endpoint will receive a number of headers added by the proxy;
 
 ```GO
+cx.Request.Header.Add("KEYCLOAK_ID", id.id)
 cx.Request.Header.Add("KEYCLOAK_SUBJECT", id.preferredName)
 cx.Request.Header.Add("KEYCLOAK_USERNAME", id.name)
 cx.Request.Header.Add("KEYCLOAK_EMAIL", id.email)
