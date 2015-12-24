@@ -27,7 +27,7 @@ import (
 
 // NewProxy create's a new keycloak proxy from configuration
 func NewProxy(cfg *Config) (*KeycloakProxy, error) {
-	glog.Infof("starting the %s, version: %, author: %s", prog, version, author)
+	glog.Infof("starting the %s, version: %s, author: %s", prog, version, author)
 
 	upstreamURL, err := url.Parse(cfg.Upstream)
 	if err != nil {

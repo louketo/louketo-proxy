@@ -23,7 +23,7 @@ static:
 
 docker: static
 	@echo "--> Building the docker image"
-	sudo docker build -t docker.io/${AUTHOR}/${NAME}:${VERSION} .
+	sudo docker build -t docker.io/${AUTHOR}/${NAME}:latest .
 
 release: static
 	mkdir -p release
