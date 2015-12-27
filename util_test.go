@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"reflect"
 )
 
 func TestEncryptDataBlock(t *testing.T) {
@@ -167,12 +168,61 @@ redirection_url: http://127.0.0.1:3000
 			os.Remove(f.Name())
 		}(file)
 
-		config, err := parseConfig(file.Name())
+		config := new(Config)
+		err := readConfigurationFile(file.Name(), config)
 		if test.Ok && err != nil {
 			t.Errorf("test case %d should not have failed, config: %v, error: %s", i, config, err)
 		}
 	}
 }
+
+func TestDecodeResource(t *testing.T) {
+	testCases := []struct {
+		Option   string
+		Ok       bool
+		Resource *Resource
+	}{
+		{
+			Option: "uri=/admin",
+			Ok:     true,
+			Resource: &Resource{
+				URL: "/admin",
+			},
+		},
+		{
+			Option: "uri=/admin/sso|roles=test,test1",
+			Ok:     true,
+			Resource: &Resource{
+				URL:          "/admin/sso",
+				RolesAllowed: []string{"test", "test1"},
+			},
+		},
+		{
+			Option: "uri=/admin/sso|roles=test,test1|methods=GET,POST",
+			Ok:     true,
+			Resource: &Resource{
+				URL:          "/admin/sso",
+				RolesAllowed: []string{"test", "test1"},
+				Methods:      []string{"GET", "POST"},
+			},
+		},
+		{
+			Option: "",
+		},
+	}
+
+	for i, c := range testCases {
+		rc, err := decodeResource(c.Option)
+		if c.Ok && err != nil {
+			t.Errorf("test case %d should not have failed, error: %s", i, err)
+			continue
+		}
+		if !reflect.DeepEqual(c.Resource, rc) {
+			t.Errorf("test case %d are not equal %v - %v", i, c.Resource, rc)
+		}
+	}
+}
+
 func TestDialAddress(t *testing.T) {
 	assert.Equal(t, dialAddress(getFakeURL("http://127.0.0.1")), "127.0.0.1:80")
 	assert.Equal(t, dialAddress(getFakeURL("https://127.0.0.1")), "127.0.0.1:443")

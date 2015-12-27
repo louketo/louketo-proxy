@@ -21,14 +21,23 @@ import (
 	"net/url"
 	"sync"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
-	"github.com/golang/glog"
 )
 
-// NewProxy create's a new keycloak proxy from configuration
-func NewProxy(cfg *Config) (*KeycloakProxy, error) {
-	glog.Infof("starting the %s, version: %s, author: %s", prog, version, author)
+// NewKeycloakProxy create's a new keycloak proxy from configuration
+func NewKeycloakProxy(cfg *Config) (*KeycloakProxy, error) {
+	// step: set the logging level
+	if cfg.LogJSONFormat {
+		log.SetFormatter(&log.JSONFormatter{})
+	}
+	if cfg.Debug {
+		log.SetLevel(log.DebugLevel)
+	}
 
+	log.Infof("starting %s, version: %s, author: %s", prog, version, author)
+
+	// step: parse the upstream endpoint
 	upstreamURL, err := url.Parse(cfg.Upstream)
 	if err != nil {
 		return nil, err
@@ -57,29 +66,27 @@ func NewProxy(cfg *Config) (*KeycloakProxy, error) {
 	}
 
 	// step: initialize the gin router
-	glog.V(3).Infof("initializing the http router, listening: %s", cfg.Listen)
-
-	service.router = gin.New()
-	service.router.Use(gin.Recovery())
-
-	// step: are we logging the requests
-	if cfg.LogRequests {
-		service.router.Use(gin.Logger())
-	}
-
+	router := gin.New()
+	router.Use(gin.Recovery())
 	for _, resource := range cfg.Resources {
-		glog.V(1).Infof("protecting resources under: %s", resource)
+		log.Infof("protecting resources under: %s", resource)
 	}
 
-	service.router.Use(service.entrypointHandler(), service.authenticationHandler(), service.admissionHandler())
+	// step: are we logging the traffic?
+	if cfg.LogRequests {
+		router.Use(service.loggingHandler())
+	}
 
+	router.Use(service.entrypointHandler(), service.authenticationHandler(), service.admissionHandler())
 	// step: add the oauth handlers and health
-	service.router.GET(authorizationURL, service.authorizationHandler)
-	service.router.GET(callbackURL, service.callbackHandler)
-	service.router.GET(signInPageURL, service.signInHandler)
-	service.router.GET(accessForbiddenPageURL, service.forbiddenAccessHandler)
-	service.router.GET(healthURL, service.healthHandler)
-	service.router.Use(service.proxyHandler)
+	router.GET(authorizationURL, service.authorizationHandler)
+	router.GET(callbackURL, service.callbackHandler)
+	router.GET(signInPageURL, service.signInHandler)
+	router.GET(accessForbiddenPageURL, service.forbiddenAccessHandler)
+	router.GET(healthURL, service.healthHandler)
+	router.Use(service.proxyHandler)
+
+	service.router = router
 
 	return service, nil
 }
@@ -87,6 +94,8 @@ func NewProxy(cfg *Config) (*KeycloakProxy, error) {
 // Run starts the proxy service
 func (r *KeycloakProxy) Run() error {
 	go func() {
+		log.Infof("keycloak proxy service starting on %s", r.config.Listen)
+
 		var err error
 		if r.config.TLSCertificate == "" {
 			err = r.router.Run(r.config.Listen)
@@ -94,7 +103,9 @@ func (r *KeycloakProxy) Run() error {
 			err = r.router.RunTLS(r.config.Listen, r.config.TLSCertificate, r.config.TLSPrivateKey)
 		}
 		if err != nil {
-			glog.Fatalf("failed to start the service, error: %s", err)
+			log.WithFields(log.Fields{
+				"error": err.Error(),
+			}).Fatalf("failed to start the service")
 		}
 	}()
 
@@ -103,7 +114,6 @@ func (r *KeycloakProxy) Run() error {
 
 // redirectToURL redirects the user and aborts the context
 func (r KeycloakProxy) redirectToURL(url string, cx *gin.Context) {
-	glog.V(1).Infof("redirecting the client to: %s", url)
 	cx.Redirect(http.StatusTemporaryRedirect, url)
 	cx.Abort()
 }

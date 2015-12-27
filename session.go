@@ -22,10 +22,10 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/gambol99/go-oidc/jose"
 	"github.com/gambol99/go-oidc/oidc"
 	"github.com/gin-gonic/gin"
-	"github.com/golang/glog"
 )
 
 // refreshUserSessionToken is responsible for retrieving the session state cookie and attempting to
@@ -39,7 +39,7 @@ func (r *KeycloakProxy) refreshUserSessionToken(cx *gin.Context) (jose.JWT, erro
 
 	// step: has the refresh token expired
 	if time.Now().After(state.expireOn) {
-		glog.Warningf("failed to refresh the access token, the refresh token has expired, expiration: %s", state.expireOn)
+		log.Warningf("failed to refresh the access token, the refresh token has expired, expiration: %s", state.expireOn)
 		return jose.JWT{}, ErrAccessTokenExpired
 	}
 
@@ -48,17 +48,18 @@ func (r *KeycloakProxy) refreshUserSessionToken(cx *gin.Context) (jose.JWT, erro
 	if err != nil {
 		// step: has the refresh token expired
 		if err == ErrRefreshTokenExpired {
-			glog.Warningf("the refresh token has expired: %s", token)
+			log.WithFields(log.Fields{"token": token}).Warningf("the refresh token has expired")
 			// clear the session
 			clearSessionState(cx)
 		}
 
-		glog.Errorf("failed to refresh the access token, reason: %s", err)
+		log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to refresh the access token")
+
 		return jose.JWT{}, err
 	}
 
 	// step: inject the refreshed access token
-	glog.Infof("injecting the refreshed access token into seesion, expires on: %s", expires)
+	log.Infof("injecting the refreshed access token into seesion, expires on: %s", expires)
 
 	// step: create the session
 	if err := r.createSession(token, expires, cx); err != nil {
@@ -86,7 +87,7 @@ func (r *KeycloakProxy) getSessionToken(cx *gin.Context) (jose.JWT, error) {
 }
 
 // getSessionState retrieves the session state from the request
-func (r *KeycloakProxy) getSessionState(cx *gin.Context) (*SessionState, error) {
+func (r *KeycloakProxy) getSessionState(cx *gin.Context) (*sessionState, error) {
 	// step: find the session data cookie
 	cookie := findCookie(sessionStateCookieName, cx.Request.Cookies())
 	if cookie == nil {
@@ -97,7 +98,7 @@ func (r *KeycloakProxy) getSessionState(cx *gin.Context) (*SessionState, error) 
 }
 
 // getUserContext parse the jwt token and extracts the various elements is order to construct
-func (r *KeycloakProxy) getUserContext(token jose.JWT) (*UserContext, error) {
+func (r *KeycloakProxy) getUserContext(token jose.JWT) (*userContext, error) {
 	// step: decode the claims from the tokens
 	claims, err := token.Claims()
 	if err != nil {
@@ -107,7 +108,7 @@ func (r *KeycloakProxy) getUserContext(token jose.JWT) (*UserContext, error) {
 	// step: get the preferred name
 	preferredName, _, err := claims.StringClaim("preferred_username")
 	if err != nil {
-		glog.Warningf("unable to extract the preferred name from the token claims, reason: %s", err)
+		log.WithFields(log.Fields{"error": err.Error()}).Warningf("unable to extract the preferred name from the token claims")
 	}
 
 	// step: extract the identity
@@ -130,7 +131,7 @@ func (r *KeycloakProxy) getUserContext(token jose.JWT) (*UserContext, error) {
 		}
 	}
 
-	return &UserContext{
+	return &userContext{
 		id:            ident.ID,
 		name:          preferredName,
 		preferredName: preferredName,
@@ -144,16 +145,13 @@ func (r *KeycloakProxy) getUserContext(token jose.JWT) (*UserContext, error) {
 
 // createSession creates a session cookie with the access token
 func (r *KeycloakProxy) createSession(token jose.JWT, expires time.Time, cx *gin.Context) error {
-	glog.V(10).Infof("creating a user session cookie, expires on: %s, token: %s", expires, token.Encode())
 	http.SetCookie(cx.Writer, createSessionCookie(token.Encode(), cx.Request.Host, expires))
 
 	return nil
 }
 
 // createSessionState creates a session state cookie, used to hold the refresh cookie and the expiration time
-func (r *KeycloakProxy) createSessionState(state *SessionState, cx *gin.Context) error {
-	glog.V(10).Infof("creating a session state cookie, expires on: %s, token: %s", state.expireOn, state.refreshToken)
-
+func (r *KeycloakProxy) createSessionState(state *sessionState, cx *gin.Context) error {
 	// step: we need to encode the state
 	encoded, err := r.encodeState(state)
 	if err != nil {
@@ -166,7 +164,7 @@ func (r *KeycloakProxy) createSessionState(state *SessionState, cx *gin.Context)
 }
 
 // encodeState encodes the session state information into a value for a cookie to consume
-func (r *KeycloakProxy) encodeState(session *SessionState) (string, error) {
+func (r *KeycloakProxy) encodeState(session *sessionState) (string, error) {
 	// step: encode the session into a string
 	encoded := fmt.Sprintf("%d|%s", session.expireOn.Unix(), session.refreshToken)
 
@@ -180,7 +178,7 @@ func (r *KeycloakProxy) encodeState(session *SessionState) (string, error) {
 }
 
 // decodeState decodes the session state cookie value
-func (r *KeycloakProxy) decodeState(state string) (*SessionState, error) {
+func (r *KeycloakProxy) decodeState(state string) (*sessionState, error) {
 	// step: decode the base64 encrypted cookie
 	cipherText, err := base64.StdEncoding.DecodeString(state)
 	if err != nil {
@@ -205,7 +203,7 @@ func (r *KeycloakProxy) decodeState(state string) (*SessionState, error) {
 		return nil, ErrInvalidSession
 	}
 
-	return &SessionState{
+	return &sessionState{
 		expireOn:     expiration,
 		refreshToken: sections[1],
 	}, nil

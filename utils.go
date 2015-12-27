@@ -36,8 +36,8 @@ import (
 	"sync"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/gambol99/go-oidc/oidc"
-	"github.com/golang/glog"
 )
 
 var (
@@ -95,13 +95,13 @@ func initializeOpenID(discoveryURL, clientID, clientSecret, redirectURL string, 
 	// step: attempt to retrieve the provider configuration
 	gotConfig := false
 	for i := 0; i < 3; i++ {
-		glog.V(3).Infof("attempting to retreieve the openid configuration from the discovery url: %s", discoveryURL)
+		log.Infof("attempting to retreieve the openid configuration from the discovery url: %s", discoveryURL)
 		providerConfig, err = oidc.FetchProviderConfig(http.DefaultClient, discoveryURL)
 		if err == nil {
 			gotConfig = true
 			break
 		}
-		glog.V(3).Infof("failed to get provider configuration from discovery url: %s, %s", discoveryURL, err)
+		log.Infof("failed to get provider configuration from discovery url: %s, %s", discoveryURL, err)
 
 		time.Sleep(time.Second * 3)
 	}
@@ -120,7 +120,7 @@ func initializeOpenID(discoveryURL, clientID, clientSecret, redirectURL string, 
 		Scope:       append(scopes, oidc.DefaultScope...),
 	}
 
-	glog.V(10).Infof("successfully retrieved the config from discovery url, %v", providerConfig)
+	log.Infof("successfully retrieved the config from discovery url")
 
 	// step: attempt to create a new client
 	client, err := oidc.NewClient(config)
@@ -129,7 +129,6 @@ func initializeOpenID(discoveryURL, clientID, clientSecret, redirectURL string, 
 	}
 
 	// step: start the provider sync
-	glog.V(10).Infof("starting the provider sync routine")
 	client.SyncProviderConfig(discoveryURL)
 
 	return client, config, nil
@@ -163,20 +162,17 @@ func initializeReverseProxy(upstream *url.URL) (*httputil.ReverseProxy, error) {
 
 // tryDialEndpoint dials the upstream endpoint via plain
 func tryDialEndpoint(location *url.URL) (net.Conn, error) {
-	glog.V(10).Infof("attempting to dial: %s", location.String())
 	// get the dial address
 	dialAddr := dialAddress(location)
 
 	switch location.Scheme {
 	case "http":
-		glog.V(10).Infof("connecting the http endpoint: %s", dialAddr)
 		conn, err := net.Dial("tcp", dialAddr)
 		if err != nil {
 			return nil, err
 		}
 		return conn, nil
 	default:
-		glog.V(10).Infof("connecting to tls endpoint: %s", dialAddr)
 		// step: construct and dial a tls endpoint
 		conn, err := tls.Dial("tcp", dialAddr, &tls.Config{
 			Rand:               rand.Reader,
@@ -264,9 +260,38 @@ func transferBytes(src io.Reader, dest io.Writer, wg *sync.WaitGroup) (int64, er
 	return copied, nil
 }
 
-// parserConfigFile reads and parses the configuration file
-func parseConfigFile(filename string) (*Config, error) {
-	config := new(Config)
+// decodeResource decodes the resource specification from the command line
+func decodeResource(v string) (*Resource, error) {
+	elements := strings.Split(v, "|")
+	if len(elements) <= 0 {
+		return nil, fmt.Errorf("the resource has no options")
+	}
+
+	resource := &Resource{}
+
+	for _, x := range elements {
+		// step: split up the keypair
+		kp := strings.Split(x, "=")
+		if len(kp) != 2 {
+			return nil, fmt.Errorf("invalid resource keypair, should be (uri|roles|method)=comma_values")
+		}
+		switch kp[0] {
+		case "uri":
+			resource.URL = kp[1]
+		case "methods":
+			resource.Methods = strings.Split(kp[1], ",")
+		case "roles":
+			resource.RolesAllowed = strings.Split(kp[1], ",")
+		default:
+			return nil, fmt.Errorf("invalid identifier, should be roles, uri or methods")
+		}
+	}
+
+	return resource, nil
+}
+
+// readConfigurationFile reads and parses the configuration file
+func readConfigurationFile(filename string, config *Config) error {
 	ext := filepath.Ext(filename)
 
 	formatYAML := true
@@ -278,7 +303,7 @@ func parseConfigFile(filename string) (*Config, error) {
 	// step: read in the contents of the file
 	content, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// step: attempt to un-marshal the data
@@ -290,8 +315,8 @@ func parseConfigFile(filename string) (*Config, error) {
 	}
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return config, nil
+	return nil
 }

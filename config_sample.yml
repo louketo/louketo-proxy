@@ -12,10 +12,14 @@ listen: 127.0.0.1:3000
 refresh_session: true
 # assuming you are using refresh tokens, specify the maximum amount of time the refresh token can last
 max_session: 1h
+# log all incoming requests
+log_requests: true
+# log in json format
+log_json_format: true
 # the location of a certificate you wish the proxy to use for TLS support
-#tls_cert:
+tls_cert:
 # the location of a private key for TLS
-#tls_private_key:
+tls_private_key:
 # the redirection url, essentially the site url, note: /oauth/callback is added at the end
 redirection_url: http://127.0.0.3000
 # the encryption key used to encode the session state

@@ -20,6 +20,13 @@ import (
 	"strings"
 )
 
+func newResource() *Resource {
+	return &Resource{
+		Methods:      make([]string, 0),
+		RolesAllowed: make([]string, 0),
+	}
+}
+
 func (r Resource) String() string {
 	var requiredRoles string
 	var requireMethods string

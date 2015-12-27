@@ -7,20 +7,51 @@
 Keycloak-proxy is a proxy service which at the risk of stating the obvious integrates with the [Keycloak](https://github.com/keycloak/keycloak) authentication service. The configuration and feature set is based on the actual java version of the [proxy](https://docs.jboss.org/keycloak/docs/1.1.0.Beta2/userguide/html/proxy.html). The 
 
 ```shell
-[jest@starfury keycloak-proxy]$ bin/keycloak-proxy --help
-Usage of bin/keycloak-proxy:
-  -alsologtostderr         log to standard error as well as files
-  -config string           the path to the configuration file for the keycloak proxy service, in yaml or json format
-  -httptest.serve string   if non-empty, httptest.NewServer serves on this address and blocks
-  -log_backtrace_at value  when logging hits line file:N, emit a stack trace (default :0)
-  -log_dir string          If non-empty, write log files in this directory
-  -logtostderr             log to standard error instead of files
-  -stderrthreshold value   logs at or above this threshold go to stderr
-  -v value                 log level for V logs
-  -vmodule value           comma-separated list of pattern=N settings for file-filtered logging
+[jest@starfury keycloak-proxy]$ bin/keycloak-proxy help
+NAME:
+   keycloak-proxy - is a proxy using the keycloak service for auth and authorization
+
+USAGE:
+   keycloak-proxy [global options] command [command options] [arguments...]
+   
+VERSION:
+   v0.0.2
+   
+AUTHOR(S):
+   Rohith <gambol99@gmail.com> 
+   
+COMMANDS:
+   help, h	Shows a list of commands or help for one command
+   
+GLOBAL OPTIONS:
+   --config 						the path to the configuration file for the keycloak proxy
+   --listen "127.0.0.1:80"				the interface the service should be listening on
+   --secret 						the client secret used to authenticate to the oauth server
+   --client-id 						the client id used to authenticate to the oauth serves
+   --discovery-url 					the discovery url to retrieve the openid configuration
+   --upstream-url "http://127.0.0.1:8080"		the url for the upstream endpoint you wish to proxy to
+   --encryption-key 				the encryption key used to encrpytion the session state
+   --redirection-url 				the redirection url, namely the site url, note: /oauth will be added to it
+   --tls-cert 						the path to a certificate file used for enabled TLS for the service
+   --tls-private-key 				the path to the private key for TLS support
+   --scope [--scope option --scope option]		a variable list of scopes requested when authenticating the user
+   --resource [--resource option --resource option]	a list of resources 'uri=/admin|methods=GET|roles=role1,role2
+   --signin-page 					a custom template under ./templates displayed for signin
+   --forbidden-page 				a custom template under ./templates used for access forbidden
+   --max-session "1h0m0s"			if refresh sessions are enabled we can limit their duration via this
+   --proxy-protocol					switches on proxy protocol support on the listen (not supported yet)
+   --refresh-sessions				enables the refreshing of tokens via offline access
+   --json-logging					switch on json logging rather than text (defaults true)
+   --log-requests					switch on logging of all incoming requests (defaults true)
+   --verbose						switch on debug / verbose logging
+   --help, -h						show help
+   --version, -v					print the version
+
 ```
 
 #### **Configuration**
+
+The configuration can come from a yaml/json file and or the command line options (note, command options have a higher priority and will override any options referenced in a config file)
 
 ```YAML
 

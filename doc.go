@@ -27,9 +27,10 @@ import (
 )
 
 const (
-	prog = "keycloak-proxy"
-	version = "v0.0.1"
-	author = "Rohith <gambol99@gmail.com>"
+	prog    = "keycloak-proxy"
+	version = "v0.0.2"
+	author  = "Rohith"
+	email   = "gambol99@gmail.com"
 
 	headerUpgrade          = "Upgrade"
 	sessionCookieName      = "keycloak-access"
@@ -75,16 +76,16 @@ type KeycloakProxy struct {
 	upstreamURL *url.URL
 }
 
-// SessionState holds the state related data
-type SessionState struct {
+// sessionState holds the state related data
+type sessionState struct {
 	// the max time the session is permitted
 	expireOn time.Time
 	// the refresh token if any
 	refreshToken string
 }
 
-// UserContext represents a user
-type UserContext struct {
+// userContext represents a user
+type userContext struct {
 	// the id of the user
 	id string
 	// the email associated to the user

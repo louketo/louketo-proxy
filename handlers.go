@@ -20,8 +20,8 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
-	"github.com/golang/glog"
 )
 
 //
@@ -32,9 +32,25 @@ import (
 //  c) proxyHandler is responsible for handling the reverse proxy to the upstream endpoint
 //
 
-const (
-	authRequired = "AUTH_REQUIRED"
-)
+const authRequired = "AUTH_REQUIRED"
+
+// loggingHandler is a custom http logger
+func (r *KeycloakProxy) loggingHandler() gin.HandlerFunc {
+	return func(cx *gin.Context) {
+		start := time.Now()
+		cx.Next()
+		latency := time.Now().Sub(start)
+
+		log.WithFields(log.Fields{
+			"client_ip": cx.ClientIP(),
+			"method":    cx.Request.Method,
+			"status":    cx.Writer.Status(),
+			"path":      cx.Request.RequestURI,
+			"latency":   latency,
+		}).Infof("[%d] |%s| |%13v| %-5s %s", cx.Writer.Status(), cx.ClientIP(),
+			latency, cx.Request.Method, cx.Request.URL.Path)
+	}
+}
 
 // entrypointHandler checks to see if the request requires authentication
 func (r *KeycloakProxy) entrypointHandler() gin.HandlerFunc {
@@ -71,12 +87,15 @@ func (r *KeycloakProxy) authenticationHandler() gin.HandlerFunc {
 			if err == ErrSessionNotFound && r.config.RefreshSession {
 				session, err = r.refreshUserSessionToken(cx)
 				if err != nil {
-					glog.Errorf("failed to refresh the access token, reason: %s", err)
+					log.WithFields(log.Fields{
+						"error": err.Error(),
+					}).Errorf("failed to refresh the access token")
+
 					r.redirectToAuthorization(cx)
 					return
 				}
 			} else {
-				glog.Errorf("failed to get session redirecting for authorization")
+				log.Errorf("failed to get session redirecting for authorization")
 				r.redirectToAuthorization(cx)
 				return
 			}
@@ -85,7 +104,10 @@ func (r *KeycloakProxy) authenticationHandler() gin.HandlerFunc {
 		// step: retrieve the identity and inject in the context
 		userContext, err := r.getUserContext(session)
 		if err != nil {
-			glog.Errorf("failed to retrieve the identity from the token, reason: %s", err)
+			log.WithFields(log.Fields{
+				"error": err.Error(),
+			}).Errorf("failed to retrieve the identity from the token")
+
 			r.redirectToAuthorization(cx)
 			return
 		}
@@ -96,21 +118,28 @@ func (r *KeycloakProxy) authenticationHandler() gin.HandlerFunc {
 			// step: if the error post verification is anything other than a token expired error
 			// we immediately throw an access forbidden - as there is something messed up in the token
 			if err != ErrAccessTokenExpired {
-				glog.Errorf("invalid access token, %s, reason: %s", userContext.token, err)
+				log.WithFields(log.Fields{
+					"token": userContext.token,
+					"error": err.Error(),
+				}).Errorf("invalid access token")
 				r.accessForbidden(cx)
 				return
 			}
 
 			// step: are we refreshing the access tokens?
 			if !r.config.RefreshSession {
-				glog.Errorf("the session has expired for user: %s and token refreshing is disabled", userContext)
+				log.WithFields(log.Fields{
+					"username": userContext.name,
+				}).Errorf("the session has expired and token refreshing is disabled")
 				r.redirectToAuthorization(cx)
 				return
 			}
 
 			// step: attempt to refresh the access token
 			if _, err := r.refreshUserSessionToken(cx); err != nil {
-				glog.Errorf("failed to refresh the access token, reason: %s", err)
+				log.WithFields(log.Fields{
+					"error": err.Error(),
+				}).Errorf("failed to refresh the access token")
 				r.redirectToAuthorization(cx)
 				return
 			}
@@ -127,12 +156,12 @@ func (r *KeycloakProxy) admissionHandler() gin.HandlerFunc {
 		}
 
 		// step: grab the identity from the context
-		userContext, found := cx.Get(userContextName)
+		uc, found := cx.Get(userContextName)
 		if !found {
 			panic("there is no identity in the request context")
 		}
 
-		identity := userContext.(*UserContext)
+		identity := uc.(*userContext)
 
 		// step: validate the roles assigned to this token is valid for the resource
 		for _, resource := range r.config.Resources {
@@ -140,17 +169,32 @@ func (r *KeycloakProxy) admissionHandler() gin.HandlerFunc {
 			if strings.HasPrefix(cx.Request.RequestURI, resource.URL) {
 				// step: do we have any roles or do we need authentication only
 				if len(resource.RolesAllowed) <= 0 {
-					glog.V(4).Infof("[allowed] resource: %s authentication only, expires in: %s", resource, identity.expiresAt.Sub(time.Now()))
+					log.WithFields(log.Fields{
+						"access":   "permitted",
+						"username": identity.name,
+						"resource": resource.URL,
+						"expires":  identity.expiresAt.Sub(time.Now()),
+					}).Debugf("resource access permitted")
 					return
 				}
 				// step: we need to check the roles
 				if !hasRoles(resource.RolesAllowed, identity.roles) {
-					glog.Errorf("[denied] resource: %s invalid roles, issued: %s", resource, identity.roles)
+					log.WithFields(log.Fields{
+						"access":   "denied",
+						"username": identity.name,
+						"resource": resource.URL,
+						"issued":   identity.roles,
+					}).Warnf("access denied, invalid roles")
 					r.accessForbidden(cx)
 					return
 				}
 
-				glog.V(5).Infof("[allowed] resource: %s, expires in: %s", resource, identity.expiresAt.Sub(time.Now()))
+				log.WithFields(log.Fields{
+					"access":   "permitted",
+					"username": identity.name,
+					"resource": resource.URL,
+					"expires":  identity.expiresAt.Sub(time.Now()),
+				}).Debugf("resource access permitted")
 				return
 			}
 		}
@@ -159,12 +203,9 @@ func (r *KeycloakProxy) admissionHandler() gin.HandlerFunc {
 
 // proxyHandler is responsible to proxy the requests on to the upstream endpoint
 func (r *KeycloakProxy) proxyHandler(cx *gin.Context) {
-
 	// step: retrieve the user context
-	identity, found := cx.Get(userContextName)
-	if found {
-		id := identity.(*UserContext)
-		// step: inject the identity in the headers
+	if identity, found := cx.Get(userContextName); found {
+		id := identity.(*userContext)
 		cx.Request.Header.Add("KEYCLOAK_ID", id.id)
 		cx.Request.Header.Add("KEYCLOAK_SUBJECT", id.preferredName)
 		cx.Request.Header.Add("KEYCLOAK_USERNAME", id.name)
@@ -176,12 +217,16 @@ func (r *KeycloakProxy) proxyHandler(cx *gin.Context) {
 
 	// step: add the default headers
 	cx.Request.Header.Set("X-Forwarded-For", cx.Request.RemoteAddr)
+	cx.Request.Header.Set("X-Forwarded-Agent", "keycloak-proxy")
 
 	// step: is this connection upgrading?
 	if isUpgradedConnection(cx.Request) {
-		glog.V(10).Infof("upgrading the connnection to %s", cx.Request.Header.Get(headerUpgrade))
+		log.Debugf("upgrading the connnection to %s", cx.Request.Header.Get(headerUpgrade))
 		if err := r.tryUpdateConnection(cx); err != nil {
-			glog.Errorf("failed to upgrade the connection, identity: %s, reason: %s", identity, err)
+			log.WithFields(log.Fields{
+				"error": err.Error(),
+			}).Errorf("failed to upgrade the connection")
+
 			cx.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
