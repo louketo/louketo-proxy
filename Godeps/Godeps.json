@@ -1,27 +1,37 @@
 {
 	"ImportPath": "github.com/gambol99/keycloak-proxy",
-	"GoVersion": "go1.5.1",
+	"GoVersion": "go1.5.2",
 	"Deps": [
 		{
+			"ImportPath": "github.com/Sirupsen/logrus",
+			"Comment": "v0.8.7-53-g446d1c1",
+			"Rev": "446d1c146faa8ed3f4218f056fcd165f6bcfda81"
+		},
+		{
+			"ImportPath": "github.com/codegangsta/cli",
+			"Comment": "1.2.0-187-gc31a797",
+			"Rev": "c31a7975863e7810c92e2e288a9ab074f9a88f29"
+		},
+		{
 			"ImportPath": "github.com/coreos/go-systemd/journal",
-			"Comment": "v3-52-g6d2228f",
-			"Rev": "6d2228f4bf461b3987f0372d72e1b7fd7bca9f1c"
+			"Comment": "v4-34-g4f14f6d",
+			"Rev": "4f14f6deef2da87e4aa59e6c1c1f3e02ba44c5e1"
 		},
 		{
 			"ImportPath": "github.com/coreos/pkg/capnslog",
-			"Rev": "42a8c3b1a6f917bb8346ef738f32712a7ca0ede7"
+			"Rev": "2c77715c4df99b5420ffcae14ead08f52104065d"
 		},
 		{
 			"ImportPath": "github.com/coreos/pkg/health",
-			"Rev": "42a8c3b1a6f917bb8346ef738f32712a7ca0ede7"
+			"Rev": "2c77715c4df99b5420ffcae14ead08f52104065d"
 		},
 		{
 			"ImportPath": "github.com/coreos/pkg/httputil",
-			"Rev": "42a8c3b1a6f917bb8346ef738f32712a7ca0ede7"
+			"Rev": "2c77715c4df99b5420ffcae14ead08f52104065d"
 		},
 		{
 			"ImportPath": "github.com/coreos/pkg/timeutil",
-			"Rev": "42a8c3b1a6f917bb8346ef738f32712a7ca0ede7"
+			"Rev": "2c77715c4df99b5420ffcae14ead08f52104065d"
 		},
 		{
 			"ImportPath": "github.com/gambol99/go-oidc/http",
@@ -47,10 +57,6 @@
 			"ImportPath": "github.com/gin-gonic/gin",
 			"Comment": "v1.0rc1-148-g52fcc5d",
 			"Rev": "52fcc5dbf6e94df33ad313858fb94b713e9d1b4a"
-		},
-		{
-			"ImportPath": "github.com/golang/glog",
-			"Rev": "fca8c8854093a154ff1eb580aae10276ad6b1b5f"
 		},
 		{
 			"ImportPath": "github.com/jonboulle/clockwork",

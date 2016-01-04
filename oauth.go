@@ -20,11 +20,11 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/gambol99/go-oidc/jose"
 	"github.com/gambol99/go-oidc/oauth2"
 	"github.com/gambol99/go-oidc/oidc"
 	"github.com/gin-gonic/gin"
-	"github.com/golang/glog"
 )
 
 //
@@ -33,12 +33,13 @@ import (
 
 // authorizationHandler is responsible for performing the redirection to keycloak service
 func (r *KeycloakProxy) authorizationHandler(cx *gin.Context) {
-	glog.V(10).Infof("entered the authorization hander, uri: %s", cx.Request.URL)
 
 	// step: grab the oauth client
 	oac, err := r.openIDClient.OAuthClient()
 	if err != nil {
-		glog.Errorf("failed to retrieve the oauth client, reason: %s", err)
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Errorf("failed to retrieve the oauth client")
 		cx.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
@@ -52,20 +53,17 @@ func (r *KeycloakProxy) authorizationHandler(cx *gin.Context) {
 	// step: build the redirection url to the authentication server
 	redirectionURL := oac.AuthCodeURL(cx.Query("state"), accessType, "")
 
-	glog.V(10).Infof("handing back the redirection url: %s", redirectionURL)
-
 	// step: get the redirection url
 	r.redirectToURL(redirectionURL, cx)
 }
 
 // callbackHandler is responsible for handling the response from keycloak
 func (r *KeycloakProxy) callbackHandler(cx *gin.Context) {
-	glog.V(10).Infof("entered the callback hander, uri: %s", cx.Request.URL)
 
 	// step: ensure we have a authorization code
 	code := cx.Request.URL.Query().Get("code")
 	if code == "" {
-		glog.Errorf("failed to get the code callback request")
+		log.Error("failed to get the code callback request")
 		r.accessForbidden(cx)
 		return
 	}
@@ -77,10 +75,11 @@ func (r *KeycloakProxy) callbackHandler(cx *gin.Context) {
 	}
 
 	// step: exchange the authorization for a access token
-	glog.V(10).Infof("exchanging the code: %s for an access token", code)
 	response, err := r.getToken(oauth2.GrantTypeAuthCode, code)
 	if err != nil {
-		glog.Errorf("failed to retrieve access token from authentication service, reason: %s", err)
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Errorf("failed to retrieve access token from authentication service")
 		r.accessForbidden(cx)
 		return
 	}
@@ -88,16 +87,22 @@ func (r *KeycloakProxy) callbackHandler(cx *gin.Context) {
 	// step: decode and parse the access token
 	token, identity, err := r.parseToken(response.AccessToken)
 	if err != nil {
-		glog.Errorf("failed to parse jwt token for identity, reason: %s", err)
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Errorf("failed to parse jwt token for identity")
 		r.accessForbidden(cx)
 		return
 	}
 
-	glog.Infof("issuing a user session for email: %s, expires at: %s", identity.Email, identity.ExpiresAt)
+	log.WithFields(log.Fields{
+		"email":    identity.Email,
+		"username": identity.Name,
+		"expires":  identity.ExpiresAt,
+	}).Infof("issuing a user session")
 
 	// step: create a session from the access token
 	if err := r.createSession(token, identity.ExpiresAt, cx); err != nil {
-		glog.Errorf("failed to inject the session token, reason: %s", err)
+		log.Errorf("failed to inject the session token, error: %s", err)
 		cx.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
@@ -107,19 +112,25 @@ func (r *KeycloakProxy) callbackHandler(cx *gin.Context) {
 		// step: parse the token
 		_, ident, err := r.parseToken(response.RefreshToken)
 		if err != nil {
-			glog.Errorf("failed to parse the refresh token, reason: %s", err)
+			log.WithFields(log.Fields{
+				"error": err.Error(),
+			}).Errorf("failed to parse the refresh token")
+
 			cx.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
 
-		glog.Infof("retrieved the refresh token for user: %s, expires at: %s", identity.Email, ident.ExpiresAt)
+		log.WithFields(log.Fields{
+			"email":   identity.Email,
+			"expires": identity.ExpiresAt,
+		}).Infof("retrieved the refresh token for user")
 
 		// step: create the state session
-		state := &SessionState{
+		state := &sessionState{
 			refreshToken: response.RefreshToken,
 		}
 
-		maxSession := time.Now().Add(r.config.MaxSessionDuration)
+		maxSession := time.Now().Add(r.config.MaxSession)
 		switch maxSession.After(ident.ExpiresAt) {
 		case true:
 			state.expireOn = ident.ExpiresAt
@@ -128,8 +139,12 @@ func (r *KeycloakProxy) callbackHandler(cx *gin.Context) {
 		}
 
 		if err := r.createSessionState(state, cx); err != nil {
-			glog.Errorf("failed to inject the session state into request, reason: %s", err)
+			log.WithFields(log.Fields{
+				"error": err.Error(),
+			}).Errorf("failed to inject the session state into request")
+
 			cx.AbortWithStatus(http.StatusInternalServerError)
+
 			return
 		}
 	}
@@ -197,8 +212,6 @@ func (r *KeycloakProxy) verifyToken(token jose.JWT) error {
 // getToken retrieves a code from the provider, extracts and verified the token
 func (r *KeycloakProxy) getToken(grantType, code string) (oauth2.TokenResponse, error) {
 	var response oauth2.TokenResponse
-
-	glog.V(10).Infof("requesting a access code from auth server, grant type: %s, code: %s", grantType, code)
 
 	// step: retrieve the client
 	client, err := r.openIDClient.OAuthClient()

@@ -16,12 +16,13 @@ limitations under the License.
 package main
 
 import (
-	"flag"
 	"fmt"
 	"net/url"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/codegangsta/cli"
 )
 
 // Resource represents a url resource to protect
@@ -36,6 +37,12 @@ type Resource struct {
 
 // Config is the configuration for the proxy
 type Config struct {
+	// Debug switches on debug logging
+	Debug bool `json:"debug" yaml:"debug"`
+	// LogRequests indicates if we should log all the requests
+	LogRequests bool `json:"log_requests" yaml:"log_requests"`
+	// LogFormat is the logging format
+	LogJSONFormat bool `json:"log_json_format" yaml:"log_json_format"`
 	// DiscoveryURL is the url for the keycloak server
 	DiscoveryURL string `json:"discovery_url" yaml:"discovery_url"`
 	// ClientID is the client id
@@ -49,7 +56,7 @@ type Config struct {
 	// EncryptionKey is the encryption key used to encrypt the refresh token
 	EncryptionKey string `json:"encryption_key" yaml:"encryption_key"`
 	// MaxSessionDuration the max session for refreshing
-	MaxSessionDuration time.Duration `json:"max_session" yaml:"max_session"`
+	MaxSession time.Duration `json:"max_session" yaml:"max_session"`
 	// Listen is the binding interface
 	Listen string `json:"listen" yaml:"listen"`
 	// ProxyProtocol enables proxy protocol
@@ -64,85 +71,153 @@ type Config struct {
 	Scopes []string `json:"scopes" yaml:"scopes"`
 	// Resources is a list of protected resources
 	Resources []*Resource `json:"resources" yaml:"resources"`
-	// SignInPageis the relative url for the sign in page
+	// SignInPage is the relative url for the sign in page
 	SignInPage string `json:"sign_in_page" yaml:"sign_in_page"`
 	// AccessForbiddenPage is a access forbidden page
 	AccessForbiddenPage string `json:"access_forbidden_page" yaml:"access_forbidden_page"`
 }
 
-var (
-	cfgFilename string
-)
+// parseConfig reads in the proxy configuration
+func parseConfig(cx *cli.Context) (*Config, error) {
+	var err error
+	config := new(Config)
 
-func init() {
-	flag.StringVar(&cfgFilename, "config", "", "the path to the configuration file for the keycloak proxy service, in yaml or json format")
-}
-
-// parseConfig parse a configuration file or yaml or json and extracts the config
-func parseConfig(filename string) (*Config, error) {
-	// step: ensure we have a configuration file
-	if filename == "" {
-		usage("you have not specified the configuration file")
-	}
-
-	// step: attempt to parse the configuration file
-	config, err := parseConfigFile(filename)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read the configuratiom file: %s, %s", filename, err)
-	}
-
-	// step: validate the configuration
-	if config.Upstream == "" {
-		return nil, fmt.Errorf("you have not specified an upstream endpoint to proxy to")
-	}
-
-	if _, err := url.Parse(config.Upstream); err != nil {
-		return nil, fmt.Errorf("the upstream endpoint is invalid, %s", err)
-	}
-	if config.DiscoveryURL == "" {
-		return nil, fmt.Errorf("you have not specified the discovery url")
-	}
-	if config.ClientID == "" {
-		return nil, fmt.Errorf("you have not specified the client id")
-	}
-	if config.Secret == "" {
-		return nil, fmt.Errorf("you have not specified the client secret")
-	}
-	if config.RedirectionURL == "" {
-		return nil, fmt.Errorf("you have not specified the redirection url")
-	}
-	if strings.HasSuffix(config.RedirectionURL, "/") {
-		config.RedirectionURL = strings.TrimSuffix(config.RedirectionURL, "/")
-	}
-	if config.Listen == "" {
-		config.Listen = ":8081"
-	}
-	if config.EncryptionKey == "" && config.RefreshSession {
-		return nil, fmt.Errorf("you have not specified a encryption key for encoding the session state")
-	}
-	if config.MaxSessionDuration == 0 && config.RefreshSession {
-		config.MaxSessionDuration = time.Duration(6) * time.Hour
-	}
-
-	for i, resource := range config.Resources {
-		if len(resource.Methods) <= 0 {
-			resource.Methods = append(resource.Methods, "ANY")
+	// step: process any configuration file
+	configFile := cx.String("config")
+	if configFile != "" {
+		err = readConfigurationFile(configFile, config)
+		if err != nil {
+			return nil, err
 		}
-		if resource.URL == "" {
-			return nil, fmt.Errorf("resource %d does not have url", i)
-		}
-		for _, m := range resource.Methods {
-			if !isValidMethod(m) {
-				return nil, fmt.Errorf("the resource method: %s for url: %s is invalid", m, resource.URL)
+	}
+	if cx.IsSet("listen") {
+		config.Listen = cx.String("listen")
+	}
+	if cx.IsSet("secret") {
+		config.Secret = cx.String("secret")
+	}
+	if cx.IsSet("client-id") {
+		config.ClientID = cx.String("client-id")
+	}
+	if cx.IsSet("discovery-url") {
+		config.DiscoveryURL = cx.String("discovery-url")
+	}
+	if cx.IsSet("upstream-url") {
+		config.Upstream = cx.String("upstream-url")
+	}
+	if cx.IsSet("encryption-key") {
+		config.EncryptionKey = cx.String("encryption-key")
+	}
+	if cx.IsSet("redirection-url") {
+		config.RedirectionURL = cx.String("redirection-url")
+	}
+	if cx.IsSet("tls-cert") {
+		config.TLSCertificate = cx.String("tls-cert")
+	}
+	if cx.IsSet("tls-private-key") {
+		config.TLSPrivateKey = cx.String("tls-private-key")
+	}
+	if cx.IsSet("signin-page") {
+		config.SignInPage = cx.String("signin-page")
+	}
+	if cx.IsSet("forbidden-page") {
+		config.AccessForbiddenPage = cx.String("forbidden-page")
+	}
+	if cx.IsSet("max-session") {
+		config.MaxSession = cx.Duration("max-session")
+	}
+	if cx.IsSet("proxy-protocol") {
+		config.ProxyProtocol = cx.Bool("proxy-protocol")
+	}
+	if cx.IsSet("refresh-sessions") {
+		config.RefreshSession = cx.Bool("refresh-sessions")
+	}
+	if cx.IsSet("json-logging") {
+		config.LogJSONFormat = cx.Bool("json-logging")
+	}
+	if cx.IsSet("log-requests") {
+		config.LogRequests = cx.Bool("log-requests")
+	}
+	if cx.IsSet("scope") {
+		config.Scopes = cx.StringSlice("scope")
+	}
+	// step: decode the resources
+	if cx.IsSet("resource") {
+		for _, x := range cx.StringSlice("resource") {
+			resource, err := decodeResource(x)
+			if err != nil {
+				return nil, fmt.Errorf("invalid resource %s, %s", x, err)
 			}
+
+			config.Resources = append(config.Resources, resource)
 		}
 	}
 
 	return config, nil
 }
 
+// validateConfig validates we have all the required options / config
+func validateConfig(config *Config) error {
+	// step: validate the configuration
+	if config.Upstream == "" {
+		return fmt.Errorf("you have not specified an upstream endpoint to proxy to")
+	}
+	if _, err := url.Parse(config.Upstream); err != nil {
+		return fmt.Errorf("the upstream endpoint is invalid, %s", err)
+	}
+	if config.DiscoveryURL == "" {
+		return fmt.Errorf("you have not specified the discovery url")
+	}
+	if config.ClientID == "" {
+		return fmt.Errorf("you have not specified the client id")
+	}
+	if config.Secret == "" {
+		return fmt.Errorf("you have not specified the client secret")
+	}
+	if config.RedirectionURL == "" {
+		return fmt.Errorf("you have not specified the redirection url")
+	}
+	if strings.HasSuffix(config.RedirectionURL, "/") {
+		config.RedirectionURL = strings.TrimSuffix(config.RedirectionURL, "/")
+	}
+	if config.Listen == "" {
+		return fmt.Errorf("you have not specified the listening interface")
+	}
+	if config.EncryptionKey == "" && config.RefreshSession {
+		return fmt.Errorf("you have not specified a encryption key for encoding the session state")
+	}
+	if config.EncryptionKey != "" && len(config.EncryptionKey) < 32 {
+		return fmt.Errorf("the encryption key is too short, must be longer than 32 characters")
+	}
+	if config.MaxSession == 0 && config.RefreshSession {
+		config.MaxSession = time.Duration(6) * time.Hour
+	}
+
+	for i, resource := range config.Resources {
+		if resource.Methods == nil {
+			resource.Methods = make([]string, 0)
+		}
+		if resource.RolesAllowed == nil {
+			resource.RolesAllowed = make([]string, 0)
+		}
+		if len(resource.Methods) <= 0 {
+			resource.Methods = append(resource.Methods, "ANY")
+		}
+		if resource.URL == "" {
+			return fmt.Errorf("resource %d does not have url", i)
+		}
+		for _, m := range resource.Methods {
+			if !isValidMethod(m) {
+				return fmt.Errorf("the resource method: %s for url: %s is invalid", m, resource.URL)
+			}
+		}
+	}
+
+	return nil
+}
+
 // usage displays the usage menu and exits
-func usage(message string) {
+func usage(cx *cli.Context, message string) {
 	fmt.Fprintf(os.Stderr, "\n[error] %s\n", message)
 	os.Exit(1)
 }
