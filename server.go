@@ -59,7 +59,14 @@ func NewProxy(cfg *Config) (*KeycloakProxy, error) {
 	// step: initialize the gin router
 	glog.V(3).Infof("initializing the http router, listening: %s", cfg.Listen)
 
-	service.router = gin.Default()
+	service.router = gin.New()
+	service.router.Use(gin.Recovery())
+
+	// step: are we logging the requests
+	if cfg.LogRequests {
+		service.router.Use(gin.Logger())
+	}
+
 	for _, resource := range cfg.Resources {
 		glog.V(1).Infof("protecting resources under: %s", resource)
 	}

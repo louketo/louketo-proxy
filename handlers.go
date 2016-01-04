@@ -39,8 +39,6 @@ const (
 // entrypointHandler checks to see if the request requires authentication
 func (r *KeycloakProxy) entrypointHandler() gin.HandlerFunc {
 	return func(cx *gin.Context) {
-		glog.V(10).Infof("entering the entrypoint handler, uri: %s", cx.Request.RequestURI)
-
 		// check if authentication is required
 		for _, resource := range r.config.Resources {
 			if strings.HasPrefix(cx.Request.RequestURI, resource.URL) {
@@ -59,8 +57,6 @@ func (r *KeycloakProxy) entrypointHandler() gin.HandlerFunc {
 // authenticationHandler is responsible for verifying the access token
 func (r *KeycloakProxy) authenticationHandler() gin.HandlerFunc {
 	return func(cx *gin.Context) {
-		glog.V(10).Infof("entering the authentication handler, uri: %s", cx.Request.RequestURI)
-
 		// step: is authentication required on this
 		if _, found := cx.Get(authRequired); !found {
 			return
@@ -154,7 +150,7 @@ func (r *KeycloakProxy) admissionHandler() gin.HandlerFunc {
 					return
 				}
 
-				glog.V(10).Infof("[allowed] resource: %s, expires in: %s", resource, identity.expiresAt.Sub(time.Now()))
+				glog.V(5).Infof("[allowed] resource: %s, expires in: %s", resource, identity.expiresAt.Sub(time.Now()))
 				return
 			}
 		}

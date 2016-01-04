@@ -130,7 +130,7 @@ func initializeOpenID(discoveryURL, clientID, clientSecret, redirectURL string, 
 
 	// step: start the provider sync
 	glog.V(10).Infof("starting the provider sync routine")
-	//client.SyncProviderConfig(discoveryURL)
+	client.SyncProviderConfig(discoveryURL)
 
 	return client, config, nil
 }

@@ -38,6 +38,8 @@ type Resource struct {
 type Config struct {
 	// DiscoveryURL is the url for the keycloak server
 	DiscoveryURL string `json:"discovery_url" yaml:"discovery_url"`
+	// LogRequest enables logging
+	LogRequests bool `json:"log_requests" yaml:"log_requests"`
 	// ClientID is the client id
 	ClientID string `json:"clientid" yaml:"clientid"`
 	// Secret is the secret for AS
