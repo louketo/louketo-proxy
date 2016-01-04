@@ -38,7 +38,7 @@ type Resource struct {
 // Config is the configuration for the proxy
 type Config struct {
 	// Debug switches on debug logging
-	Debug bool `json:"debug" yaml:"debug"`
+	Verbose bool `json:"verbose" yaml:"verbose"`
 	// LogRequests indicates if we should log all the requests
 	LogRequests bool `json:"log_requests" yaml:"log_requests"`
 	// LogFormat is the logging format
@@ -138,6 +138,10 @@ func parseConfig(cx *cli.Context) (*Config, error) {
 	if cx.IsSet("log-requests") {
 		config.LogRequests = cx.Bool("log-requests")
 	}
+	if cx.IsSet("verbose") {
+		config.Verbose = cx.Bool("verbose")
+	}
+
 	if cx.IsSet("scope") {
 		config.Scopes = cx.StringSlice("scope")
 	}

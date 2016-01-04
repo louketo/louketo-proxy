@@ -174,7 +174,7 @@ func (r *KeycloakProxy) admissionHandler() gin.HandlerFunc {
 						"username": identity.name,
 						"resource": resource.URL,
 						"expires":  identity.expiresAt.Sub(time.Now()),
-					}).Debugf("resource access permitted")
+					}).Debugf("resource access permitted %s", cx.Request.RequestURI)
 					return
 				}
 				// step: we need to check the roles
@@ -194,7 +194,7 @@ func (r *KeycloakProxy) admissionHandler() gin.HandlerFunc {
 					"username": identity.name,
 					"resource": resource.URL,
 					"expires":  identity.expiresAt.Sub(time.Now()),
-				}).Debugf("resource access permitted")
+				}).Debugf("resource access permitted: %s", cx.Request.RequestURI)
 				return
 			}
 		}

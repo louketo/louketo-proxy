@@ -31,7 +31,7 @@ func NewKeycloakProxy(cfg *Config) (*KeycloakProxy, error) {
 	if cfg.LogJSONFormat {
 		log.SetFormatter(&log.JSONFormatter{})
 	}
-	if cfg.Debug {
+	if cfg.Verbose {
 		log.SetLevel(log.DebugLevel)
 	}
 
