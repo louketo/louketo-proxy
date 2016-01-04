@@ -2,7 +2,7 @@
 NAME=keycloak-proxy
 AUTHOR=gambol99
 HARDWARE=$(shell uname -m)
-VERSION=$(shell awk '/Version =/ { print $$3 }' doc.go | sed 's/"//g')
+VERSION=$(shell awk '/version =/ { print $$3 }' doc.go | sed 's/"//g')
 DEPS=$(shell go list -f '{{range .TestImports}}{{.}} {{end}}' ./...)
 PACKAGES=$(shell go list ./...)
 VETARGS?=-asmdecl -atomic -bool -buildtags -copylocks -methods -nilfunc -printf -rangeloops -shift -structtags -unsafeptr
@@ -23,7 +23,7 @@ static:
 
 docker: static
 	@echo "--> Building the docker image"
-	sudo docker build -t docker.io/${AUTHOR}/${NAME}:latest .
+	sudo docker build -t docker.io/${AUTHOR}/${NAME}:${VERSION} .
 
 release: static
 	mkdir -p release
