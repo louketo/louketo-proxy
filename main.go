@@ -81,7 +81,7 @@ func main() {
 		},
 		cli.StringSliceFlag{
 			Name:  "resource",
-			Usage: "a list of resources 'uri=/admin|methods=GET|roles=role1,role2",
+			Usage: "a list of resources 'uri=/admin|methods=GET|roles=role1,role2'",
 		},
 		cli.StringFlag{
 			Name:  "signin-page",

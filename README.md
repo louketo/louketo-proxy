@@ -35,7 +35,7 @@ GLOBAL OPTIONS:
    --tls-cert 						the path to a certificate file used for enabled TLS for the service
    --tls-private-key 				the path to the private key for TLS support
    --scope [--scope option --scope option]		a variable list of scopes requested when authenticating the user
-   --resource [--resource option --resource option]	a list of resources 'uri=/admin|methods=GET|roles=role1,role2
+   --resource [--resource option --resource option]	a list of resources 'uri=/admin|methods=GET|roles=role1,role2'
    --signin-page 					a custom template under ./templates displayed for signin
    --forbidden-page 				a custom template under ./templates used for access forbidden
    --max-session "1h0m0s"			if refresh sessions are enabled we can limit their duration via this
