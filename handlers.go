@@ -55,7 +55,7 @@ func (r *KeycloakProxy) loggingHandler() gin.HandlerFunc {
 // entrypointHandler checks to see if the request requires authentication
 func (r *KeycloakProxy) entrypointHandler() gin.HandlerFunc {
 	return func(cx *gin.Context) {
-		// step: ensure we dont block oauth 
+		// step: ensure we dont block oauth
 		if strings.HasPrefix(cx.Request.RequestURI, oauthURL) {
 			return
 		}
