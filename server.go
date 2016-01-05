@@ -77,14 +77,14 @@ func NewKeycloakProxy(cfg *Config) (*KeycloakProxy, error) {
 		router.Use(service.loggingHandler())
 	}
 
-	router.Use(service.entrypointHandler(), service.authenticationHandler(), service.admissionHandler())
+	router.Use(service.entrypointHandler(), service.authenticationHandler(), service.admissionHandler(), service.proxyHandler())
+
 	// step: add the oauth handlers and health
 	router.GET(authorizationURL, service.authorizationHandler)
 	router.GET(callbackURL, service.callbackHandler)
 	router.GET(signInPageURL, service.signInHandler)
 	router.GET(accessForbiddenPageURL, service.forbiddenAccessHandler)
 	router.GET(healthURL, service.healthHandler)
-	router.Use(service.proxyHandler)
 
 	service.router = router
 

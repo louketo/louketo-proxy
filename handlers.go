@@ -55,7 +55,12 @@ func (r *KeycloakProxy) loggingHandler() gin.HandlerFunc {
 // entrypointHandler checks to see if the request requires authentication
 func (r *KeycloakProxy) entrypointHandler() gin.HandlerFunc {
 	return func(cx *gin.Context) {
-		// check if authentication is required
+		// step: ensure we dont block oauth
+		if strings.HasPrefix(cx.Request.RequestURI, oauthURL) {
+			return
+		}
+
+		// step: check if authentication is required
 		for _, resource := range r.config.Resources {
 			if strings.HasPrefix(cx.Request.RequestURI, resource.URL) {
 				if containedIn(cx.Request.Method, resource.Methods) {
@@ -202,40 +207,42 @@ func (r *KeycloakProxy) admissionHandler() gin.HandlerFunc {
 }
 
 // proxyHandler is responsible to proxy the requests on to the upstream endpoint
-func (r *KeycloakProxy) proxyHandler(cx *gin.Context) {
-	// step: retrieve the user context
-	if identity, found := cx.Get(userContextName); found {
-		id := identity.(*userContext)
-		cx.Request.Header.Add("KEYCLOAK_ID", id.id)
-		cx.Request.Header.Add("KEYCLOAK_SUBJECT", id.preferredName)
-		cx.Request.Header.Add("KEYCLOAK_USERNAME", id.name)
-		cx.Request.Header.Add("KEYCLOAK_EMAIL", id.email)
-		cx.Request.Header.Add("KEYCLOAK_EXPIRES_IN", id.expiresAt.String())
-		cx.Request.Header.Add("KEYCLOAK_ACCESS_TOKEN", id.token.Encode())
-		cx.Request.Header.Add("KEYCLOAK_ROLES", strings.Join(id.roles, ","))
-	}
+func (r *KeycloakProxy) proxyHandler() gin.HandlerFunc {
+	return func(cx *gin.Context) {
+		// step: retrieve the user context
+		if identity, found := cx.Get(userContextName); found {
+			id := identity.(*userContext)
+			cx.Request.Header.Add("KEYCLOAK_ID", id.id)
+			cx.Request.Header.Add("KEYCLOAK_SUBJECT", id.preferredName)
+			cx.Request.Header.Add("KEYCLOAK_USERNAME", id.name)
+			cx.Request.Header.Add("KEYCLOAK_EMAIL", id.email)
+			cx.Request.Header.Add("KEYCLOAK_EXPIRES_IN", id.expiresAt.String())
+			cx.Request.Header.Add("KEYCLOAK_ACCESS_TOKEN", id.token.Encode())
+			cx.Request.Header.Add("KEYCLOAK_ROLES", strings.Join(id.roles, ","))
+		}
 
-	// step: add the default headers
-	cx.Request.Header.Set("X-Forwarded-For", cx.Request.RemoteAddr)
-	cx.Request.Header.Set("X-Forwarded-Agent", "keycloak-proxy")
+		// step: add the default headers
+		cx.Request.Header.Set("X-Forwarded-For", cx.Request.RemoteAddr)
+		cx.Request.Header.Set("X-Forwarded-Agent", "keycloak-proxy")
 
-	// step: is this connection upgrading?
-	if isUpgradedConnection(cx.Request) {
-		log.Debugf("upgrading the connnection to %s", cx.Request.Header.Get(headerUpgrade))
-		if err := r.tryUpdateConnection(cx); err != nil {
-			log.WithFields(log.Fields{
-				"error": err.Error(),
-			}).Errorf("failed to upgrade the connection")
+		// step: is this connection upgrading?
+		if isUpgradedConnection(cx.Request) {
+			log.Debugf("upgrading the connnection to %s", cx.Request.Header.Get(headerUpgrade))
+			if err := r.tryUpdateConnection(cx); err != nil {
+				log.WithFields(log.Fields{
+					"error": err.Error(),
+				}).Errorf("failed to upgrade the connection")
 
-			cx.AbortWithStatus(http.StatusInternalServerError)
+				cx.AbortWithStatus(http.StatusInternalServerError)
+				return
+			}
+			cx.Abort()
+
 			return
 		}
-		cx.Abort()
 
-		return
+		r.proxy.ServeHTTP(cx.Writer, cx.Request)
 	}
-
-	r.proxy.ServeHTTP(cx.Writer, cx.Request)
 }
 
 // signInHandler is a handler for display a custom sign-in page to the user before redirecting to keycloak
