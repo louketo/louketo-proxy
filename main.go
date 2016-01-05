@@ -32,6 +32,7 @@ func main() {
 	kc.Version = version
 	kc.Author = author
 	kc.Email = email
+
 	kc.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "config",
