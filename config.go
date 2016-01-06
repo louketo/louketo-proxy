@@ -16,80 +16,92 @@ limitations under the License.
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"gopkg.in/yaml.v2"
+	"io/ioutil"
 	"net/url"
-	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/codegangsta/cli"
 )
 
-// Resource represents a url resource to protect
-type Resource struct {
-	// URL the url for the resource
-	URL string `json:"url" yaml:"url"`
-	// Methods the method type
-	Methods []string `json:"methods" yaml:"methods"`
-	// RolesAllowed the roles required to access this url
-	RolesAllowed []string `json:"roles_allowed" yaml:"roles_allowed"`
+// newDefaultConfig returns a initialized config
+func newDefaultConfig() *Config {
+	return &Config{
+		TagData:     make(map[string]string, 0),
+		ClaimsMatch: make(map[string]string, 0),
+	}
 }
 
-// Config is the configuration for the proxy
-type Config struct {
-	// Debug switches on debug logging
-	Verbose bool `json:"verbose" yaml:"verbose"`
-	// LogRequests indicates if we should log all the requests
-	LogRequests bool `json:"log_requests" yaml:"log_requests"`
-	// LogFormat is the logging format
-	LogJSONFormat bool `json:"log_json_format" yaml:"log_json_format"`
-	// DiscoveryURL is the url for the keycloak server
-	DiscoveryURL string `json:"discovery_url" yaml:"discovery_url"`
-	// ClientID is the client id
-	ClientID string `json:"clientid" yaml:"clientid"`
-	// Secret is the secret for AS
-	Secret string `json:"secret" yaml:"secret"`
-	// RedirectionURL the redirection url
-	RedirectionURL string `json:"redirection_url" yaml:"redirection_url"`
-	// RefreshSession enabled refresh access
-	RefreshSession bool `json:"refresh_session" yaml:"refresh_session"`
-	// EncryptionKey is the encryption key used to encrypt the refresh token
-	EncryptionKey string `json:"encryption_key" yaml:"encryption_key"`
-	// MaxSessionDuration the max session for refreshing
-	MaxSession time.Duration `json:"max_session" yaml:"max_session"`
-	// Listen is the binding interface
-	Listen string `json:"listen" yaml:"listen"`
-	// ProxyProtocol enables proxy protocol
-	ProxyProtocol bool `json:"proxy_protocol" yaml:"proxy_protocol"`
-	// TLSCertificate is the location for a tls certificate
-	TLSCertificate string `json:"tls_cert" yaml:"tls_cert"`
-	// TLSPrivateKey is the location of a tls private key
-	TLSPrivateKey string `json:"tls_private_key" yaml:"tls_private_key"`
-	// Upstream is the upstream endpoint i.e whom were proxing to
-	Upstream string `json:"upstream" yaml:"upstream"`
-	// Scopes is a list of scope we should request
-	Scopes []string `json:"scopes" yaml:"scopes"`
-	// Resources is a list of protected resources
-	Resources []*Resource `json:"resources" yaml:"resources"`
-	// SignInPage is the relative url for the sign in page
-	SignInPage string `json:"sign_in_page" yaml:"sign_in_page"`
-	// AccessForbiddenPage is a access forbidden page
-	AccessForbiddenPage string `json:"access_forbidden_page" yaml:"access_forbidden_page"`
-}
+// isValid validates if the config is valid
+func (r *Config) isValid() error {
+	// step: validate the configuration
+	if r.Upstream == "" {
+		return fmt.Errorf("you have not specified an upstream endpoint to proxy to")
+	}
+	if _, err := url.Parse(r.Upstream); err != nil {
+		return fmt.Errorf("the upstream endpoint is invalid, %s", err)
+	}
+	if r.DiscoveryURL == "" {
+		return fmt.Errorf("you have not specified the discovery url")
+	}
+	if r.ClientID == "" {
+		return fmt.Errorf("you have not specified the client id")
+	}
+	if r.Secret == "" {
+		return fmt.Errorf("you have not specified the client secret")
+	}
+	if r.RedirectionURL == "" {
+		return fmt.Errorf("you have not specified the redirection url")
+	}
+	if strings.HasSuffix(r.RedirectionURL, "/") {
+		r.RedirectionURL = strings.TrimSuffix(r.RedirectionURL, "/")
+	}
+	if r.Listen == "" {
+		return fmt.Errorf("you have not specified the listening interface")
+	}
+	if r.EncryptionKey == "" && r.RefreshSession {
+		return fmt.Errorf("you have not specified a encryption key for encoding the session state")
+	}
+	if r.EncryptionKey != "" && len(r.EncryptionKey) < 32 {
+		return fmt.Errorf("the encryption key is too short, must be longer than 32 characters")
+	}
+	if r.MaxSession == 0 && r.RefreshSession {
+		r.MaxSession = time.Duration(6) * time.Hour
+	}
 
-// parseConfig reads in the proxy configuration
-func parseConfig(cx *cli.Context) (*Config, error) {
-	var err error
-	config := new(Config)
-
-	// step: process any configuration file
-	configFile := cx.String("config")
-	if configFile != "" {
-		err = readConfigurationFile(configFile, config)
-		if err != nil {
-			return nil, err
+	for _, resource := range r.Resources {
+		if err := resource.isValid(); err != nil {
+			return err
 		}
 	}
+
+	return nil
+}
+
+// hasSignInPage checks if there is a custom sign in  page
+func (r *Config) hasSignInPage() bool {
+	if r.SignInPage != "" {
+		return true
+	}
+
+	return false
+}
+
+// hasForbiddenPage checks if there is a custom forbidden page
+func (r *Config) hasForbiddenPage() bool {
+	if r.ForbiddenPage != "" {
+		return true
+	}
+
+	return false
+}
+
+// readOptions parses the command line options and constructs a config object
+func readOptions(cx *cli.Context, config *Config) (err error) {
 	if cx.IsSet("listen") {
 		config.Listen = cx.String("listen")
 	}
@@ -121,7 +133,7 @@ func parseConfig(cx *cli.Context) (*Config, error) {
 		config.SignInPage = cx.String("signin-page")
 	}
 	if cx.IsSet("forbidden-page") {
-		config.AccessForbiddenPage = cx.String("forbidden-page")
+		config.ForbiddenPage = cx.String("forbidden-page")
 	}
 	if cx.IsSet("max-session") {
 		config.MaxSession = cx.Duration("max-session")
@@ -141,87 +153,158 @@ func parseConfig(cx *cli.Context) (*Config, error) {
 	if cx.IsSet("verbose") {
 		config.Verbose = cx.Bool("verbose")
 	}
-
 	if cx.IsSet("scope") {
 		config.Scopes = cx.StringSlice("scope")
 	}
-	// step: decode the resources
+	if cx.IsSet("tag") {
+		config.TagData, err = decodeKeyPairs(cx.StringSlice("tag"))
+		if err != nil {
+			return err
+		}
+	}
+	if cx.IsSet("claim") {
+		config.ClaimsMatch, err = decodeKeyPairs(cx.StringSlice("claim"))
+		if err != nil {
+			return err
+		}
+	}
 	if cx.IsSet("resource") {
 		for _, x := range cx.StringSlice("resource") {
 			resource, err := decodeResource(x)
 			if err != nil {
-				return nil, fmt.Errorf("invalid resource %s, %s", x, err)
+				return fmt.Errorf("invalid resource %s, %s", x, err)
 			}
-
 			config.Resources = append(config.Resources, resource)
-		}
-	}
-
-	return config, nil
-}
-
-// validateConfig validates we have all the required options / config
-func validateConfig(config *Config) error {
-	// step: validate the configuration
-	if config.Upstream == "" {
-		return fmt.Errorf("you have not specified an upstream endpoint to proxy to")
-	}
-	if _, err := url.Parse(config.Upstream); err != nil {
-		return fmt.Errorf("the upstream endpoint is invalid, %s", err)
-	}
-	if config.DiscoveryURL == "" {
-		return fmt.Errorf("you have not specified the discovery url")
-	}
-	if config.ClientID == "" {
-		return fmt.Errorf("you have not specified the client id")
-	}
-	if config.Secret == "" {
-		return fmt.Errorf("you have not specified the client secret")
-	}
-	if config.RedirectionURL == "" {
-		return fmt.Errorf("you have not specified the redirection url")
-	}
-	if strings.HasSuffix(config.RedirectionURL, "/") {
-		config.RedirectionURL = strings.TrimSuffix(config.RedirectionURL, "/")
-	}
-	if config.Listen == "" {
-		return fmt.Errorf("you have not specified the listening interface")
-	}
-	if config.EncryptionKey == "" && config.RefreshSession {
-		return fmt.Errorf("you have not specified a encryption key for encoding the session state")
-	}
-	if config.EncryptionKey != "" && len(config.EncryptionKey) < 32 {
-		return fmt.Errorf("the encryption key is too short, must be longer than 32 characters")
-	}
-	if config.MaxSession == 0 && config.RefreshSession {
-		config.MaxSession = time.Duration(6) * time.Hour
-	}
-
-	for i, resource := range config.Resources {
-		if resource.Methods == nil {
-			resource.Methods = make([]string, 0)
-		}
-		if resource.RolesAllowed == nil {
-			resource.RolesAllowed = make([]string, 0)
-		}
-		if len(resource.Methods) <= 0 {
-			resource.Methods = append(resource.Methods, "ANY")
-		}
-		if resource.URL == "" {
-			return fmt.Errorf("resource %d does not have url", i)
-		}
-		for _, m := range resource.Methods {
-			if !isValidMethod(m) {
-				return fmt.Errorf("the resource method: %s for url: %s is invalid", m, resource.URL)
-			}
 		}
 	}
 
 	return nil
 }
 
-// usage displays the usage menu and exits
-func usage(cx *cli.Context, message string) {
-	fmt.Fprintf(os.Stderr, "\n[error] %s\n", message)
-	os.Exit(1)
+// readConfigFile reads and parses the configuration file
+func readConfigFile(filename string, config *Config) error {
+	ext := filepath.Ext(filename)
+
+	formatYAML := true
+	switch ext {
+	case "json":
+		formatYAML = false
+	}
+
+	// step: read in the contents of the file
+	content, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return err
+	}
+
+	// step: attempt to un-marshal the data
+	switch formatYAML {
+	case false:
+		err = json.Unmarshal(content, config)
+	default:
+		err = yaml.Unmarshal(content, config)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// getOptions returns the command line options
+func getOptions() []cli.Flag {
+	return []cli.Flag{
+		cli.StringFlag{
+			Name:  "config",
+			Usage: "the path to the configuration file for the keycloak proxy",
+		},
+		cli.StringFlag{
+			Name:  "listen",
+			Usage: "the interface the service should be listening on",
+			Value: "127.0.0.1:8080",
+		},
+		cli.StringFlag{
+			Name:  "secret",
+			Usage: "the client secret used to authenticate to the oauth server",
+		},
+		cli.StringFlag{
+			Name:  "client-id",
+			Usage: "the client id used to authenticate to the oauth serves",
+		},
+		cli.StringFlag{
+			Name:  "discovery-url",
+			Usage: "the discovery url to retrieve the openid configuration",
+		},
+		cli.StringFlag{
+			Name:  "upstream-url",
+			Usage: "the url for the upstream endpoint you wish to proxy to",
+			Value: "http://127.0.0.1:8080",
+		},
+		cli.StringFlag{
+			Name:  "encryption-key",
+			Usage: "the encryption key used to encrpytion the session state",
+		},
+		cli.StringFlag{
+			Name:  "redirection-url",
+			Usage: "the redirection url, namely the site url, note: " + oauthURL + " will be added to it",
+		},
+		cli.StringFlag{
+			Name:  "tls-cert",
+			Usage: "the path to a certificate file used for TLS",
+		},
+		cli.StringFlag{
+			Name:  "tls-private-key",
+			Usage: "the path to the private key for TLS support",
+		},
+		cli.StringSliceFlag{
+			Name:  "scope",
+			Usage: "a variable list of scopes requested when authenticating the user",
+		},
+		cli.StringSliceFlag{
+			Name:  "claim",
+			Usage: "a series of key pair values which must match the claims in the token present e.g. aud=myapp, iss=http://example.com etcd",
+		},
+		cli.StringSliceFlag{
+			Name:  "resource",
+			Usage: "a list of resources 'uri=/admin|methods=GET|roles=role1,role2'",
+		},
+		cli.StringFlag{
+			Name:  "signin-page",
+			Usage: "a custom template displayed for signin",
+		},
+		cli.StringFlag{
+			Name:  "forbidden-page",
+			Usage: "a custom template used for access forbidden",
+		},
+		cli.StringSliceFlag{
+			Name:  "tag",
+			Usage: "a keypair tag which is passed to the templates when render, i.e. title='My Page',site='my name' etc",
+		},
+		cli.DurationFlag{
+			Name:  "max-session",
+			Usage: "if refresh sessions are enabled we can limit their duration via this",
+			Value: time.Duration(1) * time.Hour,
+		},
+		cli.BoolFlag{
+			Name:  "proxy-protocol",
+			Usage: "switches on proxy protocol support on the listen (not supported yet)",
+		},
+		cli.BoolFlag{
+			Name:  "refresh-sessions",
+			Usage: "enables the refreshing of tokens via offline access",
+		},
+		cli.BoolTFlag{
+			Name:  "json-logging",
+			Usage: "switch on json logging rather than text (defaults true)",
+		},
+		cli.BoolTFlag{
+			Name:  "log-requests",
+			Usage: "switch on logging of all incoming requests (defaults true)",
+		},
+		cli.BoolFlag{
+			Name:  "verbose",
+			Usage: "switch on debug / verbose logging",
+		},
+	}
 }

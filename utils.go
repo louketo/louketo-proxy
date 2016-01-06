@@ -20,16 +20,12 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
-	"gopkg.in/yaml.v2"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -134,6 +130,7 @@ func initializeOpenID(discoveryURL, clientID, clientSecret, redirectURL string, 
 	return client, config, nil
 }
 
+// convertUnixTime converts a unix timestamp to a Time
 func convertUnixTime(v string) (time.Time, error) {
 	i, err := strconv.ParseInt(v, 10, 64)
 	if err != nil {
@@ -141,6 +138,21 @@ func convertUnixTime(v string) (time.Time, error) {
 	}
 
 	return time.Unix(i, 0), nil
+}
+
+// decodeKeyPairs converts a list of strings (key=pair) to a map
+func decodeKeyPairs(list []string) (map[string]string, error) {
+	kp := make(map[string]string, 0)
+
+	for _, x := range list {
+		items := strings.Split(x, "=")
+		if len(items) != 2 {
+			return kp, fmt.Errorf("invalid tag '%s' should be key=pair", x)
+		}
+		kp[items[0]] = items[1]
+	}
+
+	return kp, nil
 }
 
 // initializeReverseProxy create a reverse http proxy from the upstream
@@ -290,32 +302,12 @@ func decodeResource(v string) (*Resource, error) {
 	return resource, nil
 }
 
-// readConfigurationFile reads and parses the configuration file
-func readConfigurationFile(filename string, config *Config) error {
-	ext := filepath.Ext(filename)
-
-	formatYAML := true
-	switch ext {
-	case "json":
-		formatYAML = false
-	}
-
-	// step: read in the contents of the file
-	content, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return err
-	}
-
-	// step: attempt to un-marshal the data
-	switch formatYAML {
-	case false:
-		err = json.Unmarshal(content, config)
-	default:
-		err = yaml.Unmarshal(content, config)
-	}
-
-	if err != nil {
-		return err
+// validateResources checks and validates each of the resources
+func validateResources(resources []*Resource) error {
+	for _, x := range resources {
+		if err := x.isValid(); err != nil {
+			return err
+		}
 	}
 
 	return nil

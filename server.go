@@ -25,8 +25,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// NewKeycloakProxy create's a new keycloak proxy from configuration
-func NewKeycloakProxy(cfg *Config) (*KeycloakProxy, error) {
+// newKeycloakProxy create's a new keycloak proxy from configuration
+func newKeycloakProxy(cfg *Config) (*KeycloakProxy, error) {
 	// step: set the logging level
 	if cfg.LogJSONFormat {
 		log.SetFormatter(&log.JSONFormatter{})
@@ -67,28 +67,48 @@ func NewKeycloakProxy(cfg *Config) (*KeycloakProxy, error) {
 
 	// step: initialize the gin router
 	router := gin.New()
-	router.Use(gin.Recovery())
+	service.router = router
+
+	// step: load the templates
+	service.initializeTemplates()
 	for _, resource := range cfg.Resources {
-		log.Infof("protecting resources under: %s", resource)
+		log.Infof("protecting resources under uri: %s", resource)
+	}
+	for name, value := range cfg.ClaimsMatch {
+		log.Infof("the token must container the claim: %s, required: %s", name, value)
 	}
 
+	router.Use(gin.Recovery())
 	// step: are we logging the traffic?
 	if cfg.LogRequests {
 		router.Use(service.loggingHandler())
 	}
 
-	router.Use(service.entrypointHandler(), service.authenticationHandler(), service.admissionHandler(), service.proxyHandler())
-
-	// step: add the oauth handlers and health
-	router.GET(authorizationURL, service.authorizationHandler)
-	router.GET(callbackURL, service.callbackHandler)
-	router.GET(signInPageURL, service.signInHandler)
-	router.GET(accessForbiddenPageURL, service.forbiddenAccessHandler)
+	router.Use(service.entrypointHandler(), service.authenticationHandler(), service.admissionHandler())
+	router.GET(authorizationURL, service.oauthAuthorizationHandler)
+	router.GET(callbackURL, service.oauthCallbackHandler)
 	router.GET(healthURL, service.healthHandler)
-
-	service.router = router
+	router.Use(service.proxyHandler())
 
 	return service, nil
+}
+
+// initializeTemplates loads the custom template
+func (r *KeycloakProxy) initializeTemplates() {
+	var list []string
+
+	if r.config.SignInPage != "" {
+		log.Debugf("loading the custom sign in page: %s", r.config.SignInPage)
+		list = append(list, r.config.SignInPage)
+	}
+	if r.config.ForbiddenPage != "" {
+		log.Debugf("loading the custom sign forbidden page: %s", r.config.ForbiddenPage)
+		list = append(list, r.config.ForbiddenPage)
+	}
+
+	if len(list) > 0 {
+		r.router.LoadHTMLFiles(list...)
+	}
 }
 
 // Run starts the proxy service
@@ -120,8 +140,9 @@ func (r KeycloakProxy) redirectToURL(url string, cx *gin.Context) {
 
 // accessForbidden redirects the user to the forbidden page
 func (r KeycloakProxy) accessForbidden(cx *gin.Context) {
-	if r.config.AccessForbiddenPage != "" {
-		r.redirectToURL(accessForbiddenPageURL, cx)
+	// step: do we have a custom forbidden page
+	if r.config.hasForbiddenPage() {
+		cx.HTML(http.StatusForbidden, r.config.ForbiddenPage, r.config.TagData)
 		return
 	}
 
@@ -132,11 +153,6 @@ func (r KeycloakProxy) accessForbidden(cx *gin.Context) {
 func (r KeycloakProxy) redirectToAuthorization(cx *gin.Context) {
 	// step: add a state referrer to the authorization page
 	authQuery := fmt.Sprintf("?state=%s", cx.Request.URL.String())
-
-	if r.config.SignInPage != "" {
-		r.redirectToURL(signInPageURL+authQuery, cx)
-		return
-	}
 
 	r.redirectToURL(authorizationURL+authQuery, cx)
 }

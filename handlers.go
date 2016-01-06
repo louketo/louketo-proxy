@@ -17,10 +17,12 @@ package main
 
 import (
 	"net/http"
+	"path"
 	"strings"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/gambol99/go-oidc/oauth2"
 	"github.com/gin-gonic/gin"
 )
 
@@ -55,12 +57,13 @@ func (r *KeycloakProxy) loggingHandler() gin.HandlerFunc {
 // entrypointHandler checks to see if the request requires authentication
 func (r *KeycloakProxy) entrypointHandler() gin.HandlerFunc {
 	return func(cx *gin.Context) {
-		// step: ensure we dont block oauth
+		// step: ensure we don't block oauth
 		if strings.HasPrefix(cx.Request.RequestURI, oauthURL) {
 			return
 		}
 
-		// step: check if authentication is required
+		// step: check if authentication is required - gin doesn't support wildcard
+		// url, so we have have to use prefixes
 		for _, resource := range r.config.Resources {
 			if strings.HasPrefix(cx.Request.RequestURI, resource.URL) {
 				if containedIn(cx.Request.Method, resource.Methods) {
@@ -172,26 +175,64 @@ func (r *KeycloakProxy) admissionHandler() gin.HandlerFunc {
 		for _, resource := range r.config.Resources {
 			// step: check if it starts with the resource prefix
 			if strings.HasPrefix(cx.Request.RequestURI, resource.URL) {
-				// step: do we have any roles or do we need authentication only
-				if len(resource.RolesAllowed) <= 0 {
-					log.WithFields(log.Fields{
-						"access":   "permitted",
-						"username": identity.name,
-						"resource": resource.URL,
-						"expires":  identity.expiresAt.Sub(time.Now()),
-					}).Debugf("resource access permitted %s", cx.Request.RequestURI)
-					return
-				}
 				// step: we need to check the roles
-				if !hasRoles(resource.RolesAllowed, identity.roles) {
-					log.WithFields(log.Fields{
-						"access":   "denied",
-						"username": identity.name,
-						"resource": resource.URL,
-						"issued":   identity.roles,
-					}).Warnf("access denied, invalid roles")
-					r.accessForbidden(cx)
-					return
+				if roles := len(resource.RolesAllowed); roles > 0 {
+					if !hasRoles(resource.RolesAllowed, identity.roles) {
+						log.WithFields(log.Fields{
+							"access":   "denied",
+							"username": identity.name,
+							"resource": resource.URL,
+							"issued":   identity.roles,
+						}).Warnf("access denied, invalid roles")
+						r.accessForbidden(cx)
+
+						return
+					}
+				}
+
+				// step: if we have any claim matching, validate the tokens has the claims
+				for claimName, match := range r.config.ClaimsMatch {
+					// step: if the claim is NOT in the token, we access deny
+					value, found, err := identity.claims.StringClaim(claimName)
+					if err != nil {
+						log.WithFields(log.Fields{
+							"access":   "denied",
+							"username": identity.name,
+							"resource": resource.URL,
+							"error":    err.Error(),
+						}).Errorf("unable to extract the claim from token")
+						r.accessForbidden(cx)
+
+						return
+					}
+
+					if !found {
+						log.WithFields(log.Fields{
+							"access":   "denied",
+							"username": identity.name,
+							"resource": resource.URL,
+							"claim":    claimName,
+						}).Warnf("the token does not have the claim")
+						r.accessForbidden(cx)
+
+						return
+					}
+
+					// step: check the claim is the same
+					if value != match {
+						log.WithFields(log.Fields{
+							"access":   "denied",
+							"username": identity.name,
+							"resource": resource.URL,
+							"claim":    claimName,
+							"issued":   value,
+							"required": match,
+						}).Warnf("the token claims does not match claim requirement")
+						r.accessForbidden(cx)
+
+						return
+					}
+
 				}
 
 				log.WithFields(log.Fields{
@@ -200,6 +241,7 @@ func (r *KeycloakProxy) admissionHandler() gin.HandlerFunc {
 					"resource": resource.URL,
 					"expires":  identity.expiresAt.Sub(time.Now()),
 				}).Debugf("resource access permitted: %s", cx.Request.RequestURI)
+
 				return
 			}
 		}
@@ -245,14 +287,141 @@ func (r *KeycloakProxy) proxyHandler() gin.HandlerFunc {
 	}
 }
 
-// signInHandler is a handler for display a custom sign-in page to the user before redirecting to keycloak
-func (r *KeycloakProxy) signInHandler(cx *gin.Context) {
+// ---
+// The handlers for managing the OAuth authentication flow
+// ---
 
+// oauthAuthorizationHandler is responsible for performing the redirection to keycloak service
+func (r *KeycloakProxy) oauthAuthorizationHandler(cx *gin.Context) {
+	// step: grab the oauth client
+	oac, err := r.openIDClient.OAuthClient()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Errorf("failed to retrieve the oauth client")
+		cx.AbortWithStatus(http.StatusInternalServerError)
+
+		return
+	}
+
+	// step: get the access type required
+	accessType := ""
+	if r.config.RefreshSession {
+		accessType = "offline"
+	}
+
+	// step: build the redirection url to the authentication server
+	redirectionURL := oac.AuthCodeURL(cx.Query("state"), accessType, "")
+
+	// step: if we have a custom sign in page, lets display that
+	if r.config.hasSignInPage() {
+		// add the redirection url
+		model := make(map[string]string, 0)
+		for k, v := range r.config.TagData {
+			model[k] = v
+		}
+		model["redirect"] = redirectionURL
+
+		cx.HTML(http.StatusOK, path.Base(r.config.SignInPage), model)
+		return
+	}
+
+	// step: get the redirection url
+	r.redirectToURL(redirectionURL, cx)
 }
 
-// forbiddenAccessHandler is a handler for display a custom forbidden access page
-func (r *KeycloakProxy) forbiddenAccessHandler(cx *gin.Context) {
+// oauthCallbackHandler is responsible for handling the response from keycloak
+func (r *KeycloakProxy) oauthCallbackHandler(cx *gin.Context) {
+	// step: ensure we have a authorization code
+	code := cx.Request.URL.Query().Get("code")
+	if code == "" {
+		log.Error("failed to get the code callback request")
+		r.accessForbidden(cx)
+		return
+	}
 
+	// step: grab the state from request
+	state := cx.Request.URL.Query().Get("state")
+	if state == "" {
+		state = "/"
+	}
+
+	// step: exchange the authorization for a access token
+	response, err := r.getToken(oauth2.GrantTypeAuthCode, code)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Errorf("failed to retrieve access token from authentication service")
+		r.accessForbidden(cx)
+		return
+	}
+
+	// step: decode and parse the access token
+	token, identity, err := r.parseToken(response.AccessToken)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Errorf("failed to parse jwt token for identity")
+		r.accessForbidden(cx)
+		return
+	}
+
+	log.WithFields(log.Fields{
+		"email":    identity.Email,
+		"username": identity.Name,
+		"expires":  identity.ExpiresAt,
+	}).Infof("issuing a user session")
+
+	// step: create a session from the access token
+	if err := r.createSession(token, identity.ExpiresAt, cx); err != nil {
+		log.Errorf("failed to inject the session token, error: %s", err)
+		cx.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+
+	// step: do we have session data to persist?
+	if r.config.RefreshSession {
+		// step: parse the token
+		_, ident, err := r.parseToken(response.RefreshToken)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error": err.Error(),
+			}).Errorf("failed to parse the refresh token")
+
+			cx.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+
+		log.WithFields(log.Fields{
+			"email":   identity.Email,
+			"expires": identity.ExpiresAt,
+		}).Infof("retrieved the refresh token for user")
+
+		// step: create the state session
+		state := &sessionState{
+			refreshToken: response.RefreshToken,
+		}
+
+		maxSession := time.Now().Add(r.config.MaxSession)
+		switch maxSession.After(ident.ExpiresAt) {
+		case true:
+			state.expireOn = ident.ExpiresAt
+		default:
+			state.expireOn = maxSession
+		}
+
+		if err := r.createSessionState(state, cx); err != nil {
+			log.WithFields(log.Fields{
+				"error": err.Error(),
+			}).Errorf("failed to inject the session state into request")
+
+			cx.AbortWithStatus(http.StatusInternalServerError)
+
+			return
+		}
+	}
+
+	r.redirectToURL(state, cx)
 }
 
 // healthHandler is a health check handler for the service

@@ -115,8 +115,6 @@ func (s *ProviderConfigSyncer) sync() (time.Duration, error) {
 		return 0, fmt.Errorf("error setting provider config: %v", err)
 	}
 
-	log.Infof("Updating provider config: config=%#v", cfg)
-
 	return nextSyncAfter(cfg.ExpiresAt, s.clock), nil
 }
 

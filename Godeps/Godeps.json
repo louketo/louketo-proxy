@@ -35,23 +35,23 @@
 		},
 		{
 			"ImportPath": "github.com/gambol99/go-oidc/http",
-			"Rev": "efd38adf1417e9cf746ab0e34a8374c16de965ce"
+			"Rev": "868d837be69522f73b789fe1db4c46f15e1fc05a"
 		},
 		{
 			"ImportPath": "github.com/gambol99/go-oidc/jose",
-			"Rev": "efd38adf1417e9cf746ab0e34a8374c16de965ce"
+			"Rev": "868d837be69522f73b789fe1db4c46f15e1fc05a"
 		},
 		{
 			"ImportPath": "github.com/gambol99/go-oidc/key",
-			"Rev": "efd38adf1417e9cf746ab0e34a8374c16de965ce"
+			"Rev": "868d837be69522f73b789fe1db4c46f15e1fc05a"
 		},
 		{
 			"ImportPath": "github.com/gambol99/go-oidc/oauth2",
-			"Rev": "efd38adf1417e9cf746ab0e34a8374c16de965ce"
+			"Rev": "868d837be69522f73b789fe1db4c46f15e1fc05a"
 		},
 		{
 			"ImportPath": "github.com/gambol99/go-oidc/oidc",
-			"Rev": "efd38adf1417e9cf746ab0e34a8374c16de965ce"
+			"Rev": "868d837be69522f73b789fe1db4c46f15e1fc05a"
 		},
 		{
 			"ImportPath": "github.com/gin-gonic/gin",
