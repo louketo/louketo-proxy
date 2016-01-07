@@ -29,7 +29,11 @@ upstream: http://127.0.0.1:80
 # additional scopes to add to add to the default (openid+email+profile)
 scopes:
   - vpn-user
-
+# a map of claims that MUST exist in the token presented and the value is it MUST match
+# So for example, you could match the audience or the issuer or some custom attribute
+claims:
+  aud: openvpn
+  iss: https://https://keycloak.example.com/auth/realms/commons
 # a collection of resource i.e. urls that you wish to protect
 resources:
   - url: /admin/test

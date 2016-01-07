@@ -20,6 +20,36 @@ import (
 	"strings"
 )
 
+// isValid validate a resource
+func (r *Resource) isValid() error {
+	// step: ensure everything is initialized
+	if r.Methods == nil {
+		r.Methods = make([]string, 0)
+	}
+	if r.RolesAllowed == nil {
+		r.RolesAllowed = make([]string, 0)
+	}
+
+	// step: check we have a
+	if r.URL == "" {
+		return fmt.Errorf("resource does not have url")
+	}
+
+	// step: add any of no methods
+	if len(r.Methods) <= 0 {
+		r.Methods = append(r.Methods, "ANY")
+	}
+
+	// step: check the method is valid
+	for _, m := range r.Methods {
+		if !isValidMethod(m) {
+			return fmt.Errorf("invalid method %s", m)
+		}
+	}
+
+	return nil
+}
+
 func (r Resource) String() string {
 	var requiredRoles string
 	var requireMethods string

@@ -15,7 +15,7 @@ USAGE:
    keycloak-proxy [global options] command [command options] [arguments...]
    
 VERSION:
-   v0.0.2
+   v0.0.4
    
 AUTHOR(S):
    Rohith <gambol99@gmail.com> 
@@ -25,27 +25,30 @@ COMMANDS:
    
 GLOBAL OPTIONS:
    --config 						the path to the configuration file for the keycloak proxy
-   --listen "127.0.0.1:80"				the interface the service should be listening on
+   --listen "127.0.0.1:8080"				the interface the service should be listening on
    --secret 						the client secret used to authenticate to the oauth server
    --client-id 						the client id used to authenticate to the oauth serves
    --discovery-url 					the discovery url to retrieve the openid configuration
    --upstream-url "http://127.0.0.1:8080"		the url for the upstream endpoint you wish to proxy to
-   --encryption-key 				the encryption key used to encrpytion the session state
-   --redirection-url 				the redirection url, namely the site url, note: /oauth will be added to it
-   --tls-cert 						the path to a certificate file used for enabled TLS for the service
-   --tls-private-key 				the path to the private key for TLS support
+   --encryption-key 					the encryption key used to encrpytion the session state
+   --redirection-url 					the redirection url, namely the site url, note: /oauth will be added to it
+   --tls-cert 						the path to a certificate file used for TLS
+   --tls-private-key 					the path to the private key for TLS support
    --scope [--scope option --scope option]		a variable list of scopes requested when authenticating the user
+   --claim [--claim option --claim option]		a series of key pair values which must match the claims in the token present e.g. aud=myapp, iss=http://example.com etcd
    --resource [--resource option --resource option]	a list of resources 'uri=/admin|methods=GET|roles=role1,role2'
-   --signin-page 					a custom template under ./templates displayed for signin
-   --forbidden-page 				a custom template under ./templates used for access forbidden
-   --max-session "1h0m0s"			if refresh sessions are enabled we can limit their duration via this
+   --signin-page 					a custom template displayed for signin
+   --forbidden-page 					a custom template used for access forbidden
+   --tag [--tag option --tag option]			a keypair tag which is passed to the templates when render, i.e. title='My Page',site='my name' etc
+   --max-session "1h0m0s"				if refresh sessions are enabled we can limit their duration via this
    --proxy-protocol					switches on proxy protocol support on the listen (not supported yet)
-   --refresh-sessions				enables the refreshing of tokens via offline access
+   --refresh-sessions					enables the refreshing of tokens via offline access
    --json-logging					switch on json logging rather than text (defaults true)
    --log-requests					switch on logging of all incoming requests (defaults true)
    --verbose						switch on debug / verbose logging
    --help, -h						show help
    --version, -v					print the version
+
 
 ```
 
@@ -153,3 +156,24 @@ cx.Request.Header.Add("X-Forwarded-Proto", <CLIENT_PROTO>)
 #### **Encryption Key**
 
 In order to remain stateless and not have to rely on a central cache to persist the 'refresh_tokens', the refresh token is encrypted and added as a cookie using *crypto/aes*. Naturally the key must be the same if your running behind a load balancer etc.  
+
+#### **Clain Matching**
+
+Note, you can add variable list of claim matches on the presented token by using the --claim 'key=pair' command option of a map 'claims' in the config file (see the example file)
+
+#### **Custom Pages**
+
+By default the proxy will immediately redirect you for authentication and hand back 403 for access denied. Most users will probably want to present the user with a more friendly
+signin and access denied page. You can pass the command line options (or via config file) paths to the files i.e. --signin-pag=PATH. The sign-in page will have a 'redirect' 
+passed into the scope hold the oauth redirection url. If you wish pass additional variables into the templates, perhaps title, sitename etc, you can use the --tag key=pair i.e. 
+--tag title="This is my site"; the variable would be accessible from {{ .title }}
+
+```HTML
+<html>
+<body>
+<a href="{{ .redirect }}">Sign-in</a>
+</body>
+</html>
+
+
+```
