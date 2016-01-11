@@ -18,12 +18,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"net/url"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"gopkg.in/yaml.v2"
 
 	"github.com/codegangsta/cli"
 )
@@ -183,14 +184,6 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 
 // readConfigFile reads and parses the configuration file
 func readConfigFile(filename string, config *Config) error {
-	ext := filepath.Ext(filename)
-
-	formatYAML := true
-	switch ext {
-	case "json":
-		formatYAML = false
-	}
-
 	// step: read in the contents of the file
 	content, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -198,13 +191,11 @@ func readConfigFile(filename string, config *Config) error {
 	}
 
 	// step: attempt to un-marshal the data
-	switch formatYAML {
-	case false:
+	if isJson := filepath.Ext(filename) == "json"; isJson {
 		err = json.Unmarshal(content, config)
-	default:
+	} else {
 		err = yaml.Unmarshal(content, config)
 	}
-
 	if err != nil {
 		return err
 	}
