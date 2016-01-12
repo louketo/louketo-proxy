@@ -70,20 +70,35 @@ func (r *KeycloakProxy) refreshUserSessionToken(cx *gin.Context) (jose.JWT, erro
 }
 
 // getSessionToken retrieves the authentication cookie from the request and parse's into a JWT token
-func (r *KeycloakProxy) getSessionToken(cx *gin.Context) (jose.JWT, error) {
-	// step: find the authentication cookie from the request
-	cookie := findCookie(sessionCookieName, cx.Request.Cookies())
-	if cookie == nil {
-		return jose.JWT{}, ErrSessionNotFound
+// The token can come either a session cookie or a Bearer header
+func (r *KeycloakProxy) getSessionToken(cx *gin.Context) (jose.JWT, bool, error) {
+	var session string
+
+	isBearer := false
+	// step: look for a authorization header
+	if authHeader := cx.Request.Header.Get(authorizationHeader); authHeader != "" {
+		isBearer = true
+		items := strings.Split(authHeader, " ")
+		if len(items) != 2 {
+			return jose.JWT{}, isBearer, fmt.Errorf("invalid authorizarion header")
+		}
+		session = items[1]
+	} else {
+		// step: find the authentication cookie from the request
+		cookie := findCookie(sessionCookieName, cx.Request.Cookies())
+		if cookie == nil {
+			return jose.JWT{}, isBearer, ErrSessionNotFound
+		}
+		session = cookie.Value
 	}
 
 	// step: parse the token
-	jwt, err := jose.ParseJWT(cookie.Value)
+	jwt, err := jose.ParseJWT(session)
 	if err != nil {
-		return jose.JWT{}, err
+		return jose.JWT{}, isBearer, err
 	}
 
-	return jwt, nil
+	return jwt, isBearer, nil
 }
 
 // getSessionState retrieves the session state from the request
@@ -105,16 +120,21 @@ func (r *KeycloakProxy) getUserContext(token jose.JWT) (*userContext, error) {
 		return nil, err
 	}
 
-	// step: get the preferred name
-	preferredName, _, err := claims.StringClaim("preferred_username")
-	if err != nil {
-		log.WithFields(log.Fields{"error": err.Error()}).Warningf("unable to extract the preferred name from the token claims")
-	}
-
 	// step: extract the identity
-	ident, err := oidc.IdentityFromClaims(claims)
+	identity, err := oidc.IdentityFromClaims(claims)
 	if err != nil {
 		return nil, err
+	}
+
+	// step: ensure we have and can extract the preferred name of the user, if not, we set to the ID
+	preferredName, found, err := claims.StringClaim("preferred_username")
+	if err != nil || !found {
+		log.WithFields(log.Fields{
+			"id":    identity.ID,
+			"email": identity.Email,
+		}).Warnf("the token does not container a preferred_username")
+
+		preferredName = identity.ID
 	}
 
 	var list []string
@@ -132,11 +152,11 @@ func (r *KeycloakProxy) getUserContext(token jose.JWT) (*userContext, error) {
 	}
 
 	return &userContext{
-		id:            ident.ID,
+		id:            identity.ID,
 		name:          preferredName,
 		preferredName: preferredName,
-		email:         ident.Email,
-		expiresAt:     ident.ExpiresAt,
+		email:         identity.Email,
+		expiresAt:     identity.ExpiresAt,
 		roles:         list,
 		token:         token,
 		claims:        claims,

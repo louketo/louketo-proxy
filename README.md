@@ -4,7 +4,9 @@
 ### **Keycloak Proxy**
 ----
 
-Keycloak-proxy is a proxy service which at the risk of stating the obvious integrates with the [Keycloak](https://github.com/keycloak/keycloak) authentication service. The configuration and feature set is based on the actual java version of the [proxy](https://docs.jboss.org/keycloak/docs/1.1.0.Beta2/userguide/html/proxy.html). The 
+Keycloak-proxy is a proxy service which at the risk of stating the obvious integrates with the [Keycloak](https://github.com/keycloak/keycloak) authentication service. 
+The configuration and feature set is based on the actual java version of the [proxy](https://docs.jboss.org/keycloak/docs/1.1.0.Beta2/userguide/html/proxy.html). The service
+supports both access tokens in browser cookie or bearer tokens.
 
 ```shell
 [jest@starfury keycloak-proxy]$ bin/keycloak-proxy help

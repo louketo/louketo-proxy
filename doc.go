@@ -21,30 +21,28 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/gambol99/go-oidc/jose"
 	"github.com/gambol99/go-oidc/oidc"
 	"github.com/gin-gonic/gin"
 )
 
 const (
 	prog        = "keycloak-proxy"
-	version     = "v0.0.4"
+	version     = "v0.0.5"
 	author      = "Rohith"
 	email       = "gambol99@gmail.com"
 	description = "is a proxy using the keycloak service for auth and authorization"
 
 	headerUpgrade          = "Upgrade"
-	sessionCookieName      = "keycloak-access"
-	sessionStateCookieName = "keycloak-state"
+	sessionCookieName      = "kc-access"
+	sessionStateCookieName = "kc-state"
 	userContextName        = "identity"
+	authorizationHeader    = "Authorization"
 
 	// the urls
-	oauthURL               = "/oauth"
-	authorizationURL       = oauthURL + "/authorize"
-	callbackURL            = oauthURL + "/callback"
-	healthURL              = oauthURL + "/health"
-	signInPageURL          = oauthURL + "/sign_in"
-	accessForbiddenPageURL = oauthURL + "/forbidden"
+	oauthURL         = "/oauth"
+	authorizationURL = oauthURL + "/authorize"
+	callbackURL      = oauthURL + "/callback"
+	healthURL        = oauthURL + "/health"
 )
 
 var (
@@ -139,24 +137,4 @@ type sessionState struct {
 	expireOn time.Time
 	// the refresh token if any
 	refreshToken string
-}
-
-// userContext represents a user
-type userContext struct {
-	// the id of the user
-	id string
-	// the email associated to the user
-	email string
-	// a name of the user
-	name string
-	// the preferred name
-	preferredName string
-	// the expiration of the access token
-	expiresAt time.Time
-	// a set of roles associated
-	roles []string
-	// the access token itself
-	token jose.JWT
-	// the claims associated to the token
-	claims jose.Claims
 }
