@@ -20,7 +20,7 @@ import (
 	"strings"
 )
 
-// isValid validate a resource
+// isValid ensure the resource is valid
 func (r *Resource) isValid() error {
 	// step: ensure everything is initialized
 	if r.Methods == nil {
@@ -50,23 +50,26 @@ func (r *Resource) isValid() error {
 	return nil
 }
 
+// getRoles gets a list of roles
+func (r Resource) getRoles() string {
+	return strings.Join(r.RolesAllowed, ",")
+}
+
 func (r Resource) String() string {
-	var requiredRoles string
-	var requireMethods string
+	var roles string
+	var methods string
 
-	switch len(r.RolesAllowed) {
-	case 0:
-		requiredRoles = "authentication only"
-	default:
-		requiredRoles = strings.Join(r.RolesAllowed, ",")
+	if len(r.RolesAllowed) <= 0 {
+		roles = "authentication only"
+	} else {
+		methods = strings.Join(r.RolesAllowed, ",")
 	}
 
-	switch len(r.Methods) {
-	case 0:
-		requireMethods = "ANY"
-	default:
-		requireMethods = strings.Join(r.Methods, ",")
+	if len(r.Methods) <= 0 {
+		methods = "ANY"
+	} else {
+		roles = strings.Join(r.Methods, ",")
 	}
 
-	return fmt.Sprintf("uri: %s, methods: [%s], required: [%s]", r.URL, requireMethods, requiredRoles)
+	return fmt.Sprintf("uri: %s, methods: %s, required: %s", r.URL, methods, roles)
 }

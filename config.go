@@ -46,34 +46,38 @@ func (r *Config) isValid() error {
 	if _, err := url.Parse(r.Upstream); err != nil {
 		return fmt.Errorf("the upstream endpoint is invalid, %s", err)
 	}
-	if r.DiscoveryURL == "" {
-		return fmt.Errorf("you have not specified the discovery url")
-	}
-	if r.ClientID == "" {
-		return fmt.Errorf("you have not specified the client id")
-	}
-	if r.Secret == "" {
-		return fmt.Errorf("you have not specified the client secret")
-	}
-	if r.RedirectionURL == "" {
-		return fmt.Errorf("you have not specified the redirection url")
-	}
-	if strings.HasSuffix(r.RedirectionURL, "/") {
-		r.RedirectionURL = strings.TrimSuffix(r.RedirectionURL, "/")
-	}
 	if r.Listen == "" {
 		return fmt.Errorf("you have not specified the listening interface")
 	}
-	if r.EncryptionKey == "" && r.RefreshSession {
-		return fmt.Errorf("you have not specified a encryption key for encoding the session state")
-	}
-	if r.EncryptionKey != "" && len(r.EncryptionKey) < 32 {
-		return fmt.Errorf("the encryption key is too short, must be longer than 32 characters")
-	}
-	if r.MaxSession == 0 && r.RefreshSession {
-		r.MaxSession = time.Duration(6) * time.Hour
-	}
 
+	// step: if the skip verification is off, we need the below
+	if !r.SkipTokenVerification {
+		if r.DiscoveryURL == "" {
+			return fmt.Errorf("you have not specified the discovery url")
+		}
+		if r.ClientID == "" {
+			return fmt.Errorf("you have not specified the client id")
+		}
+		if r.Secret == "" {
+			return fmt.Errorf("you have not specified the client secret")
+		}
+		if r.RedirectionURL == "" {
+			return fmt.Errorf("you have not specified the redirection url")
+		}
+		if strings.HasSuffix(r.RedirectionURL, "/") {
+			r.RedirectionURL = strings.TrimSuffix(r.RedirectionURL, "/")
+		}
+		if r.EncryptionKey == "" && r.RefreshSession {
+			return fmt.Errorf("you have not specified a encryption key for encoding the session state")
+		}
+		if r.EncryptionKey != "" && len(r.EncryptionKey) < 32 {
+			return fmt.Errorf("the encryption key is too short, must be longer than 32 characters")
+		}
+		if r.MaxSession == 0 && r.RefreshSession {
+			r.MaxSession = time.Duration(6) * time.Hour
+		}
+
+	}
 	for _, resource := range r.Resources {
 		if err := resource.isValid(); err != nil {
 			return err
@@ -117,6 +121,9 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 	}
 	if cx.IsSet("upstream-url") {
 		config.Upstream = cx.String("upstream-url")
+	}
+	if cx.IsSet("skip-token-verification") {
+		config.SkipTokenVerification = cx.Bool("skip-token-verification")
 	}
 	if cx.IsSet("encryption-key") {
 		config.EncryptionKey = cx.String("encryption-key")
@@ -276,6 +283,10 @@ func getOptions() []cli.Flag {
 			Name:  "max-session",
 			Usage: "if refresh sessions are enabled we can limit their duration via this",
 			Value: time.Duration(1) * time.Hour,
+		},
+		cli.BoolFlag{
+			Name:  "skip-token-verification",
+			Usage: "testing purposes ONLY, the option allows you to bypass the token verification, expiration and roles are still enforced",
 		},
 		cli.BoolFlag{
 			Name:  "proxy-protocol",

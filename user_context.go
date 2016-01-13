@@ -16,6 +16,7 @@ limitations under the License.
 package main
 
 import (
+	"strings"
 	"time"
 
 	"github.com/gambol99/go-oidc/jose"
@@ -35,6 +36,8 @@ type userContext struct {
 	expiresAt time.Time
 	// a set of roles associated
 	roles []string
+	// the audience for the token
+	audience string
 	// the access token itself
 	token jose.JWT
 	// the claims associated to the token
@@ -43,6 +46,26 @@ type userContext struct {
 	bearerToken bool
 }
 
+// isAudience checks the audience
+func (r userContext) isAudience(aud string) bool {
+	if r.audience == aud {
+		return true
+	}
+
+	return false
+}
+
+// getRoles returns a list of roles
+func (r userContext) getRoles() string {
+	return strings.Join(r.roles, ",")
+}
+
+// isExpired checks if the token has expired
+func (r userContext) isExpired() bool {
+	return r.expiresAt.Before(time.Now())
+}
+
+// isBearerToken checks if the token
 func (r userContext) isBearerToken() bool {
 	return r.bearerToken
 }
