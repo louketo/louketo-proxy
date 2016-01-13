@@ -115,7 +115,7 @@ func initializeOpenID(discoveryURL, clientID, clientSecret, redirectURL string, 
 		RedirectURL: fmt.Sprintf("%s/oauth/callback", redirectURL),
 		Scope:       append(scopes, oidc.DefaultScope...),
 	}
-
+	
 	log.Infof("successfully retrieved the config from discovery url")
 
 	// step: attempt to create a new client

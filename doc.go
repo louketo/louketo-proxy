@@ -114,6 +114,8 @@ type Config struct {
 	SignInPage string `json:"sign_in_page" yaml:"sign_in_page"`
 	// ForbiddenPage is a access forbidden page
 	ForbiddenPage string `json:"forbidden_page" yaml:"forbidden_page"`
+	// SkipTokenVerification tells the service to skipp verifying the access token - for testing purposes
+	SkipTokenVerification bool
 }
 
 // KeycloakProxy is the server component

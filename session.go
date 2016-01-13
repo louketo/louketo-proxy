@@ -28,6 +28,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	claimPreferredName  = "preferred_username"
+	claimAudience       = "aud"
+	claimResourceAccess = "resource_access"
+	claimResourceRoles  = "roles"
+)
+
 // refreshUserSessionToken is responsible for retrieving the session state cookie and attempting to
 // refresh the access token for the user
 func (r *KeycloakProxy) refreshUserSessionToken(cx *gin.Context) (jose.JWT, error) {
@@ -127,23 +134,29 @@ func (r *KeycloakProxy) getUserContext(token jose.JWT) (*userContext, error) {
 	}
 
 	// step: ensure we have and can extract the preferred name of the user, if not, we set to the ID
-	preferredName, found, err := claims.StringClaim("preferred_username")
+	preferredName, found, err := claims.StringClaim(claimPreferredName)
 	if err != nil || !found {
 		log.WithFields(log.Fields{
 			"id":    identity.ID,
 			"email": identity.Email,
-		}).Warnf("the token does not container a preferred_username")
-
+		}).Warnf("the token does not container a %s", claimPreferredName)
+		// choice: set the preferredName to the ID if claim not found
 		preferredName = identity.ID
+	}
+
+	// step: retrieve the audience from access token
+	audience, found, err := claims.StringClaim(claimAudience)
+	if err != nil || !found {
+		return nil, fmt.Errorf("the access token does not container a audience claim")
 	}
 
 	var list []string
 
 	// step: extract the roles from the access token
-	if accesses, found := claims["resource_access"].(map[string]interface{}); found {
+	if accesses, found := claims[claimResourceAccess].(map[string]interface{}); found {
 		for roleName, roleList := range accesses {
 			scopes := roleList.(map[string]interface{})
-			if roles, found := scopes["roles"]; found {
+			if roles, found := scopes[claimResourceRoles]; found {
 				for _, r := range roles.([]interface{}) {
 					list = append(list, fmt.Sprintf("%s:%s", roleName, r))
 				}
@@ -154,6 +167,7 @@ func (r *KeycloakProxy) getUserContext(token jose.JWT) (*userContext, error) {
 	return &userContext{
 		id:            identity.ID,
 		name:          preferredName,
+		audience:      audience,
 		preferredName: preferredName,
 		email:         identity.Email,
 		expiresAt:     identity.ExpiresAt,

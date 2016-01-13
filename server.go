@@ -49,20 +49,24 @@ func newKeycloakProxy(cfg *Config) (*KeycloakProxy, error) {
 		return nil, err
 	}
 
-	// step: initialize the openid client
-	client, clientCfg, err := initializeOpenID(cfg.DiscoveryURL,
-		cfg.ClientID, cfg.Secret, cfg.RedirectionURL, cfg.Scopes)
-	if err != nil {
-		return nil, err
-	}
-
 	// step: create a proxy service
 	service := &KeycloakProxy{
-		openIDConfig: clientCfg,
-		openIDClient: client,
 		config:       cfg,
 		proxy:        reverse,
 		upstreamURL:  upstreamURL,
+	}
+
+	// step: initialize the openid client
+	if cfg.SkipTokenVerification {
+		log.Infof("TESTING ONLY CONFIG - the verification of the token have been disabled")
+
+	} else {
+		client, clientCfg, err := initializeOpenID(cfg.DiscoveryURL, cfg.ClientID, cfg.Secret, cfg.RedirectionURL, cfg.Scopes)
+		if err != nil {
+			return nil, err
+		}
+		service.openIDConfig = clientCfg
+		service.openIDClient = client
 	}
 
 	// step: initialize the gin router
@@ -153,6 +157,14 @@ func (r KeycloakProxy) accessForbidden(cx *gin.Context) {
 func (r KeycloakProxy) redirectToAuthorization(cx *gin.Context) {
 	// step: add a state referrer to the authorization page
 	authQuery := fmt.Sprintf("?state=%s", cx.Request.URL.String())
+
+	// step: if verification is switched off, we can't authorization
+	if r.config.SkipTokenVerification {
+		log.Errorf("refusing to redirection to authorization endpoint, skip token verification switched on")
+
+		r.accessForbidden(cx)
+		return
+	}
 
 	r.redirectToURL(authorizationURL+authQuery, cx)
 }

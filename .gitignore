@@ -2,6 +2,8 @@
 .idea/
 bin/
 release/
+tests/
+
 *.iml
 config.yml
 
