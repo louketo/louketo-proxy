@@ -15,7 +15,9 @@ limitations under the License.
 
 package main
 
-import "testing"
+import (
+	"testing"
+)
 
 func newFakeKeycloakProxy(t *testing.T) *KeycloakProxy {
 	return &KeycloakProxy{

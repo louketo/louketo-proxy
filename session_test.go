@@ -16,17 +16,18 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
+	"net/http"
 	"reflect"
 	"testing"
 	"time"
 
 	"github.com/gambol99/go-oidc/jose"
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetUserContext(t *testing.T) {
-	proxy := newFakeKeycloakProxy(t)
-
+func getFakeAccessToken(t *testing.T) jose.JWT {
 	testToken, err := jose.NewJWT(
 		jose.JOSEHeader{
 			"alg": "RS256",
@@ -55,16 +56,20 @@ func TestGetUserContext(t *testing.T) {
 			"family_name":        "Jayawardene",
 			"preferred_username": "rjayawardene",
 			"given_name":         "Rohith",
-		})
-
-	if assert.NoError(t, err, "should not have recieved an error parsing the token") {
-		t.Failed()
-	}
-	if !assert.NotNil(t, testToken, "should not have got nil from token") {
-		t.FailNow()
+		},
+	)
+	if err != nil {
+		t.Fatalf("unable to generate a token: %s", err)
 	}
 
-	context, err := proxy.getUserContext(testToken)
+	return testToken
+}
+
+func TestGetUserContext(t *testing.T) {
+	proxy := newFakeKeycloakProxy(t)
+	token := getFakeAccessToken(t)
+
+	context, err := proxy.getUserContext(token)
 	assert.NoError(t, err)
 	assert.NotNil(t, context)
 	assert.Equal(t, "1e11e539-8256-4b3b-bda8-cc0d56cddb48", context.id)
@@ -73,6 +78,50 @@ func TestGetUserContext(t *testing.T) {
 	roles := []string{"openvpn:dev-vpn"}
 	if !reflect.DeepEqual(context.roles, roles) {
 		t.Errorf("the claims are not the same, %v <-> %v", context.roles, roles)
+	}
+}
+
+func TestGetSessionToken(t *testing.T) {
+	proxy := newFakeKeycloakProxy(t)
+	token := getFakeAccessToken(t)
+	encoded := token.Encode()
+
+	testCases := []struct {
+		Context *gin.Context
+		Ok      bool
+	}{
+		{
+			Context: &gin.Context{
+				Request: &http.Request{
+					Header: http.Header{
+						"Authorization": []string{fmt.Sprintf("Bearer %s", encoded)},
+					},
+				},
+			},
+			Ok: true,
+		},
+		{
+			Context: &gin.Context{
+				Request: &http.Request{
+					Header: http.Header{},
+				},
+			},
+		},
+		// @TODO need to ather checks
+	}
+
+	for i, c := range testCases {
+		token, _, err := proxy.getSessionToken(c.Context)
+		if err != nil && c.Ok {
+			t.Errorf("test case %d should not have errored", i)
+			continue
+		}
+		if err != nil && !c.Ok {
+			continue
+		}
+		if token.Encode() != encoded {
+			t.Errorf("test case %d the tokens are not the same", i)
+		}
 	}
 }
 

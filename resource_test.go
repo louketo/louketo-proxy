@@ -50,3 +50,13 @@ func TestIsValid(t *testing.T) {
 		}
 	}
 }
+
+func TestGetRoles(t *testing.T) {
+	resource := &Resource{
+		RolesAllowed: []string{"1", "2", "3"},
+	}
+
+	if resource.getRoles() != "1,2,3" {
+		t.Error("the resource roles not as expected")
+	}
+}

@@ -51,9 +51,9 @@ func newKeycloakProxy(cfg *Config) (*KeycloakProxy, error) {
 
 	// step: create a proxy service
 	service := &KeycloakProxy{
-		config:       cfg,
-		proxy:        reverse,
-		upstreamURL:  upstreamURL,
+		config:      cfg,
+		proxy:       reverse,
+		upstreamURL: upstreamURL,
 	}
 
 	// step: initialize the openid client

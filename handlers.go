@@ -137,10 +137,10 @@ func (r *KeycloakProxy) authenticationHandler() gin.HandlerFunc {
 		// step: check the audience for the token is us
 		if !userContext.isAudience(r.config.ClientID) {
 			log.WithFields(log.Fields{
-				"username": userContext.name,
+				"username":   userContext.name,
 				"expired_on": userContext.expiresAt.String(),
-				"issued": userContext.audience,
-				"clientid": r.config.ClientID,
+				"issued":     userContext.audience,
+				"clientid":   r.config.ClientID,
 			}).Warnf("the access token audience is not us, redirecting back for authentication")
 
 			r.redirectToAuthorization(cx)
