@@ -32,7 +32,7 @@ func main() {
 	kc := cli.NewApp()
 	kc.Name = prog
 	kc.Usage = description
-	kc.Version = version
+	kc.Version = buildID
 	kc.Author = author
 	kc.Email = email
 	kc.Flags = getOptions()
@@ -75,6 +75,6 @@ func main() {
 
 // printUsage display the command line usage and error
 func printUsage(message string) {
-	fmt.Fprintf(os.Stderr, "[error] %s", message)
+	fmt.Fprintf(os.Stderr, "[error] %s\n", message)
 	os.Exit(1)
 }
