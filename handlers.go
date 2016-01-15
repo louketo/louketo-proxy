@@ -80,6 +80,8 @@ func (r *KeycloakProxy) entrypointHandler() gin.HandlerFunc {
 				break
 			}
 		}
+
+		cx.Next()
 	}
 }
 
@@ -156,7 +158,7 @@ func (r *KeycloakProxy) authenticationHandler() gin.HandlerFunc {
 				log.WithFields(log.Fields{
 					"username":   userContext.name,
 					"expired_on": userContext.expiresAt.String(),
-				}).Errorf("the session has expired, verification switch off")
+				}).Errorf("the session has expired and verification switch off")
 
 				r.redirectToAuthorization(cx)
 			}
@@ -198,6 +200,8 @@ func (r *KeycloakProxy) authenticationHandler() gin.HandlerFunc {
 				return
 			}
 		}
+
+		cx.Next()
 	}
 }
 
@@ -210,7 +214,7 @@ func (r *KeycloakProxy) authenticationHandler() gin.HandlerFunc {
 //  - if we have any roles requirements validate the roles exists in the access token
 //  - if er have any claim requirements validate the claims are the same
 //  - if everything is ok, we permit the request to pass through
-
+//
 func (r *KeycloakProxy) admissionHandler() gin.HandlerFunc {
 	return func(cx *gin.Context) {
 		// step: if authentication is required on this, grab the resource spec
@@ -295,10 +299,14 @@ func (r *KeycloakProxy) admissionHandler() gin.HandlerFunc {
 			"expires":  identity.expiresAt.Sub(time.Now()).String(),
 			"bearer":   identity.bearerToken,
 		}).Debugf("resource access permitted: %s", cx.Request.RequestURI)
+
+		cx.Next()
 	}
 }
 
+//
 // proxyHandler is responsible to proxy the requests on to the upstream endpoint
+//
 func (r *KeycloakProxy) proxyHandler() gin.HandlerFunc {
 	return func(cx *gin.Context) {
 		// step: retrieve the user context

@@ -29,7 +29,7 @@ build: buildtags
 	mkdir -p bin
 	godep go build -o bin/${NAME}
 
-static: buildtags deps
+static: golang deps
 	@echo "--> Compiling the static binary"
 	mkdir -p bin
 	CGO_ENABLED=0 GOOS=linux godep go build -a -tags netgo -ldflags '-w' -o bin/${NAME}
