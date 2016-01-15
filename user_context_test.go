@@ -34,7 +34,7 @@ func TestIsAudience(t *testing.T) {
 
 func TestGetROles(t *testing.T) {
 	user := &userContext{
-		roles: []string{"1","2","3"},
+		roles: []string{"1", "2", "3"},
 	}
 	if user.getRoles() != "1,2,3" {
 		t.Errorf("we should have received a true resposne")
