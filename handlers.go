@@ -25,6 +25,7 @@ import (
 	"github.com/gambol99/go-oidc/jose"
 	"github.com/gambol99/go-oidc/oauth2"
 	"github.com/gin-gonic/gin"
+	"github.com/unrolled/secure"
 )
 
 //
@@ -61,26 +62,48 @@ func (r *KeycloakProxy) loggingHandler() gin.HandlerFunc {
 }
 
 //
+// securityHandler performs numerous security checks on the request
+//
+func (r *KeycloakProxy) securityHandler() gin.HandlerFunc {
+	// step: create the security options
+	secure := secure.New(secure.Options{
+		AllowedHosts:          r.config.Hostnames,
+		BrowserXssFilter:      true,
+		ContentSecurityPolicy: "default-src 'self'",
+		ContentTypeNosniff:    true,
+		FrameDeny:             true,
+	})
+
+	return func(cx *gin.Context) {
+		// step: pass through the security middleware
+		if err := secure.Process(cx.Writer, cx.Request); err != nil {
+			log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed security middleware")
+			cx.Abort()
+			return
+		}
+		// step: permit the request to continue
+		cx.Next()
+	}
+}
+
+//
 // entrypointHandler checks to see if the request requires authentication
 //
 func (r *KeycloakProxy) entrypointHandler() gin.HandlerFunc {
 	return func(cx *gin.Context) {
 		// step: ensure we don't block oauth
-		if strings.HasPrefix(cx.Request.RequestURI, oauthURL) {
-			return
-		}
-
-		// step: check if authentication is required - gin doesn't support wildcard url, so we have have to use prefixes
-		for _, resource := range r.config.Resources {
-			if strings.HasPrefix(cx.Request.RequestURI, resource.URL) {
-				// step: inject the resource into the context, saves us from doing this again
-				if containedIn(cx.Request.Method, resource.Methods) || containedIn("ANY", resource.Methods) {
-					cx.Set(cxEnforce, resource)
+		if !strings.HasPrefix(cx.Request.RequestURI, oauthURL) {
+			// step: check if authentication is required - gin doesn't support wildcard url, so we have have to use prefixes
+			for _, resource := range r.config.Resources {
+				if strings.HasPrefix(cx.Request.RequestURI, resource.URL) {
+					// step: inject the resource into the context, saves us from doing this again
+					if containedIn(cx.Request.Method, resource.Methods) || containedIn("ANY", resource.Methods) {
+						cx.Set(cxEnforce, resource)
+					}
+					break
 				}
-				break
 			}
 		}
-
 		cx.Next()
 	}
 }
@@ -106,6 +129,7 @@ func (r *KeycloakProxy) authenticationHandler() gin.HandlerFunc {
 		// step: is authentication required on this uri?
 		if _, found := cx.Get(cxEnforce); !found {
 			log.Debugf("skipping the authentication handler, resource not protected")
+			cx.Next()
 			return
 		}
 
@@ -220,6 +244,7 @@ func (r *KeycloakProxy) admissionHandler() gin.HandlerFunc {
 		// step: if authentication is required on this, grab the resource spec
 		ur, found := cx.Get(cxEnforce)
 		if !found {
+			cx.Next()
 			return
 		}
 

@@ -76,6 +76,10 @@
 			"Rev": "f3960ab1f9664ecc4e27c78af27cc9063d745a43"
 		},
 		{
+			"ImportPath": "github.com/unrolled/secure",
+			"Rev": "9b725bb5ee80564334176a116a99dd926cab63a1"
+		},
+		{
 			"ImportPath": "golang.org/x/net/context",
 			"Rev": "195180cfebf7362bd243a52477697895128c8777"
 		},

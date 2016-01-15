@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
@@ -88,6 +89,12 @@ func newKeycloakProxy(cfg *Config) (*KeycloakProxy, error) {
 		router.Use(service.loggingHandler())
 	}
 
+	// step: if gin release production
+	if os.Getenv("GIN_MODE") == "release" {
+		log.Infof("enabling the security handler for release mode")
+		router.Use(service.securityHandler())
+	}
+
 	router.Use(service.entrypointHandler(), service.authenticationHandler(), service.admissionHandler())
 	router.GET(authorizationURL, service.oauthAuthorizationHandler)
 	router.GET(callbackURL, service.oauthCallbackHandler)
@@ -127,9 +134,7 @@ func (r *KeycloakProxy) Run() error {
 			err = r.router.RunTLS(r.config.Listen, r.config.TLSCertificate, r.config.TLSPrivateKey)
 		}
 		if err != nil {
-			log.WithFields(log.Fields{
-				"error": err.Error(),
-			}).Fatalf("failed to start the service")
+			log.WithFields(log.Fields{"error": err.Error()}).Fatalf("failed to start the service")
 		}
 	}()
 
@@ -161,7 +166,6 @@ func (r KeycloakProxy) redirectToAuthorization(cx *gin.Context) {
 	// step: if verification is switched off, we can't authorization
 	if r.config.SkipTokenVerification {
 		log.Errorf("refusing to redirection to authorization endpoint, skip token verification switched on")
-
 		r.accessForbidden(cx)
 		return
 	}
