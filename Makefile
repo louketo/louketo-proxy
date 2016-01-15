@@ -2,7 +2,10 @@
 NAME=keycloak-proxy
 AUTHOR=gambol99
 HARDWARE=$(shell uname -m)
-VERSION=$(shell awk '/version =/ { print $$3 }' doc.go | sed 's/"//g')
+GOVERSION=1.5.3
+GIT_COMMIT=$(shell git log --pretty=format:'%h' -n 1)
+ROOT_DIR=${PWD}
+VERSION=$(shell awk '/version.*=/ { print $$3 }' doc.go | sed 's/"//g')
 DEPS=$(shell go list -f '{{range .TestImports}}{{.}} {{end}}' ./...)
 PACKAGES=$(shell go list ./...)
 VETARGS?=-asmdecl -atomic -bool -buildtags -copylocks -methods -nilfunc -printf -rangeloops -shift -structtags -unsafeptr
@@ -11,15 +14,30 @@ VETARGS?=-asmdecl -atomic -bool -buildtags -copylocks -methods -nilfunc -printf 
 
 default: build
 
-build:
+golang:
+	@echo "--> Go Version"
+	@go version
+
+buildtags: golang
+	@echo "--> Adding the build tags"
+	@echo "package main" > build.go
+	@echo "" >> build.go
+	@echo "const buildID = \"$(VERSION), git+sha: ${GIT_COMMIT}\"" >> build.go
+
+build: buildtags
 	@echo "--> Compiling the project"
 	mkdir -p bin
 	godep go build -o bin/${NAME}
 
-static:
+static: buildtags deps
 	@echo "--> Compiling the static binary"
 	mkdir -p bin
 	CGO_ENABLED=0 GOOS=linux godep go build -a -tags netgo -ldflags '-w' -o bin/${NAME}
+
+docker-build:
+	@echo "--> Compiling the project"
+	sudo docker run --rm -v ${ROOT_DIR}:/go/src/github.com/gambol99/keycloak-proxy \
+		-w /go/src/github.com/gambol99/keycloak-proxy -e GOOS=linux golang:${GOVERSION} make static
 
 docker: static
 	@echo "--> Building the docker image"
@@ -40,6 +58,7 @@ authors:
 
 deps:
 	@echo "--> Installing build dependencies"
+	@go get github.com/tools/godep
 	@go get -d -v ./... $(DEPS)
 
 vet:
