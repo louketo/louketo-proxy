@@ -27,7 +27,7 @@ import (
 
 const (
 	prog        = "keycloak-proxy"
-	version     = "v0.0.5"
+	version     = "v0.0.6"
 	author      = "Rohith"
 	email       = "gambol99@gmail.com"
 	description = "is a proxy using the keycloak service for auth and authorization"
@@ -72,8 +72,6 @@ type Resource struct {
 
 // Config is the configuration for the proxy
 type Config struct {
-	// Verbose switches on debug logging
-	Verbose bool `json:"verbose" yaml:"verbose"`
 	// LogRequests indicates if we should log all the requests
 	LogRequests bool `json:"log_requests" yaml:"log_requests"`
 	// LogFormat is the logging format
@@ -116,6 +114,10 @@ type Config struct {
 	ForbiddenPage string `json:"forbidden_page" yaml:"forbidden_page"`
 	// SkipTokenVerification tells the service to skipp verifying the access token - for testing purposes
 	SkipTokenVerification bool
+	// Verbose switches on debug logging
+	Verbose bool `json:"verbose" yaml:"verbose"`
+	// Hostname is a list of hostnames the service should response to
+	Hostnames []string `json:"hostnames" yaml:"hostname"`
 }
 
 // KeycloakProxy is the server component

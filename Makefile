@@ -79,6 +79,11 @@ format:
 	@echo "--> Running go fmt"
 	@go fmt $(PACKAGES)
 
+coverage:
+	@echo "--> Running go coverage"
+	@go test -coverprofile cover.out
+	@go tool cover -html=cover.out -o cover.html
+
 cover:
 	@echo "--> Running go cover"
 	@go test --cover
