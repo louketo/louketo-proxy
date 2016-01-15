@@ -32,7 +32,7 @@ func main() {
 	kc := cli.NewApp()
 	kc.Name = prog
 	kc.Usage = description
-	kc.Version = buildID
+	kc.Version = version
 	kc.Author = author
 	kc.Email = email
 	kc.Flags = getOptions()

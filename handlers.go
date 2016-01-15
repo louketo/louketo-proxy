@@ -69,7 +69,6 @@ func (r *KeycloakProxy) securityHandler() gin.HandlerFunc {
 	secure := secure.New(secure.Options{
 		AllowedHosts:          r.config.Hostnames,
 		BrowserXssFilter:      true,
-		ContentSecurityPolicy: "default-src 'self'",
 		ContentTypeNosniff:    true,
 		FrameDeny:             true,
 	})

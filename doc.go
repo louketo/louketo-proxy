@@ -27,7 +27,7 @@ import (
 
 const (
 	prog        = "keycloak-proxy"
-	version     = "v0.0.6"
+	version     = "v0.0.7"
 	author      = "Rohith"
 	email       = "gambol99@gmail.com"
 	description = "is a proxy using the keycloak service for auth and authorization"

@@ -1,3 +1,3 @@
 package main
 
-const buildID = "v0.0.5, git+sha: 81b7def"
+const buildID = "v0.0.6, git+sha: 8f1b3d8"
