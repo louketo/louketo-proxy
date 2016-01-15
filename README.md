@@ -17,7 +17,7 @@ USAGE:
    keycloak-proxy [global options] command [command options] [arguments...]
    
 VERSION:
-   v0.0.4
+   v0.0.6, git+sha: 73e0db2
    
 AUTHOR(S):
    Rohith <gambol99@gmail.com> 
@@ -34,6 +34,7 @@ GLOBAL OPTIONS:
    --upstream-url "http://127.0.0.1:8080"		the url for the upstream endpoint you wish to proxy to
    --encryption-key 					the encryption key used to encrpytion the session state
    --redirection-url 					the redirection url, namely the site url, note: /oauth will be added to it
+   --hostname [--hostname option --hostname option]	a list of hostname which the service will respond to, defaults to all
    --tls-cert 						the path to a certificate file used for TLS
    --tls-private-key 					the path to the private key for TLS support
    --scope [--scope option --scope option]		a variable list of scopes requested when authenticating the user
@@ -43,6 +44,7 @@ GLOBAL OPTIONS:
    --forbidden-page 					a custom template used for access forbidden
    --tag [--tag option --tag option]			a keypair tag which is passed to the templates when render, i.e. title='My Page',site='my name' etc
    --max-session "1h0m0s"				if refresh sessions are enabled we can limit their duration via this
+   --skip-token-verification				testing purposes ONLY, the option allows you to bypass the token verification, expiration and roles are still enforced
    --proxy-protocol					switches on proxy protocol support on the listen (not supported yet)
    --refresh-sessions					enables the refreshing of tokens via offline access
    --json-logging					switch on json logging rather than text (defaults true)
@@ -50,8 +52,6 @@ GLOBAL OPTIONS:
    --verbose						switch on debug / verbose logging
    --help, -h						show help
    --version, -v					print the version
-
-
 ```
 
 #### **Configuration**
@@ -142,13 +142,14 @@ resources:
 On protected resources the upstream endpoint will receive a number of headers added by the proxy;
 
 ```GO
-cx.Request.Header.Add("KEYCLOAK_ID", id.id)
-cx.Request.Header.Add("KEYCLOAK_SUBJECT", id.preferredName)
-cx.Request.Header.Add("KEYCLOAK_USERNAME", id.name)
-cx.Request.Header.Add("KEYCLOAK_EMAIL", id.email)
-cx.Request.Header.Add("KEYCLOAK_EXPIRES_IN", id.expiresAt.String())
-cx.Request.Header.Add("KEYCLOAK_ACCESS_TOKEN", id.token.Encode())
-cx.Request.Header.Add("KEYCLOAK_ROLES", strings.Join(id.roles, ","))
+# add the header to the upstream endpoint
+cx.Request.Header.Add("X-Auth-UserId", id.id)
+cx.Request.Header.Add("X-Auth-Subject", id.preferredName)
+cx.Request.Header.Add("X-Auth-Username", id.name)
+cx.Request.Header.Add("X-Auth-Email", id.email)
+cx.Request.Header.Add("X-Auth-ExpiresIn", id.expiresAt.String())
+cx.Request.Header.Add("X-Auth-Token", id.token.Encode())
+cx.Request.Header.Add("X-Auth-Roles", strings.Join(id.roles, ","))
 
 # plus the default
 cx.Request.Header.Add("X-Forwarded-For", <CLIENT_IP>)
@@ -159,14 +160,15 @@ cx.Request.Header.Add("X-Forwarded-Proto", <CLIENT_PROTO>)
 
 In order to remain stateless and not have to rely on a central cache to persist the 'refresh_tokens', the refresh token is encrypted and added as a cookie using *crypto/aes*. Naturally the key must be the same if your running behind a load balancer etc.  
 
-#### **Clain Matching**
+#### **Claim Matching**
 
-Note, you can add variable list of claim matches on the presented token by using the --claim 'key=pair' command option of a map 'claims' in the config file (see the example file)
+Note, you can add a variable list of claim matches on the presented token by using the --claim 'key=pair' command option or a map 'claims' in the config file (see the example file), before permitting
+access via the proxy each of the claims inside the token are evaluated.
 
 #### **Custom Pages**
 
 By default the proxy will immediately redirect you for authentication and hand back 403 for access denied. Most users will probably want to present the user with a more friendly
-signin and access denied page. You can pass the command line options (or via config file) paths to the files i.e. --signin-pag=PATH. The sign-in page will have a 'redirect' 
+sign-in and access denied page. You can pass the command line options (or via config file) paths to the files i.e. --signin-pag=PATH. The sign-in page will have a 'redirect' 
 passed into the scope hold the oauth redirection url. If you wish pass additional variables into the templates, perhaps title, sitename etc, you can use the --tag key=pair i.e. 
 --tag title="This is my site"; the variable would be accessible from {{ .title }}
 
