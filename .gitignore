@@ -3,6 +3,8 @@
 bin/
 release/
 tests/
+cover.html
+cover.out
 
 *.iml
 config.yml

@@ -51,6 +51,15 @@ func TestIsValid(t *testing.T) {
 	}
 }
 
+func TestResourceString(t *testing.T) {
+	resource := &Resource{
+		RolesAllowed: []string{"1", "2", "3"},
+	}
+	if s := resource.String(); s == "" {
+		t.Errorf("we should have recieved a string")
+	}
+}
+
 func TestGetRoles(t *testing.T) {
 	resource := &Resource{
 		RolesAllowed: []string{"1", "2", "3"},

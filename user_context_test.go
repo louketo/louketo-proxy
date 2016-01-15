@@ -32,7 +32,7 @@ func TestIsAudience(t *testing.T) {
 	}
 }
 
-func TestGetROles(t *testing.T) {
+func TestGetUserRoles(t *testing.T) {
 	user := &userContext{
 		roles: []string{"1", "2", "3"},
 	}
@@ -50,5 +50,14 @@ func TestIsExpired(t *testing.T) {
 	}
 	if !user.isExpired() {
 		t.Errorf("we should have been false")
+	}
+}
+
+func TestIsBearerToken(t *testing.T) {
+	user := &userContext{
+		bearerToken: true,
+	}
+	if !user.isBearerToken() {
+		t.Errorf("the bearer token should have been true")
 	}
 }
