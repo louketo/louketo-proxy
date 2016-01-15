@@ -76,7 +76,6 @@ func (r *Config) isValid() error {
 		if r.MaxSession == 0 && r.RefreshSession {
 			r.MaxSession = time.Duration(6) * time.Hour
 		}
-
 	}
 	for _, resource := range r.Resources {
 		if err := resource.isValid(); err != nil {
@@ -164,6 +163,9 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 	if cx.IsSet("scope") {
 		config.Scopes = cx.StringSlice("scope")
 	}
+	if cx.IsSet("hostname") {
+		config.Hostnames = cx.StringSlice("hostname")
+	}
 	if cx.IsSet("tag") {
 		config.TagData, err = decodeKeyPairs(cx.StringSlice("tag"))
 		if err != nil {
@@ -246,6 +248,10 @@ func getOptions() []cli.Flag {
 		cli.StringFlag{
 			Name:  "redirection-url",
 			Usage: "the redirection url, namely the site url, note: " + oauthURL + " will be added to it",
+		},
+		cli.StringSliceFlag{
+			Name:  "hostname",
+			Usage: "a list of hostname which the service will respond to, defaults to all",
 		},
 		cli.StringFlag{
 			Name:  "tls-cert",
