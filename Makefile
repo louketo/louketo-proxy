@@ -59,7 +59,6 @@ authors:
 deps:
 	@echo "--> Installing build dependencies"
 	@go get github.com/tools/godep
-	@go get -d -v ./... $(DEPS)
 
 vet:
 	@echo "--> Running go vet $(VETARGS) ."
@@ -81,16 +80,16 @@ format:
 
 coverage:
 	@echo "--> Running go coverage"
-	@go test -coverprofile cover.out
-	@go tool cover -html=cover.out -o cover.html
+	@godep go test -coverprofile cover.out
+	@godep go tool cover -html=cover.out -o cover.html
 
 cover:
 	@echo "--> Running go cover"
-	@go test --cover
+	@godep go test --cover
 
 test: deps
 	@echo "--> Running the tests"
-	go test -v
+	@godep go test -v
 	@$(MAKE) vet
 	@$(MAKE) cover
 

@@ -1,0 +1,24 @@
+#
+#  vim:ts=2:sw=2:et
+#
+
+stages:
+  - tests
+  - build
+
+tests:
+  stage: tests
+  image: golang:1.5.3
+  script:
+    - make deps
+    - make test
+
+build:
+  stage: build
+  image: golang:1.5.3
+  artifacts:
+    paths:
+    - bin/
+  script:
+    - make deps
+    - make static
