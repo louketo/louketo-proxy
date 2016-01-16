@@ -117,7 +117,7 @@ type Config struct {
 	// Verbose switches on debug logging
 	Verbose bool `json:"verbose" yaml:"verbose"`
 	// Hostname is a list of hostnames the service should response to
-	Hostnames []string `json:"hostnames" yaml:"hostname"`
+	Hostnames []string `json:"hostnames" yaml:"hostnames"`
 }
 
 // KeycloakProxy is the server component
