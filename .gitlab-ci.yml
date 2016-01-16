@@ -16,9 +16,6 @@ tests:
 build:
   stage: build
   image: golang:1.5.3
-  artifacts:
-    paths:
-    - bin/
   script:
     - make deps
     - make static
