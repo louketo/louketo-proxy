@@ -74,9 +74,18 @@ lint:
 	fi
 	@golint .
 
+gofmt:
+	@echo "--> Running gofmt check"
+	@gofmt -s -l *.go \
+	    | grep -q \.go ; if [ $$? -eq 0 ]; then \
+            echo "You need to runn the make format, we have file unformatted"; \
+            gofmt -s -l *.go; \
+            exit 1; \
+	    fi
+
 format:
 	@echo "--> Running go fmt"
-	@go fmt $(PACKAGES)
+	@gofmt -s -w *.go
 
 coverage:
 	@echo "--> Running go coverage"
@@ -90,6 +99,7 @@ cover:
 test: deps
 	@echo "--> Running the tests"
 	@godep go test -v
+	@$(MAKE) gofmt
 	@$(MAKE) vet
 	@$(MAKE) cover
 

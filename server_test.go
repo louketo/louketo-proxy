@@ -54,17 +54,17 @@ func newFakeKeycloakProxy(t *testing.T) *KeycloakProxy {
 				"aud": fakeClientID,
 			},
 			Resources: []*Resource{
-				&Resource{
+				{
 					URL:          fakeAdminRoleURL,
 					Methods:      []string{"GET"},
 					RolesAllowed: []string{fakeAdminRole},
 				},
-				&Resource{
+				{
 					URL:          fakeTestRoleURL,
 					Methods:      []string{"GET"},
 					RolesAllowed: []string{fakeTestRole},
 				},
-				&Resource{
+				{
 					URL:          fakeTestAdminRolesURL,
 					Methods:      []string{"GET"},
 					RolesAllowed: []string{fakeAdminRole, fakeTestRole},
