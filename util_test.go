@@ -90,7 +90,7 @@ func TestEncryptDataBlock(t *testing.T) {
 
 func TestFindCookie(t *testing.T) {
 	cookies := []*http.Cookie{
-		&http.Cookie{
+		{
 			Name: "cookie_there",
 		},
 	}
@@ -176,10 +176,10 @@ func TestValidateResources(t *testing.T) {
 	}{
 		{
 			Resources: []*Resource{
-				&Resource{
+				{
 					URL: "/test",
 				},
-				&Resource{
+				{
 					URL:     "/test1",
 					Methods: []string{},
 				},
@@ -188,10 +188,10 @@ func TestValidateResources(t *testing.T) {
 		},
 		{
 			Resources: []*Resource{
-				&Resource{
+				{
 					URL: "/test",
 				},
-				&Resource{},
+				{},
 			},
 		},
 	}
