@@ -59,6 +59,10 @@ func (r Resource) String() string {
 	var roles string
 	var methods string
 
+	if r.WhiteListed {
+		return fmt.Sprintf("uri: %s, white-listed", r.URL)
+	}
+
 	if len(r.RolesAllowed) <= 0 {
 		roles = "authentication only"
 	} else {

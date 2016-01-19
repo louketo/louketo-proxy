@@ -236,6 +236,14 @@ func TestDecodeResource(t *testing.T) {
 			},
 		},
 		{
+			Option: "uri=/allow_me|white-listed=true",
+			Ok:     true,
+			Resource: &Resource{
+				URL:         "/allow_me",
+				WhiteListed: true,
+			},
+		},
+		{
 			Option: "",
 		},
 	}

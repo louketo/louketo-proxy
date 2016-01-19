@@ -26,32 +26,32 @@ COMMANDS:
    help, h	Shows a list of commands or help for one command
    
 GLOBAL OPTIONS:
-   --config 						the path to the configuration file for the keycloak proxy
+   --config 						        the path to the configuration file for the keycloak proxy
    --listen "127.0.0.1:8080"				the interface the service should be listening on
-   --secret 						the client secret used to authenticate to the oauth server
-   --client-id 						the client id used to authenticate to the oauth serves
-   --discovery-url 					the discovery url to retrieve the openid configuration
-   --upstream-url "http://127.0.0.1:8080"		the url for the upstream endpoint you wish to proxy to
-   --encryption-key 					the encryption key used to encrpytion the session state
-   --redirection-url 					the redirection url, namely the site url, note: /oauth will be added to it
+   --secret 						        the client secret used to authenticate to the oauth server
+   --client-id 						        the client id used to authenticate to the oauth serves
+   --discovery-url 					        the discovery url to retrieve the openid configuration
+   --upstream-url "http://127.0.0.1:8080"	the url for the upstream endpoint you wish to proxy to
+   --encryption-key 					    the encryption key used to encrpytion the session state
+   --redirection-url 					    the redirection url, namely the site url, note: /oauth will be added to it
    --hostname [--hostname option --hostname option]	a list of hostname which the service will respond to, defaults to all
-   --tls-cert 						the path to a certificate file used for TLS
-   --tls-private-key 					the path to the private key for TLS support
-   --scope [--scope option --scope option]		a variable list of scopes requested when authenticating the user
-   --claim [--claim option --claim option]		a series of key pair values which must match the claims in the token present e.g. aud=myapp, iss=http://example.com etcd
-   --resource [--resource option --resource option]	a list of resources 'uri=/admin|methods=GET|roles=role1,role2'
-   --signin-page 					a custom template displayed for signin
-   --forbidden-page 					a custom template used for access forbidden
-   --tag [--tag option --tag option]			a keypair tag which is passed to the templates when render, i.e. title='My Page',site='my name' etc
-   --max-session "1h0m0s"				if refresh sessions are enabled we can limit their duration via this
+   --tls-cert 						        the path to a certificate file used for TLS
+   --tls-private-key 					    the path to the private key for TLS support
+   --scope [--scope option --scope option]	a variable list of scopes requested when authenticating the user
+   --claim [--claim option --claim option]	a series of key pair values which must match the claims in the token present e.g. aud=myapp, iss=http://example.com etcd
+   --resource [--resource option --resource option]	a list of resources 'uri=/admin|methods=GET|roles=role1,role2|whitelisted=(true|false)'
+   --signin-page 					        a custom template displayed for signin
+   --forbidden-page 					    a custom template used for access forbidden
+   --tag [--tag option --tag option]		a keypair tag which is passed to the templates when render, i.e. title='My Page',site='my name' etc
+   --max-session "1h0m0s"				    if refresh sessions are enabled we can limit their duration via this
    --skip-token-verification				testing purposes ONLY, the option allows you to bypass the token verification, expiration and roles are still enforced
-   --proxy-protocol					switches on proxy protocol support on the listen (not supported yet)
-   --refresh-sessions					enables the refreshing of tokens via offline access
-   --json-logging					switch on json logging rather than text (defaults true)
-   --log-requests					switch on logging of all incoming requests (defaults true)
-   --verbose						switch on debug / verbose logging
-   --help, -h						show help
-   --version, -v					print the version
+   --proxy-protocol					        switches on proxy protocol support on the listen (not supported yet)
+   --refresh-sessions					    enables the refreshing of tokens via offline access
+   --json-logging					        switch on json logging rather than text (defaults true)
+   --log-requests					        switch on logging of all incoming requests (defaults true)
+   --verbose						        switch on debug / verbose logging
+   --help, -h						        show help
+   --version, -v					        print the version
 ```
 
 #### **Configuration**
@@ -179,5 +179,26 @@ passed into the scope hold the oauth redirection url. If you wish pass additiona
 </body>
 </html>
 
+#### **White-listed URL's** 
 
+Depending on how the application urls are laid out, you might want protect the root / url but have exceptions on a list of paths, i.e. /health etc. Although you should probably
+fix this by fixing up the paths, you can add excepts to the protected resources. (Note: it's an array, so the order is important)
+
+```YAML
+  resources:
+  - url: /some_white_listed_url
+    white-listed: true
+  - url: /
+    methods:
+      - GET
+    roles_allowed:
+      - <CLIENT_APP_NAME>:<ROLE_NAME>
+      - <CLIENT_APP_NAME>:<ROLE_NAME>
+```
+
+Or on the command line 
+
+```shell
+  --resource "uri=/some_white_listed_url,white-listed=true"
+  --resource "uri=/"  # requires authentication on the rest
 ```

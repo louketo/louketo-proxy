@@ -18,13 +18,30 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"os"
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/gambol99/go-oidc/oidc"
 	"github.com/gin-gonic/gin"
 )
+
+// KeycloakProxy is the server component
+type KeycloakProxy struct {
+	config *Config
+	// the gin service
+	router *gin.Engine
+	// the oidc provider config
+	openIDConfig oidc.ClientConfig
+	// the oidc client
+	openIDClient *oidc.Client
+	// the proxy client
+	proxy *httputil.ReverseProxy
+	// the upstream endpoint
+	upstreamURL *url.URL
+}
 
 // newKeycloakProxy create's a new keycloak proxy from configuration
 func newKeycloakProxy(cfg *Config) (*KeycloakProxy, error) {

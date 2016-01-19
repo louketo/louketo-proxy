@@ -35,6 +35,14 @@ const (
 	claimResourceRoles  = "roles"
 )
 
+// sessionState holds the state related data
+type sessionState struct {
+	// the max time the session is permitted
+	expireOn time.Time
+	// the refresh token if any
+	refreshToken string
+}
+
 // refreshUserSessionToken is responsible for retrieving the session state cookie and attempting to
 // refresh the access token for the user
 func (r *KeycloakProxy) refreshUserSessionToken(cx *gin.Context) (jose.JWT, error) {
