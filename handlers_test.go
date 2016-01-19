@@ -44,14 +44,24 @@ func TestEntrypointHandler(t *testing.T) {
 			Context: newFakeGinContext("GET", "/not_secure"),
 		},
 		{
+			Context: newFakeGinContext("GET", fakeTestWhitelistedURL),
+		},
+		{
 			Context: newFakeGinContext("GET", oauthURL),
+		},
+		{
+			Context: newFakeGinContext("GET", faketestListenOrdered), Secure: true,
 		},
 	}
 
 	for i, c := range tests {
 		handler(c.Context)
-		if _, found := c.Context.Get(cxEnforce); c.Secure && !found {
+		_, found := c.Context.Get(cxEnforce)
+		if c.Secure && !found {
 			t.Errorf("test case %d should have been set secure", i)
+		}
+		if !c.Secure && found {
+			t.Errorf("test case %d should not have been set secure", i)
 		}
 	}
 }
@@ -132,6 +142,18 @@ func TestAdmissionHandler(t *testing.T) {
 				roles: []string{fakeTestRole, fakeAdminRole},
 			},
 		},
+		{
+			Context:  newFakeGinContext("POST", fakeAdminRoleURL),
+			HTTPCode: http.StatusForbidden,
+			Resource: &Resource{
+				URL:          fakeAdminRoleURL,
+				Methods:      []string{"POST"},
+				RolesAllowed: []string{fakeTestRole, "test"},
+			},
+			UserContext: &userContext{
+				roles: []string{fakeTestRole, fakeAdminRole},
+			},
+		},
 	}
 
 	for i, c := range tests {
@@ -145,5 +167,14 @@ func TestAdmissionHandler(t *testing.T) {
 		if c.Context.Writer.Status() != c.HTTPCode {
 			t.Errorf("test case %d should have recieved code: %d, got %d", i, c.HTTPCode, c.Context.Writer.Status())
 		}
+	}
+}
+
+func TestHealthHandler(t *testing.T) {
+	proxy := newFakeKeycloakProxy(t)
+	context := newFakeGinContext("GET", healthURL)
+	proxy.healthHandler(context)
+	if context.Writer.Status() != http.StatusOK {
+		t.Errorf("we should have recieved a 200 response")
 	}
 }

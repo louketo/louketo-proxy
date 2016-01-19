@@ -285,7 +285,7 @@ func decodeResource(v string) (*Resource, error) {
 		// step: split up the keypair
 		kp := strings.Split(x, "=")
 		if len(kp) != 2 {
-			return nil, fmt.Errorf("invalid resource keypair, should be (uri|roles|method)=comma_values")
+			return nil, fmt.Errorf("invalid resource keypair, should be (uri|roles|method|white-listed)=comma_values")
 		}
 		switch kp[0] {
 		case "uri":
@@ -294,6 +294,12 @@ func decodeResource(v string) (*Resource, error) {
 			resource.Methods = strings.Split(kp[1], ",")
 		case "roles":
 			resource.RolesAllowed = strings.Split(kp[1], ",")
+		case "white-listed":
+			value, err := strconv.ParseBool(kp[1])
+			if err != nil {
+				return nil, fmt.Errorf("the value of whitelisted must be true|TRUE|T or it's false equivilant")
+			}
+			resource.WhiteListed = value
 		default:
 			return nil, fmt.Errorf("invalid identifier, should be roles, uri or methods")
 		}

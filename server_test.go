@@ -31,9 +31,12 @@ const (
 	fakeClientID = "test"
 	fakeSecret   = fakeClientID
 
-	fakeAdminRoleURL      = "/admin"
-	fakeTestRoleURL       = "/test_role"
-	fakeTestAdminRolesURL = "/test_admin_roles"
+	fakeAdminRoleURL       = "/admin"
+	fakeTestRoleURL        = "/test_role"
+	fakeTestAdminRolesURL  = "/test_admin_roles"
+	fakeAuthAllURL         = "/auth_all"
+	fakeTestWhitelistedURL = fakeAuthAllURL + "/white_listed"
+	faketestListenOrdered  = fakeAuthAllURL + "/bad_order"
 
 	fakeAdminRole = "role:admin"
 	fakeTestRole  = "role:test"
@@ -68,6 +71,23 @@ func newFakeKeycloakProxy(t *testing.T) *KeycloakProxy {
 					URL:          fakeTestAdminRolesURL,
 					Methods:      []string{"GET"},
 					RolesAllowed: []string{fakeAdminRole, fakeTestRole},
+				},
+				{
+					URL:          fakeTestWhitelistedURL,
+					WhiteListed:  true,
+					Methods:      []string{},
+					RolesAllowed: []string{},
+				},
+				{
+					URL:          fakeAuthAllURL,
+					Methods:      []string{"ANY"},
+					RolesAllowed: []string{},
+				},
+				{
+					URL:          fakeTestWhitelistedURL,
+					WhiteListed:  true,
+					Methods:      []string{},
+					RolesAllowed: []string{},
 				},
 			},
 		},

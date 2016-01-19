@@ -17,12 +17,7 @@ package main
 
 import (
 	"errors"
-	"net/http/httputil"
-	"net/url"
 	"time"
-
-	"github.com/gambol99/go-oidc/oidc"
-	"github.com/gin-gonic/gin"
 )
 
 const (
@@ -66,6 +61,8 @@ type Resource struct {
 	URL string `json:"url" yaml:"url"`
 	// Methods the method type
 	Methods []string `json:"methods" yaml:"methods"`
+	// WhiteListed permits the prefix through
+	WhiteListed bool `json:"white-listed" yaml:"white-listed"`
 	// RolesAllowed the roles required to access this url
 	RolesAllowed []string `json:"roles_allowed" yaml:"roles_allowed"`
 }
@@ -118,27 +115,4 @@ type Config struct {
 	Verbose bool `json:"verbose" yaml:"verbose"`
 	// Hostname is a list of hostnames the service should response to
 	Hostnames []string `json:"hostnames" yaml:"hostnames"`
-}
-
-// KeycloakProxy is the server component
-type KeycloakProxy struct {
-	config *Config
-	// the gin service
-	router *gin.Engine
-	// the oidc provider config
-	openIDConfig oidc.ClientConfig
-	// the oidc client
-	openIDClient *oidc.Client
-	// the proxy client
-	proxy *httputil.ReverseProxy
-	// the upstream endpoint
-	upstreamURL *url.URL
-}
-
-// sessionState holds the state related data
-type sessionState struct {
-	// the max time the session is permitted
-	expireOn time.Time
-	// the refresh token if any
-	refreshToken string
 }

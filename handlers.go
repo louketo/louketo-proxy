@@ -95,6 +95,10 @@ func (r *KeycloakProxy) entrypointHandler() gin.HandlerFunc {
 			// step: check if authentication is required - gin doesn't support wildcard url, so we have have to use prefixes
 			for _, resource := range r.config.Resources {
 				if strings.HasPrefix(cx.Request.RequestURI, resource.URL) {
+					// step: has the resource been white listed?
+					if resource.WhiteListed {
+						break
+					}
 					// step: inject the resource into the context, saves us from doing this again
 					if containedIn(cx.Request.Method, resource.Methods) || containedIn("ANY", resource.Methods) {
 						cx.Set(cxEnforce, resource)
