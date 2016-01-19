@@ -178,6 +178,7 @@ passed into the scope hold the oauth redirection url. If you wish pass additiona
 <a href="{{ .redirect }}">Sign-in</a>
 </body>
 </html>
+```
 
 #### **White-listed URL's** 
 
