@@ -17,41 +17,41 @@ package main
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
-	"github.com/gambol99/go-oidc/jose"
 	"github.com/gin-gonic/gin"
 )
 
-func TestEntrypointHandler(t *testing.T) {
-	proxy := newFakeKeycloakProxy(t)
+func TestEntrypointHandlerSecure(t *testing.T) {
+	proxy := newFakeKeycloakProxyWithResources(t, []*Resource{
+		{
+			URL:         "/admin/white_listed",
+			WhiteListed: true,
+		},
+		{
+			URL:     "/admin",
+			Methods: []string{"ANY"},
+		},
+		{
+			URL:          "/",
+			Methods:      []string{"POST"},
+			RolesAllowed: []string{"test"},
+		},
+	})
+
 	handler := proxy.entrypointHandler()
 
 	tests := []struct {
 		Context *gin.Context
 		Secure  bool
 	}{
-		{
-			Context: newFakeGinContext("GET", fakeAdminRoleURL), Secure: true,
-		},
-		{
-			Context: newFakeGinContext("GET", fakeAdminRoleURL+"/sso"), Secure: true,
-		},
-		{
-			Context: newFakeGinContext("GET", fakeAdminRoleURL+"/../sso"), Secure: true,
-		},
-		{
-			Context: newFakeGinContext("GET", "/not_secure"),
-		},
-		{
-			Context: newFakeGinContext("GET", fakeTestWhitelistedURL),
-		},
-		{
-			Context: newFakeGinContext("GET", oauthURL),
-		},
-		{
-			Context: newFakeGinContext("GET", faketestListenOrdered), Secure: true,
-		},
+		{Context: newFakeGinContext("GET", "/")},
+		{Context: newFakeGinContext("GET", "/admin"), Secure: true},
+		{Context: newFakeGinContext("GET", "/admin/white_listed")},
+		{Context: newFakeGinContext("GET", "/admin/white"), Secure: true},
+		{Context: newFakeGinContext("GET", "/not_secure")},
+		{Context: newFakeGinContext("POST", "/"), Secure: true},
 	}
 
 	for i, c := range tests {
@@ -66,107 +66,230 @@ func TestEntrypointHandler(t *testing.T) {
 	}
 }
 
-func TestAdmissionHandler(t *testing.T) {
+func TestEntrypointMethods(t *testing.T) {
+	proxy := newFakeKeycloakProxyWithResources(t, []*Resource{
+		{
+			URL:     "/u0",
+			Methods: []string{"GET", "POST"},
+		},
+		{
+			URL:     "/u1",
+			Methods: []string{"ANY"},
+		},
+		{
+			URL:     "/u2",
+			Methods: []string{"POST", "PUT"},
+		},
+	})
+
+	handler := proxy.entrypointHandler()
+
+	tests := []struct {
+		Context *gin.Context
+		Secure  bool
+	}{
+		{Context: newFakeGinContext("GET", "/u0"), Secure: true},
+		{Context: newFakeGinContext("POST", "/u0"), Secure: true},
+		{Context: newFakeGinContext("PUT", "/u0"), Secure: false},
+		{Context: newFakeGinContext("GET", "/u1"), Secure: true},
+		{Context: newFakeGinContext("POST", "/u1"), Secure: true},
+		{Context: newFakeGinContext("PATCH", "/u1"), Secure: true},
+		{Context: newFakeGinContext("POST", "/u2"), Secure: true},
+		{Context: newFakeGinContext("PUT", "/u2"), Secure: true},
+		{Context: newFakeGinContext("DELETE", "/u2"), Secure: false},
+	}
+
+	for i, c := range tests {
+		handler(c.Context)
+		_, found := c.Context.Get(cxEnforce)
+		if c.Secure && !found {
+			t.Errorf("test case %d should have been set secure", i)
+		}
+		if !c.Secure && found {
+			t.Errorf("test case %d should not have been set secure", i)
+		}
+	}
+}
+
+func TestEntrypointWhiteListing(t *testing.T) {
+	proxy := newFakeKeycloakProxyWithResources(t, []*Resource{
+		{
+			URL:         "/admin/white_listed",
+			WhiteListed: true,
+		},
+		{
+			URL:     "/admin",
+			Methods: []string{"ANY"},
+		},
+	})
+	handler := proxy.entrypointHandler()
+
+	tests := []struct {
+		Context *gin.Context
+		Secure  bool
+	}{
+		{Context: newFakeGinContext("GET", "/")},
+		{Context: newFakeGinContext("GET", "/admin"), Secure: true},
+		{Context: newFakeGinContext("GET", "/admin/white_listed")},
+	}
+
+	for i, c := range tests {
+		handler(c.Context)
+		_, found := c.Context.Get(cxEnforce)
+		if c.Secure && !found {
+			t.Errorf("test case %d should have been set secure", i)
+		}
+		if !c.Secure && found {
+			t.Errorf("test case %d should not have been set secure", i)
+		}
+	}
+
+}
+
+func TestEntrypointHandler(t *testing.T) {
 	proxy := newFakeKeycloakProxy(t)
+	handler := proxy.entrypointHandler()
+
+	tests := []struct {
+		Context *gin.Context
+		Secure  bool
+	}{
+		{Context: newFakeGinContext("GET", fakeAdminRoleURL), Secure: true},
+		{Context: newFakeGinContext("GET", fakeAdminRoleURL+"/sso"), Secure: true},
+		{Context: newFakeGinContext("GET", fakeAdminRoleURL+"/../sso"), Secure: true},
+		{Context: newFakeGinContext("GET", "/not_secure")},
+		{Context: newFakeGinContext("GET", fakeTestWhitelistedURL)},
+		{Context: newFakeGinContext("GET", oauthURL)},
+		{Context: newFakeGinContext("GET", faketestListenOrdered), Secure: true},
+	}
+
+	for i, c := range tests {
+		handler(c.Context)
+		_, found := c.Context.Get(cxEnforce)
+		if c.Secure && !found {
+			t.Errorf("test case %d should have been set secure", i)
+		}
+		if !c.Secure && found {
+			t.Errorf("test case %d should not have been set secure", i)
+		}
+	}
+}
+
+func TestAdmissionHandlerRoles(t *testing.T) {
+	proxy := newFakeKeycloakProxyWithResources(t, []*Resource{
+		{
+			URL:          "/admin",
+			Methods:      []string{"ANY"},
+			RolesAllowed: []string{"admin"},
+		},
+		{
+			URL:          "/test",
+			Methods:      []string{"GET"},
+			RolesAllowed: []string{"test"},
+		},
+		{
+			URL:          "/either",
+			Methods:      []string{"ANY"},
+			RolesAllowed: []string{"admin", "test"},
+		},
+		{
+			URL:     "/",
+			Methods: []string{"ANY"},
+		},
+	})
 	handler := proxy.admissionHandler()
+
 	tests := []struct {
 		Context     *gin.Context
-		Resource    *Resource
 		UserContext *userContext
 		HTTPCode    int
 	}{
 		{
-			Context:  newFakeGinContext("GET", ""),
-			HTTPCode: http.StatusOK,
+			Context:     newFakeGinContext("GET", "/admin"),
+			UserContext: &userContext{},
+			HTTPCode:    http.StatusForbidden,
 		},
 		{
 			Context:  newFakeGinContext("GET", "/admin"),
-			HTTPCode: http.StatusForbidden,
-			Resource: &Resource{
-				URL:          fakeAdminRoleURL,
-				Methods:      []string{"GET"},
-				RolesAllowed: []string{fakeAdminRole},
-			},
-			UserContext: &userContext{
-				roles: []string{},
-			},
-		},
-		{
-			Context:  newFakeGinContext("GET", fakeAdminRoleURL),
 			HTTPCode: http.StatusOK,
-			Resource: &Resource{
-				URL:          fakeAdminRoleURL,
-				Methods:      []string{"GET"},
-				RolesAllowed: []string{fakeAdminRole},
-			},
 			UserContext: &userContext{
-				roles:  []string{fakeAdminRole},
-				claims: jose.Claims{"aud": fakeClientID},
+				roles: []string{"admin"},
 			},
 		},
 		{
-			Context:  newFakeGinContext("GET", fakeAdminRoleURL+"/sso"),
+			Context:  newFakeGinContext("GET", "/test"),
 			HTTPCode: http.StatusOK,
-			Resource: &Resource{
-				URL:          fakeAdminRoleURL,
-				Methods:      []string{"GET"},
-				RolesAllowed: []string{fakeAdminRole},
-			},
 			UserContext: &userContext{
-				roles:  []string{fakeTestRole, fakeAdminRole},
-				claims: jose.Claims{"aud": fakeClientID},
+				roles: []string{"test"},
 			},
 		},
 		{
-			Context:  newFakeGinContext("GET", fakeTestRoleURL),
-			HTTPCode: http.StatusForbidden,
-			Resource: &Resource{
-				URL:          fakeAdminRoleURL,
-				Methods:      []string{"GET"},
-				RolesAllowed: []string{fakeTestRole, "test"},
-			},
+			Context:  newFakeGinContext("GET", "/either"),
+			HTTPCode: http.StatusOK,
 			UserContext: &userContext{
-				roles:  []string{fakeTestRole, fakeAdminRole},
-				claims: jose.Claims{"aud": fakeClientID},
+				roles: []string{"test", "admin"},
 			},
 		},
 		{
-			Context:  newFakeGinContext("GET", fakeAdminRoleURL),
+			Context:  newFakeGinContext("GET", "/either"),
 			HTTPCode: http.StatusForbidden,
-			Resource: &Resource{
-				URL:          fakeAdminRoleURL,
-				Methods:      []string{"GET"},
-				RolesAllowed: []string{fakeTestRole, "test"},
-			},
 			UserContext: &userContext{
-				roles: []string{fakeTestRole, fakeAdminRole},
+				roles: []string{"no_roles"},
 			},
 		},
 		{
-			Context:  newFakeGinContext("POST", fakeAdminRoleURL),
-			HTTPCode: http.StatusForbidden,
-			Resource: &Resource{
-				URL:          fakeAdminRoleURL,
-				Methods:      []string{"POST"},
-				RolesAllowed: []string{fakeTestRole, "test"},
-			},
-			UserContext: &userContext{
-				roles: []string{fakeTestRole, fakeAdminRole},
-			},
+			Context:     newFakeGinContext("GET", "/"),
+			HTTPCode:    http.StatusOK,
+			UserContext: &userContext{},
 		},
 	}
 
 	for i, c := range tests {
-		if c.Resource != nil {
-			c.Context.Set(cxEnforce, c.Resource)
+		// step: find the resource and inject into the context
+		for _, r := range proxy.config.Resources {
+			if strings.HasPrefix(c.Context.Request.RequestURI, r.URL) {
+				c.Context.Set(cxEnforce, r)
+				break
+			}
 		}
-		if c.UserContext != nil {
-			c.Context.Set(userContextName, c.UserContext)
+		if _, found := c.Context.Get(cxEnforce); !found {
+			t.Errorf("test case %d unable to find a resource for context", i)
+			continue
 		}
+
+		c.Context.Set(userContextName, c.UserContext)
+
 		handler(c.Context)
 		if c.Context.Writer.Status() != c.HTTPCode {
 			t.Errorf("test case %d should have recieved code: %d, got %d", i, c.HTTPCode, c.Context.Writer.Status())
 		}
+	}
+}
+
+func TestSecurityHandler(t *testing.T) {
+	kc := newFakeKeycloakProxy(t)
+	handler := kc.securityHandler()
+	context := newFakeGinContext("GET", "/")
+	handler(context)
+	if context.Writer.Status() != http.StatusOK {
+		t.Errorf("we should have received a 200")
+	}
+
+	kc = newFakeKeycloakProxy(t)
+	kc.config.Hostnames = []string{"127.0.0.1"}
+	handler = kc.securityHandler()
+	handler(context)
+	if context.Writer.Status() != http.StatusOK {
+		t.Errorf("we should have received a 200 not %d", context.Writer.Status())
+	}
+
+	kc = newFakeKeycloakProxy(t)
+	kc.config.Hostnames = []string{"127.0.0.2"}
+	handler = kc.securityHandler()
+	handler(context)
+	handler(context)
+	if context.Writer.Status() != http.StatusInternalServerError {
+		t.Errorf("we should have received a 500 not %d", context.Writer.Status())
 	}
 }
 

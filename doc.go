@@ -97,7 +97,7 @@ type Config struct {
 	TLSCertificate string `json:"tls_cert" yaml:"tls_cert"`
 	// TLSPrivateKey is the location of a tls private key
 	TLSPrivateKey string `json:"tls_private_key" yaml:"tls_private_key"`
-	// Upstream is the upstream endpoint i.e whom were proxing to
+	// Upstream is the upstream endpoint i.e whom were proxying to
 	Upstream string `json:"upstream" yaml:"upstream"`
 	// TagData is passed to the templates
 	TagData map[string]string `json:"TagData" yaml:"TagData"`

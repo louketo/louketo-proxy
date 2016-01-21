@@ -42,9 +42,15 @@ const (
 	fakeTestRole  = "role:test"
 )
 
+func newFakeKeycloakProxyWithResources(t *testing.T, resources []*Resource) *KeycloakProxy {
+	kc := newFakeKeycloakProxy(t)
+	kc.config.Resources = resources
+	return kc
+}
+
 func newFakeKeycloakProxy(t *testing.T) *KeycloakProxy {
 	log.SetOutput(ioutil.Discard)
-	return &KeycloakProxy{
+	kc := &KeycloakProxy{
 		config: &Config{
 			DiscoveryURL:          "127.0.0.1:",
 			ClientID:              fakeClientID,
@@ -53,9 +59,6 @@ func newFakeKeycloakProxy(t *testing.T) *KeycloakProxy {
 			SkipTokenVerification: true,
 			Scopes:                []string{},
 			RefreshSession:        false,
-			ClaimsMatch: map[string]string{
-				"aud": fakeClientID,
-			},
 			Resources: []*Resource{
 				{
 					URL:          fakeAdminRoleURL,
@@ -92,6 +95,8 @@ func newFakeKeycloakProxy(t *testing.T) *KeycloakProxy {
 			},
 		},
 	}
+
+	return kc
 }
 
 func TestRedirectToAuthorization(t *testing.T) {
@@ -150,6 +155,7 @@ func newFakeGinContext(method, uri string) *gin.Context {
 	return &gin.Context{
 		Request: &http.Request{
 			Method:     method,
+			Host:       "127.0.0.1",
 			RequestURI: uri,
 			URL: &url.URL{
 				Scheme: "http",

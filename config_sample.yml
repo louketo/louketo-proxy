@@ -33,7 +33,7 @@ scopes:
 # So for example, you could match the audience or the issuer or some custom attribute
 claims:
   aud: openvpn
-  iss: https://https://keycloak.example.com/auth/realms/commons
+  iss: https://keycloak.example.com/auth/realms/commons
 # a collection of resource i.e. urls that you wish to protect
 resources:
   - url: /admin/test
@@ -44,6 +44,9 @@ resources:
     roles_allowed:
       - openvpn:vpn-user
       - openvpn:prod-vpn
+  - url: /admin/white_listed
+    # permits a url prefix through, bypassing the admission controls
+    white-listed: true
   - url: /admin
     methods:
       - GET

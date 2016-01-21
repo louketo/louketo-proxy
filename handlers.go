@@ -269,6 +269,7 @@ func (r *KeycloakProxy) admissionHandler() gin.HandlerFunc {
 					"resource": resource.URL,
 					"required": resource.getRoles(),
 				}).Warnf("access denied, invalid roles")
+
 				r.accessForbidden(cx)
 
 				return
@@ -287,6 +288,7 @@ func (r *KeycloakProxy) admissionHandler() gin.HandlerFunc {
 					"resource": resource.URL,
 					"error":    err.Error(),
 				}).Errorf("unable to extract the claim from token")
+
 				r.accessForbidden(cx)
 
 				return
@@ -299,6 +301,7 @@ func (r *KeycloakProxy) admissionHandler() gin.HandlerFunc {
 					"resource": resource.URL,
 					"claim":    claimName,
 				}).Warnf("the token does not have the claim")
+
 				r.accessForbidden(cx)
 
 				return
@@ -314,6 +317,7 @@ func (r *KeycloakProxy) admissionHandler() gin.HandlerFunc {
 					"issued":   value,
 					"required": match,
 				}).Warnf("the token claims does not match claim requirement")
+
 				r.accessForbidden(cx)
 
 				return
@@ -337,6 +341,15 @@ func (r *KeycloakProxy) admissionHandler() gin.HandlerFunc {
 //
 func (r *KeycloakProxy) proxyHandler() gin.HandlerFunc {
 	return func(cx *gin.Context) {
+		// step: double check, if enforce is true and no user context it's a internal error
+		if _, found := cx.Get(cxEnforce); found {
+			if _, found := cx.Get(userContextName); !found {
+				log.Errorf("no user context found for a secure request")
+				cx.AbortWithStatus(http.StatusInternalServerError)
+				return
+			}
+		}
+
 		// step: retrieve the user context
 		if identity, found := cx.Get(userContextName); found {
 			id := identity.(*userContext)

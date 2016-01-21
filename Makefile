@@ -18,13 +18,7 @@ golang:
 	@echo "--> Go Version"
 	@go version
 
-buildtags: golang
-	@echo "--> Adding the build tags"
-	@echo "package main" > build.go
-	@echo "" >> build.go
-	@echo "const buildID = \"$(VERSION), git+sha: ${GIT_COMMIT}\"" >> build.go
-
-build: buildtags
+build:
 	@echo "--> Compiling the project"
 	mkdir -p bin
 	godep go build -o bin/${NAME}
