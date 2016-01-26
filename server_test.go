@@ -162,6 +162,7 @@ func newFakeGinContext(method, uri string) *gin.Context {
 				Host:   "127.0.0.1",
 				Path:   "uri",
 			},
+			RemoteAddr: "127.0.0.1:8989",
 		},
 		Writer: newFakeResponse(),
 	}

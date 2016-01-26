@@ -90,7 +90,19 @@ func (r *KeycloakProxy) securityHandler() gin.HandlerFunc {
 //
 func (r *KeycloakProxy) entrypointHandler() gin.HandlerFunc {
 	return func(cx *gin.Context) {
+		// @@TODO need to fix this login
 		// step: ensure we don't block oauth
+		if strings.HasPrefix(cx.Request.RequestURI, oauthURL) {
+			if cx.Request.RequestURI != callbackURL && cx.Request.RequestURI != authorizationURL {
+				log.WithFields(log.Fields{"uri" : cx.Request.RequestURI }).Warningf("client attempting to do something strange with oauth handlers")
+
+				r.redirectToAuthorization(cx)
+				return
+			}
+			cx.Next()
+
+			return
+		}
 		if !strings.HasPrefix(cx.Request.RequestURI, oauthURL) {
 			// step: check if authentication is required - gin doesn't support wildcard url, so we have have to use prefixes
 			for _, resource := range r.config.Resources {
@@ -107,7 +119,6 @@ func (r *KeycloakProxy) entrypointHandler() gin.HandlerFunc {
 				}
 			}
 		}
-		cx.Next()
 	}
 }
 

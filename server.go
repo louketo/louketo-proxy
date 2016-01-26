@@ -115,7 +115,7 @@ func newKeycloakProxy(cfg *Config) (*KeycloakProxy, error) {
 	router.Use(service.entrypointHandler(), service.authenticationHandler(), service.admissionHandler())
 	router.GET(authorizationURL, service.oauthAuthorizationHandler)
 	router.GET(callbackURL, service.oauthCallbackHandler)
-	router.GET(healthURL, service.healthHandler)
+
 	router.Use(service.proxyHandler())
 
 	return service, nil
@@ -169,10 +169,12 @@ func (r KeycloakProxy) accessForbidden(cx *gin.Context) {
 	// step: do we have a custom forbidden page
 	if r.config.hasForbiddenPage() {
 		cx.HTML(http.StatusForbidden, r.config.ForbiddenPage, r.config.TagData)
+		cx.Abort()
 		return
 	}
 
 	cx.AbortWithStatus(http.StatusForbidden)
+	cx.Abort()
 }
 
 // redirectToAuthorization redirects the user to authorization handler
