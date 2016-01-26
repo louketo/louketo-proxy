@@ -94,7 +94,7 @@ func (r *KeycloakProxy) entrypointHandler() gin.HandlerFunc {
 		// step: ensure we don't block oauth
 		if strings.HasPrefix(cx.Request.RequestURI, oauthURL) {
 			if cx.Request.RequestURI != callbackURL && cx.Request.RequestURI != authorizationURL {
-				log.WithFields(log.Fields{"uri" : cx.Request.RequestURI }).Warningf("client attempting to do something strange with oauth handlers")
+				log.WithFields(log.Fields{"uri": cx.Request.RequestURI}).Warningf("client attempting to do something strange with oauth handlers")
 
 				r.redirectToAuthorization(cx)
 				return
