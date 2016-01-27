@@ -156,7 +156,7 @@ func decodeKeyPairs(list []string) (map[string]string, error) {
 }
 
 // initializeReverseProxy create a reverse http proxy from the upstream
-func initializeReverseProxy(upstream *url.URL) (*httputil.ReverseProxy, error) {
+func initializeReverseProxy(upstream *url.URL) (reverseProxy, error) {
 	proxy := httputil.NewSingleHostReverseProxy(upstream)
 	// step: we don't care about the cert verification here
 	proxy.Transport = &http.Transport{

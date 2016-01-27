@@ -40,7 +40,7 @@ func TestEntrypointHandlerSecure(t *testing.T) {
 		},
 	})
 
-	handler := proxy.entrypointHandler()
+	handler := proxy.entryPointHandler()
 
 	tests := []struct {
 		Context *gin.Context
@@ -82,7 +82,7 @@ func TestEntrypointMethods(t *testing.T) {
 		},
 	})
 
-	handler := proxy.entrypointHandler()
+	handler := proxy.entryPointHandler()
 
 	tests := []struct {
 		Context *gin.Context
@@ -122,7 +122,7 @@ func TestEntrypointWhiteListing(t *testing.T) {
 			Methods: []string{"ANY"},
 		},
 	})
-	handler := proxy.entrypointHandler()
+	handler := proxy.entryPointHandler()
 
 	tests := []struct {
 		Context *gin.Context
@@ -148,7 +148,7 @@ func TestEntrypointWhiteListing(t *testing.T) {
 
 func TestEntrypointHandler(t *testing.T) {
 	proxy := newFakeKeycloakProxy(t)
-	handler := proxy.entrypointHandler()
+	handler := proxy.entryPointHandler()
 
 	tests := []struct {
 		Context *gin.Context
@@ -247,7 +247,7 @@ func TestAdmissionHandlerRoles(t *testing.T) {
 	for i, c := range tests {
 		// step: find the resource and inject into the context
 		for _, r := range proxy.config.Resources {
-			if strings.HasPrefix(c.Context.Request.RequestURI, r.URL) {
+			if strings.HasPrefix(c.Context.Request.URL.Path, r.URL) {
 				c.Context.Set(cxEnforce, r)
 				break
 			}

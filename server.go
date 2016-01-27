@@ -18,7 +18,6 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 	"os"
 	"sync"
@@ -38,9 +37,13 @@ type KeycloakProxy struct {
 	// the oidc client
 	openIDClient *oidc.Client
 	// the proxy client
-	proxy *httputil.ReverseProxy
+	proxy reverseProxy
 	// the upstream endpoint
 	upstreamURL *url.URL
+}
+
+type reverseProxy interface {
+	ServeHTTP(rw http.ResponseWriter, req *http.Request)
 }
 
 // newKeycloakProxy create's a new keycloak proxy from configuration
@@ -112,13 +115,21 @@ func newKeycloakProxy(cfg *Config) (*KeycloakProxy, error) {
 		router.Use(service.securityHandler())
 	}
 
-	router.Use(service.entrypointHandler(), service.authenticationHandler(), service.admissionHandler())
+	// step: add the routing
 	router.GET(authorizationURL, service.oauthAuthorizationHandler)
 	router.GET(callbackURL, service.oauthCallbackHandler)
-
-	router.Use(service.proxyHandler())
+	router.GET(healthURL, service.healthHandler)
+	router.Use(service.entryPointHandler(), service.authenticationHandler(), service.admissionHandler())
 
 	return service, nil
+}
+
+func (r *KeycloakProxy) abortAll() gin.HandlerFunc {
+	return func(cx *gin.Context) {
+		fmt.Println("HELLO")
+		cx.Next()
+		cx.Abort()
+	}
 }
 
 // initializeTemplates loads the custom template

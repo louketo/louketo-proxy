@@ -31,7 +31,7 @@ import (
 //
 // The logic is broken into four handlers just to simplify the code
 //
-//  a) entrypointHandler checks if the the uri requires authentication
+//  a) entryPointHandler checks if the the uri requires authentication
 //  b) authenticationHandler verifies the access token
 //  c) admissionHandler verifies that the token is authorized to access to uri resource
 //  c) proxyHandler is responsible for handling the reverse proxy to the upstream endpoint
@@ -55,9 +55,9 @@ func (r *KeycloakProxy) loggingHandler() gin.HandlerFunc {
 			"client_ip": cx.ClientIP(),
 			"method":    cx.Request.Method,
 			"status":    cx.Writer.Status(),
-			"path":      cx.Request.RequestURI,
+			"path":      cx.Request.URL.Path,
 			"latency":   latency.String(),
-		}).Infof("[%d] |%s| |%13v| %-5s %s", cx.Writer.Status(), cx.ClientIP(), latency, cx.Request.Method, cx.Request.URL.Path)
+		}).Infof("[%d] |%s| |%10v| %-5s %s", cx.Writer.Status(), cx.ClientIP(), latency, cx.Request.Method, cx.Request.URL.Path)
 	}
 }
 
@@ -88,36 +88,33 @@ func (r *KeycloakProxy) securityHandler() gin.HandlerFunc {
 //
 // entrypointHandler checks to see if the request requires authentication
 //
-func (r *KeycloakProxy) entrypointHandler() gin.HandlerFunc {
+func (r *KeycloakProxy) entryPointHandler() gin.HandlerFunc {
 	return func(cx *gin.Context) {
-		// @@TODO need to fix this login
-		// step: ensure we don't block oauth
-		if strings.HasPrefix(cx.Request.RequestURI, oauthURL) {
-			if cx.Request.RequestURI != callbackURL && cx.Request.RequestURI != authorizationURL {
-				log.WithFields(log.Fields{"uri": cx.Request.RequestURI}).Warningf("client attempting to do something strange with oauth handlers")
-
-				r.redirectToAuthorization(cx)
-				return
-			}
+		if strings.HasPrefix(cx.Request.URL.Path, oauthURL) {
 			cx.Next()
-
 			return
 		}
-		if !strings.HasPrefix(cx.Request.RequestURI, oauthURL) {
-			// step: check if authentication is required - gin doesn't support wildcard url, so we have have to use prefixes
-			for _, resource := range r.config.Resources {
-				if strings.HasPrefix(cx.Request.RequestURI, resource.URL) {
-					// step: has the resource been white listed?
-					if resource.WhiteListed {
-						break
-					}
-					// step: inject the resource into the context, saves us from doing this again
-					if containedIn(cx.Request.Method, resource.Methods) || containedIn("ANY", resource.Methods) {
-						cx.Set(cxEnforce, resource)
-					}
+
+		// step: check if authentication is required - gin doesn't support wildcard url, so we have have to use prefixes
+		for _, resource := range r.config.Resources {
+			if strings.HasPrefix(cx.Request.URL.Path, resource.URL) {
+				// step: has the resource been white listed?
+				if resource.WhiteListed {
 					break
 				}
+				// step: inject the resource into the context, saves us from doing this again
+				if containedIn(cx.Request.Method, resource.Methods) || containedIn("ANY", resource.Methods) {
+					cx.Set(cxEnforce, resource)
+				}
+				break
 			}
+		}
+		// step: pass into the authentication and admission handlers
+		cx.Next()
+
+		// step: check the request has not been aborted and if not, proxy request
+		if !cx.IsAborted() {
+			r.proxyHandler(cx)
 		}
 	}
 }
@@ -240,6 +237,7 @@ func (r *KeycloakProxy) authenticationHandler() gin.HandlerFunc {
 		}
 
 		cx.Next()
+
 	}
 }
 
@@ -258,7 +256,6 @@ func (r *KeycloakProxy) admissionHandler() gin.HandlerFunc {
 		// step: if authentication is required on this, grab the resource spec
 		ur, found := cx.Get(cxEnforce)
 		if !found {
-			cx.Next()
 			return
 		}
 
@@ -342,57 +339,53 @@ func (r *KeycloakProxy) admissionHandler() gin.HandlerFunc {
 			"expires":  identity.expiresAt.Sub(time.Now()).String(),
 			"bearer":   identity.bearerToken,
 		}).Debugf("resource access permitted: %s", cx.Request.RequestURI)
-
-		cx.Next()
 	}
 }
 
 //
 // proxyHandler is responsible to proxy the requests on to the upstream endpoint
 //
-func (r *KeycloakProxy) proxyHandler() gin.HandlerFunc {
-	return func(cx *gin.Context) {
-		// step: double check, if enforce is true and no user context it's a internal error
-		if _, found := cx.Get(cxEnforce); found {
-			if _, found := cx.Get(userContextName); !found {
-				log.Errorf("no user context found for a secure request")
-				cx.AbortWithStatus(http.StatusInternalServerError)
-				return
-			}
-		}
-
-		// step: retrieve the user context
-		if identity, found := cx.Get(userContextName); found {
-			id := identity.(*userContext)
-			cx.Request.Header.Add("X-Auth-UserId", id.id)
-			cx.Request.Header.Add("X-Auth-Subject", id.preferredName)
-			cx.Request.Header.Add("X-Auth-Username", id.name)
-			cx.Request.Header.Add("X-Auth-Email", id.email)
-			cx.Request.Header.Add("X-Auth-ExpiresIn", id.expiresAt.String())
-			cx.Request.Header.Add("X-Auth-Token", id.token.Encode())
-			cx.Request.Header.Add("X-Auth-Roles", strings.Join(id.roles, ","))
-		}
-
-		// step: add the default headers
-		cx.Request.Header.Set("X-Forwarded-For", cx.Request.RemoteAddr)
-		cx.Request.Header.Set("X-Forwarded-Agent", "keycloak-proxy")
-
-		// step: is this connection upgrading?
-		if isUpgradedConnection(cx.Request) {
-			log.Debugf("upgrading the connnection to %s", cx.Request.Header.Get(headerUpgrade))
-			if err := r.tryUpdateConnection(cx); err != nil {
-				log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to upgrade the connection")
-
-				cx.AbortWithStatus(http.StatusInternalServerError)
-				return
-			}
-			cx.Abort()
-
+func (r *KeycloakProxy) proxyHandler(cx *gin.Context) {
+	// step: double check, if enforce is true and no user context it's a internal error
+	if _, found := cx.Get(cxEnforce); found {
+		if _, found := cx.Get(userContextName); !found {
+			log.Errorf("no user context found for a secure request")
+			cx.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
-
-		r.proxy.ServeHTTP(cx.Writer, cx.Request)
 	}
+
+	// step: retrieve the user context
+	if identity, found := cx.Get(userContextName); found {
+		id := identity.(*userContext)
+		cx.Request.Header.Add("X-Auth-UserId", id.id)
+		cx.Request.Header.Add("X-Auth-Subject", id.preferredName)
+		cx.Request.Header.Add("X-Auth-Username", id.name)
+		cx.Request.Header.Add("X-Auth-Email", id.email)
+		cx.Request.Header.Add("X-Auth-ExpiresIn", id.expiresAt.String())
+		cx.Request.Header.Add("X-Auth-Token", id.token.Encode())
+		cx.Request.Header.Add("X-Auth-Roles", strings.Join(id.roles, ","))
+	}
+
+	// step: add the default headers
+	cx.Request.Header.Set("X-Forwarded-For", cx.Request.RemoteAddr)
+	cx.Request.Header.Set("X-Forwarded-Agent", "keycloak-proxy")
+
+	// step: is this connection upgrading?
+	if isUpgradedConnection(cx.Request) {
+		log.Debugf("upgrading the connnection to %s", cx.Request.Header.Get(headerUpgrade))
+		if err := r.tryUpdateConnection(cx); err != nil {
+			log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to upgrade the connection")
+
+			cx.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+		cx.Abort()
+
+		return
+	}
+
+	r.proxy.ServeHTTP(cx.Writer, cx.Request)
 }
 
 // ---
@@ -408,6 +401,10 @@ func (r *KeycloakProxy) oauthAuthorizationHandler(cx *gin.Context) {
 		r.accessForbidden(cx)
 		return
 	}
+
+	log.WithFields(log.Fields{
+		"client_ip": cx.ClientIP(),
+	}).Infof("incoming authorization request")
 
 	// step: grab the oauth client
 	oac, err := r.openIDClient.OAuthClient()

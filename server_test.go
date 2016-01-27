@@ -94,6 +94,7 @@ func newFakeKeycloakProxy(t *testing.T) *KeycloakProxy {
 				},
 			},
 		},
+		proxy: new(fakeReverseProxy),
 	}
 
 	return kc
@@ -160,13 +161,18 @@ func newFakeGinContext(method, uri string) *gin.Context {
 			URL: &url.URL{
 				Scheme: "http",
 				Host:   "127.0.0.1",
-				Path:   "uri",
+				Path:   uri,
 			},
+			Header:     make(http.Header, 0),
 			RemoteAddr: "127.0.0.1:8989",
 		},
 		Writer: newFakeResponse(),
 	}
 }
+
+type fakeReverseProxy struct{}
+
+func (r fakeReverseProxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {}
 
 type fakeResponse struct {
 	size    int

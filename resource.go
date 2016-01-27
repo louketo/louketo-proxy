@@ -30,6 +30,10 @@ func (r *Resource) isValid() error {
 		r.RolesAllowed = make([]string, 0)
 	}
 
+	if strings.HasPrefix(r.URL, oauthURL) {
+		return fmt.Errorf("this is used by the oauth handlers")
+	}
+
 	// step: check we have a
 	if r.URL == "" {
 		return fmt.Errorf("resource does not have url")
@@ -72,7 +76,7 @@ func (r Resource) String() string {
 	if len(r.Methods) <= 0 {
 		methods = "ANY"
 	} else {
-		roles = strings.Join(r.Methods, ",")
+		methods = strings.Join(r.Methods, ",")
 	}
 
 	return fmt.Sprintf("uri: %s, methods: %s, required: %s", r.URL, methods, roles)
