@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/gambol99/keycloak-proxy",
-	"GoVersion": "go1.5.2",
+	"GoVersion": "go1.5.3",
 	"Deps": [
 		{
 			"ImportPath": "github.com/Sirupsen/logrus",
@@ -32,6 +32,10 @@
 		{
 			"ImportPath": "github.com/coreos/pkg/timeutil",
 			"Rev": "2c77715c4df99b5420ffcae14ead08f52104065d"
+		},
+		{
+			"ImportPath": "github.com/davecgh/go-spew/spew",
+			"Rev": "5215b55f46b2b919f50a1df0eaa5886afe4e3b3d"
 		},
 		{
 			"ImportPath": "github.com/gambol99/go-oidc/http",
@@ -69,6 +73,10 @@
 		{
 			"ImportPath": "github.com/mattn/go-colorable",
 			"Rev": "40e4aedc8fabf8c23e040057540867186712faa5"
+		},
+		{
+			"ImportPath": "github.com/pmezard/go-difflib/difflib",
+			"Rev": "792786c7400a136282c1664665ae0a8db921c6c2"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/assert",
