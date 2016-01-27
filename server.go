@@ -124,14 +124,6 @@ func newKeycloakProxy(cfg *Config) (*KeycloakProxy, error) {
 	return service, nil
 }
 
-func (r *KeycloakProxy) abortAll() gin.HandlerFunc {
-	return func(cx *gin.Context) {
-		fmt.Println("HELLO")
-		cx.Next()
-		cx.Abort()
-	}
-}
-
 // initializeTemplates loads the custom template
 func (r *KeycloakProxy) initializeTemplates() {
 	var list []string
