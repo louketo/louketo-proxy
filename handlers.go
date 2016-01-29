@@ -205,6 +205,7 @@ func (r *KeycloakProxy) authenticationHandler() gin.HandlerFunc {
 			fields := log.Fields{
 				"username":   userContext.name,
 				"expired_on": userContext.expiresAt.String(),
+				"error" : err.Error(),
 			}
 
 			// step: if the error post verification is anything other than a token expired error
@@ -237,7 +238,6 @@ func (r *KeycloakProxy) authenticationHandler() gin.HandlerFunc {
 		}
 
 		cx.Next()
-
 	}
 }
 
