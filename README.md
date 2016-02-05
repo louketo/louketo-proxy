@@ -134,9 +134,28 @@ resources:
   - url: /admin
     methods:
       - GET
-    roles_allowed:
-      - <CLIENT_APP_NAME>:<ROLE_NAME>
-      - <CLIENT_APP_NAME>:<ROLE_NAME>
+    roles:
+      - client:test1
+      - client:test2
+  - url: /backend
+    roles:
+      - client:test1
+```
+
+Note, anything defined in the configuration file can also be configured as command line options, so the above would be reflected as;
+
+```shell
+bin/keycloak-proxy \
+    --discovery-url=https://keycloak.example.com/auth/realms/<REALM_NAME> \
+    --client-id=<CLIENT_ID> \
+    --secret=<SECRET> \
+    --listen=127.0.0.1:3000 \
+    --redirection-url=http://127.0.0.3000 \
+    --refresh-sessions=true \
+    --encryption-key=AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j \
+    --upstream=http://127.0.0.1:80 \
+    --resource="uri=/admin|methods=GET|roles=test1,test2" \
+    --resource="uri=/backend|roles=test1"
 ```
 
 #### **Upstream Headers**
@@ -194,7 +213,7 @@ fix this by fixing up the paths, you can add excepts to the protected resources.
   - url: /
     methods:
       - GET
-    roles_allowed:
+    roles:
       - <CLIENT_APP_NAME>:<ROLE_NAME>
       - <CLIENT_APP_NAME>:<ROLE_NAME>
 ```
@@ -204,6 +223,7 @@ Or on the command line
 ```shell
   --resource "uri=/some_white_listed_url,white-listed=true"
   --resource "uri=/"  # requires authentication on the rest
+  --resource "uri=/admin|roles=admin,superuser|methods=POST,DELETE
 ```
 
 #### **Mutual TLS**

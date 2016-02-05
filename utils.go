@@ -305,7 +305,7 @@ func decodeResource(v string) (*Resource, error) {
 		case "methods":
 			resource.Methods = strings.Split(kp[1], ",")
 		case "roles":
-			resource.RolesAllowed = strings.Split(kp[1], ",")
+			resource.Roles = strings.Split(kp[1], ",")
 		case "white-listed":
 			value, err := strconv.ParseBool(kp[1])
 			if err != nil {

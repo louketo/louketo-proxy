@@ -26,8 +26,8 @@ func (r *Resource) isValid() error {
 	if r.Methods == nil {
 		r.Methods = make([]string, 0)
 	}
-	if r.RolesAllowed == nil {
-		r.RolesAllowed = make([]string, 0)
+	if r.Roles == nil {
+		r.Roles = make([]string, 0)
 	}
 
 	if strings.HasPrefix(r.URL, oauthURL) {
@@ -56,7 +56,7 @@ func (r *Resource) isValid() error {
 
 // getRoles gets a list of roles
 func (r Resource) getRoles() string {
-	return strings.Join(r.RolesAllowed, ",")
+	return strings.Join(r.Roles, ",")
 }
 
 func (r Resource) String() string {
@@ -67,10 +67,10 @@ func (r Resource) String() string {
 		return fmt.Sprintf("uri: %s, white-listed", r.URL)
 	}
 
-	if len(r.RolesAllowed) <= 0 {
+	if len(r.Roles) <= 0 {
 		roles = "authentication only"
 	} else {
-		methods = strings.Join(r.RolesAllowed, ",")
+		methods = strings.Join(r.Roles, ",")
 	}
 
 	if len(r.Methods) <= 0 {

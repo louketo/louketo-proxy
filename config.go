@@ -82,13 +82,13 @@ func (r *Config) isValid() error {
 		if strings.HasSuffix(r.RedirectionURL, "/") {
 			r.RedirectionURL = strings.TrimSuffix(r.RedirectionURL, "/")
 		}
-		if r.EncryptionKey == "" && r.RefreshSession {
+		if r.EncryptionKey == "" && r.RefreshSessions {
 			return fmt.Errorf("you have not specified a encryption key for encoding the session state")
 		}
 		if r.EncryptionKey != "" && len(r.EncryptionKey) < 32 {
 			return fmt.Errorf("the encryption key is too short, must be longer than 32 characters")
 		}
-		if r.MaxSession == 0 && r.RefreshSession {
+		if r.MaxSession == 0 && r.RefreshSessions {
 			r.MaxSession = time.Duration(6) * time.Hour
 		}
 	}
@@ -167,7 +167,7 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 		config.ProxyProtocol = cx.Bool("proxy-protocol")
 	}
 	if cx.IsSet("refresh-sessions") {
-		config.RefreshSession = cx.Bool("refresh-sessions")
+		config.RefreshSessions = cx.Bool("refresh-sessions")
 	}
 	if cx.IsSet("json-logging") {
 		config.LogJSONFormat = cx.Bool("json-logging")

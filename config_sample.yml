@@ -41,7 +41,7 @@ resources:
     methods:
       - GET
     # a list of roles the user must have in order to accces urls under the above
-    roles_allowed:
+    roles:
       - openvpn:vpn-user
       - openvpn:prod-vpn
   - url: /admin/white_listed
@@ -50,6 +50,6 @@ resources:
   - url: /admin
     methods:
       - GET
-    roles_allowed:
+    roles:
       - openvpn:vpn-user
       - openvpn:prod-vpn
