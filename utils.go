@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -202,6 +203,17 @@ func tryDialEndpoint(location *url.URL) (net.Conn, error) {
 // isValidMethod ensure this is a valid http method type
 func isValidMethod(method string) bool {
 	return httpMethodRegex.MatchString(method)
+}
+
+// fileExists check if a file exists
+func fileExists(filename string) bool {
+	if _, err := os.Stat(filename); err != nil {
+		if os.IsNotExist(err) {
+			return false
+		}
+	}
+
+	return true
 }
 
 // hasRoles checks the scopes are the same

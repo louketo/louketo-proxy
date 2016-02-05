@@ -49,6 +49,21 @@ func (r *Config) isValid() error {
 	if r.Listen == "" {
 		return fmt.Errorf("you have not specified the listening interface")
 	}
+	if r.TLSCertificate != "" && r.TLSPrivateKey == "" {
+		return fmt.Errorf("you have not provided a private key")
+	}
+	if r.TLSPrivateKey != "" && r.TLSCertificate == "" {
+		return fmt.Errorf("you have not provided a certificate file")
+	}
+	if r.TLSCertificate != "" && !fileExists(r.TLSCertificate) {
+		return fmt.Errorf("the tls certificate %s does not exist", r.TLSCertificate)
+	}
+	if r.TLSPrivateKey != "" && !fileExists(r.TLSPrivateKey) {
+		return fmt.Errorf("the tls private key %s does not exist", r.TLSPrivateKey)
+	}
+	if r.TLSCaCertificate != "" && !fileExists(r.TLSCaCertificate) {
+		return fmt.Errorf("the tls ca certificate file %s does not exist", r.TLSCaCertificate)
+	}
 
 	// step: if the skip verification is off, we need the below
 	if !r.SkipTokenVerification {
@@ -135,6 +150,9 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 	}
 	if cx.IsSet("tls-private-key") {
 		config.TLSPrivateKey = cx.String("tls-private-key")
+	}
+	if cx.IsSet("tls-ca-certificate") {
+		config.TLSCaCertificate = cx.String("tls-ca-certificate")
 	}
 	if cx.IsSet("signin-page") {
 		config.SignInPage = cx.String("signin-page")
@@ -260,6 +278,10 @@ func getOptions() []cli.Flag {
 		cli.StringFlag{
 			Name:  "tls-private-key",
 			Usage: "the path to the private key for TLS support",
+		},
+		cli.StringFlag{
+			Name:  "tls-ca-certificate",
+			Usage: "the path to the ca certificate used for mutual TLS",
 		},
 		cli.StringSliceFlag{
 			Name:  "scope",
