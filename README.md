@@ -17,7 +17,7 @@ USAGE:
    keycloak-proxy [global options] command [command options] [arguments...]
    
 VERSION:
-   v0.0.6, git+sha: 73e0db2
+   v1.0.0-rc1
    
 AUTHOR(S):
    Rohith <gambol99@gmail.com> 
@@ -26,32 +26,34 @@ COMMANDS:
    help, h	Shows a list of commands or help for one command
    
 GLOBAL OPTIONS:
-   --config 						        the path to the configuration file for the keycloak proxy
+   --config 						the path to the configuration file for the keycloak proxy
    --listen "127.0.0.1:8080"				the interface the service should be listening on
-   --secret 						        the client secret used to authenticate to the oauth server
-   --client-id 						        the client id used to authenticate to the oauth serves
-   --discovery-url 					        the discovery url to retrieve the openid configuration
-   --upstream-url "http://127.0.0.1:8080"	the url for the upstream endpoint you wish to proxy to
-   --encryption-key 					    the encryption key used to encrpytion the session state
-   --redirection-url 					    the redirection url, namely the site url, note: /oauth will be added to it
+   --secret 						the client secret used to authenticate to the oauth server
+   --client-id 						the client id used to authenticate to the oauth serves
+   --discovery-url 					the discovery url to retrieve the openid configuration
+   --upstream-url "http://127.0.0.1:8080"		the url for the upstream endpoint you wish to proxy to
+   --encryption-key 					the encryption key used to encrpytion the session state
+   --redirection-url 					the redirection url, namely the site url, note: /oauth will be added to it
    --hostname [--hostname option --hostname option]	a list of hostname which the service will respond to, defaults to all
-   --tls-cert 						        the path to a certificate file used for TLS
-   --tls-private-key 					    the path to the private key for TLS support
-   --scope [--scope option --scope option]	a variable list of scopes requested when authenticating the user
-   --claim [--claim option --claim option]	a series of key pair values which must match the claims in the token present e.g. aud=myapp, iss=http://example.com etcd
-   --resource [--resource option --resource option]	a list of resources 'uri=/admin|methods=GET|roles=role1,role2|whitelisted=(true|false)'
-   --signin-page 					        a custom template displayed for signin
-   --forbidden-page 					    a custom template used for access forbidden
-   --tag [--tag option --tag option]		a keypair tag which is passed to the templates when render, i.e. title='My Page',site='my name' etc
-   --max-session "1h0m0s"				    if refresh sessions are enabled we can limit their duration via this
+   --tls-cert 						the path to a certificate file used for TLS
+   --tls-private-key 					the path to the private key for TLS support
+   --tls-ca-certificate 				the path to the ca certificate used for mutual TLS
+   --scope [--scope option --scope option]		a variable list of scopes requested when authenticating the user
+   --claim [--claim option --claim option]		a series of key pair values which must match the claims in the token present e.g. aud=myapp, iss=http://example.com etcd
+   --resource [--resource option --resource option]	a list of resources 'uri=/admin|methods=GET|roles=role1,role2'
+   --signin-page 					a custom template displayed for signin
+   --forbidden-page 					a custom template used for access forbidden
+   --tag [--tag option --tag option]			a keypair tag which is passed to the templates when render, i.e. title='My Page',site='my name' etc
+   --max-session "1h0m0s"				if refresh sessions are enabled we can limit their duration via this
    --skip-token-verification				testing purposes ONLY, the option allows you to bypass the token verification, expiration and roles are still enforced
-   --proxy-protocol					        switches on proxy protocol support on the listen (not supported yet)
-   --refresh-sessions					    enables the refreshing of tokens via offline access
-   --json-logging					        switch on json logging rather than text (defaults true)
-   --log-requests					        switch on logging of all incoming requests (defaults true)
-   --verbose						        switch on debug / verbose logging
-   --help, -h						        show help
-   --version, -v					        print the version
+   --proxy-protocol					switches on proxy protocol support on the listen (not supported yet)
+   --refresh-sessions					enables the refreshing of tokens via offline access
+   --json-logging					switch on json logging rather than text (defaults true)
+   --log-requests					switch on logging of all incoming requests (defaults true)
+   --verbose						switch on debug / verbose logging
+   --help, -h						show help
+   --version, -v					print the version
+
 ```
 
 #### **Configuration**
@@ -203,3 +205,8 @@ Or on the command line
   --resource "uri=/some_white_listed_url,white-listed=true"
   --resource "uri=/"  # requires authentication on the rest
 ```
+
+#### **Mutual TLS**
+
+The proxy support enforcing mutual TLS for the clients by simply adding the --tls-ca-certificate command line option or config file option. All clients connecting must present a ceritificate
+which was signed by the CA being used.

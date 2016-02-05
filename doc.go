@@ -22,7 +22,7 @@ import (
 
 const (
 	prog        = "keycloak-proxy"
-	version     = "v0.0.8"
+	version     = "v1.0.0-rc1"
 	author      = "Rohith"
 	email       = "gambol99@gmail.com"
 	description = "is a proxy using the keycloak service for auth and authorization"
@@ -97,6 +97,8 @@ type Config struct {
 	TLSCertificate string `json:"tls_cert" yaml:"tls_cert"`
 	// TLSPrivateKey is the location of a tls private key
 	TLSPrivateKey string `json:"tls_private_key" yaml:"tls_private_key"`
+	// TLSCaCertificate is the CA certificate which the client cert must be signed
+	TLSCaCertificate string `json:"tls_ca_certificate" yaml:"tls_ca_certificate"`
 	// Upstream is the upstream endpoint i.e whom were proxying to
 	Upstream string `json:"upstream" yaml:"upstream"`
 	// TagData is passed to the templates

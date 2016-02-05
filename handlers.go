@@ -484,9 +484,8 @@ func (r *KeycloakProxy) oauthCallbackHandler(cx *gin.Context) {
 	}
 
 	log.WithFields(log.Fields{
-		"email":    identity.Email,
-		"username": identity.Name,
-		"expires":  identity.ExpiresAt,
+		"email":   identity.Email,
+		"expires": identity.ExpiresAt,
 	}).Infof("issuing a user session")
 
 	// step: create a session from the access token

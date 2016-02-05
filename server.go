@@ -22,9 +22,12 @@ import (
 	"os"
 	"sync"
 
+	"crypto/tls"
+	"crypto/x509"
 	log "github.com/Sirupsen/logrus"
 	"github.com/gambol99/go-oidc/oidc"
 	"github.com/gin-gonic/gin"
+	"io/ioutil"
 )
 
 // KeycloakProxy is the server component
@@ -144,6 +147,21 @@ func (r *KeycloakProxy) initializeTemplates() {
 
 // Run starts the proxy service
 func (r *KeycloakProxy) Run() error {
+	tlsConfig := &tls.Config{}
+
+	// step: are we doing mutual tls?
+	if r.config.TLSCaCertificate != "" {
+		caCert, err := ioutil.ReadFile(r.config.TLSCaCertificate)
+		if err != nil {
+			return err
+		}
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(caCert)
+
+		tlsConfig.ClientCAs = caCertPool
+		tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
+	}
+
 	go func() {
 		log.Infof("keycloak proxy service starting on %s", r.config.Listen)
 
@@ -151,7 +169,12 @@ func (r *KeycloakProxy) Run() error {
 		if r.config.TLSCertificate == "" {
 			err = r.router.Run(r.config.Listen)
 		} else {
-			err = r.router.RunTLS(r.config.Listen, r.config.TLSCertificate, r.config.TLSPrivateKey)
+			server := &http.Server{
+				Addr:      r.config.Listen,
+				Handler:   r.router,
+				TLSConfig: tlsConfig,
+			}
+			err = server.ListenAndServeTLS(r.config.TLSCertificate, r.config.TLSPrivateKey)
 		}
 		if err != nil {
 			log.WithFields(log.Fields{"error": err.Error()}).Fatalf("failed to start the service")
