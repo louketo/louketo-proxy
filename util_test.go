@@ -222,17 +222,17 @@ func TestDecodeResource(t *testing.T) {
 			Option: "uri=/admin/sso|roles=test,test1",
 			Ok:     true,
 			Resource: &Resource{
-				URL:          "/admin/sso",
-				RolesAllowed: []string{"test", "test1"},
+				URL:   "/admin/sso",
+				Roles: []string{"test", "test1"},
 			},
 		},
 		{
 			Option: "uri=/admin/sso|roles=test,test1|methods=GET,POST",
 			Ok:     true,
 			Resource: &Resource{
-				URL:          "/admin/sso",
-				RolesAllowed: []string{"test", "test1"},
-				Methods:      []string{"GET", "POST"},
+				URL:     "/admin/sso",
+				Roles:   []string{"test", "test1"},
+				Methods: []string{"GET", "POST"},
 			},
 		},
 		{

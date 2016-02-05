@@ -148,7 +148,7 @@ func (r *KeycloakProxy) authenticationHandler() gin.HandlerFunc {
 		session, isBearer, err := r.getSessionToken(cx)
 		if err != nil {
 			// step: there isn't a session cookie, do we have refresh session cookie?
-			if err == ErrSessionNotFound && r.config.RefreshSession && !isBearer {
+			if err == ErrSessionNotFound && r.config.RefreshSessions && !isBearer {
 				session, err = r.refreshUserSessionToken(cx)
 				if err != nil {
 					log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to refresh the access token")
@@ -223,7 +223,7 @@ func (r *KeycloakProxy) authenticationHandler() gin.HandlerFunc {
 			}
 
 			// step: are we refreshing the access tokens?
-			if !r.config.RefreshSession {
+			if !r.config.RefreshSessions {
 				log.WithFields(fields).Errorf("the session has expired and token refreshing is disabled")
 				r.redirectToAuthorization(cx)
 				return
@@ -269,8 +269,8 @@ func (r *KeycloakProxy) admissionHandler() gin.HandlerFunc {
 		identity := uc.(*userContext)
 
 		// step: we need to check the roles
-		if roles := len(resource.RolesAllowed); roles > 0 {
-			if !hasRoles(resource.RolesAllowed, identity.roles) {
+		if roles := len(resource.Roles); roles > 0 {
+			if !hasRoles(resource.Roles, identity.roles) {
 				log.WithFields(log.Fields{
 					"access":   "denied",
 					"username": identity.name,
@@ -419,7 +419,7 @@ func (r *KeycloakProxy) oauthAuthorizationHandler(cx *gin.Context) {
 
 	// step: get the access type required
 	accessType := ""
-	if r.config.RefreshSession {
+	if r.config.RefreshSessions {
 		accessType = "offline"
 	}
 
@@ -496,7 +496,7 @@ func (r *KeycloakProxy) oauthCallbackHandler(cx *gin.Context) {
 	}
 
 	// step: do we have session data to persist?
-	if r.config.RefreshSession {
+	if r.config.RefreshSessions {
 		// step: parse the token
 		_, ident, err := r.parseToken(response.RefreshToken)
 		if err != nil {

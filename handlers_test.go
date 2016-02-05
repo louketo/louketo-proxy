@@ -34,9 +34,9 @@ func TestEntrypointHandlerSecure(t *testing.T) {
 			Methods: []string{"ANY"},
 		},
 		{
-			URL:          "/",
-			Methods:      []string{"POST"},
-			RolesAllowed: []string{"test"},
+			URL:     "/",
+			Methods: []string{"POST"},
+			Roles:   []string{"test"},
 		},
 	})
 
@@ -178,19 +178,19 @@ func TestEntrypointHandler(t *testing.T) {
 func TestAdmissionHandlerRoles(t *testing.T) {
 	proxy := newFakeKeycloakProxyWithResources(t, []*Resource{
 		{
-			URL:          "/admin",
-			Methods:      []string{"ANY"},
-			RolesAllowed: []string{"admin"},
+			URL:     "/admin",
+			Methods: []string{"ANY"},
+			Roles:   []string{"admin"},
 		},
 		{
-			URL:          "/test",
-			Methods:      []string{"GET"},
-			RolesAllowed: []string{"test"},
+			URL:     "/test",
+			Methods: []string{"GET"},
+			Roles:   []string{"test"},
 		},
 		{
-			URL:          "/either",
-			Methods:      []string{"ANY"},
-			RolesAllowed: []string{"admin", "test"},
+			URL:     "/either",
+			Methods: []string{"ANY"},
+			Roles:   []string{"admin", "test"},
 		},
 		{
 			URL:     "/",

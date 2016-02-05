@@ -63,8 +63,8 @@ type Resource struct {
 	Methods []string `json:"methods" yaml:"methods"`
 	// WhiteListed permits the prefix through
 	WhiteListed bool `json:"white-listed" yaml:"white-listed"`
-	// RolesAllowed the roles required to access this url
-	RolesAllowed []string `json:"roles_allowed" yaml:"roles_allowed"`
+	// Roles the roles required to access this url
+	Roles []string `json:"roles" yaml:"roles"`
 }
 
 // Config is the configuration for the proxy
@@ -81,8 +81,8 @@ type Config struct {
 	Secret string `json:"secret" yaml:"secret"`
 	// RedirectionURL the redirection url
 	RedirectionURL string `json:"redirection_url" yaml:"redirection_url"`
-	// RefreshSession enabled refresh access
-	RefreshSession bool `json:"refresh_session" yaml:"refresh_session"`
+	// RefreshSessions enabled refresh access
+	RefreshSessions bool `json:"refresh_sessions" yaml:"refresh_sessions"`
 	// EncryptionKey is the encryption key used to encrypt the refresh token
 	EncryptionKey string `json:"encryption_key" yaml:"encryption_key"`
 	// MaxSession the max session for refreshing
