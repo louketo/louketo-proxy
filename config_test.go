@@ -108,6 +108,19 @@ func TestIsConfig(t *testing.T) {
 		},
 		{
 			Config: &Config{
+				Listen:         ":8080",
+				DiscoveryURL:   "http://127.0.0.1:8080",
+				ClientID:       "client",
+				Secret:         "client",
+				RedirectionURL: "http://120.0.0.1",
+				Upstream:       "http://120.0.0.1",
+				ClaimsMatch: map[string]string{
+					"test": "&&&[",
+				},
+			},
+		},
+		{
+			Config: &Config{
 				Listen:                ":8080",
 				SkipTokenVerification: true,
 				Upstream:              "http://120.0.0.1",

@@ -18,6 +18,7 @@ package main
 import (
 	"net/http"
 	"path"
+	"regexp"
 	"strings"
 	"time"
 
@@ -252,6 +253,12 @@ func (r *KeycloakProxy) authenticationHandler() gin.HandlerFunc {
 //  - if everything is ok, we permit the request to pass through
 //
 func (r *KeycloakProxy) admissionHandler() gin.HandlerFunc {
+	// step: compile the regexs for the claims
+	claimMatches := make(map[string]*regexp.Regexp, 0)
+	for k, v := range r.config.ClaimsMatch {
+		claimMatches[k] = regexp.MustCompile(v)
+	}
+
 	return func(cx *gin.Context) {
 		// step: if authentication is required on this, grab the resource spec
 		ur, found := cx.Get(cxEnforce)
@@ -286,7 +293,7 @@ func (r *KeycloakProxy) admissionHandler() gin.HandlerFunc {
 
 		// step: if we have any claim matching, validate the tokens has the claims
 		// @TODO we should probably convert the claim checks to regexs
-		for claimName, match := range r.config.ClaimsMatch {
+		for claimName, match := range claimMatches {
 			// step: if the claim is NOT in the token, we access deny
 			value, found, err := identity.claims.StringClaim(claimName)
 			if err != nil {
@@ -316,7 +323,7 @@ func (r *KeycloakProxy) admissionHandler() gin.HandlerFunc {
 			}
 
 			// step: check the claim is the same
-			if value != match {
+			if !match.MatchString(value) {
 				log.WithFields(log.Fields{
 					"access":   "denied",
 					"username": identity.name,
