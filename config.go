@@ -33,8 +33,12 @@ import (
 // newDefaultConfig returns a initialized config
 func newDefaultConfig() *Config {
 	return &Config{
-		TagData:     make(map[string]string, 0),
-		ClaimsMatch: make(map[string]string, 0),
+		Listen:         "127.0.0.1:3000",
+		RedirectionURL: "http://127.0.0.1:3000",
+		Upstream:       "http://127.0.0.1:8081",
+		MaxSession:     time.Duration(1) * time.Hour,
+		TagData:        make(map[string]string, 0),
+		ClaimsMatch:    make(map[string]string, 0),
 	}
 }
 
@@ -241,6 +245,8 @@ func readConfigFile(filename string, config *Config) error {
 
 // getOptions returns the command line options
 func getOptions() []cli.Flag {
+	defaults := newDefaultConfig()
+
 	return []cli.Flag{
 		cli.StringFlag{
 			Name:  "config",
@@ -249,7 +255,7 @@ func getOptions() []cli.Flag {
 		cli.StringFlag{
 			Name:  "listen",
 			Usage: "the interface the service should be listening on",
-			Value: "127.0.0.1:8080",
+			Value: defaults.Listen,
 		},
 		cli.StringFlag{
 			Name:  "secret",
@@ -266,7 +272,7 @@ func getOptions() []cli.Flag {
 		cli.StringFlag{
 			Name:  "upstream-url",
 			Usage: "the url for the upstream endpoint you wish to proxy to",
-			Value: "http://127.0.0.1:8080",
+			Value: defaults.Upstream,
 		},
 		cli.StringFlag{
 			Name:  "encryption-key",
@@ -319,7 +325,7 @@ func getOptions() []cli.Flag {
 		cli.DurationFlag{
 			Name:  "max-session",
 			Usage: "if refresh sessions are enabled we can limit their duration via this",
-			Value: time.Duration(1) * time.Hour,
+			Value: defaults.MaxSession,
 		},
 		cli.BoolFlag{
 			Name:  "skip-token-verification",
@@ -331,7 +337,7 @@ func getOptions() []cli.Flag {
 		},
 		cli.BoolFlag{
 			Name:  "refresh-sessions",
-			Usage: "enables the refreshing of tokens via offline access",
+			Usage: "enables the refreshing of tokens via offline access (defaults false)",
 		},
 		cli.BoolTFlag{
 			Name:  "json-logging",

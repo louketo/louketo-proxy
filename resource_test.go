@@ -36,6 +36,9 @@ func TestIsValid(t *testing.T) {
 			Resource: &Resource{},
 		},
 		{
+			Resource: &Resource{URL: "/oauth"},
+		},
+		{
 			Resource: &Resource{
 				URL:     "/test",
 				Methods: []string{"NO_SUCH_METHOD"},

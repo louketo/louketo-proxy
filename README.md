@@ -4,7 +4,17 @@
 ### **Keycloak Proxy**
 ----
 
-Keycloak-proxy is a proxy service which at the risk of stating the obvious integrates with the [Keycloak](https://github.com/keycloak/keycloak) authentication service. 
+>  - Supports role based uri controls
+>  - Websocket connection upgrading
+>  - Token claim matching for additional ACL controls
+>  - Stateless offline refresh tokens with optional predefined session limits
+>  - TLS and mutual TLS support
+>  - JSON field bases access logs
+>  - Custom Sign-in and access forbidden pages
+    
+ - --------
+
+Keycloak-proxy is a proxy service which at the risk of stating the obvious integrates with the [Keycloak](https://github.com/keycloak/keycloak) authentication service. Although technically the proxy has no dependency on Keycloak itself. And would quite happl    
 The configuration and feature set is based on the actual java version of the [proxy](https://docs.jboss.org/keycloak/docs/1.1.0.Beta2/userguide/html/proxy.html). The service
 supports both access tokens in browser cookie or bearer tokens.
 
@@ -96,18 +106,17 @@ resources:
     methods:
       - GET
     # a list of roles the user must have in order to accces urls under the above
-    roles_allowed:
+    roles:
       - openvpn:vpn-user
       - openvpn:prod-vpn
       - test
   - url: /admin
     methods:
       - GET
-    roles_allowed:
+    roles:
       - openvpn:vpn-user
       - openvpn:commons-prod-vpn
 ```
-
 
 #### **Example Usage**
 
@@ -157,6 +166,29 @@ bin/keycloak-proxy \
     --resource="uri=/admin|methods=GET|roles=test1,test2" \
     --resource="uri=/backend|roles=test1"
 ```
+
+#### **Google OpenID**
+
+Technically though the role extensions do require a Keycloak IDP or at the very least a IDP that produces a token which contains roles scopes, there's nothing stopping you from using it against any OpenID providers, such as Google. Go to the Google Developers Console and create a new application *(via "Enable and Manage APIs -> Credentials)*. Once you've created the application, take the client id, secret and make sure you've added the callback url to the application scope *(using the default this would be http://127.0.0.1:3000/oauth/callback)* 
+
+``` shell
+bin/keycloak-proxy \
+    --discovery-url=https://accounts.google.com/.well-known/openid-confuration \
+    --client-id=<CLIENT_ID> \
+    --secret=<CLIENT_SECRET> \
+    --resource="uri=/" \   
+    --verbose=true
+```
+
+Open a browser an go to http://127.0.0.1:3000 and you should be redirected to Google for authenticate and back the application when done and you should see something like the below.
+
+```shell
+DEBU[0002] resource access permitted: /                  access=permitted bearer=false expires=57m51.32029042s resource=/ username=gambol99@gmail.com
+2016-02-06 13:59:01.680300 I | http: proxy error: dial tcp 127.0.0.1:8081: getsockopt: connection refused
+DEBU[0002] resource access permitted: /favicon.ico       access=permitted bearer=false expires=57m51.144004098s resource=/ username=gambol99@gmail.com
+2016-02-06 13:59:01.856716 I | http: proxy error: dial tcp 127.0.0.1:8081: getsockopt: connection refused
+```
+
 
 #### **Upstream Headers**
 

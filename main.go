@@ -48,6 +48,7 @@ func main() {
 		if err := readOptions(cx, config); err != nil {
 			printUsage(err.Error())
 		}
+
 		// step: validate the configuration
 		if err := config.isValid(); err != nil {
 			printUsage(err.Error())
@@ -55,13 +56,11 @@ func main() {
 		// step: create the proxy
 		proxy, err := newKeycloakProxy(config)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "[error] %s", err)
-			os.Exit(1)
+			printUsage(err.Error())
 		}
 		// step: start the service
 		if err := proxy.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "[error] %s", err)
-			os.Exit(1)
+			printUsage(err.Error())
 		}
 		// step: setup the termination signals
 		signalChannel := make(chan os.Signal)
@@ -75,6 +74,6 @@ func main() {
 
 // printUsage display the command line usage and error
 func printUsage(message string) {
-	fmt.Fprintf(os.Stderr, "[error] %s\n", message)
+	fmt.Fprintf(os.Stderr, "\n[error] %s\n", message)
 	os.Exit(1)
 }
