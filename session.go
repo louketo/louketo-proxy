@@ -144,12 +144,8 @@ func (r *KeycloakProxy) getUserContext(token jose.JWT) (*userContext, error) {
 	// step: ensure we have and can extract the preferred name of the user, if not, we set to the ID
 	preferredName, found, err := claims.StringClaim(claimPreferredName)
 	if err != nil || !found {
-		log.WithFields(log.Fields{
-			"id":    identity.ID,
-			"email": identity.Email,
-		}).Warnf("the token does not container a %s", claimPreferredName)
-		// choice: set the preferredName to the ID if claim not found
-		preferredName = identity.ID
+		// choice: set the preferredName to the Email if claim not found
+		preferredName = identity.Email
 	}
 
 	// step: retrieve the audience from access token

@@ -453,6 +453,7 @@ func (r *KeycloakProxy) oauthAuthorizationHandler(cx *gin.Context) {
 //
 // oauthCallbackHandler is responsible for handling the response from keycloak
 //
+// @@TODO need to clean up this method somewhat
 func (r *KeycloakProxy) oauthCallbackHandler(cx *gin.Context) {
 	// step: is token verification switched on?
 	if r.config.SkipTokenVerification {
@@ -460,15 +461,16 @@ func (r *KeycloakProxy) oauthCallbackHandler(cx *gin.Context) {
 		return
 	}
 
-	// step: ensure we have a authorization code
+	// step: ensure we have a authorization code to exchange
 	code := cx.Request.URL.Query().Get("code")
 	if code == "" {
-		log.Error("failed to get the code callback request")
+		log.WithFields(log.Fields{"client_ip": cx.ClientIP()}).Error("code parameter not found in callback request")
+
 		r.accessForbidden(cx)
 		return
 	}
 
-	// step: grab the state from request
+	// step: grab the state from request, otherwise default to root url
 	state := cx.Request.URL.Query().Get("state")
 	if state == "" {
 		state = "/"
@@ -477,17 +479,31 @@ func (r *KeycloakProxy) oauthCallbackHandler(cx *gin.Context) {
 	// step: exchange the authorization for a access token
 	response, err := r.getToken(oauth2.GrantTypeAuthCode, code)
 	if err != nil {
-		log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to retrieve access token from authentication service")
+		log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to exchange code for access token")
 		r.accessForbidden(cx)
 		return
 	}
 
-	// step: decode and parse the access token
-	token, identity, err := r.parseToken(response.AccessToken)
+	// step: decode and verify the id token
+	token, identity, err := r.parseToken(response.IDToken)
 	if err != nil {
-		log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to parse jwt token for identity")
+		log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to parse id token for identity")
 		r.accessForbidden(cx)
 		return
+	}
+	if err := r.verifyToken(token); err != nil {
+		log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to verify the id token")
+		r.accessForbidden(cx)
+		return
+	}
+
+	// step: attempt to decode the access token?
+	ac, id, err := r.parseToken(response.AccessToken)
+	if err != nil {
+		log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to parse the access token, using id token only")
+	} else {
+		token = ac
+		identity = id
 	}
 
 	log.WithFields(log.Fields{

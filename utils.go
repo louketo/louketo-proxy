@@ -89,6 +89,12 @@ func initializeOpenID(discoveryURL, clientID, clientSecret, redirectURL string, 
 	var err error
 	var providerConfig oidc.ProviderConfig
 
+	// step: fix up the url if required, the underlining lib will add the .well-known/openid-configuration to
+	// the discovery url for us.
+	if strings.HasSuffix(discoveryURL, "/.well-known/openid-configuration") {
+		discoveryURL = strings.TrimSuffix(discoveryURL, "/.well-known/openid-configuration")
+	}
+
 	// step: attempt to retrieve the provider configuration
 	gotConfig := false
 	for i := 0; i < 3; i++ {
