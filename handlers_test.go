@@ -20,6 +20,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gambol99/go-oidc/jose"
 	"github.com/gin-gonic/gin"
 )
 
@@ -257,6 +258,95 @@ func TestAdmissionHandlerRoles(t *testing.T) {
 			continue
 		}
 
+		c.Context.Set(userContextName, c.UserContext)
+
+		handler(c.Context)
+		if c.Context.Writer.Status() != c.HTTPCode {
+			t.Errorf("test case %d should have recieved code: %d, got %d", i, c.HTTPCode, c.Context.Writer.Status())
+		}
+	}
+}
+
+func TestAdmissionHandlerClaims(t *testing.T) {
+	// allow any fake authed users
+	proxy := newFakeKeycloakProxyWithResources(t, []*Resource{
+		{
+			URL:     "/admin",
+			Methods: []string{"ANY"},
+		},
+	})
+
+	tests := []struct {
+		Matches     map[string]string
+		Context     *gin.Context
+		UserContext *userContext
+		HTTPCode    int
+	}{
+		{
+			Matches: map[string]string{"iss": "test"},
+			Context: newFakeGinContext("GET", "/admin"),
+			UserContext: &userContext{
+				claims: jose.Claims{},
+			},
+			HTTPCode: http.StatusForbidden,
+		},
+		{
+			Matches: map[string]string{"iss": "^tes$"},
+			Context: newFakeGinContext("GET", "/admin"),
+			UserContext: &userContext{
+				claims: jose.Claims{"iss": 1},
+			},
+			HTTPCode: http.StatusForbidden,
+		},
+		{
+			Matches: map[string]string{"iss": "^tes$"},
+			Context: newFakeGinContext("GET", "/admin"),
+			UserContext: &userContext{
+				claims: jose.Claims{"iss": "bad_match"},
+			},
+			HTTPCode: http.StatusForbidden,
+		},
+		{
+			Matches: map[string]string{"iss": "^test", "notfound": "someting"},
+			Context: newFakeGinContext("GET", "/admin"),
+			UserContext: &userContext{
+				claims: jose.Claims{"iss": "test"},
+			},
+			HTTPCode: http.StatusForbidden,
+		},
+		{
+			Matches: map[string]string{"iss": "^test", "notfound": "someting"},
+			Context: newFakeGinContext("GET", "/admin"),
+			UserContext: &userContext{
+				claims: jose.Claims{"iss": "test"},
+			},
+			HTTPCode: http.StatusForbidden,
+		},
+		{
+			Matches: map[string]string{"iss": ".*"},
+			Context: newFakeGinContext("GET", "/admin"),
+			UserContext: &userContext{
+				claims: jose.Claims{"iss": "test"},
+			},
+			HTTPCode: http.StatusOK,
+		},
+		{
+			Matches: map[string]string{"iss": "^t.*$"},
+			Context: newFakeGinContext("GET", "/admin"),
+			UserContext: &userContext{
+				claims: jose.Claims{"iss": "test"},
+			},
+			HTTPCode: http.StatusOK,
+		},
+	}
+
+	for i, c := range tests {
+		// step: if closure so we need to get the handler each time
+		proxy.config.ClaimsMatch = c.Matches
+		handler := proxy.admissionHandler()
+		// step: inject a resource
+
+		c.Context.Set(cxEnforce, proxy.config.Resources[0])
 		c.Context.Set(userContextName, c.UserContext)
 
 		handler(c.Context)

@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"net/url"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -92,9 +93,17 @@ func (r *Config) isValid() error {
 			r.MaxSession = time.Duration(6) * time.Hour
 		}
 	}
+	// step: valid the resources
 	for _, resource := range r.Resources {
 		if err := resource.isValid(); err != nil {
 			return err
+		}
+	}
+	// step: validate the claims are validate regex's
+	for k, claim := range r.ClaimsMatch {
+		// step: validate the regex
+		if _, err := regexp.Compile(claim); err != nil {
+			return fmt.Errorf("the claim matcher: %s for claim: %s is not a valid regex", claim, k)
 		}
 	}
 

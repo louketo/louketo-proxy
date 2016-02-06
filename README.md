@@ -179,12 +179,13 @@ cx.Request.Header.Add("X-Forwarded-Proto", <CLIENT_PROTO>)
 
 #### **Encryption Key**
 
-In order to remain stateless and not have to rely on a central cache to persist the 'refresh_tokens', the refresh token is encrypted and added as a cookie using *crypto/aes*. Naturally the key must be the same if your running behind a load balancer etc.  
+In order to remain stateless and not have to rely on a central cache to persist the 'refresh_tokens', the refresh token is encrypted and added as a cookie using *crypto/aes*. 
+Naturally the key must be the same if your running behind a load balancer etc.  
 
 #### **Claim Matching**
 
-Note, you can add a variable list of claim matches on the presented token by using the --claim 'key=pair' command option or a map 'claims' in the config file (see the example file), before permitting
-access via the proxy each of the claims inside the token are evaluated.
+The proxy supports adding a variable list of claim matches against the presented tokens for additional access control. So for example you can match the 'iss' or 'aud' to the token or custom attributes; 
+note each of the matches are regex's. Examples,  --claim 'aud=sso.*' --claim iss=https://.*'
 
 #### **Custom Pages**
 

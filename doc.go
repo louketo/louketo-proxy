@@ -115,6 +115,6 @@ type Config struct {
 	SkipTokenVerification bool
 	// Verbose switches on debug logging
 	Verbose bool `json:"verbose" yaml:"verbose"`
-	// Hostname is a list of hostnames the service should response to
+	// Hostname is a list of hostname's the service should response to
 	Hostnames []string `json:"hostnames" yaml:"hostnames"`
 }
