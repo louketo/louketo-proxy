@@ -45,7 +45,7 @@ type sessionState struct {
 
 // refreshUserSessionToken is responsible for retrieving the session state cookie and attempting to
 // refresh the access token for the user
-func (r *KeycloakProxy) refreshUserSessionToken(cx *gin.Context) (jose.JWT, error) {
+func (r *openIDProxy) refreshUserSessionToken(cx *gin.Context) (jose.JWT, error) {
 	// step: grab the session state cooke
 	state, err := r.getSessionState(cx)
 	if err != nil {
@@ -86,7 +86,7 @@ func (r *KeycloakProxy) refreshUserSessionToken(cx *gin.Context) (jose.JWT, erro
 
 // getSessionToken retrieves the authentication cookie from the request and parse's into a JWT token
 // The token can come either a session cookie or a Bearer header
-func (r *KeycloakProxy) getSessionToken(cx *gin.Context) (jose.JWT, bool, error) {
+func (r *openIDProxy) getSessionToken(cx *gin.Context) (jose.JWT, bool, error) {
 	var session string
 
 	isBearer := false
@@ -117,7 +117,7 @@ func (r *KeycloakProxy) getSessionToken(cx *gin.Context) (jose.JWT, bool, error)
 }
 
 // getSessionState retrieves the session state from the request
-func (r *KeycloakProxy) getSessionState(cx *gin.Context) (*sessionState, error) {
+func (r *openIDProxy) getSessionState(cx *gin.Context) (*sessionState, error) {
 	// step: find the session data cookie
 	cookie := findCookie(sessionStateCookieName, cx.Request.Cookies())
 	if cookie == nil {
@@ -128,7 +128,7 @@ func (r *KeycloakProxy) getSessionState(cx *gin.Context) (*sessionState, error) 
 }
 
 // getUserContext parse the jwt token and extracts the various elements is order to construct
-func (r *KeycloakProxy) getUserContext(token jose.JWT) (*userContext, error) {
+func (r *openIDProxy) getUserContext(token jose.JWT) (*userContext, error) {
 	// step: decode the claims from the tokens
 	claims, err := token.Claims()
 	if err != nil {
@@ -182,14 +182,14 @@ func (r *KeycloakProxy) getUserContext(token jose.JWT) (*userContext, error) {
 }
 
 // createSession creates a session cookie with the access token
-func (r *KeycloakProxy) createSession(token jose.JWT, expires time.Time, cx *gin.Context) error {
+func (r *openIDProxy) createSession(token jose.JWT, expires time.Time, cx *gin.Context) error {
 	http.SetCookie(cx.Writer, createSessionCookie(token.Encode(), cx.Request.Host, expires))
 
 	return nil
 }
 
 // createSessionState creates a session state cookie, used to hold the refresh cookie and the expiration time
-func (r *KeycloakProxy) createSessionState(state *sessionState, cx *gin.Context) error {
+func (r *openIDProxy) createSessionState(state *sessionState, cx *gin.Context) error {
 	// step: we need to encode the state
 	encoded, err := r.encodeState(state)
 	if err != nil {
@@ -202,7 +202,7 @@ func (r *KeycloakProxy) createSessionState(state *sessionState, cx *gin.Context)
 }
 
 // encodeState encodes the session state information into a value for a cookie to consume
-func (r *KeycloakProxy) encodeState(session *sessionState) (string, error) {
+func (r *openIDProxy) encodeState(session *sessionState) (string, error) {
 	// step: encode the session into a string
 	encoded := fmt.Sprintf("%d|%s", session.expireOn.Unix(), session.refreshToken)
 
@@ -216,7 +216,7 @@ func (r *KeycloakProxy) encodeState(session *sessionState) (string, error) {
 }
 
 // decodeState decodes the session state cookie value
-func (r *KeycloakProxy) decodeState(state string) (*sessionState, error) {
+func (r *openIDProxy) decodeState(state string) (*sessionState, error) {
 	// step: decode the base64 encrypted cookie
 	cipherText, err := base64.StdEncoding.DecodeString(state)
 	if err != nil {

@@ -117,4 +117,5 @@ type Config struct {
 	Verbose bool `json:"verbose" yaml:"verbose"`
 	// Hostname is a list of hostname's the service should response to
 	Hostnames []string `json:"hostnames" yaml:"hostnames"`
+	// Emails is a list of email addresses which is
 }

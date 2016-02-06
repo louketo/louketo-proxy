@@ -1,7 +1,7 @@
-[![Build Status](https://travis-ci.org/gambol99/keycloak-proxy.svg?branch=master)](https://travis-ci.org/gambol99/keycloak-proxy)
-[![GoDoc](http://godoc.org/github.com/gambol99/keycloak-proxy?status.png)](http://godoc.org/github.com/gambol99/keycloak-proxy)
+[![Build Status](https://travis-ci.org/gambol99/openid-proxy.svg?branch=master)](https://travis-ci.org/gambol99/keycloak-proxy)
+[![GoDoc](http://godoc.org/github.com/gambol99/openid-proxy?status.png)](http://godoc.org/github.com/gambol99/keycloak-proxy)
 
-### **Keycloak Proxy**
+### **OpenID Proxy**
 ----
 
 >  - Supports role based uri controls
@@ -117,6 +117,7 @@ resources:
       - openvpn:vpn-user
       - openvpn:commons-prod-vpn
 ```
+
 
 #### **Example Usage**
 

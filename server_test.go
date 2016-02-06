@@ -42,16 +42,15 @@ const (
 	fakeTestRole  = "role:test"
 )
 
-func newFakeKeycloakProxyWithResources(t *testing.T, resources []*Resource) *KeycloakProxy {
+func newFakeKeycloakProxyWithResources(t *testing.T, resources []*Resource) *openIDProxy {
 	kc := newFakeKeycloakProxy(t)
 	kc.config.Resources = resources
 	return kc
 }
 
-func newFakeKeycloakProxy(t *testing.T) *KeycloakProxy {
+func newFakeKeycloakProxy(t *testing.T) *openIDProxy {
 	log.SetOutput(ioutil.Discard)
-
-	kc := &KeycloakProxy{
+	kc := &openIDProxy{
 		config: &Config{
 			DiscoveryURL:          "127.0.0.1:",
 			ClientID:              fakeClientID,

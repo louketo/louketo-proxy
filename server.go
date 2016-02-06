@@ -31,8 +31,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// KeycloakProxy is the server component
-type KeycloakProxy struct {
+// openIDProxy is the server component
+type openIDProxy struct {
 	config *Config
 	// the gin service
 	router *gin.Engine
@@ -50,8 +50,8 @@ type reverseProxy interface {
 	ServeHTTP(rw http.ResponseWriter, req *http.Request)
 }
 
-// newKeycloakProxy create's a new keycloak proxy from configuration
-func newKeycloakProxy(cfg *Config) (*KeycloakProxy, error) {
+// newProxy create's a new oidc proxy from configuration
+func newProxy(cfg *Config) (*openIDProxy, error) {
 	// step: set the logging level
 	if cfg.LogJSONFormat {
 		log.SetFormatter(&log.JSONFormatter{})
@@ -75,7 +75,7 @@ func newKeycloakProxy(cfg *Config) (*KeycloakProxy, error) {
 	}
 
 	// step: create a proxy service
-	service := &KeycloakProxy{
+	service := &openIDProxy{
 		config:      cfg,
 		proxy:       reverse,
 		upstreamURL: upstreamURL,
@@ -132,7 +132,7 @@ func (r KeycloakProxy) initializeRouter() {
 }
 
 // initializeTemplates loads the custom template
-func (r *KeycloakProxy) initializeTemplates() {
+func (r *openIDProxy) initializeTemplates() {
 	var list []string
 
 	if r.config.SignInPage != "" {
@@ -150,7 +150,7 @@ func (r *KeycloakProxy) initializeTemplates() {
 }
 
 // Run starts the proxy service
-func (r *KeycloakProxy) Run() error {
+func (r *openIDProxy) Run() error {
 	tlsConfig := &tls.Config{}
 
 	// step: are we doing mutual tls?
@@ -191,13 +191,13 @@ func (r *KeycloakProxy) Run() error {
 }
 
 // redirectToURL redirects the user and aborts the context
-func (r KeycloakProxy) redirectToURL(url string, cx *gin.Context) {
+func (r openIDProxy) redirectToURL(url string, cx *gin.Context) {
 	cx.Redirect(http.StatusTemporaryRedirect, url)
 	cx.Abort()
 }
 
 // accessForbidden redirects the user to the forbidden page
-func (r KeycloakProxy) accessForbidden(cx *gin.Context) {
+func (r openIDProxy) accessForbidden(cx *gin.Context) {
 	// step: do we have a custom forbidden page
 	if r.config.hasForbiddenPage() {
 		cx.HTML(http.StatusForbidden, r.config.ForbiddenPage, r.config.TagData)
@@ -210,7 +210,7 @@ func (r KeycloakProxy) accessForbidden(cx *gin.Context) {
 }
 
 // redirectToAuthorization redirects the user to authorization handler
-func (r KeycloakProxy) redirectToAuthorization(cx *gin.Context) {
+func (r openIDProxy) redirectToAuthorization(cx *gin.Context) {
 	// step: add a state referrer to the authorization page
 	authQuery := fmt.Sprintf("?state=%s", cx.Request.URL.String())
 
@@ -225,7 +225,7 @@ func (r KeycloakProxy) redirectToAuthorization(cx *gin.Context) {
 }
 
 // tryUpdateConnection attempt to upgrade the connection to a http pdy stream
-func (r *KeycloakProxy) tryUpdateConnection(cx *gin.Context) error {
+func (r *openIDProxy) tryUpdateConnection(cx *gin.Context) error {
 	// step: dial the endpoint
 	tlsConn, err := tryDialEndpoint(r.upstreamURL)
 	if err != nil {
