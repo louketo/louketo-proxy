@@ -1,5 +1,5 @@
 
-NAME=keycloak-proxy
+NAME=oidc-proxy
 AUTHOR=gambol99
 HARDWARE=$(shell uname -m)
 GOVERSION=1.5.3
@@ -30,8 +30,8 @@ static: golang deps
 
 docker-build:
 	@echo "--> Compiling the project"
-	sudo docker run --rm -v ${ROOT_DIR}:/go/src/github.com/gambol99/keycloak-proxy \
-		-w /go/src/github.com/gambol99/keycloak-proxy -e GOOS=linux golang:${GOVERSION} make static
+	sudo docker run --rm -v ${ROOT_DIR}:/go/src/github.com/gambol99/oidc-proxy \
+		-w /go/src/github.com/gambol99/oidc-proxy -e GOOS=linux golang:${GOVERSION} make static
 
 docker: static
 	@echo "--> Building the docker image"

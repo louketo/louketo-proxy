@@ -25,7 +25,7 @@ import (
 )
 
 // refreshAccessToken attempts to refresh the access token, returning the parsed token and the time it expires or a error
-func (r *KeycloakProxy) refreshAccessToken(refreshToken string) (jose.JWT, time.Time, error) {
+func (r *openIDProxy) refreshAccessToken(refreshToken string) (jose.JWT, time.Time, error) {
 	// step: refresh the access token
 	response, err := r.getToken(oauth2.GrantTypeRefreshToken, refreshToken)
 	if err != nil {
@@ -45,7 +45,7 @@ func (r *KeycloakProxy) refreshAccessToken(refreshToken string) (jose.JWT, time.
 }
 
 // parseToken retrieve the user identity from the token
-func (r *KeycloakProxy) parseToken(accessToken string) (jose.JWT, *oidc.Identity, error) {
+func (r *openIDProxy) parseToken(accessToken string) (jose.JWT, *oidc.Identity, error) {
 	// step: parse and return the token
 	token, err := jose.ParseJWT(accessToken)
 	if err != nil {
@@ -68,7 +68,7 @@ func (r *KeycloakProxy) parseToken(accessToken string) (jose.JWT, *oidc.Identity
 }
 
 // verifyToken verify that the token in the user context is valid
-func (r *KeycloakProxy) verifyToken(token jose.JWT) error {
+func (r *openIDProxy) verifyToken(token jose.JWT) error {
 	// step: verify the token is whom they say they are
 	if err := r.openIDClient.VerifyJWT(token); err != nil {
 		if strings.Contains(err.Error(), "token is expired") {
@@ -82,7 +82,7 @@ func (r *KeycloakProxy) verifyToken(token jose.JWT) error {
 }
 
 // getToken retrieves a code from the provider, extracts and verified the token
-func (r *KeycloakProxy) getToken(grantType, code string) (oauth2.TokenResponse, error) {
+func (r *openIDProxy) getToken(grantType, code string) (oauth2.TokenResponse, error) {
 	var response oauth2.TokenResponse
 
 	// step: retrieve the client
