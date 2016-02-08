@@ -67,6 +67,18 @@ type Resource struct {
 	Roles []string `json:"roles" yaml:"roles"`
 }
 
+// CORS controls
+type CORS struct {
+	// Origins is a list of origins permitted
+	Origins []string `json:"origins" yaml:"origins"`
+	// Methods is a set of access control methods
+	Methods []string `json:"methods" yaml:"methods"`
+	// Headers is a set of cors headers
+	Headers []string `json:"headers" yaml:"headers"`
+	// MaxAge is the age for CORS
+	MaxAge time.Duration `json:"max-age" yaml:"max-age"`
+}
+
 // Config is the configuration for the proxy
 type Config struct {
 	// LogRequests indicates if we should log all the requests
@@ -103,6 +115,10 @@ type Config struct {
 	Upstream string `json:"upstream" yaml:"upstream"`
 	// TagData is passed to the templates
 	TagData map[string]string `json:"TagData" yaml:"TagData"`
+	// CORS permits adding headers to the /oauth handlers
+	CORSConfig *CORS `json:"cors" yaml:"cors"`
+	// Header permits adding customs headers across the board
+	Header map[string]string `json:"headers" yaml:"headers"`
 	// Scopes is a list of scope we should request
 	Scopes []string `json:"scopes" yaml:"scopes"`
 	// Resources is a list of protected resources

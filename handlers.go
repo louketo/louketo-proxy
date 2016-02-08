@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/gambol99/go-oidc/jose"
 	"github.com/gambol99/go-oidc/oauth2"
@@ -112,6 +113,11 @@ func (r *KeycloakProxy) entryPointHandler() gin.HandlerFunc {
 		}
 		// step: pass into the authentication and admission handlers
 		cx.Next()
+
+		// step: add a custom headers to the request
+		for k, v := range r.config.Header {
+			cx.Request.Header.Set(k, v)
+		}
 
 		// step: check the request has not been aborted and if not, proxy request
 		if !cx.IsAborted() {
@@ -446,6 +452,9 @@ func (r *KeycloakProxy) oauthAuthorizationHandler(cx *gin.Context) {
 		return
 	}
 
+	// step: add the cors headers
+	r.corsAccessHeaders(cx)
+
 	// step: get the redirection url
 	r.redirectToURL(redirectionURL, cx)
 }
@@ -555,6 +564,9 @@ func (r *KeycloakProxy) oauthCallbackHandler(cx *gin.Context) {
 		}
 	}
 
+	// step: add the cors headers
+	r.corsAccessHeaders(cx)
+
 	r.redirectToURL(state, cx)
 }
 
@@ -563,4 +575,22 @@ func (r *KeycloakProxy) oauthCallbackHandler(cx *gin.Context) {
 //
 func (r *KeycloakProxy) healthHandler(cx *gin.Context) {
 	cx.String(http.StatusOK, "OK")
+}
+
+// corsAccessHeaders adds the cors access controls to the oauth responses
+func (r *KeycloakProxy) corsAccessHeaders(cx *gin.Context) {
+	cors := r.config.CORSConfig
+	if len(cors.Origins) > 0 {
+		cx.Writer.Header().Set("Access-Control-Allow-Origin", strings.Join(cors.Origins, ","))
+	}
+	if len(cors.Methods) > 0 {
+		cx.Writer.Header().Set("Access-Control-Allow-Methods", strings.Join(cors.Methods, ","))
+	}
+	if len(cors.Headers) > 0 {
+		cx.Writer.Header().Set("Access-Control-Allow-Headers", strings.Join(cors.Headers, ","))
+	}
+	if cors.MaxAge > 0 {
+		cx.Writer.Header().Set("Access-Control-Max-Age",
+			fmt.Sprintf("%d", int(cors.MaxAge.Seconds())))
+	}
 }
