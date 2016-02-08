@@ -39,6 +39,11 @@ func newDefaultConfig() *Config {
 		MaxSession:     time.Duration(1) * time.Hour,
 		TagData:        make(map[string]string, 0),
 		ClaimsMatch:    make(map[string]string, 0),
+		CORSConfig: &CORS{
+			Origins: []string{},
+			Methods: []string{},
+			Headers: []string{},
+		},
 	}
 }
 
@@ -209,6 +214,24 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 			return err
 		}
 	}
+	if cx.IsSet("header") {
+		config.Header, err = decodeKeyPairs(cx.StringSlice("header"))
+		if err != nil {
+			return err
+		}
+	}
+	if cx.IsSet("cors-origins") {
+		config.CORSConfig.Origins = cx.StringSlice("cors-origins")
+	}
+	if cx.IsSet("cors-methods") {
+		config.CORSConfig.Methods = cx.StringSlice("cors-methods")
+	}
+	if cx.IsSet("cors-headers") {
+		config.CORSConfig.Headers = cx.StringSlice("cors-headers")
+	}
+	if cx.IsSet("cors-max-age") {
+		config.CORSConfig.MaxAge = cx.Duration("cors-max-age")
+	}
 	if cx.IsSet("resource") {
 		for _, x := range cx.StringSlice("resource") {
 			resource, err := decodeResource(x)
@@ -326,6 +349,22 @@ func getOptions() []cli.Flag {
 			Name:  "max-session",
 			Usage: "if refresh sessions are enabled we can limit their duration via this",
 			Value: defaults.MaxSession,
+		},
+		cli.StringSliceFlag{
+			Name:  "cors-origins",
+			Usage: "a set of origins to add to the CORS access control (Access-Control-Allow-Origin)",
+		},
+		cli.StringSliceFlag{
+			Name:  "cors-headers",
+			Usage: "a set of headers to add to the CORS access control (Access-Control-Allow-Headers)",
+		},
+		cli.StringSliceFlag{
+			Name:  "cors-methods",
+			Usage: "the method permitted in the access control (Access-Control-Allow-Methods)",
+		},
+		cli.DurationFlag{
+			Name:  "cors-max-age",
+			Usage: "the max age applied to cors headers (Access-Control-Max-Age)",
 		},
 		cli.BoolFlag{
 			Name:  "skip-token-verification",
