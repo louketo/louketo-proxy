@@ -87,7 +87,7 @@ func (r *KeycloakProxy) securityHandler() gin.HandlerFunc {
 }
 
 //
-// entrypointHandler checks to see if the request requires authentication
+// entryPointHandler checks to see if the request requires authentication
 //
 func (r *KeycloakProxy) entryPointHandler() gin.HandlerFunc {
 	return func(cx *gin.Context) {

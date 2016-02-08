@@ -16,18 +16,19 @@ limitations under the License.
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
 	"sync"
 
-	"crypto/tls"
-	"crypto/x509"
-	log "github.com/Sirupsen/logrus"
 	"github.com/gambol99/go-oidc/oidc"
+
+	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
-	"io/ioutil"
 )
 
 // KeycloakProxy is the server component
@@ -96,7 +97,6 @@ func newKeycloakProxy(cfg *Config) (*KeycloakProxy, error) {
 	// step: initialize the gin router
 	router := gin.New()
 	service.router = router
-
 	// step: load the templates
 	service.initializeTemplates()
 	for _, resource := range cfg.Resources {
@@ -106,25 +106,29 @@ func newKeycloakProxy(cfg *Config) (*KeycloakProxy, error) {
 		log.Infof("the token must container the claim: %s, required: %s", name, value)
 	}
 
-	router.Use(gin.Recovery())
-	// step: are we logging the traffic?
-	if cfg.LogRequests {
-		router.Use(service.loggingHandler())
-	}
+	service.initializeRouter()
 
+	return service, nil
+}
+
+// initializeRouter sets up the gin routing
+func (r KeycloakProxy) initializeRouter() {
+	r.router.Use(gin.Recovery())
+	// step: are we logging the traffic?
+	if r.config.LogRequests {
+		r.router.Use(r.loggingHandler())
+	}
 	// step: if gin release production
 	if os.Getenv("GIN_MODE") == "release" {
 		log.Infof("enabling the security handler for release mode")
-		router.Use(service.securityHandler())
+		r.router.Use(r.securityHandler())
 	}
 
 	// step: add the routing
-	router.GET(authorizationURL, service.oauthAuthorizationHandler)
-	router.GET(callbackURL, service.oauthCallbackHandler)
-	router.GET(healthURL, service.healthHandler)
-	router.Use(service.entryPointHandler(), service.authenticationHandler(), service.admissionHandler())
-
-	return service, nil
+	r.router.GET(authorizationURL, r.oauthAuthorizationHandler)
+	r.router.GET(callbackURL, r.oauthCallbackHandler)
+	r.router.GET(healthURL, r.healthHandler)
+	r.router.Use(r.entryPointHandler(), r.authenticationHandler(), r.admissionHandler())
 }
 
 // initializeTemplates loads the custom template
@@ -151,6 +155,8 @@ func (r *KeycloakProxy) Run() error {
 
 	// step: are we doing mutual tls?
 	if r.config.TLSCaCertificate != "" {
+		log.Infof("enabling mutual tls, reading in the ca: %s", r.config.TLSCaCertificate)
+
 		caCert, err := ioutil.ReadFile(r.config.TLSCaCertificate)
 		if err != nil {
 			return err

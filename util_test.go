@@ -17,8 +17,11 @@ package main
 
 import (
 	"bytes"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"reflect"
 	"testing"
 
@@ -202,6 +205,21 @@ func TestValidateResources(t *testing.T) {
 			t.Errorf("case %d should not have failed", i)
 			continue
 		}
+	}
+}
+
+func TestFileExists(t *testing.T) {
+	if fileExists("no_such_file_exsit_32323232") {
+		t.Errorf("we should have received false")
+	}
+	tmpfile, err := ioutil.TempFile("/tmp", fmt.Sprintf("test_file_%d", os.Getpid()))
+	if err != nil {
+		t.Fatalf("failed to create the temporary file, %s", err)
+	}
+	defer os.Remove(tmpfile.Name())
+
+	if !fileExists(tmpfile.Name()) {
+		t.Errorf("we should have received a true")
 	}
 }
 

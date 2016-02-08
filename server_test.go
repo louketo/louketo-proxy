@@ -50,6 +50,7 @@ func newFakeKeycloakProxyWithResources(t *testing.T, resources []*Resource) *Key
 
 func newFakeKeycloakProxy(t *testing.T) *KeycloakProxy {
 	log.SetOutput(ioutil.Discard)
+
 	kc := &KeycloakProxy{
 		config: &Config{
 			DiscoveryURL:          "127.0.0.1:",
@@ -96,6 +97,10 @@ func newFakeKeycloakProxy(t *testing.T) *KeycloakProxy {
 		},
 		proxy: new(fakeReverseProxy),
 	}
+	kc.router = gin.New()
+	gin.SetMode(gin.ReleaseMode)
+	// step: add the gin routing
+	kc.initializeRouter()
 
 	return kc
 }
