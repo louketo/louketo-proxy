@@ -16,10 +16,10 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"path"
 	"regexp"
-	"fmt"
 	"strings"
 	"time"
 
