@@ -94,6 +94,7 @@ func newFakeKeycloakProxy(t *testing.T) *KeycloakProxy {
 					Roles:       []string{},
 				},
 			},
+			CORSConfig: &CORS{},
 		},
 		proxy: new(fakeReverseProxy),
 	}

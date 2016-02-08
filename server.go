@@ -192,6 +192,9 @@ func (r *KeycloakProxy) Run() error {
 
 // redirectToURL redirects the user and aborts the context
 func (r KeycloakProxy) redirectToURL(url string, cx *gin.Context) {
+	// step: add the cors headers
+	r.corsAccessHeaders(cx)
+
 	cx.Redirect(http.StatusTemporaryRedirect, url)
 	cx.Abort()
 }
