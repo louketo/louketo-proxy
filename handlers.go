@@ -19,10 +19,10 @@ import (
 	"net/http"
 	"path"
 	"regexp"
+	"fmt"
 	"strings"
 	"time"
 
-	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/gambol99/go-oidc/jose"
 	"github.com/gambol99/go-oidc/oauth2"

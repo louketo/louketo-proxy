@@ -39,6 +39,7 @@ func newDefaultConfig() *Config {
 		MaxSession:     time.Duration(1) * time.Hour,
 		TagData:        make(map[string]string, 0),
 		ClaimsMatch:    make(map[string]string, 0),
+		Header:        []string{},
 		CORSConfig: &CORS{
 			Origins: []string{},
 			Methods: []string{},

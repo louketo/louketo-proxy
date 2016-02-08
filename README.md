@@ -4,19 +4,17 @@
 ### **Keycloak Proxy**
 ----
 
->  - Supports role based uri controls
->  - Websocket connection upgrading
->  - Token claim matching for additional ACL controls
->  - Stateless offline refresh tokens with optional predefined session limits
->  - TLS and mutual TLS support
->  - JSON field bases access logs
->  - Custom Sign-in and access forbidden pages
+  - Supports role based uri controls
+  - Websocket connection upgrading
+  - Token claim matching for additional ACL controls
+  - Stateless offline refresh tokens with optional predefined session limits
+  - TLS and mutual TLS support
+  - JSON field bases access logs
+  - Custom Sign-in and access forbidden pages
     
  - --------
 
-Keycloak-proxy is a proxy service which at the risk of stating the obvious integrates with the [Keycloak](https://github.com/keycloak/keycloak) authentication service. Although technically the proxy has no dependency on Keycloak itself. And would quite happl    
-The configuration and feature set is based on the actual java version of the [proxy](https://docs.jboss.org/keycloak/docs/1.1.0.Beta2/userguide/html/proxy.html). The service
-supports both access tokens in browser cookie or bearer tokens.
+Keycloak-proxy is a proxy service which at the risk of stating the obvious integrates with the [Keycloak](https://github.com/keycloak/keycloak) authentication service. Although technically the service has no dependency on Keycloak itself and would quite happily work with any OpenID provider. The configuration and feature set is based on the actual java version of the [proxy](https://docs.jboss.org/keycloak/docs/1.1.0.Beta2/userguide/html/proxy.html). The service supports both access tokens in browser cookie or bearer tokens.
 
 ```shell
 [jest@starfury keycloak-proxy]$ bin/keycloak-proxy help
