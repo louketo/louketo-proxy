@@ -12,7 +12,7 @@
   - JSON field bases access logs
   - Custom Sign-in and access forbidden pages
     
- - --------
+----
 
 Keycloak-proxy is a proxy service which at the risk of stating the obvious integrates with the [Keycloak](https://github.com/keycloak/keycloak) authentication service. Although technically the service has no dependency on Keycloak itself and would quite happily work with any OpenID provider. The configuration and feature set is based on the actual java version of the [proxy](https://docs.jboss.org/keycloak/docs/1.1.0.Beta2/userguide/html/proxy.html). The service supports both access tokens in browser cookie or bearer tokens.
 
