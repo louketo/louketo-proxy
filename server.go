@@ -23,13 +23,13 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/gambol99/go-oidc/oidc"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
-	"strings"
 )
 
 // KeycloakProxy is the server component
