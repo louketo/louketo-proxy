@@ -40,7 +40,7 @@ func newDefaultConfig() *Config {
 		TagData:        make(map[string]string, 0),
 		ClaimsMatch:    make(map[string]string, 0),
 		Header:         make(map[string]string, 0),
-		CORSConfig: &CORS{
+		CORS: &CORS{
 			Origins: []string{},
 			Methods: []string{},
 			Headers: []string{},
@@ -203,6 +203,24 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 	if cx.IsSet("hostname") {
 		config.Hostnames = cx.StringSlice("hostname")
 	}
+	if cx.IsSet("cors-origins") {
+		config.CORS.Origins = cx.StringSlice("cors-origins")
+	}
+	if cx.IsSet("cors-methods") {
+		config.CORS.Methods = cx.StringSlice("cors-methods")
+	}
+	if cx.IsSet("cors-headers") {
+		config.CORS.Headers = cx.StringSlice("cors-headers")
+	}
+	if cx.IsSet("cors-exposed-headers") {
+		config.CORS.ExposedHeaders = cx.StringSlice("cors-exposed-headers")
+	}
+	if cx.IsSet("cors-max-age") {
+		config.CORS.MaxAge = cx.Duration("cors-max-age")
+	}
+	if cx.IsSet("cors-credentials") {
+		config.CORS.MaxAge = cx.BoolT("cors-credentials")
+	}
 	if cx.IsSet("tag") {
 		config.TagData, err = decodeKeyPairs(cx.StringSlice("tag"))
 		if err != nil {
@@ -221,18 +239,7 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 			return err
 		}
 	}
-	if cx.IsSet("cors-origins") {
-		config.CORSConfig.Origins = cx.StringSlice("cors-origins")
-	}
-	if cx.IsSet("cors-methods") {
-		config.CORSConfig.Methods = cx.StringSlice("cors-methods")
-	}
-	if cx.IsSet("cors-headers") {
-		config.CORSConfig.Headers = cx.StringSlice("cors-headers")
-	}
-	if cx.IsSet("cors-max-age") {
-		config.CORSConfig.MaxAge = cx.Duration("cors-max-age")
-	}
+
 	if cx.IsSet("resource") {
 		for _, x := range cx.StringSlice("resource") {
 			resource, err := decodeResource(x)
@@ -356,16 +363,24 @@ func getOptions() []cli.Flag {
 			Usage: "a set of origins to add to the CORS access control (Access-Control-Allow-Origin)",
 		},
 		cli.StringSliceFlag{
+			Name:  "cors-methods",
+			Usage: "the method permitted in the access control (Access-Control-Allow-Methods)",
+		},
+		cli.StringSliceFlag{
 			Name:  "cors-headers",
 			Usage: "a set of headers to add to the CORS access control (Access-Control-Allow-Headers)",
 		},
 		cli.StringSliceFlag{
-			Name:  "cors-methods",
-			Usage: "the method permitted in the access control (Access-Control-Allow-Methods)",
+			Name:  "cors-exposes-headers",
+			Usage: "set the expose cors headers access control (Access-Control-Expose-Headers)",
 		},
 		cli.DurationFlag{
 			Name:  "cors-max-age",
 			Usage: "the max age applied to cors headers (Access-Control-Max-Age)",
+		},
+		cli.BoolFlag{
+			Name:  "cors-credentials",
+			Usage: "the credentials access control header (Access-Control-Allow-Credentials)",
 		},
 		cli.BoolFlag{
 			Name:  "skip-token-verification",

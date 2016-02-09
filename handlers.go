@@ -16,7 +16,6 @@ limitations under the License.
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"path"
 	"regexp"
@@ -452,9 +451,6 @@ func (r *KeycloakProxy) oauthAuthorizationHandler(cx *gin.Context) {
 		return
 	}
 
-	// step: add the cors headers
-	r.corsAccessHeaders(cx)
-
 	// step: get the redirection url
 	r.redirectToURL(redirectionURL, cx)
 }
@@ -564,9 +560,6 @@ func (r *KeycloakProxy) oauthCallbackHandler(cx *gin.Context) {
 		}
 	}
 
-	// step: add the cors headers
-	r.corsAccessHeaders(cx)
-
 	r.redirectToURL(state, cx)
 }
 
@@ -575,22 +568,4 @@ func (r *KeycloakProxy) oauthCallbackHandler(cx *gin.Context) {
 //
 func (r *KeycloakProxy) healthHandler(cx *gin.Context) {
 	cx.String(http.StatusOK, "OK")
-}
-
-// corsAccessHeaders adds the cors access controls to the oauth responses
-func (r *KeycloakProxy) corsAccessHeaders(cx *gin.Context) {
-	cors := r.config.CORSConfig
-	if len(cors.Origins) > 0 {
-		cx.Writer.Header().Set("Access-Control-Allow-Origin", strings.Join(cors.Origins, ","))
-	}
-	if len(cors.Methods) > 0 {
-		cx.Writer.Header().Set("Access-Control-Allow-Methods", strings.Join(cors.Methods, ","))
-	}
-	if len(cors.Headers) > 0 {
-		cx.Writer.Header().Set("Access-Control-Allow-Headers", strings.Join(cors.Headers, ","))
-	}
-	if cors.MaxAge > 0 {
-		cx.Writer.Header().Set("Access-Control-Max-Age",
-			fmt.Sprintf("%d", int(cors.MaxAge.Seconds())))
-	}
 }

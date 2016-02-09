@@ -22,7 +22,7 @@ import (
 
 const (
 	prog        = "keycloak-proxy"
-	version     = "v1.0.0-rc1"
+	version     = "v1.0.0-rc2"
 	author      = "Rohith"
 	email       = "gambol99@gmail.com"
 	description = "is a proxy using the keycloak service for auth and authorization"
@@ -67,7 +67,7 @@ type Resource struct {
 	Roles []string `json:"roles" yaml:"roles"`
 }
 
-// CORS controls
+// CORS access controls
 type CORS struct {
 	// Origins is a list of origins permitted
 	Origins []string `json:"origins" yaml:"origins"`
@@ -75,6 +75,10 @@ type CORS struct {
 	Methods []string `json:"methods" yaml:"methods"`
 	// Headers is a set of cors headers
 	Headers []string `json:"headers" yaml:"headers"`
+	// ExposedHeaders are the exposed header fields
+	ExposedHeaders []string `json:"exposed-headers" yaml:"exposed-headers"`
+	// Credentials set the creds flag
+	Credentials bool `json:"credentials" yaml:"credentials"`
 	// MaxAge is the age for CORS
 	MaxAge time.Duration `json:"max-age" yaml:"max-age"`
 }
@@ -116,7 +120,7 @@ type Config struct {
 	// TagData is passed to the templates
 	TagData map[string]string `json:"TagData" yaml:"TagData"`
 	// CORS permits adding headers to the /oauth handlers
-	CORSConfig *CORS `json:"cors" yaml:"cors"`
+	CORS *CORS `json:"cors" yaml:"cors"`
 	// Header permits adding customs headers across the board
 	Header map[string]string `json:"headers" yaml:"headers"`
 	// Scopes is a list of scope we should request

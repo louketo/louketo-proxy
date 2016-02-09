@@ -53,3 +53,19 @@ resources:
     roles:
       - openvpn:vpn-user
       - openvpn:prod-vpn
+
+# set the cross origin resource sharing headers
+cors:
+  # an array of origins (Access-Control-Allow-Origin)
+  origins: []
+  # an array of headers to apply (Access-Control-Allow-Headers)
+  headers: []
+  # an array of expose headers (Access-Control-Expose-Headers)
+  exposed-headers: []
+  # an array of methods (Access-Control-Allow-Methods)
+  methods: []
+  # the credentials flag (Access-Control-Allow-Credentials)
+  credentials: true|false
+  # the max age (Access-Control-Max-Age)
+  max-age: 1h
+

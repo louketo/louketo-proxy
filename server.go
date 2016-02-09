@@ -29,6 +29,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
+	"strings"
 )
 
 // KeycloakProxy is the server component
@@ -193,7 +194,7 @@ func (r *KeycloakProxy) Run() error {
 // redirectToURL redirects the user and aborts the context
 func (r KeycloakProxy) redirectToURL(url string, cx *gin.Context) {
 	// step: add the cors headers
-	r.corsAccessHeaders(cx)
+	r.injectCORSHeaders(cx)
 
 	cx.Redirect(http.StatusTemporaryRedirect, url)
 	cx.Abort()
@@ -225,6 +226,29 @@ func (r KeycloakProxy) redirectToAuthorization(cx *gin.Context) {
 	}
 
 	r.redirectToURL(authorizationURL+authQuery, cx)
+}
+
+// injectCORSHeaders adds the cors access controls to the oauth responses
+func (r *KeycloakProxy) injectCORSHeaders(cx *gin.Context) {
+	c := r.config.CORS
+	if len(c.Origins) > 0 {
+		cx.Writer.Header().Set("Access-Control-Allow-Origin", strings.Join(c.Origins, ","))
+	}
+	if len(c.Methods) > 0 {
+		cx.Writer.Header().Set("Access-Control-Allow-Methods", strings.Join(c.Methods, ","))
+	}
+	if len(c.Headers) > 0 {
+		cx.Writer.Header().Set("Access-Control-Allow-Headers", strings.Join(c.Headers, ","))
+	}
+	if len(c.ExposedHeaders) > 0 {
+		cx.Writer.Header().Set("Access-Control-Expose-Headers", strings.Join(c.ExposedHeaders, ","))
+	}
+	if c.Credentials {
+		cx.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+	}
+	if c.MaxAge > 0 {
+		cx.Writer.Header().Set("Access-Control-Max-Age", fmt.Sprintf("%d", int(c.MaxAge.Seconds())))
+	}
 }
 
 // tryUpdateConnection attempt to upgrade the connection to a http pdy stream
