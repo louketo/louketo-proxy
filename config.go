@@ -219,7 +219,7 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 		config.CORS.MaxAge = cx.Duration("cors-max-age")
 	}
 	if cx.IsSet("cors-credentials") {
-		config.CORS.MaxAge = cx.BoolT("cors-credentials")
+		config.CORS.Credentials = cx.BoolT("cors-credentials")
 	}
 	if cx.IsSet("tag") {
 		config.TagData, err = decodeKeyPairs(cx.StringSlice("tag"))
