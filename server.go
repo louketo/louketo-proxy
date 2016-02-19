@@ -29,7 +29,10 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
+	"net"
+	"net/http/httputil"
 	"strings"
+	"time"
 )
 
 // KeycloakProxy is the server component
@@ -69,18 +72,18 @@ func newKeycloakProxy(cfg *Config) (*KeycloakProxy, error) {
 		return nil, err
 	}
 
-	// step: initialize the reverse http proxy
-	reverse, err := initializeReverseProxy(upstreamURL)
-	if err != nil {
-		return nil, err
-	}
-
 	// step: create a proxy service
 	service := &KeycloakProxy{
 		config:      cfg,
-		proxy:       reverse,
 		upstreamURL: upstreamURL,
 	}
+
+	// step: initialize the reverse http proxy
+	reverse, err := service.initializeReverseProxy(upstreamURL)
+	if err != nil {
+		return nil, err
+	}
+	service.proxy = reverse
 
 	// step: initialize the openid client
 	if cfg.SkipTokenVerification {
@@ -98,6 +101,7 @@ func newKeycloakProxy(cfg *Config) (*KeycloakProxy, error) {
 	// step: initialize the gin router
 	router := gin.New()
 	service.router = router
+
 	// step: load the templates
 	service.initializeTemplates()
 	for _, resource := range cfg.Resources {
@@ -280,4 +284,24 @@ func (r *KeycloakProxy) tryUpdateConnection(cx *gin.Context) error {
 	wg.Wait()
 
 	return nil
+}
+
+// initializeReverseProxy create a reverse http proxy from the upstream
+func (r *KeycloakProxy) initializeReverseProxy(upstream *url.URL) (reverseProxy, error) {
+	proxy := httputil.NewSingleHostReverseProxy(upstream)
+
+	// step: we don't care about the cert verification here
+	proxy.Transport = &http.Transport{
+		Dial: (&net.Dialer{
+			KeepAlive: 10 * time.Second,
+			Timeout:   10 * time.Second,
+		}).Dial,
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+		DisableKeepAlives:   !r.config.Keepalives,
+		TLSHandshakeTimeout: 10 * time.Second,
+	}
+
+	return proxy, nil
 }

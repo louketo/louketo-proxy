@@ -317,6 +317,10 @@ func getOptions() []cli.Flag {
 			Name:  "hostname",
 			Usage: "a list of hostname which the service will respond to, defaults to all",
 		},
+		cli.BoolTFlag{
+			Name:  "keepalives",
+			Usage: "will disable http keepalive on the requests to the upstream endpoint",
+		},
 		cli.StringFlag{
 			Name:  "tls-cert",
 			Usage: "the path to a certificate file used for TLS",
