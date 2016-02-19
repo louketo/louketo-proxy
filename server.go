@@ -217,13 +217,19 @@ func (r KeycloakProxy) accessForbidden(cx *gin.Context) {
 
 // redirectToAuthorization redirects the user to authorization handler
 func (r KeycloakProxy) redirectToAuthorization(cx *gin.Context) {
+	// step: are we handling redirects?
+	if r.config.NoRedirects {
+		cx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+
 	// step: add a state referrer to the authorization page
 	authQuery := fmt.Sprintf("?state=%s", cx.Request.URL.String())
 
 	// step: if verification is switched off, we can't authorization
 	if r.config.SkipTokenVerification {
 		log.Errorf("refusing to redirection to authorization endpoint, skip token verification switched on")
-		r.accessForbidden(cx)
+		cx.AbortWithStatus(http.StatusForbidden)
 		return
 	}
 
@@ -251,6 +257,20 @@ func (r *KeycloakProxy) injectCORSHeaders(cx *gin.Context) {
 	if c.MaxAge > 0 {
 		cx.Writer.Header().Set("Access-Control-Max-Age", fmt.Sprintf("%d", int(c.MaxAge.Seconds())))
 	}
+}
+
+func (r *KeycloakProxy) addAuthenticationHeader(cx *gin.Context, errorCode, errorMessage string) {
+	// step: inject the error message
+	header := "Bearer realm=\"secure\""
+	if errorCode != "" {
+		header += fmt.Sprintf(",error=\"%s\"", errorCode)
+	}
+	if errorMessage != "" {
+		header += fmt.Sprintf(", error_description=\"%s\"", errorMessage)
+	}
+
+	// step: add the www-authenticate header
+	cx.Writer.Header().Set("WWW-Authenticate", header)
 }
 
 // tryUpdateConnection attempt to upgrade the connection to a http pdy stream

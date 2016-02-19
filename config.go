@@ -158,6 +158,9 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 	if cx.IsSet("encryption-key") {
 		config.EncryptionKey = cx.String("encryption-key")
 	}
+	if cx.IsSet("no-redirects") {
+		config.NoRedirects = cx.Bool("no-redirects")
+	}
 	if cx.IsSet("redirection-url") {
 		config.RedirectionURL = cx.String("redirection-url")
 	}
@@ -308,6 +311,10 @@ func getOptions() []cli.Flag {
 		cli.StringFlag{
 			Name:  "encryption-key",
 			Usage: "the encryption key used to encrpytion the session state",
+		},
+		cli.BoolFlag{
+			Name:  "no-redirects",
+			Usage: "do not have back redirects when no authentication is present, simple reply with 401 code",
 		},
 		cli.StringFlag{
 			Name:  "redirection-url",
