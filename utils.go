@@ -162,7 +162,8 @@ func initializeReverseProxy(upstream *url.URL) (reverseProxy, error) {
 	proxy.Transport = &http.Transport{
 		//Proxy: http.ProxyFromEnvironment,
 		Dial: (&net.Dialer{
-			Timeout: 10 * time.Second,
+			KeepAlive:  10 * time.Second,
+			Timeout:    10 * time.Second,
 		}).Dial,
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
