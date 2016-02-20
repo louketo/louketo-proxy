@@ -244,13 +244,13 @@ func (r *KeycloakProxy) initializeReverseProxy(upstream *url.URL) (reverseProxy,
 	proxy.Transport = &http.Transport{
 		//Proxy: http.ProxyFromEnvironment,
 		Dial: (&net.Dialer{
-			KeepAlive: 10 * time.Second,
+			//KeepAlive: 10 * time.Second,
 			Timeout:   10 * time.Second,
 		}).Dial,
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
 		},
-		DisableKeepAlives: r.config.Keepalives,
+		DisableKeepAlives: true,
 	}
 
 	return proxy, nil
