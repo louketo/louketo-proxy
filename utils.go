@@ -24,7 +24,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -153,24 +152,6 @@ func decodeKeyPairs(list []string) (map[string]string, error) {
 	}
 
 	return kp, nil
-}
-
-// initializeReverseProxy create a reverse http proxy from the upstream
-func initializeReverseProxy(upstream *url.URL) (reverseProxy, error) {
-	proxy := httputil.NewSingleHostReverseProxy(upstream)
-	// step: we don't care about the cert verification here
-	proxy.Transport = &http.Transport{
-		//Proxy: http.ProxyFromEnvironment,
-		Dial: (&net.Dialer{
-			KeepAlive: 10 * time.Second,
-			Timeout:   10 * time.Second,
-		}).Dial,
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
-	}
-
-	return proxy, nil
 }
 
 // tryDialEndpoint dials the upstream endpoint via plain

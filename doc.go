@@ -89,6 +89,8 @@ type Config struct {
 	MaxSession time.Duration `json:"max_session" yaml:"max_session"`
 	// ClaimsMatch is a series of checks, the claims in the token must match those here
 	ClaimsMatch map[string]string `json:"claims" yaml:"claims"`
+	// Keepalives set the option for the upstream keepalive
+	Keepalives bool `json:"keepalives" yaml:"keepalives"`
 	// Listen is the binding interface
 	Listen string `json:"listen" yaml:"listen"`
 	// ProxyProtocol enables proxy protocol

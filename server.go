@@ -16,11 +16,15 @@ limitations under the License.
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
+	"net"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"os"
 	"sync"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gambol99/go-oidc/oidc"
@@ -64,18 +68,18 @@ func newKeycloakProxy(cfg *Config) (*KeycloakProxy, error) {
 		return nil, err
 	}
 
-	// step: initialize the reverse http proxy
-	reverse, err := initializeReverseProxy(upstreamURL)
-	if err != nil {
-		return nil, err
-	}
-
 	// step: create a proxy service
 	service := &KeycloakProxy{
 		config:      cfg,
-		proxy:       reverse,
 		upstreamURL: upstreamURL,
 	}
+
+	// step: initialize the reverse http proxy
+	reverse, err := service.initializeReverseProxy(upstreamURL)
+	if err != nil {
+		return nil, err
+	}
+	service.proxy = reverse
 
 	// step: initialize the openid client
 	if cfg.SkipTokenVerification {
@@ -126,7 +130,6 @@ func newKeycloakProxy(cfg *Config) (*KeycloakProxy, error) {
 
 func (r *KeycloakProxy) abortAll() gin.HandlerFunc {
 	return func(cx *gin.Context) {
-		fmt.Println("HELLO")
 		cx.Next()
 		cx.Abort()
 	}
@@ -232,4 +235,23 @@ func (r *KeycloakProxy) tryUpdateConnection(cx *gin.Context) error {
 	wg.Wait()
 
 	return nil
+}
+
+// initializeReverseProxy create a reverse http proxy from the upstream
+func (r *KeycloakProxy) initializeReverseProxy(upstream *url.URL) (reverseProxy, error) {
+	proxy := httputil.NewSingleHostReverseProxy(upstream)
+	// step: we don't care about the cert verification here
+	proxy.Transport = &http.Transport{
+		//Proxy: http.ProxyFromEnvironment,
+		Dial: (&net.Dialer{
+			KeepAlive: 10 * time.Second,
+			Timeout:   10 * time.Second,
+		}).Dial,
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+		DisableKeepAlives: r.config.Keepalives,
+	}
+
+	return proxy, nil
 }

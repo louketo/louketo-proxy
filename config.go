@@ -130,6 +130,9 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 	if cx.IsSet("redirection-url") {
 		config.RedirectionURL = cx.String("redirection-url")
 	}
+	if cx.IsSet("keepalives") {
+		config.Keepalives = cx.Bool("keepalives")
+	}
 	if cx.IsSet("tls-cert") {
 		config.TLSCertificate = cx.String("tls-cert")
 	}
@@ -289,6 +292,10 @@ func getOptions() []cli.Flag {
 			Name:  "max-session",
 			Usage: "if refresh sessions are enabled we can limit their duration via this",
 			Value: time.Duration(1) * time.Hour,
+		},
+		cli.BoolFlag{
+			Name:  "keepalives",
+			Usage: "enables or disables keepalives for the upstream endpoint",
 		},
 		cli.BoolFlag{
 			Name:  "skip-token-verification",
