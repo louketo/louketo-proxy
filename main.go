@@ -25,10 +25,7 @@ import (
 )
 
 func main() {
-	// step: the proxy configuration
 	config := newDefaultConfig()
-
-	// step: construct the application
 	kc := cli.NewApp()
 	kc.Name = prog
 	kc.Usage = description
@@ -36,19 +33,17 @@ func main() {
 	kc.Author = author
 	kc.Email = email
 	kc.Flags = getOptions()
-	// the default actions
 	kc.Action = func(cx *cli.Context) {
-		// do we have a configuration file?
+		// step: do we have a configuration file?
 		if filename := cx.String("config"); filename != "" {
 			if err := readConfigFile(cx.String("config"), config); err != nil {
 				printUsage(err.Error())
 			}
 		}
-		// parse the command line options
+		// step: parse the command line options
 		if err := readOptions(cx, config); err != nil {
 			printUsage(err.Error())
 		}
-
 		// step: validate the configuration
 		if err := config.isValid(); err != nil {
 			printUsage(err.Error())
@@ -68,7 +63,6 @@ func main() {
 
 		<-signalChannel
 	}
-
 	kc.Run(os.Args)
 }
 

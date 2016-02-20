@@ -56,6 +56,7 @@ func (r *KeycloakProxy) loggingHandler() gin.HandlerFunc {
 			"client_ip": cx.ClientIP(),
 			"method":    cx.Request.Method,
 			"status":    cx.Writer.Status(),
+			"bytes":     cx.Writer.Size(),
 			"path":      cx.Request.URL.Path,
 			"latency":   latency.String(),
 		}).Infof("[%d] |%s| |%10v| %-5s %s", cx.Writer.Status(), cx.ClientIP(), latency, cx.Request.Method, cx.Request.URL.Path)

@@ -213,7 +213,6 @@ func (r KeycloakProxy) accessForbidden(cx *gin.Context) {
 	}
 
 	cx.AbortWithStatus(http.StatusForbidden)
-	cx.Abort()
 }
 
 // redirectToAuthorization redirects the user to authorization handler
@@ -266,7 +265,7 @@ func (r *KeycloakProxy) tryUpdateConnection(cx *gin.Context) error {
 	// step: we need to hijack the underlining client connection
 	clientConn, _, err := cx.Writer.(http.Hijacker).Hijack()
 	if err != nil {
-
+		return err
 	}
 	defer clientConn.Close()
 
