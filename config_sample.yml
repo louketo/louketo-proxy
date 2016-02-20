@@ -26,8 +26,8 @@ redirection_url: http://127.0.0.3000
 encryption_key: AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j
 # the upstream endpoint which we should proxy request
 upstream: http://127.0.0.1:80
-# keepalive specified wheather you want keepalive on the upstream endpoint
-keepalive: true
+# upstream-keepalives specified wheather you want keepalive on the upstream endpoint
+upstream-keepalives: true
 # additional scopes to add to add to the default (openid+email+profile)
 scopes:
   - vpn-user
