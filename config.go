@@ -155,6 +155,9 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 	if cx.IsSet("upstream-url") {
 		config.Upstream = cx.String("upstream-url")
 	}
+	if cx.IsSet("upstream-keepalives") {
+		config.Keepalives = cx.Bool("upstream-keepalives")
+	}
 	if cx.IsSet("skip-token-verification") {
 		config.SkipTokenVerification = cx.Bool("skip-token-verification")
 	}
@@ -239,7 +242,6 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 			return err
 		}
 	}
-
 	if cx.IsSet("resource") {
 		for _, x := range cx.StringSlice("resource") {
 			resource, err := decodeResource(x)
@@ -305,6 +307,10 @@ func getOptions() []cli.Flag {
 			Usage: "the url for the upstream endpoint you wish to proxy to",
 			Value: defaults.Upstream,
 		},
+		cli.BoolTFlag{
+			Name:  "upstream-keepalives",
+			Usage: "enables or disables the keepalive connections for upstream endpoint (defaults true)",
+		},
 		cli.StringFlag{
 			Name:  "encryption-key",
 			Usage: "the encryption key used to encrpytion the session state",
@@ -316,10 +322,6 @@ func getOptions() []cli.Flag {
 		cli.StringSliceFlag{
 			Name:  "hostname",
 			Usage: "a list of hostname which the service will respond to, defaults to all",
-		},
-		cli.BoolTFlag{
-			Name:  "keepalives",
-			Usage: "will disable http keepalive on the requests to the upstream endpoint",
 		},
 		cli.StringFlag{
 			Name:  "tls-cert",

@@ -2,7 +2,7 @@
 NAME=keycloak-proxy
 AUTHOR=gambol99
 HARDWARE=$(shell uname -m)
-GOVERSION=1.5.3
+GOVERSION=1.6.0
 GIT_COMMIT=$(shell git log --pretty=format:'%h' -n 1)
 ROOT_DIR=${PWD}
 VERSION=$(shell awk '/version.*=/ { print $$3 }' doc.go | sed 's/"//g')

@@ -18,6 +18,7 @@ Keycloak-proxy is a proxy service which at the risk of stating the obvious integ
 
 ```shell
 [jest@starfury keycloak-proxy]$ bin/keycloak-proxy help
+[jest@starfury keycloak-proxy]$ bin/keycloak-proxy --help
 NAME:
    keycloak-proxy - is a proxy using the keycloak service for auth and authorization
 
@@ -25,7 +26,7 @@ USAGE:
    keycloak-proxy [global options] command [command options] [arguments...]
    
 VERSION:
-   v1.0.0-rc1
+   v1.0.0-rc2
    
 AUTHOR(S):
    Rohith <gambol99@gmail.com> 
@@ -34,34 +35,40 @@ COMMANDS:
    help, h	Shows a list of commands or help for one command
    
 GLOBAL OPTIONS:
-   --config 						the path to the configuration file for the keycloak proxy
-   --listen "127.0.0.1:8080"				the interface the service should be listening on
-   --secret 						the client secret used to authenticate to the oauth server
-   --client-id 						the client id used to authenticate to the oauth serves
-   --discovery-url 					the discovery url to retrieve the openid configuration
-   --upstream-url "http://127.0.0.1:8080"		the url for the upstream endpoint you wish to proxy to
-   --encryption-key 					the encryption key used to encrpytion the session state
-   --redirection-url 					the redirection url, namely the site url, note: /oauth will be added to it
-   --hostname [--hostname option --hostname option]	a list of hostname which the service will respond to, defaults to all
-   --tls-cert 						the path to a certificate file used for TLS
-   --tls-private-key 					the path to the private key for TLS support
-   --tls-ca-certificate 				the path to the ca certificate used for mutual TLS
-   --scope [--scope option --scope option]		a variable list of scopes requested when authenticating the user
-   --claim [--claim option --claim option]		a series of key pair values which must match the claims in the token present e.g. aud=myapp, iss=http://example.com etcd
-   --resource [--resource option --resource option]	a list of resources 'uri=/admin|methods=GET|roles=role1,role2'
-   --signin-page 					a custom template displayed for signin
-   --forbidden-page 					a custom template used for access forbidden
-   --tag [--tag option --tag option]			a keypair tag which is passed to the templates when render, i.e. title='My Page',site='my name' etc
-   --max-session "1h0m0s"				if refresh sessions are enabled we can limit their duration via this
-   --skip-token-verification				testing purposes ONLY, the option allows you to bypass the token verification, expiration and roles are still enforced
-   --proxy-protocol					switches on proxy protocol support on the listen (not supported yet)
-   --refresh-sessions					enables the refreshing of tokens via offline access
-   --json-logging					switch on json logging rather than text (defaults true)
-   --log-requests					switch on logging of all incoming requests (defaults true)
-   --verbose						switch on debug / verbose logging
-   --help, -h						show help
-   --version, -v					print the version
-
+   --config 										        the path to the configuration file for the keycloak proxy
+   --listen "127.0.0.1:3000"								the interface the service should be listening on
+   --secret 										        the client secret used to authenticate to the oauth server
+   --client-id 										        the client id used to authenticate to the oauth serves
+   --discovery-url 									        the discovery url to retrieve the openid configuration
+   --upstream-url "http://127.0.0.1:8081"					the url for the upstream endpoint you wish to proxy to
+   --upstream-keepalives								    enables or disables the keepalive connections for upstream endpoint (defaults true)
+   --encryption-key 									    the encryption key used to encrpytion the session state
+   --redirection-url 									    the redirection url, namely the site url, note: /oauth will be added to it
+   --hostname [--hostname option --hostname option]			a list of hostname which the service will respond to, defaults to all
+   --tls-cert 										        the path to a certificate file used for TLS
+   --tls-private-key 									    the path to the private key for TLS support
+   --tls-ca-certificate 								    the path to the ca certificate used for mutual TLS
+   --scope [--scope option --scope option]					a variable list of scopes requested when authenticating the user
+   --claim [--claim option --claim option]					a series of key pair values which must match the claims in the token present e.g. aud=myapp, iss=http://example.com etcd
+   --resource [--resource option --resource option]			a list of resources 'uri=/admin|methods=GET|roles=role1,role2'
+   --signin-page 									        a custom template displayed for signin
+   --forbidden-page 									    a custom template used for access forbidden
+   --tag [--tag option --tag option]						a keypair tag which is passed to the templates when render, i.e. title='My Page',site='my name' etc
+   --max-session "1h0m0s"							      	if refresh sessions are enabled we can limit their duration via this
+   --cors-origins [--cors-origins option --cors-origins option]				a set of origins to add to the CORS access control (Access-Control-Allow-Origin)
+   --cors-methods [--cors-methods option --cors-methods option]				the method permitted in the access control (Access-Control-Allow-Methods)
+   --cors-headers [--cors-headers option --cors-headers option]				a set of headers to add to the CORS access control (Access-Control-Allow-Headers)
+   --cors-exposes-headers [--cors-exposes-headers option --cors-exposes-headers option]	set the expose cors headers access control (Access-Control-Expose-Headers)
+   --cors-max-age "0"									    the max age applied to cors headers (Access-Control-Max-Age)
+   --cors-credentials									    the credentials access control header (Access-Control-Allow-Credentials)
+   --skip-token-verification								testing purposes ONLY, the option allows you to bypass the token verification, expiration and roles are still enforced
+   --proxy-protocol									        switches on proxy protocol support on the listen (not supported yet)
+   --refresh-sessions									    enables the refreshing of tokens via offline access (defaults false)
+   --json-logging									        switch on json logging rather than text (defaults true)
+   --log-requests									        switch on logging of all incoming requests (defaults true)
+   --verbose										        switch on debug / verbose logging
+   --help, -h										        show help
+   --version, -v									        print the version
 ```
 
 #### **Configuration**
@@ -69,8 +76,6 @@ GLOBAL OPTIONS:
 The configuration can come from a yaml/json file and or the command line options (note, command options have a higher priority and will override any options referenced in a config file)
 
 ```YAML
-
-
 # is the url for retrieve the openid configuration - normally the <server>/auth/realm/<realm_name>
 discovery_url: https://keycloak.example.com/auth/realms/<REALM_NAME>
 # the client id for the 'client' application
