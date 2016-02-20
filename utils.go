@@ -97,7 +97,7 @@ func initializeOpenID(discoveryURL, clientID, clientSecret, redirectURL string, 
 	// step: attempt to retrieve the provider configuration
 	gotConfig := false
 	for i := 0; i < 3; i++ {
-		log.Infof("attempting to retreieve the openid configuration from the discovery url: %s", discoveryURL)
+		log.Infof("attempting to retrieve the openid configuration from the discovery url: %s", discoveryURL)
 		providerConfig, err = oidc.FetchProviderConfig(http.DefaultClient, discoveryURL)
 		if err == nil {
 			gotConfig = true
@@ -163,28 +163,14 @@ func decodeKeyPairs(list []string) (map[string]string, error) {
 
 // tryDialEndpoint dials the upstream endpoint via plain
 func tryDialEndpoint(location *url.URL) (net.Conn, error) {
-	// get the dial address
-	dialAddr := dialAddress(location)
-
-	switch location.Scheme {
+	switch dialAddress := dialAddress(location); location.Scheme {
 	case "http":
-		conn, err := net.Dial("tcp", dialAddr)
-		if err != nil {
-			return nil, err
-		}
-		return conn, nil
+		return net.Dial("tcp", dialAddress)
 	default:
-		// step: construct and dial a tls endpoint
-		conn, err := tls.Dial("tcp", dialAddr, &tls.Config{
+		return tls.Dial("tcp", dialAddress, &tls.Config{
 			Rand:               rand.Reader,
 			InsecureSkipVerify: true,
 		})
-
-		if err != nil {
-			return nil, err
-		}
-
-		return conn, nil
 	}
 }
 

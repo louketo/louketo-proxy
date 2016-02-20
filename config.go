@@ -40,17 +40,12 @@ func newDefaultConfig() *Config {
 		TagData:        make(map[string]string, 0),
 		ClaimsMatch:    make(map[string]string, 0),
 		Header:         make(map[string]string, 0),
-		CORS: &CORS{
-			Origins: []string{},
-			Methods: []string{},
-			Headers: []string{},
-		},
+		CORS:           &CORS{},
 	}
 }
 
 // isValid validates if the config is valid
 func (r *Config) isValid() error {
-	// step: validate the configuration
 	if r.Upstream == "" {
 		return fmt.Errorf("you have not specified an upstream endpoint to proxy to")
 	}
@@ -75,7 +70,6 @@ func (r *Config) isValid() error {
 	if r.TLSCaCertificate != "" && !fileExists(r.TLSCaCertificate) {
 		return fmt.Errorf("the tls ca certificate file %s does not exist", r.TLSCaCertificate)
 	}
-
 	// step: if the skip verification is off, we need the below
 	if !r.SkipTokenVerification {
 		if r.DiscoveryURL == "" {
@@ -265,18 +259,15 @@ func readConfigFile(filename string, config *Config) error {
 	if err != nil {
 		return err
 	}
-
 	// step: attempt to un-marshal the data
-	if isJson := filepath.Ext(filename) == "json"; isJson {
+	switch ext := filepath.Ext(filename); ext {
+	case "json":
 		err = json.Unmarshal(content, config)
-	} else {
+	default:
 		err = yaml.Unmarshal(content, config)
 	}
-	if err != nil {
-		return err
-	}
 
-	return nil
+	return err
 }
 
 // getOptions returns the command line options
@@ -320,7 +311,7 @@ func getOptions() []cli.Flag {
 		},
 		cli.StringFlag{
 			Name:  "redirection-url",
-			Usage: "the redirection url, namely the site url, note: " + oauthURL + " will be added to it",
+			Usage: fmt.Sprintf("the redirection url, namely the site url, note: %s will be added to it", oauthURL),
 		},
 		cli.StringSliceFlag{
 			Name:  "hostname",

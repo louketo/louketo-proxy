@@ -1,4 +1,4 @@
-FROM alpine:3.2
+FROM alpine:3.3
 MAINTAINER Rohith <gambol99@gmail.com>
 
 RUN apk update && \

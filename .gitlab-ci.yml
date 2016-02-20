@@ -8,14 +8,14 @@ stages:
 
 tests:
   stage: tests
-  image: golang:1.5.3
+  image: golang:1.6.0
   script:
     - make deps
     - make test
 
 build:
   stage: build
-  image: golang:1.5.3
+  image: golang:1.6.0
   script:
     - make deps
     - make static

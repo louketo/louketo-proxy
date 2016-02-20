@@ -34,7 +34,7 @@ func (r *Resource) isValid() error {
 		return fmt.Errorf("this is used by the oauth handlers")
 	}
 
-	// step: check we have a
+	// step: check we have a url
 	if r.URL == "" {
 		return fmt.Errorf("resource does not have url")
 	}
@@ -59,23 +59,20 @@ func (r Resource) getRoles() string {
 	return strings.Join(r.Roles, ",")
 }
 
+// String returns a string representation of the resource
 func (r Resource) String() string {
-	var roles string
-	var methods string
-
 	if r.WhiteListed {
 		return fmt.Sprintf("uri: %s, white-listed", r.URL)
 	}
 
-	if len(r.Roles) <= 0 {
-		roles = "authentication only"
-	} else {
-		methods = strings.Join(r.Roles, ",")
+	roles := "authentication only"
+	methods := "ANY"
+
+	if len(r.Roles) > 0 {
+		roles = strings.Join(r.Roles, ",")
 	}
 
-	if len(r.Methods) <= 0 {
-		methods = "ANY"
-	} else {
+	if len(r.Methods) > 0 {
 		methods = strings.Join(r.Methods, ",")
 	}
 
