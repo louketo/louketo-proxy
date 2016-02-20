@@ -20,19 +20,19 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"os"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/gambol99/go-oidc/oidc"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
-	"net"
-	"net/http/httputil"
-	"strings"
-	"time"
 )
 
 // KeycloakProxy is the server component
