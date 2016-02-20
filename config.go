@@ -185,6 +185,9 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 	if cx.IsSet("max-session") {
 		config.MaxSession = cx.Duration("max-session")
 	}
+	if cx.IsSet("enable-security-filter") {
+		config.EnableSecurityFilter = true
+	}
 	if cx.IsSet("proxy-protocol") {
 		config.ProxyProtocol = cx.Bool("proxy-protocol")
 	}
@@ -321,7 +324,7 @@ func getOptions() []cli.Flag {
 		},
 		cli.StringSliceFlag{
 			Name:  "hostname",
-			Usage: "a list of hostname which the service will respond to, defaults to all",
+			Usage: "a list of hostnames the service will respond to, defaults to all",
 		},
 		cli.StringFlag{
 			Name:  "tls-cert",
@@ -387,6 +390,10 @@ func getOptions() []cli.Flag {
 		cli.BoolFlag{
 			Name:  "cors-credentials",
 			Usage: "the credentials access control header (Access-Control-Allow-Credentials)",
+		},
+		cli.BoolFlag{
+			Name:  "enable-security-filter",
+			Usage: "enables the security filter handler",
 		},
 		cli.BoolFlag{
 			Name:  "skip-token-verification",

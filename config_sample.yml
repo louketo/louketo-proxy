@@ -31,6 +31,8 @@ upstream-keepalives: true
 # additional scopes to add to add to the default (openid+email+profile)
 scopes:
   - vpn-user
+# enables a more extra secuirty features
+enable-security-filter: true
 # a map of claims that MUST exist in the token presented and the value is it MUST match
 # So for example, you could match the audience or the issuer or some custom attribute
 claims:

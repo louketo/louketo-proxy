@@ -68,10 +68,12 @@ func (r *KeycloakProxy) loggingHandler() gin.HandlerFunc {
 func (r *KeycloakProxy) securityHandler() gin.HandlerFunc {
 	// step: create the security options
 	secure := secure.New(secure.Options{
-		AllowedHosts:       r.config.Hostnames,
-		BrowserXssFilter:   true,
-		ContentTypeNosniff: true,
-		FrameDeny:          true,
+		AllowedHosts:         r.config.Hostnames,
+		BrowserXssFilter:     true,
+		ContentTypeNosniff:   true,
+		FrameDeny:            true,
+		STSIncludeSubdomains: true,
+		STSSeconds:           31536000,
 	})
 
 	return func(cx *gin.Context) {

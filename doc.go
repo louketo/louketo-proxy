@@ -97,6 +97,8 @@ type Config struct {
 	Secret string `json:"secret" yaml:"secret"`
 	// RedirectionURL the redirection url
 	RedirectionURL string `json:"redirection_url" yaml:"redirection_url"`
+	// EnableSecurityFilter enabled the security handler
+	EnableSecurityFilter bool `json:"enable-security-filter" yaml:"enable-security-filter"`
 	// RefreshSessions enabled refresh access
 	RefreshSessions bool `json:"refresh_sessions" yaml:"refresh_sessions"`
 	// EncryptionKey is the encryption key used to encrypt the refresh token

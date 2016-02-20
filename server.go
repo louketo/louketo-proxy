@@ -24,7 +24,6 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -123,9 +122,9 @@ func (r KeycloakProxy) initializeRouter() {
 	if r.config.LogRequests {
 		r.router.Use(r.loggingHandler())
 	}
-	// step: if gin release production
-	if os.Getenv("GIN_MODE") == "release" {
-		log.Infof("enabling the security handler for release mode")
+	// step: enabling the security filter?
+	if r.config.EnableSecurityFilter {
+		log.Infof("enabling the security handler")
 		r.router.Use(r.securityHandler())
 	}
 
