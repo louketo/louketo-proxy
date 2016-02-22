@@ -245,7 +245,7 @@ func (r *KeycloakProxy) initializeReverseProxy(upstream *url.URL) (reverseProxy,
 		//Proxy: http.ProxyFromEnvironment,
 		Dial: (&net.Dialer{
 			//KeepAlive: 10 * time.Second,
-			Timeout:   10 * time.Second,
+			Timeout: 10 * time.Second,
 		}).Dial,
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
