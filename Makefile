@@ -2,7 +2,9 @@
 NAME=keycloak-proxy
 AUTHOR=gambol99
 HARDWARE=$(shell uname -m)
+REGISTRY=docker.io
 GOVERSION=1.6.0
+SUDO=sudo
 GIT_COMMIT=$(shell git log --pretty=format:'%h' -n 1)
 ROOT_DIR=${PWD}
 VERSION=$(shell awk '/version.*=/ { print $$3 }' doc.go | sed 's/"//g')
@@ -30,12 +32,16 @@ static: golang deps
 
 docker-build:
 	@echo "--> Compiling the project"
-	sudo docker run --rm -v ${ROOT_DIR}:/go/src/github.com/gambol99/keycloak-proxy \
+	${SUDO} docker run --rm -v ${ROOT_DIR}:/go/src/github.com/gambol99/keycloak-proxy \
 		-w /go/src/github.com/gambol99/keycloak-proxy -e GOOS=linux golang:${GOVERSION} make static
 
 docker: static
 	@echo "--> Building the docker image"
-	sudo docker build -t docker.io/${AUTHOR}/${NAME}:${VERSION} .
+	${SUDO} docker build -t ${REGISTRY}/${AUTHOR}/${NAME}:${VERSION} .
+
+docker-push:
+	@echo "--> Pushing the docker images to the registry"
+	${SUDO} docker push ${REGISTRY}/${AUTHOR}/${NAME}:${VERSION}
 
 release: static
 	mkdir -p release
