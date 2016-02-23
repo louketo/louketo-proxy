@@ -35,7 +35,7 @@ docker-build:
 	${SUDO} docker run --rm -v ${ROOT_DIR}:/go/src/github.com/gambol99/keycloak-proxy \
 		-w /go/src/github.com/gambol99/keycloak-proxy -e GOOS=linux golang:${GOVERSION} make static
 
-docker: static
+docker:
 	@echo "--> Building the docker image"
 	${SUDO} docker build -t ${REGISTRY}/${AUTHOR}/${NAME}:${VERSION} .
 
