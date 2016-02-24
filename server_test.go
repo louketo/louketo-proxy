@@ -20,11 +20,12 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"testing"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
-	"net/url"
+	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -48,55 +49,59 @@ func newFakeKeycloakProxyWithResources(t *testing.T, resources []*Resource) *Key
 	return kc
 }
 
+func newFakeKeycloakConfig(t *testing.T) *Config {
+	return &Config{
+		DiscoveryURL:          "127.0.0.1:",
+		ClientID:              fakeClientID,
+		Secret:                fakeSecret,
+		EncryptionKey:         "AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j",
+		SkipTokenVerification: true,
+		Scopes:                []string{},
+		RefreshSessions:       false,
+		Resources: []*Resource{
+			{
+				URL:     fakeAdminRoleURL,
+				Methods: []string{"GET"},
+				Roles:   []string{fakeAdminRole},
+			},
+			{
+				URL:     fakeTestRoleURL,
+				Methods: []string{"GET"},
+				Roles:   []string{fakeTestRole},
+			},
+			{
+				URL:     fakeTestAdminRolesURL,
+				Methods: []string{"GET"},
+				Roles:   []string{fakeAdminRole, fakeTestRole},
+			},
+			{
+				URL:         fakeTestWhitelistedURL,
+				WhiteListed: true,
+				Methods:     []string{},
+				Roles:       []string{},
+			},
+			{
+				URL:     fakeAuthAllURL,
+				Methods: []string{"ANY"},
+				Roles:   []string{},
+			},
+			{
+				URL:         fakeTestWhitelistedURL,
+				WhiteListed: true,
+				Methods:     []string{},
+				Roles:       []string{},
+			},
+		},
+		CORS: &CORS{},
+	}
+}
+
 func newFakeKeycloakProxy(t *testing.T) *KeycloakProxy {
 	log.SetOutput(ioutil.Discard)
 
 	kc := &KeycloakProxy{
-		config: &Config{
-			DiscoveryURL:          "127.0.0.1:",
-			ClientID:              fakeClientID,
-			Secret:                fakeSecret,
-			EncryptionKey:         "AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j",
-			SkipTokenVerification: true,
-			Scopes:                []string{},
-			RefreshSessions:       false,
-			Resources: []*Resource{
-				{
-					URL:     fakeAdminRoleURL,
-					Methods: []string{"GET"},
-					Roles:   []string{fakeAdminRole},
-				},
-				{
-					URL:     fakeTestRoleURL,
-					Methods: []string{"GET"},
-					Roles:   []string{fakeTestRole},
-				},
-				{
-					URL:     fakeTestAdminRolesURL,
-					Methods: []string{"GET"},
-					Roles:   []string{fakeAdminRole, fakeTestRole},
-				},
-				{
-					URL:         fakeTestWhitelistedURL,
-					WhiteListed: true,
-					Methods:     []string{},
-					Roles:       []string{},
-				},
-				{
-					URL:     fakeAuthAllURL,
-					Methods: []string{"ANY"},
-					Roles:   []string{},
-				},
-				{
-					URL:         fakeTestWhitelistedURL,
-					WhiteListed: true,
-					Methods:     []string{},
-					Roles:       []string{},
-				},
-			},
-			CORS: &CORS{},
-		},
-		proxy: new(fakeReverseProxy),
+		config: newFakeKeycloakConfig(t),
+		proxy:  new(fakeReverseProxy),
 	}
 	kc.router = gin.New()
 	gin.SetMode(gin.ReleaseMode)
@@ -106,21 +111,50 @@ func newFakeKeycloakProxy(t *testing.T) *KeycloakProxy {
 	return kc
 }
 
+func TestNewKeycloakProxy(t *testing.T) {
+	proxy, err := newKeycloakProxy(newFakeKeycloakConfig(t))
+	assert.NoError(t, err)
+	assert.NotNil(t, proxy)
+	assert.NotNil(t, proxy.config)
+	assert.NotNil(t, proxy.router)
+	assert.NotNil(t, proxy.upstreamURL)
+}
+
 func TestRedirectToAuthorization(t *testing.T) {
 	context := newFakeGinContext("GET", "/admin")
 	proxy := newFakeKeycloakProxy(t)
 
 	proxy.config.SkipTokenVerification = false
 	proxy.redirectToAuthorization(context)
-	if context.Writer.Status() != http.StatusTemporaryRedirect {
-		t.Errorf("we should have been given a temporary redirect")
-	}
+	assert.Equal(t, http.StatusTemporaryRedirect, context.Writer.Status())
+}
+
+func TestRedirectToAuthorizationSkipToken(t *testing.T) {
+	context := newFakeGinContext("GET", "/admin")
+	proxy := newFakeKeycloakProxy(t)
 
 	proxy.config.SkipTokenVerification = true
 	proxy.redirectToAuthorization(context)
-	if context.Writer.Status() != http.StatusForbidden {
-		t.Errorf("we should have been given a forbidden code")
-	}
+	assert.Equal(t, http.StatusForbidden, context.Writer.Status())
+}
+
+func TestRedirectToAuthorizationUnauthorized(t *testing.T) {
+	context := newFakeGinContext("GET", "/admin")
+	proxy := newFakeKeycloakProxy(t)
+	proxy.config.SkipTokenVerification = false
+	proxy.config.NoRedirects = true
+
+	proxy.redirectToAuthorization(context)
+	assert.Equal(t, http.StatusUnauthorized, context.Writer.Status())
+}
+
+func TestInitializeReverseProxy(t *testing.T) {
+	proxy := newFakeKeycloakProxy(t)
+
+	uri, _ := url.Parse("http://127.0.0.1:8080")
+	reverse, err := proxy.initializeReverseProxy(uri)
+	assert.NoError(t, err)
+	assert.NotNil(t, reverse)
 }
 
 func TestRedirectURL(t *testing.T) {

@@ -95,6 +95,8 @@ type Config struct {
 	ClientID string `json:"clientid" yaml:"clientid"`
 	// Secret is the secret for AS
 	Secret string `json:"secret" yaml:"secret"`
+	// NoRedirects informs we should hand back a 401 not a redirect
+	NoRedirects bool `json:"no-redirects" yaml:"no-redirects"`
 	// RedirectionURL the redirection url
 	RedirectionURL string `json:"redirection_url" yaml:"redirection_url"`
 	// EnableSecurityFilter enabled the security handler
