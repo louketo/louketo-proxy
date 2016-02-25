@@ -68,6 +68,7 @@ GLOBAL OPTIONS:
    --verbose										        switch on debug / verbose logging
    --help, -h										        show help
    --version, -v									        print the version
+
 ```
 
 #### **Configuration**
