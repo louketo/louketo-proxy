@@ -118,7 +118,7 @@ func expires(date, expires string) (time.Duration, bool, error) {
 // Cacheable checks for cache-control header in the keys response and grabs the expiration
 func Cacheable(hdr http.Header) (time.Duration, bool, error) {
 	cacheHeader := hdr.Get("Cache-Control")
-	if cacheHeader == "" {
+	if cacheHeader == "" || cacheHeader == "no-cache" {
 		return time.Duration(2) * time.Hour, true, nil
 	}
 
