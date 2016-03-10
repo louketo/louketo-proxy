@@ -28,7 +28,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gambol99/go-oidc/oidc"
+	"github.com/coreos/go-oidc/oidc"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
