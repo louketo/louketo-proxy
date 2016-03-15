@@ -32,6 +32,7 @@ const (
 	claimPreferredName  = "preferred_username"
 	claimAudience       = "aud"
 	claimResourceAccess = "resource_access"
+	claimRealmAccess    = "realm_access"
 	claimResourceRoles  = "roles"
 )
 
@@ -155,6 +156,15 @@ func (r *KeycloakProxy) getUserContext(token jose.JWT) (*userContext, error) {
 	}
 
 	var list []string
+
+	// step: extract the realm roles
+	if realmRoles, found := claims[claimRealmAccess].(map[string]interface{}); found {
+		if roles, found := realmRoles[claimResourceRoles]; found {
+			for _, r := range roles.([]interface{}) {
+				list = append(list, fmt.Sprintf("%s", r))
+			}
+		}
+	}
 
 	// step: extract the roles from the access token
 	if accesses, found := claims[claimResourceAccess].(map[string]interface{}); found {

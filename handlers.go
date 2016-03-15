@@ -180,6 +180,8 @@ func (r *KeycloakProxy) authenticationHandler() gin.HandlerFunc {
 		}
 		userContext.bearerToken = isBearer
 
+		log.Debugf("found user context: %s", userContext)
+
 		// step: check the audience for the token is us
 		if !userContext.isAudience(r.config.ClientID) {
 			log.WithFields(log.Fields{
