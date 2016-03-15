@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"path"
 	"strings"
 	"sync"
 	"time"
@@ -149,6 +150,7 @@ func (r *KeycloakProxy) initializeTemplates() {
 	}
 
 	if len(list) > 0 {
+		log.Infof("loading the custom templates: %s", strings.Join(list, ","))
 		r.router.LoadHTMLFiles(list...)
 	}
 }
@@ -207,7 +209,7 @@ func (r KeycloakProxy) redirectToURL(url string, cx *gin.Context) {
 func (r KeycloakProxy) accessForbidden(cx *gin.Context) {
 	// step: do we have a custom forbidden page
 	if r.config.hasForbiddenPage() {
-		cx.HTML(http.StatusForbidden, r.config.ForbiddenPage, r.config.TagData)
+		cx.HTML(http.StatusForbidden, path.Base(r.config.ForbiddenPage), r.config.TagData)
 		cx.Abort()
 		return
 	}

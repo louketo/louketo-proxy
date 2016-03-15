@@ -4,9 +4,10 @@ MAINTAINER Rohith <gambol99@gmail.com>
 RUN apk update && \
     apk add ca-certificates
 
-ADD bin/keycloak-proxy /opt/bin/keycloak-proxy
-RUN chmod +x /opt/bin/keycloak-proxy
+ADD templates/ opt/templates
+ADD bin/keycloak-proxy /opt/keycloak-proxy
+RUN chmod +x /opt/keycloak-proxy
 
-WORKDIR "/opt/bin"
+WORKDIR "/opt"
 
-ENTRYPOINT [ "/opt/bin/keycloak-proxy" ]
+ENTRYPOINT [ "/opt/keycloak-proxy" ]

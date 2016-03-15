@@ -22,7 +22,7 @@ import (
 
 const (
 	prog        = "keycloak-proxy"
-	version     = "v1.0.0-rc3"
+	version     = "v1.0.0-rc5"
 	author      = "Rohith"
 	email       = "gambol99@gmail.com"
 	description = "is a proxy using the keycloak service for auth and authorization"
