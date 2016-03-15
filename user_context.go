@@ -16,6 +16,7 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -68,4 +69,9 @@ func (r userContext) isExpired() bool {
 // isBearerToken checks if the token
 func (r userContext) isBearerToken() bool {
 	return r.bearerToken
+}
+
+func (r userContext) String() string {
+	return fmt.Sprintf("user: %s, expires: %s, roles: %s", r.preferredName, r.expiresAt.String(),
+		strings.Join(r.roles, ""))
 }
