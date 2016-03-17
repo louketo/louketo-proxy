@@ -33,7 +33,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/gambol99/go-oidc/oidc"
+	"github.com/coreos/go-oidc/oidc"
 )
 
 var (
