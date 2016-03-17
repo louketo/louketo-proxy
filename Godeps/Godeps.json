@@ -13,6 +13,26 @@
 			"Rev": "c31a7975863e7810c92e2e288a9ab074f9a88f29"
 		},
 		{
+			"ImportPath": "github.com/coreos/go-oidc/http",
+			"Rev": "d7cb66526fffc811d602b6770581064f4b66b507"
+		},
+		{
+			"ImportPath": "github.com/coreos/go-oidc/jose",
+			"Rev": "d7cb66526fffc811d602b6770581064f4b66b507"
+		},
+		{
+			"ImportPath": "github.com/coreos/go-oidc/key",
+			"Rev": "d7cb66526fffc811d602b6770581064f4b66b507"
+		},
+		{
+			"ImportPath": "github.com/coreos/go-oidc/oauth2",
+			"Rev": "d7cb66526fffc811d602b6770581064f4b66b507"
+		},
+		{
+			"ImportPath": "github.com/coreos/go-oidc/oidc",
+			"Rev": "d7cb66526fffc811d602b6770581064f4b66b507"
+		},
+		{
 			"ImportPath": "github.com/coreos/go-systemd/journal",
 			"Comment": "v4-40-g2ed5b50",
 			"Rev": "2ed5b5012ccde5f057c197890a2c801295941149"
@@ -36,26 +56,6 @@
 		{
 			"ImportPath": "github.com/davecgh/go-spew/spew",
 			"Rev": "5215b55f46b2b919f50a1df0eaa5886afe4e3b3d"
-		},
-		{
-			"ImportPath": "github.com/gambol99/go-oidc/http",
-			"Rev": "1065ae3e00802992e6007decd79278ad714fd94a"
-		},
-		{
-			"ImportPath": "github.com/gambol99/go-oidc/jose",
-			"Rev": "1065ae3e00802992e6007decd79278ad714fd94a"
-		},
-		{
-			"ImportPath": "github.com/gambol99/go-oidc/key",
-			"Rev": "1065ae3e00802992e6007decd79278ad714fd94a"
-		},
-		{
-			"ImportPath": "github.com/gambol99/go-oidc/oauth2",
-			"Rev": "1065ae3e00802992e6007decd79278ad714fd94a"
-		},
-		{
-			"ImportPath": "github.com/gambol99/go-oidc/oidc",
-			"Rev": "1065ae3e00802992e6007decd79278ad714fd94a"
 		},
 		{
 			"ImportPath": "github.com/gin-gonic/gin",
