@@ -19,6 +19,8 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
+
+	"github.com/codegangsta/cli"
 )
 
 func TestNewDefaultConfig(t *testing.T) {
@@ -162,6 +164,15 @@ func TestIsConfig(t *testing.T) {
 			t.Errorf("test case %d, the config should not have errored, error: %s", i, err)
 		}
 	}
+}
+
+func TestReadOptions(t *testing.T) {
+	c := cli.NewApp()
+	c.Flags = getOptions()
+	c.Action = func(cx *cli.Context) {
+		readOptions(cx, &Config{})
+	}
+	c.Run([]string{""})
 }
 
 func TestGetOptions(t *testing.T) {

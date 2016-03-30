@@ -263,7 +263,7 @@ func (r *KeycloakProxy) authenticationHandler() gin.HandlerFunc {
 //  - if everything is ok, we permit the request to pass through
 //
 func (r *KeycloakProxy) admissionHandler() gin.HandlerFunc {
-	// step: compile the regexs for the claims
+	// step: compile the regex's for the claims
 	claimMatches := make(map[string]*regexp.Regexp, 0)
 	for k, v := range r.config.ClaimsMatch {
 		claimMatches[k] = regexp.MustCompile(v)
@@ -372,7 +372,7 @@ func (r *KeycloakProxy) proxyHandler(cx *gin.Context) {
 		}
 	}
 
-	// step: retrieve the user context
+	// step: retrieve the user context if any
 	if identity, found := cx.Get(userContextName); found {
 		id := identity.(*userContext)
 		cx.Request.Header.Add("X-Auth-UserId", id.id)
@@ -385,8 +385,9 @@ func (r *KeycloakProxy) proxyHandler(cx *gin.Context) {
 	}
 
 	// step: add the default headers
-	cx.Request.Header.Set("X-Forwarded-For", cx.Request.RemoteAddr)
-	cx.Request.Header.Set("X-Forwarded-Agent", "keycloak-proxy")
+	cx.Request.Header.Add("X-Forwarded-For", cx.Request.RemoteAddr)
+	cx.Request.Header.Set("X-Forwarded-Agent", prog)
+	cx.Request.Header.Set("X-Forwarded-Agent-Version", version)
 
 	// step: is this connection upgrading?
 	if isUpgradedConnection(cx.Request) {
