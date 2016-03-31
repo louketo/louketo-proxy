@@ -3,7 +3,7 @@
 #### **1.0.0-rc6 (March 31th, 2016)**
 
 FIXES:
- * Added a option to control the upstream TLS verfication
+ * Added a option to control the upstream TLS verification
  * Added in the x-forwarded-for headers rather than overwriting
  * Moved back to using the official coreos go-oidc rather than the hacked version
 

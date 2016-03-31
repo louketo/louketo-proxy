@@ -377,7 +377,6 @@ func TestSecurityHandler(t *testing.T) {
 	kc.config.Hostnames = []string{"127.0.0.2"}
 	handler = kc.securityHandler()
 	handler(context)
-	handler(context)
 	if context.Writer.Status() != http.StatusInternalServerError {
 		t.Errorf("we should have received a 500 not %d", context.Writer.Status())
 	}
