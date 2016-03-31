@@ -121,6 +121,8 @@ type Config struct {
 	TLSPrivateKey string `json:"tls_private_key" yaml:"tls_private_key"`
 	// TLSCaCertificate is the CA certificate which the client cert must be signed
 	TLSCaCertificate string `json:"tls_ca_certificate" yaml:"tls_ca_certificate"`
+	// SkipUpstreamTLSVerify skips the verification of any upstream tls
+	SkipUpstreamTLSVerify bool `json:"skip-upstream-tls-verify" yaml:"skip-upstream-tls-verify"`
 	// Upstream is the upstream endpoint i.e whom were proxying to
 	Upstream string `json:"upstream" yaml:"upstream"`
 	// TagData is passed to the templates

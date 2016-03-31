@@ -41,6 +41,7 @@ func newDefaultConfig() *Config {
 		ClaimsMatch:    make(map[string]string, 0),
 		Header:         make(map[string]string, 0),
 		CORS:           &CORS{},
+		SkipUpstreamTLSVerify: true,
 	}
 }
 
@@ -154,6 +155,9 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 	}
 	if cx.IsSet("skip-token-verification") {
 		config.SkipTokenVerification = cx.Bool("skip-token-verification")
+	}
+	if cx.IsSet("skip-upstream-tls-verify") {
+		config.SkipUpstreamTLSVerify = cx.Bool("skip-upstream-tls-verify")
 	}
 	if cx.IsSet("encryption-key") {
 		config.EncryptionKey = cx.String("encryption-key")
@@ -335,6 +339,10 @@ func getOptions() []cli.Flag {
 		cli.StringFlag{
 			Name:  "tls-ca-certificate",
 			Usage: "the path to the ca certificate used for mutual TLS",
+		},
+		cli.BoolTFlag{
+			Name:  "skip-upstream-tls-verify",
+			Usage: "whether to skip the verification of any upstream TLS (defaults to true)",
 		},
 		cli.StringSliceFlag{
 			Name:  "scope",
