@@ -23,8 +23,8 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/gambol99/go-oidc/jose"
-	"github.com/gambol99/go-oidc/oauth2"
+	"github.com/coreos/go-oidc/jose"
+	"github.com/coreos/go-oidc/oauth2"
 	"github.com/gin-gonic/gin"
 	"github.com/unrolled/secure"
 )

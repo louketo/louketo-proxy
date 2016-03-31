@@ -20,7 +20,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gambol99/go-oidc/jose"
+	"github.com/coreos/go-oidc/jose"
 )
 
 // userContext represents a user
