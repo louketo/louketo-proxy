@@ -266,3 +266,12 @@ Or on the command line
 
 The proxy support enforcing mutual TLS for the clients by simply adding the --tls-ca-certificate command line option or config file option. All clients connecting must present a ceritificate
 which was signed by the CA being used.
+
+#### **Endpoints**
+
+* **/oauth/authorize** is authentication endpoint which will generate the openid redirect to the provider
+* **/oauth/callback** is provider openid callback endpoint
+* **/oauth/expired** is a helper endpoint to check if a access token has expired, 200 for ok and, 401 for no token and 401 for expired
+* **/oauth/token** is a helper endpoint which will display the current access token for you
+* **/oauth/health** is the health checking endpoint for the proxy
+

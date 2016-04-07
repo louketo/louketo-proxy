@@ -38,6 +38,8 @@ const (
 	authorizationURL = oauthURL + "/authorize"
 	callbackURL      = oauthURL + "/callback"
 	healthURL        = oauthURL + "/health"
+	tokenURL         = oauthURL + "/token"
+	expiredURL       = oauthURL + "/expired"
 )
 
 var (
