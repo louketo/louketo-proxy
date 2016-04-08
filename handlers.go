@@ -48,7 +48,7 @@ const (
 //
 // loggingHandler is a custom http logger
 //
-func (r *KeycloakProxy) loggingHandler() gin.HandlerFunc {
+func (r *keycloakProxy) loggingHandler() gin.HandlerFunc {
 	return func(cx *gin.Context) {
 		start := time.Now()
 		cx.Next()
@@ -68,7 +68,7 @@ func (r *KeycloakProxy) loggingHandler() gin.HandlerFunc {
 //
 // securityHandler performs numerous security checks on the request
 //
-func (r *KeycloakProxy) securityHandler() gin.HandlerFunc {
+func (r *keycloakProxy) securityHandler() gin.HandlerFunc {
 	// step: create the security options
 	secure := secure.New(secure.Options{
 		AllowedHosts:         r.config.Hostnames,
@@ -94,7 +94,7 @@ func (r *KeycloakProxy) securityHandler() gin.HandlerFunc {
 //
 // entryPointHandler checks to see if the request requires authentication
 //
-func (r *KeycloakProxy) entryPointHandler() gin.HandlerFunc {
+func (r *keycloakProxy) entryPointHandler() gin.HandlerFunc {
 	return func(cx *gin.Context) {
 		if strings.HasPrefix(cx.Request.URL.Path, oauthURL) {
 			cx.Next()
@@ -144,7 +144,7 @@ func (r *KeycloakProxy) entryPointHandler() gin.HandlerFunc {
 //  - else we validate the access token against the keypair via openid client
 //  - if everything is cool, move on, else thrown a redirect or forbidden
 //
-func (r *KeycloakProxy) authenticationHandler() gin.HandlerFunc {
+func (r *keycloakProxy) authenticationHandler() gin.HandlerFunc {
 	return func(cx *gin.Context) {
 		var session jose.JWT
 
@@ -265,7 +265,7 @@ func (r *KeycloakProxy) authenticationHandler() gin.HandlerFunc {
 //  - if er have any claim requirements validate the claims are the same
 //  - if everything is ok, we permit the request to pass through
 //
-func (r *KeycloakProxy) admissionHandler() gin.HandlerFunc {
+func (r *keycloakProxy) admissionHandler() gin.HandlerFunc {
 	// step: compile the regex's for the claims
 	claimMatches := make(map[string]*regexp.Regexp, 0)
 	for k, v := range r.config.ClaimsMatch {
@@ -365,7 +365,7 @@ func (r *KeycloakProxy) admissionHandler() gin.HandlerFunc {
 //
 // proxyHandler is responsible to proxy the requests on to the upstream endpoint
 //
-func (r *KeycloakProxy) proxyHandler(cx *gin.Context) {
+func (r *keycloakProxy) proxyHandler(cx *gin.Context) {
 	// step: double check, if enforce is true and no user context it's a internal error
 	if _, found := cx.Get(cxEnforce); found {
 		if _, found := cx.Get(userContextName); !found {
@@ -416,7 +416,7 @@ func (r *KeycloakProxy) proxyHandler(cx *gin.Context) {
 //
 // oauthAuthorizationHandler is responsible for performing the redirection to keycloak service
 //
-func (r *KeycloakProxy) oauthAuthorizationHandler(cx *gin.Context) {
+func (r *keycloakProxy) oauthAuthorizationHandler(cx *gin.Context) {
 	// step: is token verification switched on?
 	if r.config.SkipTokenVerification {
 		r.accessForbidden(cx)
@@ -466,7 +466,7 @@ func (r *KeycloakProxy) oauthAuthorizationHandler(cx *gin.Context) {
 //
 // oauthCallbackHandler is responsible for handling the response from keycloak
 //
-func (r *KeycloakProxy) oauthCallbackHandler(cx *gin.Context) {
+func (r *keycloakProxy) oauthCallbackHandler(cx *gin.Context) {
 	// step: is token verification switched on?
 	if r.config.SkipTokenVerification {
 		r.accessForbidden(cx)
@@ -584,7 +584,7 @@ func (r *KeycloakProxy) oauthCallbackHandler(cx *gin.Context) {
 //
 // expirationHandler checks if the token has expired
 //
-func (r *KeycloakProxy) expirationHandler(cx *gin.Context) {
+func (r *keycloakProxy) expirationHandler(cx *gin.Context) {
 	// step: get the access token from the request
 	token, err := r.getSession(cx)
 	if err != nil {
@@ -620,7 +620,7 @@ func (r *KeycloakProxy) expirationHandler(cx *gin.Context) {
 //
 // tokenHandle display access token to screen
 //
-func (r *KeycloakProxy) tokenHandler(cx *gin.Context) {
+func (r *keycloakProxy) tokenHandler(cx *gin.Context) {
 	// step: extract the access token from the request
 	token, err := r.getSession(cx)
 	if err != nil {
@@ -640,6 +640,6 @@ func (r *KeycloakProxy) tokenHandler(cx *gin.Context) {
 //
 // healthHandler is a health check handler for the service
 //
-func (r *KeycloakProxy) healthHandler(cx *gin.Context) {
+func (r *keycloakProxy) healthHandler(cx *gin.Context) {
 	cx.String(http.StatusOK, "OK")
 }
