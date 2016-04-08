@@ -44,7 +44,7 @@ const (
 	fakeTestRole  = "role:test"
 )
 
-func newFakeKeycloakProxyWithResources(t *testing.T, resources []*Resource) *KeycloakProxy {
+func newFakeKeycloakProxyWithResources(t *testing.T, resources []*Resource) *keycloakProxy {
 	kc := newFakeKeycloakProxy(t)
 	kc.config.Resources = resources
 	return kc
@@ -97,10 +97,10 @@ func newFakeKeycloakConfig(t *testing.T) *Config {
 	}
 }
 
-func newFakeKeycloakProxy(t *testing.T) *KeycloakProxy {
+func newFakeKeycloakProxy(t *testing.T) *keycloakProxy {
 	log.SetOutput(ioutil.Discard)
 
-	kc := &KeycloakProxy{
+	kc := &keycloakProxy{
 		config: newFakeKeycloakConfig(t),
 		proxy:  new(fakeReverseProxy),
 	}

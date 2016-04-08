@@ -35,8 +35,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// KeycloakProxy is the server component
-type KeycloakProxy struct {
+// keycloakProxy is the server component
+type keycloakProxy struct {
 	config *Config
 	// the gin service
 	router *gin.Engine
@@ -60,7 +60,7 @@ func init() {
 }
 
 // newKeycloakProxy create's a new keycloak proxy from configuration
-func newKeycloakProxy(cfg *Config) (*KeycloakProxy, error) {
+func newKeycloakProxy(cfg *Config) (*keycloakProxy, error) {
 	// step: set the logging level
 	if cfg.LogJSONFormat {
 		log.SetFormatter(&log.JSONFormatter{})
@@ -78,7 +78,7 @@ func newKeycloakProxy(cfg *Config) (*KeycloakProxy, error) {
 	}
 
 	// step: create a proxy service
-	service := &KeycloakProxy{
+	service := &keycloakProxy{
 		config:      cfg,
 		upstreamURL: upstreamURL,
 	}
@@ -122,7 +122,7 @@ func newKeycloakProxy(cfg *Config) (*KeycloakProxy, error) {
 }
 
 // initializeRouter sets up the gin routing
-func (r KeycloakProxy) initializeRouter() {
+func (r keycloakProxy) initializeRouter() {
 	r.router.Use(gin.Recovery())
 	// step: are we logging the traffic?
 	if r.config.LogRequests {
@@ -145,7 +145,7 @@ func (r KeycloakProxy) initializeRouter() {
 }
 
 // initializeTemplates loads the custom template
-func (r *KeycloakProxy) initializeTemplates() {
+func (r *keycloakProxy) initializeTemplates() {
 	var list []string
 
 	if r.config.SignInPage != "" {
@@ -164,7 +164,7 @@ func (r *KeycloakProxy) initializeTemplates() {
 }
 
 // Run starts the proxy service
-func (r *KeycloakProxy) Run() error {
+func (r *keycloakProxy) Run() error {
 	tlsConfig := &tls.Config{}
 
 	// step: are we doing mutual tls?
@@ -205,7 +205,7 @@ func (r *KeycloakProxy) Run() error {
 }
 
 // redirectToURL redirects the user and aborts the context
-func (r KeycloakProxy) redirectToURL(url string, cx *gin.Context) {
+func (r keycloakProxy) redirectToURL(url string, cx *gin.Context) {
 	// step: add the cors headers
 	r.injectCORSHeaders(cx)
 
@@ -214,7 +214,7 @@ func (r KeycloakProxy) redirectToURL(url string, cx *gin.Context) {
 }
 
 // accessForbidden redirects the user to the forbidden page
-func (r KeycloakProxy) accessForbidden(cx *gin.Context) {
+func (r keycloakProxy) accessForbidden(cx *gin.Context) {
 	// step: do we have a custom forbidden page
 	if r.config.hasForbiddenPage() {
 		cx.HTML(http.StatusForbidden, path.Base(r.config.ForbiddenPage), r.config.TagData)
@@ -226,7 +226,7 @@ func (r KeycloakProxy) accessForbidden(cx *gin.Context) {
 }
 
 // redirectToAuthorization redirects the user to authorization handler
-func (r KeycloakProxy) redirectToAuthorization(cx *gin.Context) {
+func (r keycloakProxy) redirectToAuthorization(cx *gin.Context) {
 	// step: are we handling redirects?
 	if r.config.NoRedirects {
 		cx.AbortWithStatus(http.StatusUnauthorized)
@@ -247,7 +247,7 @@ func (r KeycloakProxy) redirectToAuthorization(cx *gin.Context) {
 }
 
 // injectCORSHeaders adds the cors access controls to the oauth responses
-func (r *KeycloakProxy) injectCORSHeaders(cx *gin.Context) {
+func (r *keycloakProxy) injectCORSHeaders(cx *gin.Context) {
 	c := r.config.CORS
 	if len(c.Origins) > 0 {
 		cx.Writer.Header().Set("Access-Control-Allow-Origin", strings.Join(c.Origins, ","))
@@ -269,7 +269,7 @@ func (r *KeycloakProxy) injectCORSHeaders(cx *gin.Context) {
 	}
 }
 
-func (r *KeycloakProxy) addAuthenticationHeader(cx *gin.Context, errorCode, errorMessage string) {
+func (r *keycloakProxy) addAuthenticationHeader(cx *gin.Context, errorCode, errorMessage string) {
 	// step: inject the error message
 	header := "Bearer realm=\"secure\""
 	if errorCode != "" {
@@ -284,7 +284,7 @@ func (r *KeycloakProxy) addAuthenticationHeader(cx *gin.Context, errorCode, erro
 }
 
 // tryUpdateConnection attempt to upgrade the connection to a http pdy stream
-func (r *KeycloakProxy) tryUpdateConnection(cx *gin.Context) error {
+func (r *keycloakProxy) tryUpdateConnection(cx *gin.Context) error {
 	// step: dial the endpoint
 	tlsConn, err := tryDialEndpoint(r.upstreamURL)
 	if err != nil {
@@ -315,7 +315,7 @@ func (r *KeycloakProxy) tryUpdateConnection(cx *gin.Context) error {
 }
 
 // initializeReverseProxy create a reverse http proxy from the upstream
-func (r *KeycloakProxy) initializeReverseProxy(upstream *url.URL) (reverseProxy, error) {
+func (r *keycloakProxy) initializeReverseProxy(upstream *url.URL) (reverseProxy, error) {
 	proxy := httputil.NewSingleHostReverseProxy(upstream)
 
 	// step: we don't care about the cert verification here
