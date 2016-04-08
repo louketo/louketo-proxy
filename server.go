@@ -133,6 +133,9 @@ func (r KeycloakProxy) initializeRouter() {
 	r.router.GET(authorizationURL, r.oauthAuthorizationHandler)
 	r.router.GET(callbackURL, r.oauthCallbackHandler)
 	r.router.GET(healthURL, r.healthHandler)
+	r.router.GET(tokenURL, r.tokenHandler)
+	r.router.GET(expiredURL, r.expirationHandler)
+
 	r.router.Use(r.entryPointHandler(), r.authenticationHandler(), r.admissionHandler())
 }
 

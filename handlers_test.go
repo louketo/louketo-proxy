@@ -16,9 +16,11 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/coreos/go-oidc/jose"
 	"github.com/gin-gonic/gin"
@@ -379,6 +381,73 @@ func TestSecurityHandler(t *testing.T) {
 	handler(context)
 	if context.Writer.Status() != http.StatusInternalServerError {
 		t.Errorf("we should have received a 500 not %d", context.Writer.Status())
+	}
+}
+
+func newFakeJWTToken(t *testing.T, claims jose.Claims) *jose.JWT {
+	token, err := jose.NewJWT(
+		jose.JOSEHeader{"alg": "RS256"}, claims,
+	)
+	if err != nil {
+		t.Fatalf("failed to create the jwt token, error: %s", err)
+	}
+
+	return &token
+}
+
+func TestExpirationHandler(t *testing.T) {
+	proxy := newFakeKeycloakProxy(t)
+
+	cases := []struct {
+		Token    *jose.JWT
+		HTTPCode int
+	}{
+		{
+			HTTPCode: http.StatusUnauthorized,
+		},
+		{
+			Token: newFakeJWTToken(t, jose.Claims{
+				"exp": float64(time.Now().Add(-24 * time.Hour).Unix()),
+			}),
+			HTTPCode: http.StatusInternalServerError,
+		},
+		{
+			Token: newFakeJWTToken(t, jose.Claims{
+				"exp":                float64(time.Now().Add(10 * time.Hour).Unix()),
+				"iss":                "https://keycloak.example.com/auth/realms/commons",
+				"sub":                "1e11e539-8256-4b3b-bda8-cc0d56cddb48",
+				"email":              "gambol99@gmail.com",
+				"name":               "Rohith Jayawardene",
+				"preferred_username": "rjayawardene",
+			}),
+			HTTPCode: http.StatusOK,
+		},
+		{
+			Token: newFakeJWTToken(t, jose.Claims{
+				"exp":                float64(time.Now().Add(-24 * time.Hour).Unix()),
+				"iss":                "https://keycloak.example.com/auth/realms/commons",
+				"sub":                "1e11e539-8256-4b3b-bda8-cc0d56cddb48",
+				"email":              "gambol99@gmail.com",
+				"name":               "Rohith Jayawardene",
+				"preferred_username": "rjayawardene",
+			}),
+			HTTPCode: http.StatusForbidden,
+		},
+	}
+
+	for i, c := range cases {
+		// step: inject a resource
+		cx := newFakeGinContext("GET", "/oauth/expiration")
+		// step: add the token is there is one
+		if c.Token != nil {
+			cx.Request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.Token.Encode()))
+		}
+		// step: if closure so we need to get the handler each time
+		proxy.expirationHandler(cx)
+		// step: check the content result
+		if cx.Writer.Status() != c.HTTPCode {
+			t.Errorf("test case %d should have recieved: %d, but got %d", i, c.HTTPCode, cx.Writer.Status())
+		}
 	}
 }
 

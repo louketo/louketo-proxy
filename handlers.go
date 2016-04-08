@@ -16,6 +16,7 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"path"
 	"regexp"
@@ -25,6 +26,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-oidc/jose"
 	"github.com/coreos/go-oidc/oauth2"
+	"github.com/coreos/go-oidc/oidc"
 	"github.com/gin-gonic/gin"
 	"github.com/unrolled/secure"
 )
@@ -567,6 +569,62 @@ func (r *KeycloakProxy) oauthCallbackHandler(cx *gin.Context) {
 	}
 
 	r.redirectToURL(state, cx)
+}
+
+//
+// expirationHandler checks if the token has expired
+//
+func (r *KeycloakProxy) expirationHandler(cx *gin.Context) {
+	// step: get the access token from the request
+	token, err := r.getSession(cx)
+	if err != nil {
+		if err == ErrSessionNotFound {
+			cx.AbortWithError(http.StatusUnauthorized, err)
+			return
+		}
+		cx.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	// step: decode the claims from the tokens
+	claims, err := token.Claims()
+	if err != nil {
+		cx.AbortWithError(http.StatusInternalServerError, fmt.Errorf("unable to extract the claims"))
+		return
+	}
+	// step: extract the identity
+	identity, err := oidc.IdentityFromClaims(claims)
+	if err != nil {
+		cx.AbortWithError(http.StatusInternalServerError, fmt.Errorf("unable to extract identity"))
+		return
+	}
+
+	// step: check if token expired
+	if time.Now().After(identity.ExpiresAt) {
+		cx.AbortWithStatus(http.StatusForbidden)
+	} else {
+		cx.AbortWithStatus(http.StatusOK)
+	}
+}
+
+//
+// tokenHandle display access token to screen
+//
+func (r *KeycloakProxy) tokenHandler(cx *gin.Context) {
+	// step: extract the access token from the request
+	token, err := r.getSession(cx)
+	if err != nil {
+		if err == ErrSessionNotFound {
+			cx.AbortWithError(http.StatusOK, err)
+			return
+		}
+		cx.AbortWithError(http.StatusInternalServerError, fmt.Errorf("unable to retrieve session, error: %s", err))
+		return
+	}
+
+	// step: write the json content
+	cx.Writer.Header().Set("Content-Type", "application/json")
+	cx.String(http.StatusOK, fmt.Sprintf("%s", token.Payload))
 }
 
 //

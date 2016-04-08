@@ -16,6 +16,8 @@ max_session: 1h
 log_requests: true
 # log in json format
 log_json_format: true
+# do not redirec the request, simple 307 it
+no-redirects: false
 # the location of a certificate you wish the proxy to use for TLS support
 tls_cert:
 # the location of a private key for TLS

@@ -117,6 +117,13 @@ func (r *KeycloakProxy) getSessionToken(cx *gin.Context) (jose.JWT, bool, error)
 	return jwt, isBearer, nil
 }
 
+// getSession is a helper methods for those whom dont care if it's a bearer token
+func (r *KeycloakProxy) getSession(cx *gin.Context) (jose.JWT, error) {
+	token, _, err := r.getSessionToken(cx)
+
+	return token, err
+}
+
 // getSessionState retrieves the session state from the request
 func (r *KeycloakProxy) getSessionState(cx *gin.Context) (*sessionState, error) {
 	// step: find the session data cookie
@@ -193,7 +200,7 @@ func (r *KeycloakProxy) getUserContext(token jose.JWT) (*userContext, error) {
 
 // createSession creates a session cookie with the access token
 func (r *KeycloakProxy) createSession(token jose.JWT, expires time.Time, cx *gin.Context) error {
-	http.SetCookie(cx.Writer, createSessionCookie(token.Encode(), cx.Request.Host, expires))
+	http.SetCookie(cx.Writer, createSessionCookie(token.Encode(), cx.Request.Host, expires.Add(time.Duration(5)*time.Minute)))
 
 	return nil
 }

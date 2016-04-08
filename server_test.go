@@ -17,6 +17,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -194,6 +195,7 @@ func newFakeResponse() *fakeResponse {
 
 func newFakeGinContext(method, uri string) *gin.Context {
 	return &gin.Context{
+
 		Request: &http.Request{
 			Method:     method,
 			Host:       "127.0.0.1",
@@ -218,6 +220,7 @@ type fakeResponse struct {
 	size    int
 	status  int
 	headers http.Header
+	body    bytes.Buffer
 }
 
 func (r *fakeResponse) Flush()                                       {}
