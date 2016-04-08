@@ -1,4 +1,9 @@
 
+#### **1.0.1 (April 8th, 2016)**
+
+FIXES:
+ * Fixed the refresh tokens for those provides whom do not use JWT tokens, Google Connect for example
+
 #### **1.0.0 (April 8th, 2016)**
 
 FEATURES

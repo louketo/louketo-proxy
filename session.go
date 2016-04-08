@@ -44,8 +44,8 @@ type sessionState struct {
 	refreshToken string
 }
 
-// refreshUserSessionToken is responsible for retrieving the session state cookie and attempting to
-// refresh the access token for the user
+// refreshUserSessionToken is responsible for retrieving the session state cookie and attempting to refresh the access
+// token for the user
 func (r *KeycloakProxy) refreshUserSessionToken(cx *gin.Context) (jose.JWT, error) {
 	// step: grab the session state cooke
 	state, err := r.getSessionState(cx)
@@ -63,26 +63,25 @@ func (r *KeycloakProxy) refreshUserSessionToken(cx *gin.Context) (jose.JWT, erro
 	token, expires, err := r.refreshAccessToken(state.refreshToken)
 	if err != nil {
 		// step: has the refresh token expired
-		if err == ErrRefreshTokenExpired {
+		switch err {
+		case ErrRefreshTokenExpired:
 			log.WithFields(log.Fields{"token": token}).Warningf("the refresh token has expired")
-			// clear the session
 			clearSessionState(cx)
+		default:
+			log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to refresh the access token")
 		}
-
-		log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to refresh the access token")
 
 		return jose.JWT{}, err
 	}
 
 	// step: inject the refreshed access token
-	log.Infof("injecting the refreshed access token into seesion, expires on: %s", expires)
+	log.WithFields(log.Fields{
+		"access_expires_in":  expires.Sub(time.Now()).String(),
+		"refresh_expires_in": state.expireOn.Sub(time.Now()).String(),
+	}).Infof("injecting refreshed access token, expires on: %s", expires.Format(time.RFC1123))
 
 	// step: create the session
-	if err := r.createSession(token, expires, cx); err != nil {
-		return token, err
-	}
-
-	return token, nil
+	return token, r.createSession(token, expires, cx)
 }
 
 // getSessionToken retrieves the authentication cookie from the request and parse's into a JWT token
@@ -107,14 +106,10 @@ func (r *KeycloakProxy) getSessionToken(cx *gin.Context) (jose.JWT, bool, error)
 		}
 		session = cookie.Value
 	}
-
-	// step: parse the token
+	// step: parse the token response
 	jwt, err := jose.ParseJWT(session)
-	if err != nil {
-		return jose.JWT{}, isBearer, err
-	}
 
-	return jwt, isBearer, nil
+	return jwt, isBearer, err
 }
 
 // getSession is a helper methods for those whom dont care if it's a bearer token
@@ -132,7 +127,7 @@ func (r *KeycloakProxy) getSessionState(cx *gin.Context) (*sessionState, error) 
 		return nil, ErrNoCookieFound
 	}
 
-	return r.decodeState(cookie.Value)
+	return r.decryptStateSession(cookie.Value)
 }
 
 // getUserContext parse the jwt token and extracts the various elements is order to construct
@@ -208,7 +203,7 @@ func (r *KeycloakProxy) createSession(token jose.JWT, expires time.Time, cx *gin
 // createSessionState creates a session state cookie, used to hold the refresh cookie and the expiration time
 func (r *KeycloakProxy) createSessionState(state *sessionState, cx *gin.Context) error {
 	// step: we need to encode the state
-	encoded, err := r.encodeState(state)
+	encoded, err := r.encryptStateSession(state)
 	if err != nil {
 		return err
 	}
@@ -218,8 +213,8 @@ func (r *KeycloakProxy) createSessionState(state *sessionState, cx *gin.Context)
 	return nil
 }
 
-// encodeState encodes the session state information into a value for a cookie to consume
-func (r *KeycloakProxy) encodeState(session *sessionState) (string, error) {
+// encryptStateSession encodes the session state information into a value for a cookie to consume
+func (r *KeycloakProxy) encryptStateSession(session *sessionState) (string, error) {
 	// step: encode the session into a string
 	encoded := fmt.Sprintf("%d|%s", session.expireOn.Unix(), session.refreshToken)
 
@@ -232,8 +227,8 @@ func (r *KeycloakProxy) encodeState(session *sessionState) (string, error) {
 	return base64.StdEncoding.EncodeToString(cipherText), nil
 }
 
-// decodeState decodes the session state cookie value
-func (r *KeycloakProxy) decodeState(state string) (*sessionState, error) {
+// decryptStateSession decodes the session state cookie value
+func (r *KeycloakProxy) decryptStateSession(state string) (*sessionState, error) {
 	// step: decode the base64 encrypted cookie
 	cipherText, err := base64.StdEncoding.DecodeString(state)
 	if err != nil {

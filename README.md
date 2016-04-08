@@ -176,7 +176,7 @@ Although the role extensions do require a Keycloak IDP or at the very least a ID
 
 ``` shell
 bin/keycloak-proxy \
-    --discovery-url=https://accounts.google.com/.well-known/openid-confuration \
+    --discovery-url=https://accounts.google.com/.well-known/openid-configuration \
     --client-id=<CLIENT_ID> \
     --secret=<CLIENT_SECRET> \
     --resource="uri=/" \   

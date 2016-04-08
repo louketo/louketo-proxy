@@ -73,5 +73,5 @@ func (r userContext) isBearerToken() bool {
 
 func (r userContext) String() string {
 	return fmt.Sprintf("user: %s, expires: %s, roles: %s", r.preferredName, r.expiresAt.String(),
-		strings.Join(r.roles, ""))
+		strings.Join(r.roles, ","))
 }

@@ -11,7 +11,7 @@ listen: 127.0.0.1:3000
 # whether to request offline access and use a refresh token
 refresh_sessions: true
 # assuming you are using refresh tokens, specify the maximum amount of time the refresh token can last
-max_session: 1h
+max-session: 1h
 # log all incoming requests
 log_requests: true
 # log in json format

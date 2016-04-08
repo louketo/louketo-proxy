@@ -152,6 +152,7 @@ func (r *KeycloakProxy) authenticationHandler() gin.HandlerFunc {
 		if _, found := cx.Get(cxEnforce); !found {
 			log.Debugf("skipping the authentication handler, resource not protected")
 			cx.Next()
+
 			return
 		}
 
@@ -167,7 +168,7 @@ func (r *KeycloakProxy) authenticationHandler() gin.HandlerFunc {
 					return
 				}
 			} else {
-				log.Errorf("failed to get session redirecting for authorization, %s", err)
+				log.Errorf("failed to get session, redirecting for authorization, %s", err)
 				r.redirectToAuthorization(cx)
 				return
 			}
@@ -422,33 +423,32 @@ func (r *KeycloakProxy) oauthAuthorizationHandler(cx *gin.Context) {
 		return
 	}
 
-	log.WithFields(log.Fields{
-		"client_ip": cx.ClientIP(),
-	}).Infof("incoming authorization request")
-
 	// step: grab the oauth client
 	oac, err := r.openIDClient.OAuthClient()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Errorf("failed to retrieve the oauth client")
+		log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to retrieve the oauth client")
 		cx.AbortWithStatus(http.StatusInternalServerError)
 
 		return
 	}
 
-	// step: get the access type required
+	// step: set the grant type of the session
 	accessType := ""
 	if r.config.RefreshSessions {
 		accessType = "offline"
 	}
+
+	log.WithFields(log.Fields{
+		"client_ip":   cx.ClientIP(),
+		"access_type": accessType,
+	}).Infof("incoming authorization request from client address: %s", cx.ClientIP())
 
 	// step: build the redirection url to the authentication server
 	redirectionURL := oac.AuthCodeURL(cx.Query("state"), accessType, "")
 
 	// step: if we have a custom sign in page, lets display that
 	if r.config.hasSignInPage() {
-		// add the redirection url
+		// step: add the redirection url
 		model := make(map[string]string, 0)
 		for k, v := range r.config.TagData {
 			model[k] = v
@@ -466,7 +466,6 @@ func (r *KeycloakProxy) oauthAuthorizationHandler(cx *gin.Context) {
 //
 // oauthCallbackHandler is responsible for handling the response from keycloak
 //
-// @@TODO need to clean up this method somewhat
 func (r *KeycloakProxy) oauthCallbackHandler(cx *gin.Context) {
 	// step: is token verification switched on?
 	if r.config.SkipTokenVerification {
@@ -474,17 +473,19 @@ func (r *KeycloakProxy) oauthCallbackHandler(cx *gin.Context) {
 		return
 	}
 
-	// step: ensure we have a authorization code to exchange
+	// step: get the code and state
 	code := cx.Request.URL.Query().Get("code")
+	state := cx.Request.URL.Query().Get("state")
+
+	// step: ensure we have a authorization code to exchange
 	if code == "" {
-		log.WithFields(log.Fields{"client_ip": cx.ClientIP()}).Error("code parameter not found in callback request")
+		log.WithFields(log.Fields{"client_ip": cx.ClientIP()}).Error("code parameter missing in callback")
 
 		r.accessForbidden(cx)
 		return
 	}
 
-	// step: grab the state from request, otherwise default to root url
-	state := cx.Request.URL.Query().Get("state")
+	// step: ensure we have a state or default to root /
 	if state == "" {
 		state = "/"
 	}
@@ -497,13 +498,14 @@ func (r *KeycloakProxy) oauthCallbackHandler(cx *gin.Context) {
 		return
 	}
 
-	// step: decode and verify the id token
+	// step: parse decode the identity token
 	token, identity, err := r.parseToken(response.IDToken)
 	if err != nil {
 		log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to parse id token for identity")
 		r.accessForbidden(cx)
 		return
 	}
+	// step: verify the token is valid
 	if err := r.verifyToken(token); err != nil {
 		log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to verify the id token")
 		r.accessForbidden(cx)
@@ -526,46 +528,54 @@ func (r *KeycloakProxy) oauthCallbackHandler(cx *gin.Context) {
 
 	// step: create a session from the access token
 	if err := r.createSession(token, identity.ExpiresAt, cx); err != nil {
-		log.Errorf("failed to inject the session token, error: %s", err)
+		log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to inject the session token")
 		cx.AbortWithStatus(http.StatusInternalServerError)
+
 		return
 	}
 
-	// step: do we have session data to persist?
+	// step: are we using refresh tokens?
 	if r.config.RefreshSessions {
-		// step: parse the token
-		_, ident, err := r.parseToken(response.RefreshToken)
-		if err != nil {
-			log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to parse the refresh token")
-
-			cx.AbortWithStatus(http.StatusInternalServerError)
-			return
-		}
-
-		log.WithFields(log.Fields{
-			"email":   identity.Email,
-			"expires": identity.ExpiresAt,
-		}).Infof("retrieved the refresh token for user")
-
 		// step: create the state session
 		state := &sessionState{
 			refreshToken: response.RefreshToken,
+			expireOn:     time.Now().Add(r.config.MaxSession),
 		}
 
-		maxSession := time.Now().Add(r.config.MaxSession)
-		switch maxSession.After(ident.ExpiresAt) {
-		case true:
-			state.expireOn = ident.ExpiresAt
-		default:
-			state.expireOn = maxSession
+		// step: can we parse and extract the refresh token from the response
+		// - note, the refresh token can be custom, i.e. doesn't have to be a jwt i.e. google for example
+		_, refreshToken, err := r.parseToken(response.RefreshToken)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error": err.Error(),
+			}).Errorf("unable to parse refresh token (unknown format) using the as a static string")
+		} else {
+			// step: set the expiration of the refresh token.
+			// - first we check if the duration exceeds the expiration of the refresh token
+			if state.expireOn.After(refreshToken.ExpiresAt) {
+				log.WithFields(log.Fields{
+					"email":       refreshToken.Email,
+					"max_session": r.config.MaxSession.String(),
+					"duration":    state.expireOn.Format(time.RFC1123),
+					"refresh":     refreshToken.ExpiresAt.Format(time.RFC1123),
+				}).Errorf("max session exceeds the expiration of the refresh token, defaulting to refresh token")
+				state.expireOn = refreshToken.ExpiresAt
+			}
 		}
-
+		// step: create and inject the state session
 		if err := r.createSessionState(state, cx); err != nil {
 			log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to inject the session state into request")
 
 			cx.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
+
+		// step: some debugging is useful here
+		log.WithFields(log.Fields{
+			"email":      identity.Email,
+			"client_ip":  cx.ClientIP(),
+			"expires_in": state.expireOn.Sub(time.Now()).String(),
+		}).Infof("successfully retrieve refresh token for client: %s", identity.Email)
 	}
 
 	r.redirectToURL(state, cx)

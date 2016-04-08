@@ -22,7 +22,7 @@ import (
 
 const (
 	prog        = "keycloak-proxy"
-	version     = "v1.0.0"
+	version     = "v1.0.1"
 	author      = "Rohith"
 	email       = "gambol99@gmail.com"
 	description = "is a proxy using the keycloak service for auth and authorization"
@@ -108,7 +108,7 @@ type Config struct {
 	// EncryptionKey is the encryption key used to encrypt the refresh token
 	EncryptionKey string `json:"encryption_key" yaml:"encryption_key"`
 	// MaxSession the max session for refreshing
-	MaxSession time.Duration `json:"max_session" yaml:"max_session"`
+	MaxSession time.Duration `json:"max-session" yaml:"max-session"`
 	// ClaimsMatch is a series of checks, the claims in the token must match those here
 	ClaimsMatch map[string]string `json:"claims" yaml:"claims"`
 	// Keepalives specifies wheather we use keepalives on the upstream
