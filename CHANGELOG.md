@@ -1,4 +1,12 @@
 
+#### **1.0.0 (April 8th, 2016)**
+
+FEATURES
+ * Added the /oauth/expiration controller to test for access token expiration
+ * Added the /oauth/token as a helper method to display the access token
+
+FIXES:
+ * Fixed and cleaned up a few niggling issues
 
 #### **1.0.0-rc6 (March 31th, 2016)**
 
