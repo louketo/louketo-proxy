@@ -54,6 +54,11 @@ type reverseProxy interface {
 	ServeHTTP(rw http.ResponseWriter, req *http.Request)
 }
 
+func init() {
+	// step: ensure all time is in UTC
+	time.LoadLocation("UTC")
+}
+
 // newKeycloakProxy create's a new keycloak proxy from configuration
 func newKeycloakProxy(cfg *Config) (*KeycloakProxy, error) {
 	// step: set the logging level
