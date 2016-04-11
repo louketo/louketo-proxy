@@ -305,7 +305,6 @@ func (r *keycloakProxy) admissionHandler() gin.HandlerFunc {
 		}
 
 		// step: if we have any claim matching, validate the tokens has the claims
-		// @TODO we should probably convert the claim checks to regexs
 		for claimName, match := range claimMatches {
 			// step: if the claim is NOT in the token, we access deny
 			value, found, err := identity.claims.StringClaim(claimName)
@@ -618,7 +617,7 @@ func (r *keycloakProxy) expirationHandler(cx *gin.Context) {
 }
 
 //
-// tokenHandle display access token to screen
+// tokenHandler display access token to screen
 //
 func (r *keycloakProxy) tokenHandler(cx *gin.Context) {
 	// step: extract the access token from the request
