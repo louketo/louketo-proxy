@@ -24,10 +24,27 @@ import (
 	"github.com/coreos/go-oidc/oidc"
 )
 
-// refreshAccessToken attempts to refresh the access token, returning the parsed token and the time it expires or a error
-func (r *keycloakProxy) refreshAccessToken(refreshToken string) (jose.JWT, time.Time, error) {
-	// step: refresh the access token
-	response, err := r.getToken(oauth2.GrantTypeRefreshToken, refreshToken)
+//
+// verifyToken verify that the token in the user context is valid
+//
+func verifyToken(client *oidc.Client, token jose.JWT) error {
+	// step: verify the token is whom they say they are
+	if err := client.VerifyJWT(token); err != nil {
+		if strings.Contains(err.Error(), "token is expired") {
+			return ErrAccessTokenExpired
+		}
+
+		return err
+	}
+
+	return nil
+}
+
+//
+// refreshToken attempts to refresh the access token, returning the parsed token and the time it expires or a error
+//
+func refreshToken(client *oidc.Client, t string) (jose.JWT, time.Time, error) {
+	response, err := getToken(client, oauth2.GrantTypeRefreshToken, t)
 	if err != nil {
 		if strings.Contains(err.Error(), "token expired") {
 			return jose.JWT{}, time.Time{}, ErrRefreshTokenExpired
@@ -36,7 +53,7 @@ func (r *keycloakProxy) refreshAccessToken(refreshToken string) (jose.JWT, time.
 	}
 
 	// step: parse the access token
-	token, identity, err := r.parseToken(response.AccessToken)
+	token, identity, err := parseToken(response.AccessToken)
 	if err != nil {
 		return jose.JWT{}, time.Time{}, err
 	}
@@ -44,10 +61,33 @@ func (r *keycloakProxy) refreshAccessToken(refreshToken string) (jose.JWT, time.
 	return token, identity.ExpiresAt, nil
 }
 
+//
+// exchangeAuthenticationCode exchanges the authentication code with the oauth server for a access token
+//
+func exchangeAuthenticationCode(client *oidc.Client, code string) (oauth2.TokenResponse, error) {
+	return getToken(client, oauth2.GrantTypeAuthCode, code)
+}
+
+//
+// getToken retrieves a code from the provider, extracts and verified the token
+//
+func getToken(client *oidc.Client, grantType, code string) (oauth2.TokenResponse, error) {
+	// step: retrieve the client
+	c, err := client.OAuthClient()
+	if err != nil {
+		return oauth2.TokenResponse{}, err
+	}
+
+	// step: request a token from the authentication server
+	return c.RequestToken(grantType, code)
+}
+
+//
 // parseToken retrieve the user identity from the token
-func (r *keycloakProxy) parseToken(accessToken string) (jose.JWT, *oidc.Identity, error) {
+//
+func parseToken(t string) (jose.JWT, *oidc.Identity, error) {
 	// step: parse and return the token
-	token, err := jose.ParseJWT(accessToken)
+	token, err := jose.ParseJWT(t)
 	if err != nil {
 		return jose.JWT{}, nil, err
 	}
@@ -65,37 +105,4 @@ func (r *keycloakProxy) parseToken(accessToken string) (jose.JWT, *oidc.Identity
 	}
 
 	return token, identity, nil
-}
-
-// verifyToken verify that the token in the user context is valid
-func (r *keycloakProxy) verifyToken(token jose.JWT) error {
-	// step: verify the token is whom they say they are
-	if err := r.client.VerifyJWT(token); err != nil {
-		if strings.Contains(err.Error(), "token is expired") {
-			return ErrAccessTokenExpired
-		}
-
-		return err
-	}
-
-	return nil
-}
-
-// getToken retrieves a code from the provider, extracts and verified the token
-func (r *keycloakProxy) getToken(grantType, code string) (oauth2.TokenResponse, error) {
-	var response oauth2.TokenResponse
-
-	// step: retrieve the client
-	client, err := r.client.OAuthClient()
-	if err != nil {
-		return response, err
-	}
-
-	// step: request a token from the authentication server
-	response, err = client.RequestToken(grantType, code)
-	if err != nil {
-		return response, err
-	}
-
-	return response, nil
 }

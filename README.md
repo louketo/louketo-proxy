@@ -31,47 +31,46 @@ AUTHOR(S):
    Rohith <gambol99@gmail.com>
 
 COMMANDS:
-   help, h	Shows a list of commands or help for one command
-
 GLOBAL OPTIONS:
-   --config                                     the path to the configuration file for the keycloak proxy
-   --listen "127.0.0.1:3000"                    the interface the service should be listening on
-   --secret                                     the client secret used to authenticate to the oauth server
-   --client-id                                  the client id used to authenticate to the oauth serves
-   --discovery-url                              the discovery url to retrieve the openid configuration
-   --upstream-url "http://127.0.0.1:8081"       the url for the upstream endpoint you wish to proxy to
-   --upstream-keepalives                        enables or disables the keepalive connections for upstream endpoint (defaults true)
-   --encryption-key                             the encryption key used to encrpytion the session state
-   --store-url                                  the store url to use for storing the refresh tokens, i.e. redis://127.0.0.1:6379, file:///etc/tokens.file
-   --no-redirects                               do not have back redirects when no authentication is present, simple reply with 401 code
-   --redirection-url                            the redirection url, namely the site url, note: /oauth will be added to it
-   --hostname [--hostname option --hostname option] a list of hostnames the service will respond to, defaults to all
-   --tls-cert                                   the path to a certificate file used for TLS
-   --tls-private-key                            the path to the private key for TLS support
-   --tls-ca-certificate                         the path to the ca certificate used for mutual TLS
-   --skip-upstream-tls-verify                   whether to skip the verification of any upstream TLS (defaults to true)
-   --scope [--scope option --scope option]      a variable list of scopes requested when authenticating the user
-   --claim [--claim option --claim option]      a series of key pair values which must match the claims in the token present e.g. aud=myapp, iss=http://example.com etcd
-   --resource [--resource option --resource option] a list of resources 'uri=/admin|methods=GET|roles=role1,role2'
-   --signin-page                                a custom template displayed for signin
-   --forbidden-page                             a custom template used for access forbidden
-   --tag [--tag option --tag option]            a keypair tag which is passed to the templates when render, i.e. title='My Page',site='my name' etc
-   --max-session "1h0m0s"								if refresh sessions are enabled we can limit their duration via this
-   --cors-origins [--cors-origins option --cors-origins option]   a set of origins to add to the CORS access control (Access-Control-Allow-Origin)
-   --cors-methods [--cors-methods option --cors-methods option]   the method permitted in the access control (Access-Control-Allow-Methods)
-   --cors-headers [--cors-headers option --cors-headers option]   a set of headers to add to the CORS access control (Access-Control-Allow-Headers)
-   --cors-exposes-headers [--cors-exposes-headers option --cors-exposes-headers option]	set the expose cors headers access control (Access-Control-Expose-Headers)
-   --cors-max-age "0"                           the max age applied to cors headers (Access-Control-Max-Age)
-   --cors-credentials                           the credentials access control header (Access-Control-Allow-Credentials)
-   --enable-security-filter                     enables the security filter handler
-   --skip-token-verification                    testing purposes ONLY, the option allows you to bypass the token verification, expiration and roles are still enforced
-   --proxy-protocol                             switches on proxy protocol support on the listen (not supported yet)
-   --refresh-sessions                           enables the refreshing of tokens via offline access (defaults false)
-   --json-logging                               switch on json logging rather than text (defaults true)
-   --log-requests                               switch on logging of all incoming requests (defaults true)
-   --verbose                                    switch on debug / verbose logging
-   --help, -h                                   show help
-   --version, -v                                print the version
+--config                                                the path to the configuration file for the keycloak proxy
+--listen "127.0.0.1:3000"                               the interface the service should be listening on
+--client-secret                                         the client secret used to authenticate to the oauth server
+--client-id                                             the client id used to authenticate to the oauth serves
+--discovery-url                                         the discovery url to retrieve the openid configuration
+--upstream-url "http://127.0.0.1:8081"                  the url for the upstream endpoint you wish to proxy to
+--revocation-url "/oauth2/revoke"                       the url for the revocation endpoint to revoke refresh token, not all providers support the revocation_endpoint
+--upstream-keepalives                                   enables or disables the keepalive connections for upstream endpoint (defaults true)
+--encryption-key                                        the encryption key used to encrpytion the session state
+--store-url                                             the store url to use for storing the refresh tokens, i.e. redis://127.0.0.1:6379, file:///etc/tokens.file
+--no-redirects                                          do not have back redirects when no authentication is present, simple reply with 401 code
+--redirection-url                                       the redirection url, namely the site url, note: /oauth will be added to it
+--hostname [--hostname option --hostname option]        a list of hostnames the service will respond to, defaults to all
+--tls-cert                                              the path to a certificate file used for TLS
+--tls-private-key                                       the path to the private key for TLS support
+--tls-ca-certificate                                    the path to the ca certificate used for mutual TLS
+--skip-upstream-tls-verify                              whether to skip the verification of any upstream TLS (defaults to true)
+--scope [--scope option --scope option]                 a variable list of scopes requested when authenticating the user
+--claim [--claim option --claim option]                 a series of key pair values which must match the claims in the token present e.g. aud=myapp, iss=http://example.com etcd
+--resource [--resource option --resource option]        a list of resources 'uri=/admin|methods=GET|roles=role1,role2'
+--signin-page                                           a custom template displayed for signin
+--forbidden-page                                        a custom template used for access forbidden
+--tag [--tag option --tag option]                       a keypair tag which is passed to the templates when render, i.e. title='My Page',site='my name' etc
+--cors-origins [--cors-origins option --cors-origins option]      a set of origins to add to the CORS access control (Access-Control-Allow-Origin)
+--cors-methods [--cors-methods option --cors-methods option]      the method permitted in the access control (Access-Control-Allow-Methods)
+--cors-headers [--cors-headers option --cors-headers option]      a set of headers to add to the CORS access control (Access-Control-Allow-Headers)
+--cors-exposes-headers [--cors-exposes-headers option --cors-exposes-headers option]   set the expose cors headers access control (Access-Control-Expose-Headers)
+--cors-max-age "0"                                      the max age applied to cors headers (Access-Control-Max-Age)
+--cors-credentials                                      the credentials access control header (Access-Control-Allow-Credentials)
+--enable-security-filter                                enables the security filter handler
+--skip-token-verification                               testing purposes ONLY, the option allows you to bypass the token verification, expiration and roles are still enforced
+--proxy-protocol                                        switches on proxy protocol support on the listen (not supported yet)
+--offline-session                                       enables the offline session of tokens via offline access (defaults false)
+--json-logging                                          switch on json logging rather than text (defaults true)
+--log-requests                                          switch on logging of all incoming requests (defaults true)
+--verbose                                               switch on debug / verbose logging
+--help, -h                                              show help
+--version, -v                                           print the version
+
 ```
 
 #### **Configuration**
@@ -80,25 +79,23 @@ The configuration can come from a yaml/json file and or the command line options
 
 ```YAML
 # is the url for retrieve the openid configuration - normally the <server>/auth/realm/<realm_name>
-discovery_url: https://keycloak.example.com/auth/realms/<REALM_NAME>
+discovery-url: https://keycloak.example.com/auth/realms/<REALM_NAME>
 # the client id for the 'client' application
 clientid: <CLIENT_ID>
 # the secret associated to the 'client' application
 secret: <CLIENT_SECRET>
 # the interface definition you wish the proxy to listen, all interfaces is specified as ':<port>'
 listen: 127.0.0.1:3000
-# whether to request offline access and use a refresh token
-refresh_session: true
-# assuming you are using refresh tokens, specify the maximum amount of time the refresh token can last
-max_session: 1h
+# whether to enable refresh tokens
+enable-refresh-token: true
 # the location of a certificate you wish the proxy to use for TLS support
-tls_cert:
+tls-cert:
 # the location of a private key for TLS
-tls_private_key:
+tls-private-key:
 # the redirection url, essentially the site url, note: /oauth/callback is added at the end
-redirection_url: http://127.0.0.3000
+redirection-url: http://127.0.0.3000
 # the encryption key used to encode the session state
-encryption_key: <ENCRYPTION_KEY>
+encryption-key: <ENCRYPTION_KEY>
 # the upstream endpoint which we should proxy request
 upstream: http://127.0.0.1:80
 # additional scopes to add to add to the default (openid+email+profile)
@@ -138,7 +135,7 @@ d) Create the various roles under the client or existing clients for authorizati
 ```YAML
 discovery_url: https://keycloak.example.com/auth/realms/<REALM_NAME>
 clientid: <CLIENT_ID>
-secret: <CLIENT_SECRET>
+client-secret: <CLIENT_SECRET>
 listen: 127.0.0.1:3000
 redirection_url: http://127.0.0.3000
 refresh_session: false
@@ -163,7 +160,7 @@ Note, anything defined in the configuration file can also be configured as comma
 bin/keycloak-proxy \
     --discovery-url=https://keycloak.example.com/auth/realms/<REALM_NAME> \
     --client-id=<CLIENT_ID> \
-    --secret=<SECRET> \
+    --client-secret=<SECRET> \
     --listen=127.0.0.1:3000 \
     --redirection-url=http://127.0.0.3000 \
     --refresh-sessions=true \
@@ -195,7 +192,6 @@ DEBU[0002] resource access permitted: /favicon.ico       access=permitted bearer
 2016-02-06 13:59:01.856716 I | http: proxy error: dial tcp 127.0.0.1:8081: getsockopt: connection refused
 ```
 
-
 #### **Upstream Headers**
 
 On protected resources the upstream endpoint will receive a number of headers added by the proxy;
@@ -218,7 +214,7 @@ cx.Request.Header.Add("X-Forwarded-Proto", <CLIENT_PROTO>)
 #### **Encryption Key**
 
 In order to remain stateless and not have to rely on a central cache to persist the 'refresh_tokens', the refresh token is encrypted and added as a cookie using *crypto/aes*.
-Naturally the key must be the same if your running behind a load balancer etc.  
+Naturally the key must be the same if your running behind a load balancer etc. The key length should either 16 or 32 bytes depending or whether you want AES-128 or AES-256.
 
 #### **Claim Matching**
 
@@ -270,6 +266,14 @@ Or on the command line
 The proxy support enforcing mutual TLS for the clients by simply adding the --tls-ca-certificate command line option or config file option. All clients connecting must present a ceritificate
 which was signed by the CA being used.
 
+#### **Tokens && Stores**
+
+Refresh tokens are either be stored as an encrypted cookie or placed (encrypted) in a shared / local store. At present, redis and boltdb are the only two methods supported. To enable a local boltdb store. --store-url boltdb:///PATH or relative path boltdb://PATH. For redis the option is redis://HOST:PORT. In both cases the refresh token is encrypted before placing into the store
+
+#### **Refresh & Offline Tokens**
+
+Assuming access response responds with a refresh token and the --enable-refresh-token is true, the proxy will automatically refresh the access token for you. The tokens themselves are kept either as an encrypted (--encryption-key=KEY) cookie (cookie name: kc-state). Alternatively you can place the refresh token (still requires encryption key) in a local boltdb file or shared redis. Naturally the encryption key has to be the same on all instances and boltdb is for single instance only developments.
+
 #### **Endpoints**
 
 * **/oauth/authorize** is authentication endpoint which will generate the openid redirect to the provider
@@ -277,3 +281,5 @@ which was signed by the CA being used.
 * **/oauth/expired** is a helper endpoint to check if a access token has expired, 200 for ok and, 401 for no token and 401 for expired
 * **/oauth/token** is a helper endpoint which will display the current access token for you
 * **/oauth/health** is the health checking endpoint for the proxy
+* **/oauth/logout** provides a convenient endpoint to log the user out, it will always attempt to perform a back channel logout of offline tokens
+* **/oauth/login** provides a relay endpoint to login via grant_type=password i.e. POST /oauth/login?username=USERNAME&password=PASSWORD

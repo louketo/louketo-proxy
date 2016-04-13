@@ -1,0 +1,23 @@
+discovery_url: https://sso.digital.homeoffice.gov.uk/auth/realms/hod-vpn
+clientid: broker
+secret: 969fd994-1042-4c43-b356-935a7d88d7a8
+redirection_url: https://127.0.0.1
+listen: 0.0.0.0:443
+log_requests: true
+log_json_format: true
+tls_cert: tests/kubeapi.pem
+tls_private_key: tests/kubeapi-key.pem
+encryption_key: 8WPMuoDAM4VkVgWyhrN9BQyTtJpFJrFwyIRGMVkmlsP1iDIqi1dJHigKEnUZCC3L
+upstream: http://127.0.0.1:8081
+forbidden_page: templates/forbidden.html.tmpl
+scopes:
+- broker:vpn-user
+hostnames:
+- authd.digital.homeoffice.gov.uk
+resources:
+- url: /
+  roles:
+  - broker:vpn-user
+claims:
+  aud: broker
+

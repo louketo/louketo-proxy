@@ -22,18 +22,17 @@ import (
 
 const (
 	prog        = "keycloak-proxy"
-	version     = "v1.0.1"
+	version     = "v1.0.2"
 	author      = "Rohith"
 	email       = "gambol99@gmail.com"
 	description = "is a proxy using the keycloak service for auth and authorization"
 
-	headerUpgrade          = "Upgrade"
-	sessionCookieName      = "kc-access"
-	sessionStateCookieName = "kc-state"
-	userContextName        = "identity"
-	authorizationHeader    = "Authorization"
+	headerUpgrade       = "Upgrade"
+	cookieAccessToken   = "kc-access"
+	cookieRefreshToken  = "kc-state"
+	userContextName     = "identity"
+	authorizationHeader = "Authorization"
 
-	// the urls
 	oauthURL         = "/oauth"
 	authorizationURL = oauthURL + "/authorize"
 	callbackURL      = oauthURL + "/callback"
@@ -42,6 +41,12 @@ const (
 	expiredURL       = oauthURL + "/expired"
 	logoutURL        = oauthURL + "/logout"
 	loginURL         = oauthURL + "/login"
+
+	claimPreferredName  = "preferred_username"
+	claimAudience       = "aud"
+	claimResourceAccess = "resource_access"
+	claimRealmAccess    = "realm_access"
+	claimResourceRoles  = "roles"
 )
 
 var (
@@ -55,6 +60,8 @@ var (
 	ErrAccessTokenExpired = errors.New("the access token has expired")
 	// ErrRefreshTokenExpired indicates the refresh token as expired
 	ErrRefreshTokenExpired = errors.New("the refresh token has expired")
+	// ErrNoTokenAudience indicates their is not audience in the token
+	ErrNoTokenAudience = errors.New("the token does not audience in claims")
 )
 
 // Resource represents a url resource to protect
@@ -105,12 +112,10 @@ type Config struct {
 	RedirectionURL string `json:"redirection-url" yaml:"redirection-url"`
 	// EnableSecurityFilter enabled the security handler
 	EnableSecurityFilter bool `json:"enable-security-filter" yaml:"enable-security-filter"`
-	// RefreshSessions enabled refresh access
-	RefreshSessions bool `json:"refresh-sessions" yaml:"refresh-sessions"`
+	// EnableRefreshTokens indicate's you wish to ignore using refresh tokens and re-auth on expireation of access token
+	EnableRefreshTokens bool `json:"enable-refresh-tokens" yaml:"enable-refresh-tokens"`
 	// EncryptionKey is the encryption key used to encrypt the refresh token
 	EncryptionKey string `json:"encryption-key" yaml:"encryption-key"`
-	// MaxSession the max session for refreshing
-	MaxSession time.Duration `json:"max-session" yaml:"max-session"`
 	// ClaimsMatch is a series of checks, the claims in the token must match those here
 	ClaimsMatch map[string]string `json:"claims" yaml:"claims"`
 	// Keepalives specifies wheather we use keepalives on the upstream
@@ -149,6 +154,21 @@ type Config struct {
 	Verbose bool `json:"verbose" yaml:"verbose"`
 	// Hostname is a list of hostname's the service should response to
 	Hostnames []string `json:"hostnames" yaml:"hostnames"`
+	// Store is a url for a store resource, used to hold the refresh tokens
+	StoreURL string `json:"store-url" yaml:"store-url"`
+}
+
+// Store is used to hold the offline refresh token, assuming you don't want to use
+// the default practice of a encrypted cookie
+type Store interface {
+	// Add the token to the store
+	Set(string, string) error
+	// Get retrieves a token from the store
+	Get(string) (string, error)
+	// Delete removes a key from the store
+	Delete(string) error
+	// Close is used to close off any resources
+	Close() error
 }
 
 // tokenResponse

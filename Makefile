@@ -98,6 +98,7 @@ cover:
 
 test: deps
 	@echo "--> Running the tests"
+	@export GIN_MODE=release
 	@godep go test -v
 	@$(MAKE) gofmt
 	@$(MAKE) vet

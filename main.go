@@ -49,7 +49,7 @@ func main() {
 			printUsage(err.Error())
 		}
 		// step: create the proxy
-		proxy, err := newKeycloakProxy(config)
+		proxy, err := newProxy(config)
 		if err != nil {
 			printUsage(err.Error())
 		}

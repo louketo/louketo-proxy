@@ -1,31 +1,31 @@
 
 
 # is the url for retrieve the openid configuration - normally the <server>/auth/realm/<realm_name>
-discovery_url: https://keycloak.example.com/auth/realms/commons
+discovery-url: https://keycloak.example.com/auth/realms/commons
 # the client id for the 'client' application
 clientid: <CLIENT_ID>
 # the secret associated to the 'client' application
-secret: <CLIENT_SECRET>
+client-secret: <CLIENT_SECRET>
 # the interface definition you wish the proxy to listen, all interfaces is specified as ':<port>'
 listen: 127.0.0.1:3000
 # whether to request offline access and use a refresh token
-refresh_sessions: true
-# assuming you are using refresh tokens, specify the maximum amount of time the refresh token can last
-max-session: 1h
+enable-refresh-tokens: true
 # log all incoming requests
-log_requests: true
+log-requests: true
 # log in json format
-log_json_format: true
+log-json-format: true
 # do not redirec the request, simple 307 it
 no-redirects: false
 # the location of a certificate you wish the proxy to use for TLS support
-tls_cert:
+tls-cert:
 # the location of a private key for TLS
-tls_private_key:
+tls-private-key:
+# the public key for the ca, used for mutual TLS
+tls-ca-certificate:
 # the redirection url, essentially the site url, note: /oauth/callback is added at the end
-redirection_url: http://127.0.0.3000
+redirection-url: http://127.0.0.3000
 # the encryption key used to encode the session state
-encryption_key: AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j
+encryption-key: vGcLt8ZUdPX5fXhtLZaPHZkGWHZrT6T8xKHWf5RPfqAocuiQ6nUbNHyc3oF2toO2tr
 # the upstream endpoint which we should proxy request
 upstream: http://127.0.0.1:80
 # upstream-keepalives specified wheather you want keepalive on the upstream endpoint

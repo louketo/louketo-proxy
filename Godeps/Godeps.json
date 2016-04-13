@@ -9,6 +9,11 @@
 			"Rev": "081307d9bc1364753142d5962fc1d795c742baaf"
 		},
 		{
+			"ImportPath": "github.com/boltdb/bolt",
+			"Comment": "v1.2.0-13-g144418e",
+			"Rev": "144418e1475d8bf7abbdc48583500f1a20c62ea7"
+		},
+		{
 			"ImportPath": "github.com/codegangsta/cli",
 			"Comment": "1.2.0-237-g71f57d3",
 			"Rev": "71f57d300dd6a780ac1856c005c4b518cfd498ec"
@@ -60,22 +65,18 @@
 		},
 		{
 			"ImportPath": "github.com/gin-gonic/gin",
-			"Comment": "v1.0rc1-262-g5caaac4",
-			"Rev": "5caaac4c5c712a9e7a7de29e6c24ef46c753017f"
+			"Comment": "v1.0rc1-148-g52fcc5d",
+			"Rev": "52fcc5dbf6e94df33ad313858fb94b713e9d1b4a"
 		},
 		{
 			"ImportPath": "github.com/gin-gonic/gin/binding",
-			"Comment": "v1.0rc1-262-g5caaac4",
-			"Rev": "5caaac4c5c712a9e7a7de29e6c24ef46c753017f"
+			"Comment": "v1.0rc1-148-g52fcc5d",
+			"Rev": "52fcc5dbf6e94df33ad313858fb94b713e9d1b4a"
 		},
 		{
 			"ImportPath": "github.com/gin-gonic/gin/render",
-			"Comment": "v1.0rc1-262-g5caaac4",
-			"Rev": "5caaac4c5c712a9e7a7de29e6c24ef46c753017f"
-		},
-		{
-			"ImportPath": "github.com/golang/protobuf/proto",
-			"Rev": "f0a097ddac24fb00e07d2ac17f8671423f3ea47c"
+			"Comment": "v1.0rc1-148-g52fcc5d",
+			"Rev": "52fcc5dbf6e94df33ad313858fb94b713e9d1b4a"
 		},
 		{
 			"ImportPath": "github.com/jonboulle/clockwork",
@@ -84,6 +85,14 @@
 		{
 			"ImportPath": "github.com/manucorporat/sse",
 			"Rev": "ee05b128a739a0fb76c7ebd3ae4810c1de808d6d"
+		},
+		{
+			"ImportPath": "github.com/mattn/go-colorable",
+			"Rev": "9cbef7c35391cca05f15f8181dc0b18bc9736dbb"
+		},
+		{
+			"ImportPath": "github.com/mattn/go-isatty",
+			"Rev": "56b76bdf51f7708750eac80fa38b952bb9f32639"
 		},
 		{
 			"ImportPath": "github.com/pmezard/go-difflib/difflib",
@@ -107,9 +116,38 @@
 			"Rev": "833a04a10549a95dc34458c195cbad61bbb6cb4d"
 		},
 		{
-			"ImportPath": "gopkg.in/go-playground/validator.v8",
-			"Comment": "v8.17.1",
-			"Rev": "014792cf3e266caff1e916876be12282b33059e0"
+			"ImportPath": "gopkg.in/bluesuncorp/validator.v5",
+			"Comment": "v5.12",
+			"Rev": "d5acf1dac43705f8bfbb71d878e290e2bed3950b"
+		},
+		{
+			"ImportPath": "gopkg.in/bsm/ratelimit.v1",
+			"Rev": "db14e161995a5177acef654cb0dd785e8ee8bc22"
+		},
+		{
+			"ImportPath": "gopkg.in/redis.v4",
+			"Comment": "v3.6.1-18-g889409d",
+			"Rev": "889409de38315d22b114fb5980f705e6fa48c6a2"
+		},
+		{
+			"ImportPath": "gopkg.in/redis.v4/internal",
+			"Comment": "v3.6.1-18-g889409d",
+			"Rev": "889409de38315d22b114fb5980f705e6fa48c6a2"
+		},
+		{
+			"ImportPath": "gopkg.in/redis.v4/internal/consistenthash",
+			"Comment": "v3.6.1-18-g889409d",
+			"Rev": "889409de38315d22b114fb5980f705e6fa48c6a2"
+		},
+		{
+			"ImportPath": "gopkg.in/redis.v4/internal/hashtag",
+			"Comment": "v3.6.1-18-g889409d",
+			"Rev": "889409de38315d22b114fb5980f705e6fa48c6a2"
+		},
+		{
+			"ImportPath": "gopkg.in/redis.v4/internal/pool",
+			"Comment": "v3.6.1-18-g889409d",
+			"Rev": "889409de38315d22b114fb5980f705e6fa48c6a2"
 		},
 		{
 			"ImportPath": "gopkg.in/yaml.v2",

@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/coreos/go-oidc/jose"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
@@ -38,13 +39,13 @@ const (
 	fakeTestAdminRolesURL  = "/test_admin_roles"
 	fakeAuthAllURL         = "/auth_all"
 	fakeTestWhitelistedURL = fakeAuthAllURL + "/white_listed"
-	faketestListenOrdered  = fakeAuthAllURL + "/bad_order"
+	fakeTestListenOrdered  = fakeAuthAllURL + "/bad_order"
 
 	fakeAdminRole = "role:admin"
 	fakeTestRole  = "role:test"
 )
 
-func newFakeKeycloakProxyWithResources(t *testing.T, resources []*Resource) *keycloakProxy {
+func newFakeKeycloakProxyWithResources(t *testing.T, resources []*Resource) *oauthProxy {
 	kc := newFakeKeycloakProxy(t)
 	kc.config.Resources = resources
 	return kc
@@ -58,7 +59,7 @@ func newFakeKeycloakConfig(t *testing.T) *Config {
 		EncryptionKey:         "AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j",
 		SkipTokenVerification: true,
 		Scopes:                []string{},
-		OfflineSession:        false,
+		EnableRefreshTokens:   false,
 		Resources: []*Resource{
 			{
 				URL:     fakeAdminRoleURL,
@@ -97,28 +98,28 @@ func newFakeKeycloakConfig(t *testing.T) *Config {
 	}
 }
 
-func newFakeKeycloakProxy(t *testing.T) *keycloakProxy {
+func newFakeKeycloakProxy(t *testing.T) *oauthProxy {
 	log.SetOutput(ioutil.Discard)
 
-	kc := &keycloakProxy{
-		config: newFakeKeycloakConfig(t),
-		proxy:  new(fakeReverseProxy),
+	kc := &oauthProxy{
+		config:   newFakeKeycloakConfig(t),
+		upstream: new(fakeReverseProxy),
 	}
 	kc.router = gin.New()
 	gin.SetMode(gin.ReleaseMode)
 	// step: add the gin routing
-	kc.initializeRouter()
+	kc.setupRouter()
 
 	return kc
 }
 
 func TestNewKeycloakProxy(t *testing.T) {
-	proxy, err := newKeycloakProxy(newFakeKeycloakConfig(t))
+	proxy, err := newProxy(newFakeKeycloakConfig(t))
 	assert.NoError(t, err)
 	assert.NotNil(t, proxy)
 	assert.NotNil(t, proxy.config)
 	assert.NotNil(t, proxy.router)
-	assert.NotNil(t, proxy.upstreamURL)
+	assert.NotNil(t, proxy.endpoint)
 }
 
 func TestRedirectToAuthorization(t *testing.T) {
@@ -153,7 +154,7 @@ func TestInitializeReverseProxy(t *testing.T) {
 	proxy := newFakeKeycloakProxy(t)
 
 	uri, _ := url.Parse("http://127.0.0.1:8080")
-	reverse, err := proxy.initializeReverseProxy(uri)
+	reverse, err := proxy.setupReverseProxy(uri)
 	assert.NoError(t, err)
 	assert.NotNil(t, reverse)
 }
@@ -209,6 +210,17 @@ func newFakeGinContext(method, uri string) *gin.Context {
 		},
 		Writer: newFakeResponse(),
 	}
+}
+
+func newFakeJWTToken(t *testing.T, claims jose.Claims) *jose.JWT {
+	token, err := jose.NewJWT(
+		jose.JOSEHeader{"alg": "RS256"}, claims,
+	)
+	if err != nil {
+		t.Fatalf("failed to create the jwt token, error: %s", err)
+	}
+
+	return &token
 }
 
 type fakeReverseProxy struct{}

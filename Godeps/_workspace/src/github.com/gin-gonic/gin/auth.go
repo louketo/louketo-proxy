@@ -65,10 +65,14 @@ func BasicAuth(accounts Accounts) HandlerFunc {
 }
 
 func processAccounts(accounts Accounts) authPairs {
-	assert1(len(accounts) > 0, "Empty list of authorized credentials")
+	if len(accounts) == 0 {
+		panic("Empty list of authorized credentials")
+	}
 	pairs := make(authPairs, 0, len(accounts))
 	for user, password := range accounts {
-		assert1(len(user) > 0, "User can not be empty")
+		if len(user) == 0 {
+			panic("User can not be empty")
+		}
 		value := authorizationHeader(user, password)
 		pairs = append(pairs, authPair{
 			Value: value,
