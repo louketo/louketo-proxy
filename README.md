@@ -41,6 +41,7 @@ GLOBAL OPTIONS:
    --discovery-url 									        the discovery url to retrieve the openid configuration
    --upstream-url "http://127.0.0.1:8081"					the url for the upstream endpoint you wish to proxy to
    --upstream-keepalives								    enables or disables the keepalive connections for upstream endpoint (defaults true)
+   --no-redirects                                           true or false depending on whether you want a client without a valid token to be redirected
    --encryption-key 									    the encryption key used to encrpytion the session state
    --redirection-url 									    the redirection url, namely the site url, note: /oauth will be added to it
    --hostname [--hostname option --hostname option]			a list of hostname which the service will respond to, defaults to all
