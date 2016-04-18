@@ -11,7 +11,7 @@
   - TLS and mutual TLS support
   - JSON field bases access logs
   - Custom Sign-in and access forbidden pages
-    
+
 ----
 
 Keycloak-proxy is a proxy service which at the risk of stating the obvious integrates with the [Keycloak](https://github.com/keycloak/keycloak) authentication service. Although technically the service has no dependency on Keycloak itself and would quite happily work with any OpenID provider. The service supports both access tokens in browser cookie or bearer tokens.
@@ -23,53 +23,55 @@ NAME:
 
 USAGE:
    keycloak-proxy [global options] command [command options] [arguments...]
-   
+
 VERSION:
-   v1.0.0-rc2
-   
+   v1.0.2
+
 AUTHOR(S):
-   Rohith <gambol99@gmail.com> 
-   
+   Rohith <gambol99@gmail.com>
+
 COMMANDS:
    help, h	Shows a list of commands or help for one command
-   
-GLOBAL OPTIONS:
-   --config 										        the path to the configuration file for the keycloak proxy
-   --listen "127.0.0.1:3000"								the interface the service should be listening on
-   --secret 										        the client secret used to authenticate to the oauth server
-   --client-id 										        the client id used to authenticate to the oauth serves
-   --discovery-url 									        the discovery url to retrieve the openid configuration
-   --upstream-url "http://127.0.0.1:8081"					the url for the upstream endpoint you wish to proxy to
-   --upstream-keepalives								    enables or disables the keepalive connections for upstream endpoint (defaults true)
-   --no-redirects                                           true or false depending on whether you want a client without a valid token to be redirected
-   --encryption-key 									    the encryption key used to encrpytion the session state
-   --redirection-url 									    the redirection url, namely the site url, note: /oauth will be added to it
-   --hostname [--hostname option --hostname option]			a list of hostname which the service will respond to, defaults to all
-   --tls-cert 										        the path to a certificate file used for TLS
-   --tls-private-key 									    the path to the private key for TLS support
-   --tls-ca-certificate 								    the path to the ca certificate used for mutual TLS
-   --scope [--scope option --scope option]					a variable list of scopes requested when authenticating the user
-   --claim [--claim option --claim option]					a series of key pair values which must match the claims in the token present e.g. aud=myapp, iss=http://example.com etcd
-   --resource [--resource option --resource option]			a list of resources 'uri=/admin|methods=GET|roles=role1,role2'
-   --signin-page 									        a custom template displayed for signin
-   --forbidden-page 									    a custom template used for access forbidden
-   --tag [--tag option --tag option]						a keypair tag which is passed to the templates when render, i.e. title='My Page',site='my name' etc
-   --max-session "1h0m0s"							      	if refresh sessions are enabled we can limit their duration via this
-   --cors-origins [--cors-origins option --cors-origins option]				a set of origins to add to the CORS access control (Access-Control-Allow-Origin)
-   --cors-methods [--cors-methods option --cors-methods option]				the method permitted in the access control (Access-Control-Allow-Methods)
-   --cors-headers [--cors-headers option --cors-headers option]				a set of headers to add to the CORS access control (Access-Control-Allow-Headers)
-   --cors-exposes-headers [--cors-exposes-headers option --cors-exposes-headers option]	set the expose cors headers access control (Access-Control-Expose-Headers)
-   --cors-max-age "0"									    the max age applied to cors headers (Access-Control-Max-Age)
-   --cors-credentials									    the credentials access control header (Access-Control-Allow-Credentials)
-   --skip-token-verification								testing purposes ONLY, the option allows you to bypass the token verification, expiration and roles are still enforced
-   --proxy-protocol									        switches on proxy protocol support on the listen (not supported yet)
-   --refresh-sessions									    enables the refreshing of tokens via offline access (defaults false)
-   --json-logging									        switch on json logging rather than text (defaults true)
-   --log-requests									        switch on logging of all incoming requests (defaults true)
-   --verbose										        switch on debug / verbose logging
-   --help, -h										        show help
-   --version, -v									        print the version
 
+GLOBAL OPTIONS:
+   --config                                     the path to the configuration file for the keycloak proxy
+   --listen "127.0.0.1:3000"                    the interface the service should be listening on
+   --secret                                     the client secret used to authenticate to the oauth server
+   --client-id                                  the client id used to authenticate to the oauth serves
+   --discovery-url                              the discovery url to retrieve the openid configuration
+   --upstream-url "http://127.0.0.1:8081"       the url for the upstream endpoint you wish to proxy to
+   --upstream-keepalives                        enables or disables the keepalive connections for upstream endpoint (defaults true)
+   --encryption-key                             the encryption key used to encrpytion the session state
+   --store-url                                  the store url to use for storing the refresh tokens, i.e. redis://127.0.0.1:6379, file:///etc/tokens.file
+   --no-redirects                               do not have back redirects when no authentication is present, simple reply with 401 code
+   --redirection-url                            the redirection url, namely the site url, note: /oauth will be added to it
+   --hostname [--hostname option --hostname option] a list of hostnames the service will respond to, defaults to all
+   --tls-cert                                   the path to a certificate file used for TLS
+   --tls-private-key                            the path to the private key for TLS support
+   --tls-ca-certificate                         the path to the ca certificate used for mutual TLS
+   --skip-upstream-tls-verify                   whether to skip the verification of any upstream TLS (defaults to true)
+   --scope [--scope option --scope option]      a variable list of scopes requested when authenticating the user
+   --claim [--claim option --claim option]      a series of key pair values which must match the claims in the token present e.g. aud=myapp, iss=http://example.com etcd
+   --resource [--resource option --resource option] a list of resources 'uri=/admin|methods=GET|roles=role1,role2'
+   --signin-page                                a custom template displayed for signin
+   --forbidden-page                             a custom template used for access forbidden
+   --tag [--tag option --tag option]            a keypair tag which is passed to the templates when render, i.e. title='My Page',site='my name' etc
+   --max-session "1h0m0s"								if refresh sessions are enabled we can limit their duration via this
+   --cors-origins [--cors-origins option --cors-origins option]   a set of origins to add to the CORS access control (Access-Control-Allow-Origin)
+   --cors-methods [--cors-methods option --cors-methods option]   the method permitted in the access control (Access-Control-Allow-Methods)
+   --cors-headers [--cors-headers option --cors-headers option]   a set of headers to add to the CORS access control (Access-Control-Allow-Headers)
+   --cors-exposes-headers [--cors-exposes-headers option --cors-exposes-headers option]	set the expose cors headers access control (Access-Control-Expose-Headers)
+   --cors-max-age "0"                           the max age applied to cors headers (Access-Control-Max-Age)
+   --cors-credentials                           the credentials access control header (Access-Control-Allow-Credentials)
+   --enable-security-filter                     enables the security filter handler
+   --skip-token-verification                    testing purposes ONLY, the option allows you to bypass the token verification, expiration and roles are still enforced
+   --proxy-protocol                             switches on proxy protocol support on the listen (not supported yet)
+   --refresh-sessions                           enables the refreshing of tokens via offline access (defaults false)
+   --json-logging                               switch on json logging rather than text (defaults true)
+   --log-requests                               switch on logging of all incoming requests (defaults true)
+   --verbose                                    switch on debug / verbose logging
+   --help, -h                                   show help
+   --version, -v                                print the version
 ```
 
 #### **Configuration**
@@ -173,7 +175,7 @@ bin/keycloak-proxy \
 
 #### **Google OpenID**
 
-Although the role extensions do require a Keycloak IDP or at the very least a IDP that produces a token which contains roles, there's nothing stopping you from using it against any OpenID providers, such as Google. Go to the Google Developers Console and create a new application *(via "Enable and Manage APIs -> Credentials)*. Once you've created the application, take the client id, secret and make sure you've added the callback url to the application scope *(using the default this would be http://127.0.0.1:3000/oauth/callback)* 
+Although the role extensions do require a Keycloak IDP or at the very least a IDP that produces a token which contains roles, there's nothing stopping you from using it against any OpenID providers, such as Google. Go to the Google Developers Console and create a new application *(via "Enable and Manage APIs -> Credentials)*. Once you've created the application, take the client id, secret and make sure you've added the callback url to the application scope *(using the default this would be http://127.0.0.1:3000/oauth/callback)*
 
 ``` shell
 bin/keycloak-proxy \
@@ -215,19 +217,19 @@ cx.Request.Header.Add("X-Forwarded-Proto", <CLIENT_PROTO>)
 
 #### **Encryption Key**
 
-In order to remain stateless and not have to rely on a central cache to persist the 'refresh_tokens', the refresh token is encrypted and added as a cookie using *crypto/aes*. 
+In order to remain stateless and not have to rely on a central cache to persist the 'refresh_tokens', the refresh token is encrypted and added as a cookie using *crypto/aes*.
 Naturally the key must be the same if your running behind a load balancer etc.  
 
 #### **Claim Matching**
 
-The proxy supports adding a variable list of claim matches against the presented tokens for additional access control. So for example you can match the 'iss' or 'aud' to the token or custom attributes; 
+The proxy supports adding a variable list of claim matches against the presented tokens for additional access control. So for example you can match the 'iss' or 'aud' to the token or custom attributes;
 note each of the matches are regex's. Examples,  --claim 'aud=sso.*' --claim iss=https://.*'
 
 #### **Custom Pages**
 
 By default the proxy will immediately redirect you for authentication and hand back 403 for access denied. Most users will probably want to present the user with a more friendly
-sign-in and access denied page. You can pass the command line options (or via config file) paths to the files i.e. --signin-pag=PATH. The sign-in page will have a 'redirect' 
-passed into the scope hold the oauth redirection url. If you wish pass additional variables into the templates, perhaps title, sitename etc, you can use the --tag key=pair i.e. 
+sign-in and access denied page. You can pass the command line options (or via config file) paths to the files i.e. --signin-pag=PATH. The sign-in page will have a 'redirect'
+passed into the scope hold the oauth redirection url. If you wish pass additional variables into the templates, perhaps title, sitename etc, you can use the --tag key=pair i.e.
 --tag title="This is my site"; the variable would be accessible from {{ .title }}
 
 ```HTML
@@ -238,7 +240,7 @@ passed into the scope hold the oauth redirection url. If you wish pass additiona
 </html>
 ```
 
-#### **White-listed URL's** 
+#### **White-listed URL's**
 
 Depending on how the application urls are laid out, you might want protect the root / url but have exceptions on a list of paths, i.e. /health etc. Although you should probably
 fix this by fixing up the paths, you can add excepts to the protected resources. (Note: it's an array, so the order is important)
@@ -255,7 +257,7 @@ fix this by fixing up the paths, you can add excepts to the protected resources.
       - <CLIENT_APP_NAME>:<ROLE_NAME>
 ```
 
-Or on the command line 
+Or on the command line
 
 ```shell
   --resource "uri=/some_white_listed_url,white-listed=true"
@@ -275,4 +277,3 @@ which was signed by the CA being used.
 * **/oauth/expired** is a helper endpoint to check if a access token has expired, 200 for ok and, 401 for no token and 401 for expired
 * **/oauth/token** is a helper endpoint which will display the current access token for you
 * **/oauth/health** is the health checking endpoint for the proxy
-
