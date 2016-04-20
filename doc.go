@@ -40,6 +40,7 @@ const (
 	healthURL        = oauthURL + "/health"
 	tokenURL         = oauthURL + "/token"
 	expiredURL       = oauthURL + "/expired"
+	logoutURL        = oauthURL + "/logout"
 )
 
 var (
@@ -88,25 +89,27 @@ type CORS struct {
 // Config is the configuration for the proxy
 type Config struct {
 	// LogRequests indicates if we should log all the requests
-	LogRequests bool `json:"log_requests" yaml:"log_requests"`
+	LogRequests bool `json:"log-requests" yaml:"log-requests"`
 	// LogFormat is the logging format
-	LogJSONFormat bool `json:"log_json_format" yaml:"log_json_format"`
+	LogJSONFormat bool `json:"log-json-format" yaml:"log-json-format"`
 	// DiscoveryURL is the url for the keycloak server
-	DiscoveryURL string `json:"discovery_url" yaml:"discovery_url"`
+	DiscoveryURL string `json:"discovery-url" yaml:"discovery-url"`
 	// ClientID is the client id
 	ClientID string `json:"clientid" yaml:"clientid"`
 	// Secret is the secret for AS
 	Secret string `json:"secret" yaml:"secret"`
+	// RevocationEndpoint is the token revocation endpoint to revoke refresh tokens
+	RevocationEndpoint string `json:"revocation-url" yaml:"revocation-url"`
 	// NoRedirects informs we should hand back a 401 not a redirect
 	NoRedirects bool `json:"no-redirects" yaml:"no-redirects"`
 	// RedirectionURL the redirection url
-	RedirectionURL string `json:"redirection_url" yaml:"redirection_url"`
+	RedirectionURL string `json:"redirection-url" yaml:"redirection-url"`
 	// EnableSecurityFilter enabled the security handler
 	EnableSecurityFilter bool `json:"enable-security-filter" yaml:"enable-security-filter"`
 	// RefreshSessions enabled refresh access
-	RefreshSessions bool `json:"refresh_sessions" yaml:"refresh_sessions"`
+	RefreshSessions bool `json:"refresh-sessions" yaml:"refresh-sessions"`
 	// EncryptionKey is the encryption key used to encrypt the refresh token
-	EncryptionKey string `json:"encryption_key" yaml:"encryption_key"`
+	EncryptionKey string `json:"encryption-key" yaml:"encryption-key"`
 	// MaxSession the max session for refreshing
 	MaxSession time.Duration `json:"max-session" yaml:"max-session"`
 	// ClaimsMatch is a series of checks, the claims in the token must match those here
@@ -116,19 +119,19 @@ type Config struct {
 	// Listen is the binding interface
 	Listen string `json:"listen" yaml:"listen"`
 	// ProxyProtocol enables proxy protocol
-	ProxyProtocol bool `json:"proxy_protocol" yaml:"proxy_protocol"`
+	ProxyProtocol bool `json:"proxy-protocol" yaml:"proxy-protocol"`
 	// TLSCertificate is the location for a tls certificate
-	TLSCertificate string `json:"tls_cert" yaml:"tls_cert"`
+	TLSCertificate string `json:"tls-cert" yaml:"tls-cert"`
 	// TLSPrivateKey is the location of a tls private key
-	TLSPrivateKey string `json:"tls_private_key" yaml:"tls_private_key"`
+	TLSPrivateKey string `json:"tls-private-key" yaml:"tls-private-key"`
 	// TLSCaCertificate is the CA certificate which the client cert must be signed
-	TLSCaCertificate string `json:"tls_ca_certificate" yaml:"tls_ca_certificate"`
+	TLSCaCertificate string `json:"tls-ca-certificate" yaml:"tls-ca-certificate"`
 	// SkipUpstreamTLSVerify skips the verification of any upstream tls
 	SkipUpstreamTLSVerify bool `json:"skip-upstream-tls-verify" yaml:"skip-upstream-tls-verify"`
 	// Upstream is the upstream endpoint i.e whom were proxying to
 	Upstream string `json:"upstream" yaml:"upstream"`
 	// TagData is passed to the templates
-	TagData map[string]string `json:"TagData" yaml:"TagData"`
+	TagData map[string]string `json:"tag-data" yaml:"tag-data"`
 	// CORS permits adding headers to the /oauth handlers
 	CORS *CORS `json:"cors" yaml:"cors"`
 	// Header permits adding customs headers across the board
@@ -138,9 +141,9 @@ type Config struct {
 	// Resources is a list of protected resources
 	Resources []*Resource `json:"resources" yaml:"resources"`
 	// SignInPage is the relative url for the sign in page
-	SignInPage string `json:"sign_in_page" yaml:"sign_in_page"`
+	SignInPage string `json:"sign-in-page" yaml:"sign-in-page"`
 	// ForbiddenPage is a access forbidden page
-	ForbiddenPage string `json:"forbidden_page" yaml:"forbidden_page"`
+	ForbiddenPage string `json:"forbidden-page" yaml:"forbidden-page"`
 	// SkipTokenVerification tells the service to skipp verifying the access token - for testing purposes
 	SkipTokenVerification bool
 	// Verbose switches on debug logging

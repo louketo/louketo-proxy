@@ -124,7 +124,7 @@ func (r *keycloakProxy) getSessionState(cx *gin.Context) (*sessionState, error) 
 	// step: find the session data cookie
 	cookie := findCookie(sessionStateCookieName, cx.Request.Cookies())
 	if cookie == nil {
-		return nil, ErrNoCookieFound
+		return nil, ErrNoSessionStateFound
 	}
 
 	return r.decryptStateSession(cookie.Value)
@@ -267,8 +267,8 @@ func createSessionCookie(token, hostname string, expires time.Time) *http.Cookie
 		Path:     "/",
 		Expires:  expires,
 		HttpOnly: true,
-		// Secure:   true,
-		Value: token,
+		Secure:   true,
+		Value:    token,
 	}
 }
 
@@ -279,8 +279,8 @@ func createSessionStateCookie(token, hostname string, expires time.Time) *http.C
 		Domain:   strings.Split(hostname, ":")[0],
 		Path:     "/",
 		HttpOnly: true,
-		//Secure:   true,
-		Value: token,
+		Secure:   true,
+		Value:    token,
 	}
 }
 

@@ -27,6 +27,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"fmt"
 )
 
 const (
@@ -176,7 +177,7 @@ func TestAccessForbidden(t *testing.T) {
 	proxy := newFakeKeycloakProxy(t)
 
 	proxy.config.SkipTokenVerification = false
-	if proxy.accessForbidden(context); context.Writer.Status() != http.StatusForbidden {
+	if proxy.accessForbidden(context); context.() != http.StatusForbidden {
 		t.Errorf("we should have recieved a forbidden access")
 	}
 
@@ -195,7 +196,6 @@ func newFakeResponse() *fakeResponse {
 
 func newFakeGinContext(method, uri string) *gin.Context {
 	return &gin.Context{
-
 		Request: &http.Request{
 			Method:     method,
 			Host:       "127.0.0.1",
@@ -221,15 +221,20 @@ type fakeResponse struct {
 	status  int
 	headers http.Header
 	body    bytes.Buffer
+	written bool
 }
 
 func (r *fakeResponse) Flush()                                       {}
-func (r *fakeResponse) Written() bool                                { return false }
+func (r *fakeResponse) Written() bool                                { return r.written }
 func (r *fakeResponse) WriteHeaderNow()                              {}
 func (r *fakeResponse) Size() int                                    { return r.size }
 func (r *fakeResponse) Status() int                                  { return r.status }
 func (r *fakeResponse) Header() http.Header                          { return r.headers }
-func (r *fakeResponse) WriteHeader(code int)                         { r.status = code }
+func (r *fakeResponse) WriteHeader(code int)                         {
+	fmt.Printf("HEnLO: %d\n", code)
+	r.status = code
+	r.written = true
+}
 func (r *fakeResponse) Write(content []byte) (int, error)            { return len(content), nil }
 func (r *fakeResponse) WriteString(s string) (int, error)            { return len(s), nil }
 func (r *fakeResponse) Hijack() (net.Conn, *bufio.ReadWriter, error) { return nil, nil, nil }

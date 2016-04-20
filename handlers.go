@@ -17,7 +17,9 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"net/url"
 	"path"
 	"regexp"
 	"strings"
@@ -578,6 +580,78 @@ func (r *keycloakProxy) oauthCallbackHandler(cx *gin.Context) {
 	}
 
 	r.redirectToURL(state, cx)
+}
+
+//
+// logoutHandler performs a logout
+//  - if it's just a access token, the cookie is deleted
+//  - if the user has a refresh token, the token is invalidated by the provider
+//  - optionally, the user can be redirected by to a url
+//
+func (r keycloakProxy) logoutHandler(cx *gin.Context) {
+	// the user can specify a url to redirect the back to
+	redirectURL := cx.Request.URL.Query().Get("redirect")
+	// step: drop the access token
+	clearSession(cx)
+	// step: check if the user has a state session and if so, revoke it
+	state, err := r.getSessionState(cx)
+	if err != nil {
+		if err != ErrNoSessionStateFound {
+			cx.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+	} else {
+		// step: clear the state session cookie
+		clearSessionState(cx)
+		// step: the user has a offline session, we need to revoke the access and invalidate the the offline token
+		client, err := r.openIDClient.OAuthClient()
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error": err.Error(),
+			}).Errorf("unable to retrieve the openid client")
+
+			cx.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+		// step: construct the url for revocation
+		params := url.Values{}
+		params.Add("refresh_token", state.refreshToken)
+		params.Add("token", state.refreshToken)
+		request, err := http.NewRequest("POST", r.config.RevocationEndpoint, nil)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error": err.Error(),
+			}).Errorf("unable to construct the revocation request")
+
+			cx.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+		request.PostForm = params
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		// step: attempt to make the
+		response, err := client.HttpClient().Do(request)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error": err.Error(),
+			}).Errorf("unable to post to revocation endpoint")
+			return
+		}
+		if response.StatusCode != http.StatusOK {
+			// step: read the response content
+			content, _ := ioutil.ReadAll(response.Body)
+			log.WithFields(log.Fields{
+				"status":   response.StatusCode,
+				"response": fmt.Sprintf("%s", content),
+			}).Errorf("invalid response from revocation endpoint")
+		}
+	}
+	if redirectURL != "" {
+		r.redirectToURL(redirectURL, cx)
+		return
+	}
+
+	cx.AbortWithStatus(http.StatusOK)
 }
 
 //

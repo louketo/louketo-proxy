@@ -84,7 +84,7 @@ func decryptDataBlock(cipherText, key []byte) ([]byte, error) {
 
 // initializeOpenID initializes the openID configuration, note: the redirection url is deliberately left blank
 // in order to retrieve it from the host header on request
-func initializeOpenID(discoveryURL, clientID, clientSecret, redirectURL string, scopes []string) (*oidc.Client, oidc.ClientConfig, error) {
+func initializeOpenID(discoveryURL, clientID, clientSecret, redirectURL string, scopes []string) (*oidc.Client, error) {
 	var err error
 	var providerConfig oidc.ProviderConfig
 
@@ -108,7 +108,7 @@ func initializeOpenID(discoveryURL, clientID, clientSecret, redirectURL string, 
 		time.Sleep(time.Second * 3)
 	}
 	if !gotConfig {
-		return nil, oidc.ClientConfig{}, fmt.Errorf("failed to retrieve the provider configuration from discovery url")
+		return nil, fmt.Errorf("failed to retrieve the provider configuration from discovery url")
 	}
 
 	// step: initialize the oidc configuration
@@ -127,13 +127,13 @@ func initializeOpenID(discoveryURL, clientID, clientSecret, redirectURL string, 
 	// step: attempt to create a new client
 	client, err := oidc.NewClient(config)
 	if err != nil {
-		return nil, oidc.ClientConfig{}, err
+		return nil, err
 	}
 
 	// step: start the provider sync
 	client.SyncProviderConfig(discoveryURL)
 
-	return client, config, nil
+	return client, nil
 }
 
 // convertUnixTime converts a unix timestamp to a Time

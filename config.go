@@ -88,13 +88,13 @@ func (r *Config) isValid() error {
 		if strings.HasSuffix(r.RedirectionURL, "/") {
 			r.RedirectionURL = strings.TrimSuffix(r.RedirectionURL, "/")
 		}
-		if r.EncryptionKey == "" && r.RefreshSessions {
+		if r.RefreshSessions && r.EncryptionKey == "" {
 			return fmt.Errorf("you have not specified a encryption key for encoding the session state")
 		}
-		if r.EncryptionKey != "" && len(r.EncryptionKey) < 32 {
+		if r.RefreshSessions && r.EncryptionKey != "" && len(r.EncryptionKey) < 32 {
 			return fmt.Errorf("the encryption key is too short, must be longer than 32 characters")
 		}
-		if r.MaxSession == 0 && r.RefreshSessions {
+		if r.RefreshSessions && r.MaxSession == 0 {
 			r.MaxSession = time.Duration(6) * time.Hour
 		}
 	}
@@ -149,6 +149,9 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 	}
 	if cx.IsSet("upstream-url") {
 		config.Upstream = cx.String("upstream-url")
+	}
+	if cx.IsSet("revocation-url") {
+		config.RevocationEndpoint = cx.String("revocation-url")
 	}
 	if cx.IsSet("upstream-keepalives") {
 		config.Keepalives = cx.Bool("upstream-keepalives")
@@ -307,6 +310,11 @@ func getOptions() []cli.Flag {
 			Name:  "upstream-url",
 			Usage: "the url for the upstream endpoint you wish to proxy to",
 			Value: defaults.Upstream,
+		},
+		cli.StringFlag{
+			Name:  "revocation-url",
+			Usage: "the url for the revocation endpoint to revoke refresh token, not all providers support the revocation_endpoint",
+			Value: "/oauth2/revoke",
 		},
 		cli.BoolTFlag{
 			Name:  "upstream-keepalives",
