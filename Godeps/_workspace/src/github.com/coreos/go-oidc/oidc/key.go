@@ -48,6 +48,7 @@ func (r *remotePublicKeyRepo) Get() (key.KeySet, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&d); err != nil {
 		return nil, err
 	}
+
 	if len(d.Keys) == 0 {
 		return nil, errors.New("zero keys in response")
 	}

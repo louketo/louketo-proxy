@@ -84,56 +84,62 @@ func decryptDataBlock(cipherText, key []byte) ([]byte, error) {
 
 // initializeOpenID initializes the openID configuration, note: the redirection url is deliberately left blank
 // in order to retrieve it from the host header on request
-func initializeOpenID(discoveryURL, clientID, clientSecret, redirectURL string, scopes []string) (*oidc.Client, error) {
+func initializeOpenID(cfg *Config) (*oidc.Client, oidc.ProviderConfig, error) {
 	var err error
 	var providerConfig oidc.ProviderConfig
 
 	// step: fix up the url if required, the underlining lib will add the .well-known/openid-configuration to
 	// the discovery url for us.
-	if strings.HasSuffix(discoveryURL, "/.well-known/openid-configuration") {
-		discoveryURL = strings.TrimSuffix(discoveryURL, "/.well-known/openid-configuration")
+	if strings.HasSuffix(cfg.DiscoveryURL, "/.well-known/openid-configuration") {
+		cfg.DiscoveryURL = strings.TrimSuffix(cfg.DiscoveryURL, "/.well-known/openid-configuration")
 	}
 
 	// step: attempt to retrieve the provider configuration
 	gotConfig := false
 	for i := 0; i < 3; i++ {
-		log.Infof("attempting to retrieve the openid configuration from the discovery url: %s", discoveryURL)
-		providerConfig, err = oidc.FetchProviderConfig(http.DefaultClient, discoveryURL)
+		log.Infof("attempting to retrieve the openid configuration from the discovery url: %s", cfg.DiscoveryURL)
+		providerConfig, err = oidc.FetchProviderConfig(http.DefaultClient, cfg.DiscoveryURL)
 		if err == nil {
 			gotConfig = true
 			break
 		}
-		log.Infof("failed to get provider configuration from discovery url: %s, %s", discoveryURL, err)
+		log.Infof("failed to get provider configuration from discovery url: %s, %s", cfg.DiscoveryURL, err)
 
 		time.Sleep(time.Second * 3)
 	}
 	if !gotConfig {
-		return nil, fmt.Errorf("failed to retrieve the provider configuration from discovery url")
+		return nil, oidc.ProviderConfig{}, fmt.Errorf("failed to retrieve the provider configuration from discovery url")
+	}
+
+	defaultScopes := []string{"email", "profile"}
+	if cfg.RefreshSessions {
+		defaultScopes = append(defaultScopes, "offline")
 	}
 
 	// step: initialize the oidc configuration
 	config := oidc.ClientConfig{
 		ProviderConfig: providerConfig,
 		Credentials: oidc.ClientCredentials{
-			ID:     clientID,
-			Secret: clientSecret,
+			ID:     cfg.ClientID,
+			Secret: cfg.ClientSecret,
 		},
-		RedirectURL: fmt.Sprintf("%s/oauth/callback", redirectURL),
-		Scope:       append(scopes, oidc.DefaultScope...),
+		RedirectURL: fmt.Sprintf("%s/oauth/callback", cfg.RedirectionURL),
+		Scope:       append(cfg.Scopes, defaultScopes...),
 	}
-
-	log.Infof("successfully retrieved the config from discovery url")
 
 	// step: attempt to create a new client
 	client, err := oidc.NewClient(config)
 	if err != nil {
-		return nil, err
+		return nil, oidc.ProviderConfig{}, err
 	}
 
 	// step: start the provider sync
-	client.SyncProviderConfig(discoveryURL)
+	client.SyncProviderConfig(cfg.DiscoveryURL)
 
-	return client, nil
+	log.Infof("successfully retrieved the config from discovery url, token endpoint: %s, scopes: %s",
+		providerConfig.AuthEndpoint.String(), strings.Join(config.Scope, ","))
+
+	return client, providerConfig, nil
 }
 
 // convertUnixTime converts a unix timestamp to a Time

@@ -27,7 +27,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
-	"fmt"
 )
 
 const (
@@ -55,11 +54,11 @@ func newFakeKeycloakConfig(t *testing.T) *Config {
 	return &Config{
 		DiscoveryURL:          "127.0.0.1:",
 		ClientID:              fakeClientID,
-		Secret:                fakeSecret,
+		ClientSecret:          fakeSecret,
 		EncryptionKey:         "AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j",
 		SkipTokenVerification: true,
 		Scopes:                []string{},
-		RefreshSessions:       false,
+		OfflineSession:        false,
 		Resources: []*Resource{
 			{
 				URL:     fakeAdminRoleURL,
@@ -177,7 +176,7 @@ func TestAccessForbidden(t *testing.T) {
 	proxy := newFakeKeycloakProxy(t)
 
 	proxy.config.SkipTokenVerification = false
-	if proxy.accessForbidden(context); context.() != http.StatusForbidden {
+	if proxy.accessForbidden(context); context.Writer.Status() != http.StatusForbidden {
 		t.Errorf("we should have recieved a forbidden access")
 	}
 
@@ -224,14 +223,13 @@ type fakeResponse struct {
 	written bool
 }
 
-func (r *fakeResponse) Flush()                                       {}
-func (r *fakeResponse) Written() bool                                { return r.written }
-func (r *fakeResponse) WriteHeaderNow()                              {}
-func (r *fakeResponse) Size() int                                    { return r.size }
-func (r *fakeResponse) Status() int                                  { return r.status }
-func (r *fakeResponse) Header() http.Header                          { return r.headers }
-func (r *fakeResponse) WriteHeader(code int)                         {
-	fmt.Printf("HEnLO: %d\n", code)
+func (r *fakeResponse) Flush()              {}
+func (r *fakeResponse) Written() bool       { return r.written }
+func (r *fakeResponse) WriteHeaderNow()     {}
+func (r *fakeResponse) Size() int           { return r.size }
+func (r *fakeResponse) Status() int         { return r.status }
+func (r *fakeResponse) Header() http.Header { return r.headers }
+func (r *fakeResponse) WriteHeader(code int) {
 	r.status = code
 	r.written = true
 }

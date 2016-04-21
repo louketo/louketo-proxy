@@ -70,7 +70,7 @@ func (r *keycloakProxy) parseToken(accessToken string) (jose.JWT, *oidc.Identity
 // verifyToken verify that the token in the user context is valid
 func (r *keycloakProxy) verifyToken(token jose.JWT) error {
 	// step: verify the token is whom they say they are
-	if err := r.openIDClient.VerifyJWT(token); err != nil {
+	if err := r.client.VerifyJWT(token); err != nil {
 		if strings.Contains(err.Error(), "token is expired") {
 			return ErrAccessTokenExpired
 		}
@@ -86,7 +86,7 @@ func (r *keycloakProxy) getToken(grantType, code string) (oauth2.TokenResponse, 
 	var response oauth2.TokenResponse
 
 	// step: retrieve the client
-	client, err := r.openIDClient.OAuthClient()
+	client, err := r.client.OAuthClient()
 	if err != nil {
 		return response, err
 	}

@@ -417,7 +417,7 @@ func (r *keycloakProxy) proxyHandler(cx *gin.Context) {
 //
 // oauthAuthorizationHandler is responsible for performing the redirection to keycloak service
 //
-func (r *keycloakProxy) oauthAuthorizationHandler(cx *gin.Context) {
+func (r keycloakProxy) oauthAuthorizationHandler(cx *gin.Context) {
 	// step: is token verification switched on?
 	if r.config.SkipTokenVerification {
 		r.accessForbidden(cx)
@@ -425,7 +425,7 @@ func (r *keycloakProxy) oauthAuthorizationHandler(cx *gin.Context) {
 	}
 
 	// step: grab the oauth client
-	oac, err := r.openIDClient.OAuthClient()
+	oac, err := r.client.OAuthClient()
 	if err != nil {
 		log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to retrieve the oauth client")
 		cx.AbortWithStatus(http.StatusInternalServerError)
@@ -467,7 +467,7 @@ func (r *keycloakProxy) oauthAuthorizationHandler(cx *gin.Context) {
 //
 // oauthCallbackHandler is responsible for handling the response from keycloak
 //
-func (r *keycloakProxy) oauthCallbackHandler(cx *gin.Context) {
+func (r keycloakProxy) oauthCallbackHandler(cx *gin.Context) {
 	// step: is token verification switched on?
 	if r.config.SkipTokenVerification {
 		r.accessForbidden(cx)
@@ -583,6 +583,56 @@ func (r *keycloakProxy) oauthCallbackHandler(cx *gin.Context) {
 }
 
 //
+// loginHandler provide's a generic endpoint for clients to perform a user_credentials login to the provider
+//
+func (r keycloakProxy) loginHandler(cx *gin.Context) {
+	// step: parse the client credentials
+	username := cx.Request.URL.Query().Get("username")
+	password := cx.Request.URL.Query().Get("password")
+
+	if username == "" || password == "" {
+		log.WithFields(log.Fields{
+			"client_ip": cx.ClientIP(),
+		}).Errorf("the request does not have both username and password")
+
+		cx.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	// step: get the client
+	client, err := r.client.OAuthClient()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"client_ip": cx.ClientIP(),
+			"error":     err.Error(),
+		}).Errorf("unable to create the oauth client for user_credentials request")
+
+		cx.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+
+	// step: request the access token via
+	token, err := client.UserCredsToken(username, password)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"client_ip": cx.ClientIP(),
+			"error":     err.Error(),
+		}).Errorf("unable to request the access token via grant_type 'password'")
+
+		cx.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+
+	cx.JSON(http.StatusOK, tokenResponse{
+		IDToken:      token.IDToken,
+		AccessToken:  token.AccessToken,
+		RefreshToken: token.RefreshToken,
+		ExpiresIn:    token.Expires,
+		Scope:        token.Scope,
+	})
+}
+
+//
 // logoutHandler performs a logout
 //  - if it's just a access token, the cookie is deleted
 //  - if the user has a refresh token, the token is invalidated by the provider
@@ -604,7 +654,7 @@ func (r keycloakProxy) logoutHandler(cx *gin.Context) {
 		// step: clear the state session cookie
 		clearSessionState(cx)
 		// step: the user has a offline session, we need to revoke the access and invalidate the the offline token
-		client, err := r.openIDClient.OAuthClient()
+		client, err := r.client.OAuthClient()
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err.Error(),

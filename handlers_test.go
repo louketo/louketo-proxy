@@ -270,7 +270,7 @@ func TestAdmissionHandlerRoles(t *testing.T) {
 }
 
 func TestAdmissionHandlerClaims(t *testing.T) {
-	// allow any fake authed users
+	// allow any fake authd users
 	proxy := newFakeKeycloakProxyWithResources(t, []*Resource{
 		{
 			URL:     "/admin",
@@ -352,6 +352,8 @@ func TestAdmissionHandlerClaims(t *testing.T) {
 		c.Context.Set(userContextName, c.UserContext)
 
 		handler(c.Context)
+		c.Context.Writer.WriteHeaderNow()
+
 		if c.Context.Writer.Status() != c.HTTPCode {
 			t.Errorf("test case %d should have recieved code: %d, got %d", i, c.HTTPCode, c.Context.Writer.Status())
 		}

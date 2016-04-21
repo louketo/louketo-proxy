@@ -39,8 +39,10 @@ type keycloakProxy struct {
 	config *Config
 	// the gin service
 	router *gin.Engine
-	// the oidc client
-	openIDClient *oidc.Client
+	// the opened client
+	client *oidc.Client
+	// the openid provider configuration
+	provider oidc.ProviderConfig
 	// the proxy client
 	proxy reverseProxy
 	// the upstream endpoint
@@ -92,11 +94,12 @@ func newKeycloakProxy(cfg *Config) (*keycloakProxy, error) {
 		log.Infof("TESTING ONLY CONFIG - the verification of the token have been disabled")
 
 	} else {
-		client, err := initializeOpenID(cfg.DiscoveryURL, cfg.ClientID, cfg.Secret, cfg.RedirectionURL, cfg.Scopes)
+		client, provider, err := initializeOpenID(cfg)
 		if err != nil {
 			return nil, err
 		}
-		service.openIDClient = client
+		service.client = client
+		service.provider = provider
 	}
 
 	// step: initialize the gin router
@@ -137,6 +140,7 @@ func (r keycloakProxy) initializeRouter() {
 	r.router.GET(tokenURL, r.tokenHandler)
 	r.router.GET(expiredURL, r.expirationHandler)
 	r.router.GET(logoutURL, r.logoutHandler)
+	r.router.POST(loginURL, r.loginHandler)
 
 	r.router.Use(r.entryPointHandler(), r.authenticationHandler(), r.admissionHandler())
 }

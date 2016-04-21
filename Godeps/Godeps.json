@@ -15,23 +15,23 @@
 		},
 		{
 			"ImportPath": "github.com/coreos/go-oidc/http",
-			"Rev": "dfe8dca68c3c087d3e147aeef30553530e2366bf"
+			"Rev": "a443fa229e11fd2d5da13c76763b29c447c451b0"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-oidc/jose",
-			"Rev": "dfe8dca68c3c087d3e147aeef30553530e2366bf"
+			"Rev": "a443fa229e11fd2d5da13c76763b29c447c451b0"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-oidc/key",
-			"Rev": "dfe8dca68c3c087d3e147aeef30553530e2366bf"
+			"Rev": "a443fa229e11fd2d5da13c76763b29c447c451b0"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-oidc/oauth2",
-			"Rev": "dfe8dca68c3c087d3e147aeef30553530e2366bf"
+			"Rev": "a443fa229e11fd2d5da13c76763b29c447c451b0"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-oidc/oidc",
-			"Rev": "dfe8dca68c3c087d3e147aeef30553530e2366bf"
+			"Rev": "a443fa229e11fd2d5da13c76763b29c447c451b0"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-systemd/journal",

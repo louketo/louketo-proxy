@@ -79,7 +79,7 @@ func (r *Config) isValid() error {
 		if r.ClientID == "" {
 			return fmt.Errorf("you have not specified the client id")
 		}
-		if r.Secret == "" {
+		if r.ClientSecret == "" {
 			return fmt.Errorf("you have not specified the client secret")
 		}
 		if r.RedirectionURL == "" {
@@ -138,8 +138,8 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 	if cx.IsSet("listen") {
 		config.Listen = cx.String("listen")
 	}
-	if cx.IsSet("secret") {
-		config.Secret = cx.String("secret")
+	if cx.IsSet("client-secret") {
+		config.ClientSecret = cx.String("client-secret")
 	}
 	if cx.IsSet("client-id") {
 		config.ClientID = cx.String("client-id")
@@ -295,7 +295,7 @@ func getOptions() []cli.Flag {
 			Value: defaults.Listen,
 		},
 		cli.StringFlag{
-			Name:  "secret",
+			Name:  "client-secret",
 			Usage: "the client secret used to authenticate to the oauth server",
 		},
 		cli.StringFlag{

@@ -41,11 +41,10 @@ const (
 	tokenURL         = oauthURL + "/token"
 	expiredURL       = oauthURL + "/expired"
 	logoutURL        = oauthURL + "/logout"
+	loginURL         = oauthURL + "/login"
 )
 
 var (
-	// ErrNoCookieFound indicates the cookie has not been found
-	ErrNoCookieFound = errors.New("the cookie has not been found")
 	// ErrSessionNotFound no session found in the request
 	ErrSessionNotFound = errors.New("authentication session not found")
 	// ErrNoSessionStateFound means there was not persist state
@@ -96,8 +95,8 @@ type Config struct {
 	DiscoveryURL string `json:"discovery-url" yaml:"discovery-url"`
 	// ClientID is the client id
 	ClientID string `json:"clientid" yaml:"clientid"`
-	// Secret is the secret for AS
-	Secret string `json:"secret" yaml:"secret"`
+	// ClientSecret is the secret for AS
+	ClientSecret string `json:"client-secret" yaml:"client-secret"`
 	// RevocationEndpoint is the token revocation endpoint to revoke refresh tokens
 	RevocationEndpoint string `json:"revocation-url" yaml:"revocation-url"`
 	// NoRedirects informs we should hand back a 401 not a redirect
@@ -150,4 +149,14 @@ type Config struct {
 	Verbose bool `json:"verbose" yaml:"verbose"`
 	// Hostname is a list of hostname's the service should response to
 	Hostnames []string `json:"hostnames" yaml:"hostnames"`
+}
+
+// tokenResponse
+type tokenResponse struct {
+	TokenType    string `json:"token_type"`
+	AccessToken  string `json:"access_token"`
+	IDToken      string `json:"id_token"`
+	RefreshToken string `json:"refresh_token,omitempty"`
+	ExpiresIn    int    `json:"expires_in"`
+	Scope        string `json:"scope,omitempty"`
 }
