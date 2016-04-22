@@ -17,11 +17,51 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
-// isValid ensure the resource is valid
-func (r *Resource) isValid() error {
+func newResource() *Resource {
+	return &Resource{}
+}
+
+//
+// Parse decodes a resource definition
+//
+func (r *Resource) Parse(resource string) (*Resource, error) {
+	if resource == "" {
+		return nil, fmt.Errorf("the resource has no options")
+	}
+
+	for _, x := range strings.Split(resource, "|") {
+		// step: split up the keypair
+		kp := strings.Split(x, "=")
+		if len(kp) != 2 {
+			return nil, fmt.Errorf("invalid resource keypair, should be (uri|roles|method|white-listed)=comma_values")
+		}
+		switch kp[0] {
+		case "uri":
+			r.URL = kp[1]
+		case "methods":
+			r.Methods = strings.Split(kp[1], ",")
+		case "roles":
+			r.Roles = strings.Split(kp[1], ",")
+		case "white-listed":
+			value, err := strconv.ParseBool(kp[1])
+			if err != nil {
+				return nil, fmt.Errorf("the value of whitelisted must be true|TRUE|T or it's false equivilant")
+			}
+			r.WhiteListed = value
+		default:
+			return nil, fmt.Errorf("invalid identifier, should be roles, uri or methods")
+		}
+	}
+
+	return r, nil
+}
+
+// IsValid ensure the resource is valid
+func (r *Resource) IsValid() error {
 	// step: ensure everything is initialized
 	if r.Methods == nil {
 		r.Methods = make([]string, 0)
@@ -54,8 +94,8 @@ func (r *Resource) isValid() error {
 	return nil
 }
 
-// getRoles gets a list of roles
-func (r Resource) getRoles() string {
+// GetRoles gets a list of roles
+func (r Resource) GetRoles() string {
 	return strings.Join(r.Roles, ",")
 }
 

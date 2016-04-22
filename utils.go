@@ -20,6 +20,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/tls"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"net"
@@ -27,20 +28,22 @@ import (
 	"net/url"
 	"os"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-oidc/oidc"
+	"github.com/gin-gonic/gin"
 )
 
 var (
 	httpMethodRegex = regexp.MustCompile("^(ANY|GET|POST|DELETE|PATCH|HEAD|PUT|TRACE|CONNECT)$")
 )
 
+//
 // encryptDataBlock encrypts the plaintext string with the key
+//
 func encryptDataBlock(plaintext, key []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -59,7 +62,9 @@ func encryptDataBlock(plaintext, key []byte) ([]byte, error) {
 	return cipherText, nil
 }
 
+//
 // decryptDataBlock decrypts some cipher text
+//
 func decryptDataBlock(cipherText, key []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -82,71 +87,84 @@ func decryptDataBlock(cipherText, key []byte) ([]byte, error) {
 	return cipherText, nil
 }
 
+//
+// encodeText encodes the session state information into a value for a cookie to consume
+//
+func encodeText(plaintext string, key string) (string, error) {
+	// step: encrypt the refresh state
+	cipherText, err := encryptDataBlock([]byte(plaintext), []byte(key))
+	if err != nil {
+		return "", err
+	}
+
+	return base64.StdEncoding.EncodeToString(cipherText), nil
+}
+
+//
+// decodeText decodes the session state cookie value
+//
+func decodeText(state, key string) (string, error) {
+	// step: decode the base64 encrypted cookie
+	cipherText, err := base64.StdEncoding.DecodeString(state)
+	if err != nil {
+		return "", err
+	}
+
+	// step: decrypt the cookie back in the expiration|token
+	encoded, err := decryptDataBlock(cipherText, []byte(key))
+	if err != nil {
+		return "", ErrInvalidSession
+	}
+
+	return string(encoded), nil
+}
+
 // initializeOpenID initializes the openID configuration, note: the redirection url is deliberately left blank
 // in order to retrieve it from the host header on request
-func initializeOpenID(discoveryURL, clientID, clientSecret, redirectURL string, scopes []string) (*oidc.Client, oidc.ClientConfig, error) {
+func initializeOpenID(cfg *Config) (*oidc.Client, oidc.ProviderConfig, error) {
 	var err error
 	var providerConfig oidc.ProviderConfig
 
-	// step: fix up the url if required, the underlining lib will add the .well-known/openid-configuration to
-	// the discovery url for us.
-	if strings.HasSuffix(discoveryURL, "/.well-known/openid-configuration") {
-		discoveryURL = strings.TrimSuffix(discoveryURL, "/.well-known/openid-configuration")
+	// step: fix up the url if required, the underlining lib will add the .well-known/openid-configuration to the discovery url for us.
+	if strings.HasSuffix(cfg.DiscoveryURL, "/.well-known/openid-configuration") {
+		cfg.DiscoveryURL = strings.TrimSuffix(cfg.DiscoveryURL, "/.well-known/openid-configuration")
 	}
-
 	// step: attempt to retrieve the provider configuration
-	gotConfig := false
 	for i := 0; i < 3; i++ {
-		log.Infof("attempting to retrieve the openid configuration from the discovery url: %s", discoveryURL)
-		providerConfig, err = oidc.FetchProviderConfig(http.DefaultClient, discoveryURL)
+		log.Infof("attempting to retrieve the openid configuration from the discovery url: %s", cfg.DiscoveryURL)
+		providerConfig, err = oidc.FetchProviderConfig(http.DefaultClient, cfg.DiscoveryURL)
 		if err == nil {
-			gotConfig = true
-			break
+			goto GOT_CONFIG
 		}
-		log.Infof("failed to get provider configuration from discovery url: %s, %s", discoveryURL, err)
+		log.Infof("failed to get provider configuration from discovery url: %s, %s", cfg.DiscoveryURL, err)
 
 		time.Sleep(time.Second * 3)
 	}
-	if !gotConfig {
-		return nil, oidc.ClientConfig{}, fmt.Errorf("failed to retrieve the provider configuration from discovery url")
-	}
+	return nil, oidc.ProviderConfig{}, fmt.Errorf("failed to retrieve the provider configuration from discovery url")
 
-	// step: initialize the oidc configuration
-	config := oidc.ClientConfig{
+GOT_CONFIG:
+	client, err := oidc.NewClient(oidc.ClientConfig{
 		ProviderConfig: providerConfig,
 		Credentials: oidc.ClientCredentials{
-			ID:     clientID,
-			Secret: clientSecret,
+			ID:     cfg.ClientID,
+			Secret: cfg.ClientSecret,
 		},
-		RedirectURL: fmt.Sprintf("%s/oauth/callback", redirectURL),
-		Scope:       append(scopes, oidc.DefaultScope...),
-	}
-
-	log.Infof("successfully retrieved the config from discovery url")
-
-	// step: attempt to create a new client
-	client, err := oidc.NewClient(config)
+		RedirectURL: fmt.Sprintf("%s/oauth/callback", cfg.RedirectionURL),
+		Scope:       append(cfg.Scopes, oidc.DefaultScope...),
+	})
 	if err != nil {
-		return nil, oidc.ClientConfig{}, err
+		return nil, oidc.ProviderConfig{}, err
 	}
 
 	// step: start the provider sync
-	client.SyncProviderConfig(discoveryURL)
+	client.SyncProviderConfig(cfg.DiscoveryURL)
 
-	return client, config, nil
+	return client, providerConfig, nil
 }
 
-// convertUnixTime converts a unix timestamp to a Time
-func convertUnixTime(v string) (time.Time, error) {
-	i, err := strconv.ParseInt(v, 10, 64)
-	if err != nil {
-		return time.Time{}, err
-	}
-
-	return time.Unix(i, 0), nil
-}
-
+//
 // decodeKeyPairs converts a list of strings (key=pair) to a map
+//
 func decodeKeyPairs(list []string) (map[string]string, error) {
 	kp := make(map[string]string, 0)
 
@@ -161,7 +179,9 @@ func decodeKeyPairs(list []string) (map[string]string, error) {
 	return kp, nil
 }
 
+//
 // tryDialEndpoint dials the upstream endpoint via plain
+//
 func tryDialEndpoint(location *url.URL) (net.Conn, error) {
 	switch dialAddress := dialAddress(location); location.Scheme {
 	case "http":
@@ -174,12 +194,16 @@ func tryDialEndpoint(location *url.URL) (net.Conn, error) {
 	}
 }
 
+//
 // isValidMethod ensure this is a valid http method type
+//
 func isValidMethod(method string) bool {
 	return httpMethodRegex.MatchString(method)
 }
 
+//
 // fileExists check if a file exists
+//
 func fileExists(filename string) bool {
 	if _, err := os.Stat(filename); err != nil {
 		if os.IsNotExist(err) {
@@ -190,7 +214,9 @@ func fileExists(filename string) bool {
 	return true
 }
 
+//
 // hasRoles checks the scopes are the same
+//
 func hasRoles(required, issued []string) bool {
 	for _, role := range required {
 		if !containedIn(role, issued) {
@@ -201,7 +227,9 @@ func hasRoles(required, issued []string) bool {
 	return true
 }
 
+//
 // containedIn checks if a value in a list of a strings
+//
 func containedIn(value string, list []string) bool {
 	for _, x := range list {
 		if x == value {
@@ -212,7 +240,9 @@ func containedIn(value string, list []string) bool {
 	return false
 }
 
+//
 // dialAddress extracts the dial address from the url
+//
 func dialAddress(location *url.URL) string {
 	items := strings.Split(location.Host, ":")
 	if len(items) != 2 {
@@ -227,7 +257,9 @@ func dialAddress(location *url.URL) string {
 	return location.Host
 }
 
+//
 // findCookie looks for a cookie in a list of cookies
+//
 func findCookie(name string, cookies []*http.Cookie) *http.Cookie {
 	for _, cookie := range cookies {
 		if cookie.Name == name {
@@ -238,7 +270,9 @@ func findCookie(name string, cookies []*http.Cookie) *http.Cookie {
 	return nil
 }
 
+//
 // isUpgradedConnection checks to see if the request is requesting
+//
 func isUpgradedConnection(req *http.Request) bool {
 	if req.Header.Get(headerUpgrade) != "" {
 		return true
@@ -247,7 +281,9 @@ func isUpgradedConnection(req *http.Request) bool {
 	return false
 }
 
+//
 // transferBytes transfers bytes between the sink and source
+//
 func transferBytes(src io.Reader, dest io.Writer, wg *sync.WaitGroup) (int64, error) {
 	defer wg.Done()
 	copied, err := io.Copy(dest, src)
@@ -258,46 +294,45 @@ func transferBytes(src io.Reader, dest io.Writer, wg *sync.WaitGroup) (int64, er
 	return copied, nil
 }
 
-// decodeResource decodes the resource specification from the command line
-func decodeResource(v string) (*Resource, error) {
-	elements := strings.Split(v, "|")
-	if len(elements) <= 0 {
-		return nil, fmt.Errorf("the resource has no options")
+//
+// tryUpdateConnection attempt to upgrade the connection to a http pdy stream
+//
+func tryUpdateConnection(cx *gin.Context, endpoint *url.URL) error {
+	// step: dial the endpoint
+	tlsConn, err := tryDialEndpoint(endpoint)
+	if err != nil {
+		return err
+	}
+	defer tlsConn.Close()
+
+	// step: we need to hijack the underlining client connection
+	clientConn, _, err := cx.Writer.(http.Hijacker).Hijack()
+	if err != nil {
+		return err
+	}
+	defer clientConn.Close()
+
+	// step: write the request to upstream
+	if err = cx.Request.Write(tlsConn); err != nil {
+		return err
 	}
 
-	resource := &Resource{}
+	// step: copy the date between client and upstream endpoint
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go transferBytes(tlsConn, clientConn, &wg)
+	go transferBytes(clientConn, tlsConn, &wg)
+	wg.Wait()
 
-	for _, x := range elements {
-		// step: split up the keypair
-		kp := strings.Split(x, "=")
-		if len(kp) != 2 {
-			return nil, fmt.Errorf("invalid resource keypair, should be (uri|roles|method|white-listed)=comma_values")
-		}
-		switch kp[0] {
-		case "uri":
-			resource.URL = kp[1]
-		case "methods":
-			resource.Methods = strings.Split(kp[1], ",")
-		case "roles":
-			resource.Roles = strings.Split(kp[1], ",")
-		case "white-listed":
-			value, err := strconv.ParseBool(kp[1])
-			if err != nil {
-				return nil, fmt.Errorf("the value of whitelisted must be true|TRUE|T or it's false equivilant")
-			}
-			resource.WhiteListed = value
-		default:
-			return nil, fmt.Errorf("invalid identifier, should be roles, uri or methods")
-		}
-	}
-
-	return resource, nil
+	return nil
 }
 
+//
 // validateResources checks and validates each of the resources
+//
 func validateResources(resources []*Resource) error {
 	for _, x := range resources {
-		if err := x.isValid(); err != nil {
+		if err := x.IsValid(); err != nil {
 			return err
 		}
 	}

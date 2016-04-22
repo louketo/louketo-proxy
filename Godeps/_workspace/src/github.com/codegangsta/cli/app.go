@@ -5,11 +5,12 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
+	"sort"
 	"time"
 )
 
-// App is the main structure of a cli application. It is recomended that
+// App is the main structure of a cli application. It is recommended that
 // an app be created with the cli.NewApp() function
 type App struct {
 	// The name of the program. Defaults to path.Base(os.Args[0])
@@ -18,6 +19,8 @@ type App struct {
 	HelpName string
 	// Description of the program.
 	Usage string
+	// Text to override the USAGE section of help
+	UsageText string
 	// Description of the program argument format.
 	ArgsUsage string
 	// Version of the program
@@ -30,8 +33,10 @@ type App struct {
 	EnableBashCompletion bool
 	// Boolean to hide built-in help command
 	HideHelp bool
-	// Boolean to hide built-in version flag
+	// Boolean to hide built-in version flag and the VERSION section of help
 	HideVersion bool
+	// Populate on app startup, only gettable throught method Categories()
+	categories CommandCategories
 	// An action to execute when the bash-completion flag is set
 	BashComplete func(context *Context)
 	// An action to execute before any subcommands are run, but after the context is ready
@@ -44,6 +49,10 @@ type App struct {
 	Action func(context *Context)
 	// Execute this function if the proper command cannot be found
 	CommandNotFound func(context *Context, command string)
+	// Execute this function, if an usage error occurs. This is useful for displaying customized usage error messages.
+	// This function is able to replace the original error messages.
+	// If this function is not set, the "Incorrect usage" is displayed and the execution is interrupted.
+	OnUsageError func(context *Context, err error, isSubcommand bool) error
 	// Compilation date
 	Compiled time.Time
 	// List of all authors who contributed
@@ -71,9 +80,10 @@ func compileTime() time.Time {
 // Creates a new cli Application with some reasonable defaults for Name, Usage, Version and Action.
 func NewApp() *App {
 	return &App{
-		Name:         path.Base(os.Args[0]),
-		HelpName:     path.Base(os.Args[0]),
+		Name:         filepath.Base(os.Args[0]),
+		HelpName:     filepath.Base(os.Args[0]),
 		Usage:        "A new cli application",
+		UsageText:    "",
 		Version:      "0.0.0",
 		BashComplete: DefaultAppComplete,
 		Action:       helpCommand.Action,
@@ -97,6 +107,12 @@ func (a *App) Run(arguments []string) (err error) {
 	}
 	a.Commands = newCmds
 
+	a.categories = CommandCategories{}
+	for _, command := range a.Commands {
+		a.categories = a.categories.AddCommand(command.Category, command)
+	}
+	sort.Sort(a.categories)
+
 	// append help to commands
 	if a.Command(helpCommand.Name) == nil && !a.HideHelp {
 		a.Commands = append(a.Commands, helpCommand)
@@ -119,23 +135,26 @@ func (a *App) Run(arguments []string) (err error) {
 	set.SetOutput(ioutil.Discard)
 	err = set.Parse(arguments[1:])
 	nerr := normalizeFlags(a.Flags, set)
+	context := NewContext(a, set, nil)
 	if nerr != nil {
 		fmt.Fprintln(a.Writer, nerr)
-		context := NewContext(a, set, nil)
 		ShowAppHelp(context)
 		return nerr
 	}
-	context := NewContext(a, set, nil)
 
 	if checkCompletions(context) {
 		return nil
 	}
 
 	if err != nil {
-		fmt.Fprintln(a.Writer, "Incorrect Usage.")
-		fmt.Fprintln(a.Writer)
-		ShowAppHelp(context)
-		return err
+		if a.OnUsageError != nil {
+			err := a.OnUsageError(context, err, false)
+			return err
+		} else {
+			fmt.Fprintf(a.Writer, "%s\n\n", "Incorrect Usage.")
+			ShowAppHelp(context)
+			return err
+		}
 	}
 
 	if !a.HideHelp && checkHelp(context) {
@@ -150,8 +169,7 @@ func (a *App) Run(arguments []string) (err error) {
 
 	if a.After != nil {
 		defer func() {
-			afterErr := a.After(context)
-			if afterErr != nil {
+			if afterErr := a.After(context); afterErr != nil {
 				if err != nil {
 					err = NewMultiError(err, afterErr)
 				} else {
@@ -162,8 +180,10 @@ func (a *App) Run(arguments []string) (err error) {
 	}
 
 	if a.Before != nil {
-		err := a.Before(context)
+		err = a.Before(context)
 		if err != nil {
+			fmt.Fprintf(a.Writer, "%v\n\n", err)
+			ShowAppHelp(context)
 			return err
 		}
 	}
@@ -239,10 +259,14 @@ func (a *App) RunAsSubcommand(ctx *Context) (err error) {
 	}
 
 	if err != nil {
-		fmt.Fprintln(a.Writer, "Incorrect Usage.")
-		fmt.Fprintln(a.Writer)
-		ShowSubcommandHelp(context)
-		return err
+		if a.OnUsageError != nil {
+			err = a.OnUsageError(context, err, true)
+			return err
+		} else {
+			fmt.Fprintf(a.Writer, "%s\n\n", "Incorrect Usage.")
+			ShowSubcommandHelp(context)
+			return err
+		}
 	}
 
 	if len(a.Commands) > 0 {
@@ -299,6 +323,11 @@ func (a *App) Command(name string) *Command {
 	}
 
 	return nil
+}
+
+// Returnes the array containing all the categories with the commands they contain
+func (a *App) Categories() CommandCategories {
+	return a.categories
 }
 
 func (a *App) hasFlag(flag Flag) bool {

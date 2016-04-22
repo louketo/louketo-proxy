@@ -16,8 +16,64 @@ limitations under the License.
 package main
 
 import (
+	"reflect"
 	"testing"
 )
+
+func TestDecodeResource(t *testing.T) {
+	testCases := []struct {
+		Option   string
+		Ok       bool
+		Resource *Resource
+	}{
+		{
+			Option: "uri=/admin",
+			Ok:     true,
+			Resource: &Resource{
+				URL: "/admin",
+			},
+		},
+		{
+			Option: "uri=/admin/sso|roles=test,test1",
+			Ok:     true,
+			Resource: &Resource{
+				URL:   "/admin/sso",
+				Roles: []string{"test", "test1"},
+			},
+		},
+		{
+			Option: "uri=/admin/sso|roles=test,test1|methods=GET,POST",
+			Ok:     true,
+			Resource: &Resource{
+				URL:     "/admin/sso",
+				Roles:   []string{"test", "test1"},
+				Methods: []string{"GET", "POST"},
+			},
+		},
+		{
+			Option: "uri=/allow_me|white-listed=true",
+			Ok:     true,
+			Resource: &Resource{
+				URL:         "/allow_me",
+				WhiteListed: true,
+			},
+		},
+		{
+			Option: "",
+		},
+	}
+
+	for i, c := range testCases {
+		rc, err := newResource().Parse(c.Option)
+		if c.Ok && err != nil {
+			t.Errorf("test case %d should not have failed, error: %s", i, err)
+			continue
+		}
+		if !reflect.DeepEqual(c.Resource, rc) {
+			t.Errorf("test case %d are not equal %v - %v", i, c.Resource, rc)
+		}
+	}
+}
 
 func TestIsValid(t *testing.T) {
 	testCases := []struct {
@@ -47,7 +103,7 @@ func TestIsValid(t *testing.T) {
 	}
 
 	for i, c := range testCases {
-		err := c.Resource.isValid()
+		err := c.Resource.IsValid()
 		if err != nil && c.Ok {
 			t.Errorf("case %d should not have failed", i)
 		}
@@ -68,7 +124,7 @@ func TestGetRoles(t *testing.T) {
 		Roles: []string{"1", "2", "3"},
 	}
 
-	if resource.getRoles() != "1,2,3" {
+	if resource.GetRoles() != "1,2,3" {
 		t.Error("the resource roles not as expected")
 	}
 }

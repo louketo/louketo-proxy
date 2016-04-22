@@ -23,11 +23,9 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
-
-	"gopkg.in/yaml.v2"
 
 	"github.com/codegangsta/cli"
+	"gopkg.in/yaml.v2"
 )
 
 // newDefaultConfig returns a initialized config
@@ -36,7 +34,6 @@ func newDefaultConfig() *Config {
 		Listen:         "127.0.0.1:3000",
 		RedirectionURL: "http://127.0.0.1:3000",
 		Upstream:       "http://127.0.0.1:8081",
-		MaxSession:     time.Duration(1) * time.Hour,
 		TagData:        make(map[string]string, 0),
 		ClaimsMatch:    make(map[string]string, 0),
 		Header:         make(map[string]string, 0),
@@ -79,7 +76,7 @@ func (r *Config) isValid() error {
 		if r.ClientID == "" {
 			return fmt.Errorf("you have not specified the client id")
 		}
-		if r.Secret == "" {
+		if r.ClientSecret == "" {
 			return fmt.Errorf("you have not specified the client secret")
 		}
 		if r.RedirectionURL == "" {
@@ -88,19 +85,21 @@ func (r *Config) isValid() error {
 		if strings.HasSuffix(r.RedirectionURL, "/") {
 			r.RedirectionURL = strings.TrimSuffix(r.RedirectionURL, "/")
 		}
-		if r.EncryptionKey == "" && r.RefreshSessions {
+		if r.EnableRefreshTokens && r.EncryptionKey == "" {
 			return fmt.Errorf("you have not specified a encryption key for encoding the session state")
 		}
-		if r.EncryptionKey != "" && len(r.EncryptionKey) < 32 {
-			return fmt.Errorf("the encryption key is too short, must be longer than 32 characters")
+		if r.EnableRefreshTokens && (len(r.EncryptionKey) != 16 && len(r.EncryptionKey) != 32) {
+			return fmt.Errorf("the encryption key (%d) must be either 16 or 32 characters for AES-128/AES-256 selection", len(r.EncryptionKey))
 		}
-		if r.MaxSession == 0 && r.RefreshSessions {
-			r.MaxSession = time.Duration(6) * time.Hour
+		if r.StoreURL != "" {
+			if _, err := url.Parse(r.StoreURL); err != nil {
+				return fmt.Errorf("the store url is invalid, error: %s", err)
+			}
 		}
 	}
 	// step: valid the resources
 	for _, resource := range r.Resources {
-		if err := resource.isValid(); err != nil {
+		if err := resource.IsValid(); err != nil {
 			return err
 		}
 	}
@@ -115,8 +114,8 @@ func (r *Config) isValid() error {
 	return nil
 }
 
-// hasSignInPage checks if there is a custom sign in  page
-func (r *Config) hasSignInPage() bool {
+// hasCustomSignInPage checks if there is a custom sign in  page
+func (r *Config) hasCustomSignInPage() bool {
 	if r.SignInPage != "" {
 		return true
 	}
@@ -125,7 +124,7 @@ func (r *Config) hasSignInPage() bool {
 }
 
 // hasForbiddenPage checks if there is a custom forbidden page
-func (r *Config) hasForbiddenPage() bool {
+func (r *Config) hasCustomForbiddenPage() bool {
 	if r.ForbiddenPage != "" {
 		return true
 	}
@@ -138,8 +137,8 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 	if cx.IsSet("listen") {
 		config.Listen = cx.String("listen")
 	}
-	if cx.IsSet("secret") {
-		config.Secret = cx.String("secret")
+	if cx.IsSet("client-secret") {
+		config.ClientSecret = cx.String("client-secret")
 	}
 	if cx.IsSet("client-id") {
 		config.ClientID = cx.String("client-id")
@@ -149,6 +148,9 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 	}
 	if cx.IsSet("upstream-url") {
 		config.Upstream = cx.String("upstream-url")
+	}
+	if cx.IsSet("revocation-url") {
+		config.RevocationEndpoint = cx.String("revocation-url")
 	}
 	if cx.IsSet("upstream-keepalives") {
 		config.Keepalives = cx.Bool("upstream-keepalives")
@@ -161,6 +163,9 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 	}
 	if cx.IsSet("encryption-key") {
 		config.EncryptionKey = cx.String("encryption-key")
+	}
+	if cx.IsSet("store-url") {
+		config.StoreURL = cx.String("store-url")
 	}
 	if cx.IsSet("no-redirects") {
 		config.NoRedirects = cx.Bool("no-redirects")
@@ -183,17 +188,11 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 	if cx.IsSet("forbidden-page") {
 		config.ForbiddenPage = cx.String("forbidden-page")
 	}
-	if cx.IsSet("max-session") {
-		config.MaxSession = cx.Duration("max-session")
-	}
 	if cx.IsSet("enable-security-filter") {
 		config.EnableSecurityFilter = true
 	}
 	if cx.IsSet("proxy-protocol") {
 		config.ProxyProtocol = cx.Bool("proxy-protocol")
-	}
-	if cx.IsSet("refresh-sessions") {
-		config.RefreshSessions = cx.Bool("refresh-sessions")
 	}
 	if cx.IsSet("json-logging") {
 		config.LogJSONFormat = cx.Bool("json-logging")
@@ -248,7 +247,7 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 	}
 	if cx.IsSet("resource") {
 		for _, x := range cx.StringSlice("resource") {
-			resource, err := decodeResource(x)
+			resource, err := newResource().Parse(x)
 			if err != nil {
 				return fmt.Errorf("invalid resource %s, %s", x, err)
 			}
@@ -292,7 +291,7 @@ func getOptions() []cli.Flag {
 			Value: defaults.Listen,
 		},
 		cli.StringFlag{
-			Name:  "secret",
+			Name:  "client-secret",
 			Usage: "the client secret used to authenticate to the oauth server",
 		},
 		cli.StringFlag{
@@ -308,6 +307,11 @@ func getOptions() []cli.Flag {
 			Usage: "the url for the upstream endpoint you wish to proxy to",
 			Value: defaults.Upstream,
 		},
+		cli.StringFlag{
+			Name:  "revocation-url",
+			Usage: "the url for the revocation endpoint to revoke refresh token, not all providers support the revocation_endpoint",
+			Value: "/oauth2/revoke",
+		},
 		cli.BoolTFlag{
 			Name:  "upstream-keepalives",
 			Usage: "enables or disables the keepalive connections for upstream endpoint (defaults true)",
@@ -315,6 +319,10 @@ func getOptions() []cli.Flag {
 		cli.StringFlag{
 			Name:  "encryption-key",
 			Usage: "the encryption key used to encrpytion the session state",
+		},
+		cli.StringFlag{
+			Name:  "store-url",
+			Usage: "the store url to use for storing the refresh tokens, i.e. redis://127.0.0.1:6379, file:///etc/tokens.file",
 		},
 		cli.BoolFlag{
 			Name:  "no-redirects",
@@ -368,11 +376,6 @@ func getOptions() []cli.Flag {
 			Name:  "tag",
 			Usage: "a keypair tag which is passed to the templates when render, i.e. title='My Page',site='my name' etc",
 		},
-		cli.DurationFlag{
-			Name:  "max-session",
-			Usage: "if refresh sessions are enabled we can limit their duration via this",
-			Value: defaults.MaxSession,
-		},
 		cli.StringSliceFlag{
 			Name:  "cors-origins",
 			Usage: "a set of origins to add to the CORS access control (Access-Control-Allow-Origin)",
@@ -410,8 +413,8 @@ func getOptions() []cli.Flag {
 			Usage: "switches on proxy protocol support on the listen (not supported yet)",
 		},
 		cli.BoolFlag{
-			Name:  "refresh-sessions",
-			Usage: "enables the refreshing of tokens via offline access (defaults false)",
+			Name:  "offline-session",
+			Usage: "enables the offline session of tokens via offline access (defaults false)",
 		},
 		cli.BoolTFlag{
 			Name:  "json-logging",

@@ -22,29 +22,34 @@ import (
 
 const (
 	prog        = "keycloak-proxy"
-	version     = "v1.0.1"
+	version     = "v1.0.2"
 	author      = "Rohith"
 	email       = "gambol99@gmail.com"
 	description = "is a proxy using the keycloak service for auth and authorization"
 
-	headerUpgrade          = "Upgrade"
-	sessionCookieName      = "kc-access"
-	sessionStateCookieName = "kc-state"
-	userContextName        = "identity"
-	authorizationHeader    = "Authorization"
+	headerUpgrade       = "Upgrade"
+	cookieAccessToken   = "kc-access"
+	cookieRefreshToken  = "kc-state"
+	userContextName     = "identity"
+	authorizationHeader = "Authorization"
 
-	// the urls
 	oauthURL         = "/oauth"
 	authorizationURL = oauthURL + "/authorize"
 	callbackURL      = oauthURL + "/callback"
 	healthURL        = oauthURL + "/health"
 	tokenURL         = oauthURL + "/token"
 	expiredURL       = oauthURL + "/expired"
+	logoutURL        = oauthURL + "/logout"
+	loginURL         = oauthURL + "/login"
+
+	claimPreferredName  = "preferred_username"
+	claimAudience       = "aud"
+	claimResourceAccess = "resource_access"
+	claimRealmAccess    = "realm_access"
+	claimResourceRoles  = "roles"
 )
 
 var (
-	// ErrNoCookieFound indicates the cookie has not been found
-	ErrNoCookieFound = errors.New("the cookie has not been found")
 	// ErrSessionNotFound no session found in the request
 	ErrSessionNotFound = errors.New("authentication session not found")
 	// ErrNoSessionStateFound means there was not persist state
@@ -55,6 +60,8 @@ var (
 	ErrAccessTokenExpired = errors.New("the access token has expired")
 	// ErrRefreshTokenExpired indicates the refresh token as expired
 	ErrRefreshTokenExpired = errors.New("the refresh token has expired")
+	// ErrNoTokenAudience indicates their is not audience in the token
+	ErrNoTokenAudience = errors.New("the token does not audience in claims")
 )
 
 // Resource represents a url resource to protect
@@ -88,27 +95,27 @@ type CORS struct {
 // Config is the configuration for the proxy
 type Config struct {
 	// LogRequests indicates if we should log all the requests
-	LogRequests bool `json:"log_requests" yaml:"log_requests"`
+	LogRequests bool `json:"log-requests" yaml:"log-requests"`
 	// LogFormat is the logging format
-	LogJSONFormat bool `json:"log_json_format" yaml:"log_json_format"`
+	LogJSONFormat bool `json:"log-json-format" yaml:"log-json-format"`
 	// DiscoveryURL is the url for the keycloak server
-	DiscoveryURL string `json:"discovery_url" yaml:"discovery_url"`
+	DiscoveryURL string `json:"discovery-url" yaml:"discovery-url"`
 	// ClientID is the client id
 	ClientID string `json:"clientid" yaml:"clientid"`
-	// Secret is the secret for AS
-	Secret string `json:"secret" yaml:"secret"`
+	// ClientSecret is the secret for AS
+	ClientSecret string `json:"client-secret" yaml:"client-secret"`
+	// RevocationEndpoint is the token revocation endpoint to revoke refresh tokens
+	RevocationEndpoint string `json:"revocation-url" yaml:"revocation-url"`
 	// NoRedirects informs we should hand back a 401 not a redirect
 	NoRedirects bool `json:"no-redirects" yaml:"no-redirects"`
 	// RedirectionURL the redirection url
-	RedirectionURL string `json:"redirection_url" yaml:"redirection_url"`
+	RedirectionURL string `json:"redirection-url" yaml:"redirection-url"`
 	// EnableSecurityFilter enabled the security handler
 	EnableSecurityFilter bool `json:"enable-security-filter" yaml:"enable-security-filter"`
-	// RefreshSessions enabled refresh access
-	RefreshSessions bool `json:"refresh_sessions" yaml:"refresh_sessions"`
+	// EnableRefreshTokens indicate's you wish to ignore using refresh tokens and re-auth on expireation of access token
+	EnableRefreshTokens bool `json:"enable-refresh-tokens" yaml:"enable-refresh-tokens"`
 	// EncryptionKey is the encryption key used to encrypt the refresh token
-	EncryptionKey string `json:"encryption_key" yaml:"encryption_key"`
-	// MaxSession the max session for refreshing
-	MaxSession time.Duration `json:"max-session" yaml:"max-session"`
+	EncryptionKey string `json:"encryption-key" yaml:"encryption-key"`
 	// ClaimsMatch is a series of checks, the claims in the token must match those here
 	ClaimsMatch map[string]string `json:"claims" yaml:"claims"`
 	// Keepalives specifies wheather we use keepalives on the upstream
@@ -116,19 +123,19 @@ type Config struct {
 	// Listen is the binding interface
 	Listen string `json:"listen" yaml:"listen"`
 	// ProxyProtocol enables proxy protocol
-	ProxyProtocol bool `json:"proxy_protocol" yaml:"proxy_protocol"`
+	ProxyProtocol bool `json:"proxy-protocol" yaml:"proxy-protocol"`
 	// TLSCertificate is the location for a tls certificate
-	TLSCertificate string `json:"tls_cert" yaml:"tls_cert"`
+	TLSCertificate string `json:"tls-cert" yaml:"tls-cert"`
 	// TLSPrivateKey is the location of a tls private key
-	TLSPrivateKey string `json:"tls_private_key" yaml:"tls_private_key"`
+	TLSPrivateKey string `json:"tls-private-key" yaml:"tls-private-key"`
 	// TLSCaCertificate is the CA certificate which the client cert must be signed
-	TLSCaCertificate string `json:"tls_ca_certificate" yaml:"tls_ca_certificate"`
+	TLSCaCertificate string `json:"tls-ca-certificate" yaml:"tls-ca-certificate"`
 	// SkipUpstreamTLSVerify skips the verification of any upstream tls
 	SkipUpstreamTLSVerify bool `json:"skip-upstream-tls-verify" yaml:"skip-upstream-tls-verify"`
 	// Upstream is the upstream endpoint i.e whom were proxying to
 	Upstream string `json:"upstream" yaml:"upstream"`
 	// TagData is passed to the templates
-	TagData map[string]string `json:"TagData" yaml:"TagData"`
+	TagData map[string]string `json:"tag-data" yaml:"tag-data"`
 	// CORS permits adding headers to the /oauth handlers
 	CORS *CORS `json:"cors" yaml:"cors"`
 	// Header permits adding customs headers across the board
@@ -138,13 +145,38 @@ type Config struct {
 	// Resources is a list of protected resources
 	Resources []*Resource `json:"resources" yaml:"resources"`
 	// SignInPage is the relative url for the sign in page
-	SignInPage string `json:"sign_in_page" yaml:"sign_in_page"`
+	SignInPage string `json:"sign-in-page" yaml:"sign-in-page"`
 	// ForbiddenPage is a access forbidden page
-	ForbiddenPage string `json:"forbidden_page" yaml:"forbidden_page"`
+	ForbiddenPage string `json:"forbidden-page" yaml:"forbidden-page"`
 	// SkipTokenVerification tells the service to skipp verifying the access token - for testing purposes
 	SkipTokenVerification bool
 	// Verbose switches on debug logging
 	Verbose bool `json:"verbose" yaml:"verbose"`
 	// Hostname is a list of hostname's the service should response to
 	Hostnames []string `json:"hostnames" yaml:"hostnames"`
+	// Store is a url for a store resource, used to hold the refresh tokens
+	StoreURL string `json:"store-url" yaml:"store-url"`
+}
+
+// Store is used to hold the offline refresh token, assuming you don't want to use
+// the default practice of a encrypted cookie
+type Store interface {
+	// Add the token to the store
+	Set(string, string) error
+	// Get retrieves a token from the store
+	Get(string) (string, error)
+	// Delete removes a key from the store
+	Delete(string) error
+	// Close is used to close off any resources
+	Close() error
+}
+
+// tokenResponse
+type tokenResponse struct {
+	TokenType    string `json:"token_type"`
+	AccessToken  string `json:"access_token"`
+	IDToken      string `json:"id_token"`
+	RefreshToken string `json:"refresh_token,omitempty"`
+	ExpiresIn    int    `json:"expires_in"`
+	Scope        string `json:"scope,omitempty"`
 }

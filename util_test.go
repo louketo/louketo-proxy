@@ -91,6 +91,28 @@ func TestEncryptDataBlock(t *testing.T) {
 	}
 }
 
+func TestEncodeText(t *testing.T) {
+	session, err := encodeText("12245325632323263762", "1gjrlcjQ8RyKANngp9607txr5fF5fhf1")
+	assert.NotEmpty(t, session)
+	assert.NoError(t, err)
+}
+
+func TestDecodeText(t *testing.T) {
+	fakeKey := "HYLNt2JSzD7Lpz0djTRudmlOpbwx1oHB"
+	fakeText := "12245325632323263762"
+
+	encrypted, err := encodeText(fakeText, fakeKey)
+	if !assert.NoError(t, err) {
+		t.Errorf("the encryptStateSession() should not have handed an error")
+		t.FailNow()
+	}
+	assert.NotEmpty(t, encrypted)
+
+	decoded, err := decodeText(encrypted, fakeKey)
+	assert.NotNil(t, decoded, "the session should not have been nil")
+	assert.Equal(t, decoded, fakeText, "the decoded text is not the same")
+}
+
 func TestFindCookie(t *testing.T) {
 	cookies := []*http.Cookie{
 		{
@@ -220,61 +242,6 @@ func TestFileExists(t *testing.T) {
 
 	if !fileExists(tmpfile.Name()) {
 		t.Errorf("we should have received a true")
-	}
-}
-
-func TestDecodeResource(t *testing.T) {
-	testCases := []struct {
-		Option   string
-		Ok       bool
-		Resource *Resource
-	}{
-		{
-			Option: "uri=/admin",
-			Ok:     true,
-			Resource: &Resource{
-				URL: "/admin",
-			},
-		},
-		{
-			Option: "uri=/admin/sso|roles=test,test1",
-			Ok:     true,
-			Resource: &Resource{
-				URL:   "/admin/sso",
-				Roles: []string{"test", "test1"},
-			},
-		},
-		{
-			Option: "uri=/admin/sso|roles=test,test1|methods=GET,POST",
-			Ok:     true,
-			Resource: &Resource{
-				URL:     "/admin/sso",
-				Roles:   []string{"test", "test1"},
-				Methods: []string{"GET", "POST"},
-			},
-		},
-		{
-			Option: "uri=/allow_me|white-listed=true",
-			Ok:     true,
-			Resource: &Resource{
-				URL:         "/allow_me",
-				WhiteListed: true,
-			},
-		},
-		{
-			Option: "",
-		},
-	}
-
-	for i, c := range testCases {
-		rc, err := decodeResource(c.Option)
-		if c.Ok && err != nil {
-			t.Errorf("test case %d should not have failed, error: %s", i, err)
-			continue
-		}
-		if !reflect.DeepEqual(c.Resource, rc) {
-			t.Errorf("test case %d are not equal %v - %v", i, c.Resource, rc)
-		}
 	}
 }
 

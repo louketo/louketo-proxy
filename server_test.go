@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/coreos/go-oidc/jose"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
@@ -38,13 +39,13 @@ const (
 	fakeTestAdminRolesURL  = "/test_admin_roles"
 	fakeAuthAllURL         = "/auth_all"
 	fakeTestWhitelistedURL = fakeAuthAllURL + "/white_listed"
-	faketestListenOrdered  = fakeAuthAllURL + "/bad_order"
+	fakeTestListenOrdered  = fakeAuthAllURL + "/bad_order"
 
 	fakeAdminRole = "role:admin"
 	fakeTestRole  = "role:test"
 )
 
-func newFakeKeycloakProxyWithResources(t *testing.T, resources []*Resource) *keycloakProxy {
+func newFakeKeycloakProxyWithResources(t *testing.T, resources []*Resource) *oauthProxy {
 	kc := newFakeKeycloakProxy(t)
 	kc.config.Resources = resources
 	return kc
@@ -54,11 +55,11 @@ func newFakeKeycloakConfig(t *testing.T) *Config {
 	return &Config{
 		DiscoveryURL:          "127.0.0.1:",
 		ClientID:              fakeClientID,
-		Secret:                fakeSecret,
+		ClientSecret:          fakeSecret,
 		EncryptionKey:         "AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j",
 		SkipTokenVerification: true,
 		Scopes:                []string{},
-		RefreshSessions:       false,
+		EnableRefreshTokens:   false,
 		Resources: []*Resource{
 			{
 				URL:     fakeAdminRoleURL,
@@ -97,28 +98,28 @@ func newFakeKeycloakConfig(t *testing.T) *Config {
 	}
 }
 
-func newFakeKeycloakProxy(t *testing.T) *keycloakProxy {
+func newFakeKeycloakProxy(t *testing.T) *oauthProxy {
 	log.SetOutput(ioutil.Discard)
 
-	kc := &keycloakProxy{
-		config: newFakeKeycloakConfig(t),
-		proxy:  new(fakeReverseProxy),
+	kc := &oauthProxy{
+		config:   newFakeKeycloakConfig(t),
+		upstream: new(fakeReverseProxy),
 	}
 	kc.router = gin.New()
 	gin.SetMode(gin.ReleaseMode)
 	// step: add the gin routing
-	kc.initializeRouter()
+	kc.setupRouter()
 
 	return kc
 }
 
 func TestNewKeycloakProxy(t *testing.T) {
-	proxy, err := newKeycloakProxy(newFakeKeycloakConfig(t))
+	proxy, err := newProxy(newFakeKeycloakConfig(t))
 	assert.NoError(t, err)
 	assert.NotNil(t, proxy)
 	assert.NotNil(t, proxy.config)
 	assert.NotNil(t, proxy.router)
-	assert.NotNil(t, proxy.upstreamURL)
+	assert.NotNil(t, proxy.endpoint)
 }
 
 func TestRedirectToAuthorization(t *testing.T) {
@@ -153,7 +154,7 @@ func TestInitializeReverseProxy(t *testing.T) {
 	proxy := newFakeKeycloakProxy(t)
 
 	uri, _ := url.Parse("http://127.0.0.1:8080")
-	reverse, err := proxy.initializeReverseProxy(uri)
+	reverse, err := proxy.setupReverseProxy(uri)
 	assert.NoError(t, err)
 	assert.NotNil(t, reverse)
 }
@@ -195,7 +196,6 @@ func newFakeResponse() *fakeResponse {
 
 func newFakeGinContext(method, uri string) *gin.Context {
 	return &gin.Context{
-
 		Request: &http.Request{
 			Method:     method,
 			Host:       "127.0.0.1",
@@ -212,6 +212,17 @@ func newFakeGinContext(method, uri string) *gin.Context {
 	}
 }
 
+func newFakeJWTToken(t *testing.T, claims jose.Claims) *jose.JWT {
+	token, err := jose.NewJWT(
+		jose.JOSEHeader{"alg": "RS256"}, claims,
+	)
+	if err != nil {
+		t.Fatalf("failed to create the jwt token, error: %s", err)
+	}
+
+	return &token
+}
+
 type fakeReverseProxy struct{}
 
 func (r fakeReverseProxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {}
@@ -221,15 +232,19 @@ type fakeResponse struct {
 	status  int
 	headers http.Header
 	body    bytes.Buffer
+	written bool
 }
 
-func (r *fakeResponse) Flush()                                       {}
-func (r *fakeResponse) Written() bool                                { return false }
-func (r *fakeResponse) WriteHeaderNow()                              {}
-func (r *fakeResponse) Size() int                                    { return r.size }
-func (r *fakeResponse) Status() int                                  { return r.status }
-func (r *fakeResponse) Header() http.Header                          { return r.headers }
-func (r *fakeResponse) WriteHeader(code int)                         { r.status = code }
+func (r *fakeResponse) Flush()              {}
+func (r *fakeResponse) Written() bool       { return r.written }
+func (r *fakeResponse) WriteHeaderNow()     {}
+func (r *fakeResponse) Size() int           { return r.size }
+func (r *fakeResponse) Status() int         { return r.status }
+func (r *fakeResponse) Header() http.Header { return r.headers }
+func (r *fakeResponse) WriteHeader(code int) {
+	r.status = code
+	r.written = true
+}
 func (r *fakeResponse) Write(content []byte) (int, error)            { return len(content), nil }
 func (r *fakeResponse) WriteString(s string) (int, error)            { return len(s), nil }
 func (r *fakeResponse) Hijack() (net.Conn, *bufio.ReadWriter, error) { return nil, nil, nil }
