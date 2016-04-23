@@ -1,0 +1,20 @@
+{
+  "CN": "*.localhost",
+  "hosts": [
+    "localhost",
+    "127.0.0.1"
+  ],
+  "key": {
+   "algo": "rsa",
+   "size": 2048
+  },
+  "names": [
+    {
+      "C": "GB",
+      "L": "London",
+      "O": "Keycloay Proxy",
+      "OU": "IT",
+      "ST": "London"
+    }
+  ]
+}
