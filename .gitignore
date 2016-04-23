@@ -2,7 +2,6 @@
 .idea/
 bin/
 release/
-tests/
 cover.html
 cover.out
 

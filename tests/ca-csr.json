@@ -1,0 +1,19 @@
+{
+  "CN": "Keycloak Proxy",
+  "CA": {
+    "expiry": "87600h"
+  },
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "GB",
+      "L": "London",
+      "O": "Keycloak Proxy",
+      "OU": "Dev Environment",
+      "ST": "London"
+    }
+  ]
+}

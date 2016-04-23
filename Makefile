@@ -43,6 +43,17 @@ docker-push:
 	@echo "--> Pushing the docker images to the registry"
 	${SUDO} docker push ${REGISTRY}/${AUTHOR}/${NAME}:${VERSION}
 
+certs:
+	@echo "--> Generating the root CA"
+	@cfssl gencert -initca tests/ca-csr.json | cfssljson -bare tests/ca
+	@echo "--> Generating the Test Certs"
+	cfssl gencert \
+		-ca=tests/ca.pem \
+		-ca-key=tests/ca-key.pem \
+		-config=tests/ca-config.json \
+		-profile=server \
+		tests/proxy-csr.json | cfssljson -bare tests/proxy
+
 release: static
 	mkdir -p release
 	gzip -c bin/${NAME} > release/${NAME}_${VERSION}_linux_${HARDWARE}.gz
