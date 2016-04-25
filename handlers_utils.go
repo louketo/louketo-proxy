@@ -73,6 +73,33 @@ func (r *oauthProxy) securityHandler() gin.HandlerFunc {
 }
 
 //
+// crossSiteHandler injects the CORS headers, if set, for request made to /oauth
+//
+func (r *oauthProxy) crossSiteHandler() gin.HandlerFunc {
+	return func(cx *gin.Context) {
+		c := r.config.CORS
+		if len(c.Origins) > 0 {
+			cx.Writer.Header().Set("Access-Control-Allow-Origin", strings.Join(c.Origins, ","))
+		}
+		if len(c.Methods) > 0 {
+			cx.Writer.Header().Set("Access-Control-Allow-Methods", strings.Join(c.Methods, ","))
+		}
+		if len(c.Headers) > 0 {
+			cx.Writer.Header().Set("Access-Control-Allow-Headers", strings.Join(c.Headers, ","))
+		}
+		if len(c.ExposedHeaders) > 0 {
+			cx.Writer.Header().Set("Access-Control-Expose-Headers", strings.Join(c.ExposedHeaders, ","))
+		}
+		if c.Credentials {
+			cx.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		}
+		if c.MaxAge > 0 {
+			cx.Writer.Header().Set("Access-Control-Max-Age", fmt.Sprintf("%d", int(c.MaxAge.Seconds())))
+		}
+	}
+}
+
+//
 // proxyHandler is responsible to proxy the requests on to the upstream endpoint
 //
 func (r *oauthProxy) proxyHandler(cx *gin.Context) {
