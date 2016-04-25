@@ -108,7 +108,7 @@ func TestDecodeText(t *testing.T) {
 	}
 	assert.NotEmpty(t, encrypted)
 
-	decoded, err := decodeText(encrypted, fakeKey)
+	decoded, _ := decodeText(encrypted, fakeKey)
 	assert.NotNil(t, decoded, "the session should not have been nil")
 	assert.Equal(t, decoded, fakeText, "the decoded text is not the same")
 }

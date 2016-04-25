@@ -274,6 +274,37 @@ Refresh tokens are either be stored as an encrypted cookie or placed (encrypted)
 
 Assuming access response responds with a refresh token and the --enable-refresh-token is true, the proxy will automatically refresh the access token for you. The tokens themselves are kept either as an encrypted (--encryption-key=KEY) cookie (cookie name: kc-state). Alternatively you can place the refresh token (still requires encryption key) in a local boltdb file or shared redis. Naturally the encryption key has to be the same on all instances and boltdb is for single instance only developments.
 
+#### **Cross Origin Resource Sharing (CORS)**
+
+You are permitted to add CORS following headers into the /oauth uri namespace
+
+ * Access-Control-Allow-Origin
+ * Access-Control-Allow-Methods
+ * Access-Control-Allow-Headers
+ * Access-Control-Expose-Headers
+ * Access-Control-Allow-Credentials
+ * Access-Control-Max-Age
+
+Either from the config file:
+
+```YAML
+cors:
+  origins:
+  - '*'
+  methods:
+  - GET
+  - POST
+```
+
+or via the command line arguments
+
+```shell
+--cors-origins [--cors-origins option]                  a set of origins to add to the CORS access control (Access-Control-Allow-Origin)
+--cors-methods [--cors-methods option]                  the method permitted in the access control (Access-Control-Allow-Methods)
+--cors-headers [--cors-headers option]                  a set of headers to add to the CORS access control (Access-Control-Allow-Headers)
+--cors-exposes-headers [--cors-exposes-headers option]  set the expose cors headers access control (Access-Control-Expose-Headers)
+```
+
 #### **Endpoints**
 
 * **/oauth/authorize** is authentication endpoint which will generate the openid redirect to the provider

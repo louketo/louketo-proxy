@@ -30,6 +30,7 @@ const (
 )
 
 var (
+	// ErrNoBoltdbBucket means the bucket does not exist
 	ErrNoBoltdbBucket = errors.New("the boltdb bucket does not exists")
 )
 
@@ -54,8 +55,8 @@ func newBoltDBStore(location *url.URL) (Store, error) {
 
 	// step: create the bucket
 	err = db.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte(dbName))
-		return err
+		_, e := tx.CreateBucketIfNotExists([]byte(dbName))
+		return e
 	})
 
 	return &boltdbStore{

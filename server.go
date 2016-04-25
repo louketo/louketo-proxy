@@ -166,7 +166,9 @@ func (r *oauthProxy) Run() error {
 			err = server.ListenAndServeTLS(r.config.TLSCertificate, r.config.TLSPrivateKey)
 		}
 		if err != nil {
-			log.WithFields(log.Fields{"error": err.Error()}).Fatalf("failed to start the service")
+			log.WithFields(log.Fields{
+				"error": err.Error(),
+			}).Fatalf("failed to start the service")
 		}
 	}()
 
@@ -177,9 +179,6 @@ func (r *oauthProxy) Run() error {
 // redirectToURL redirects the user and aborts the context
 //
 func (r *oauthProxy) redirectToURL(url string, cx *gin.Context) {
-	// step: add the cors headers
-	r.injectCORSHeaders(cx)
-
 	cx.Redirect(http.StatusTemporaryRedirect, url)
 	cx.Abort()
 }
@@ -217,32 +216,7 @@ func (r *oauthProxy) redirectToAuthorization(cx *gin.Context) {
 		return
 	}
 
-	r.redirectToURL(authorizationURL+authQuery, cx)
-}
-
-//
-// injectCORSHeaders adds the cors access controls to the oauth responses
-//
-func (r *oauthProxy) injectCORSHeaders(cx *gin.Context) {
-	c := r.config.CORS
-	if len(c.Origins) > 0 {
-		cx.Writer.Header().Set("Access-Control-Allow-Origin", strings.Join(c.Origins, ","))
-	}
-	if len(c.Methods) > 0 {
-		cx.Writer.Header().Set("Access-Control-Allow-Methods", strings.Join(c.Methods, ","))
-	}
-	if len(c.Headers) > 0 {
-		cx.Writer.Header().Set("Access-Control-Allow-Headers", strings.Join(c.Headers, ","))
-	}
-	if len(c.ExposedHeaders) > 0 {
-		cx.Writer.Header().Set("Access-Control-Expose-Headers", strings.Join(c.ExposedHeaders, ","))
-	}
-	if c.Credentials {
-		cx.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-	}
-	if c.MaxAge > 0 {
-		cx.Writer.Header().Set("Access-Control-Max-Age", fmt.Sprintf("%d", int(c.MaxAge.Seconds())))
-	}
+	r.redirectToURL(oauthURL+authorizationURL+authQuery, cx)
 }
 
 //
@@ -279,13 +253,16 @@ func (r oauthProxy) setupRouter() error {
 		r.router.Use(r.securityHandler())
 	}
 	// step: add the routing
-	r.router.GET(authorizationURL, r.oauthAuthorizationHandler)
-	r.router.GET(callbackURL, r.oauthCallbackHandler)
-	r.router.GET(healthURL, r.healthHandler)
-	r.router.GET(tokenURL, r.tokenHandler)
-	r.router.GET(expiredURL, r.expirationHandler)
-	r.router.GET(logoutURL, r.logoutHandler)
-	r.router.POST(loginURL, r.loginHandler)
+	oauth := r.router.Group(oauthURL).Use(r.crossSiteHandler())
+	{
+		oauth.GET(authorizationURL, r.oauthAuthorizationHandler)
+		oauth.GET(callbackURL, r.oauthCallbackHandler)
+		oauth.GET(healthURL, r.healthHandler)
+		oauth.GET(tokenURL, r.tokenHandler)
+		oauth.GET(expiredURL, r.expirationHandler)
+		oauth.GET(logoutURL, r.logoutHandler)
+		oauth.POST(loginURL, r.loginHandler)
+	}
 
 	r.router.Use(r.entryPointHandler(), r.authenticationHandler(), r.admissionHandler())
 
@@ -302,6 +279,7 @@ func (r *oauthProxy) setupTemplates() error {
 		log.Debugf("loading the custom sign in page: %s", r.config.SignInPage)
 		list = append(list, r.config.SignInPage)
 	}
+
 	if r.config.ForbiddenPage != "" {
 		log.Debugf("loading the custom sign forbidden page: %s", r.config.ForbiddenPage)
 		list = append(list, r.config.ForbiddenPage)

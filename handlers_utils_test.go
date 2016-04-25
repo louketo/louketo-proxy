@@ -82,6 +82,54 @@ func TestExpirationHandler(t *testing.T) {
 	}
 }
 
+func TestCrossSiteHandler(t *testing.T) {
+	kc := newFakeKeycloakProxy(t)
+	handler := kc.crossSiteHandler()
+
+	cases := []struct {
+		Cors    *CORS
+		Headers map[string]string
+	}{
+		{
+			Cors: &CORS{
+				Origins: []string{"*"},
+			},
+			Headers: map[string]string{
+				"Access-Control-Allow-Origin": "*",
+			},
+		},
+		{
+			Cors: &CORS{
+				Origins: []string{"*", "https://examples.com"},
+				Methods: []string{"GET"},
+			},
+			Headers: map[string]string{
+				"Access-Control-Allow-Origin":  "*,https://examples.com",
+				"Access-Control-Allow-Methods": "GET",
+			},
+		},
+	}
+
+	for i, c := range cases {
+		// step: get the config
+		kc.config.CORS = c.Cors
+		// call the handler and check the responses
+		context := newFakeGinContext("GET", "/oauth/test")
+		handler(context)
+		// step: check the headers
+		for k, v := range c.Headers {
+			value := context.Writer.Header().Get(k)
+			if value == "" {
+				t.Errorf("case %d, should have had the %s header set, headers: %v", i, k, context.Writer.Header())
+				continue
+			}
+			if value != v {
+				t.Errorf("case %d, expected: %s but got %s", i, k, value)
+			}
+		}
+	}
+}
+
 func TestSecurityHandler(t *testing.T) {
 	kc := newFakeKeycloakProxy(t)
 	handler := kc.securityHandler()
