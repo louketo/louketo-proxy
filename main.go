@@ -36,8 +36,8 @@ func main() {
 	kc.Action = func(cx *cli.Context) {
 		// step: do we have a configuration file?
 		if filename := cx.String("config"); filename != "" {
-			if err := readConfigFile(cx.String("config"), config); err != nil {
-				printUsage(err.Error())
+			if err := readConfigFile(filename, config); err != nil {
+				printUsage(fmt.Sprintf("unable to read the configuration file: %s, error: %s", filename, err.Error()))
 			}
 		}
 		// step: parse the command line options

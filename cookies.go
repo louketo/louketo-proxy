@@ -27,17 +27,16 @@ import (
 //
 // dropCookie drops a cookie into the response
 //
-func dropCookie(cx *gin.Context, name, value string, expires time.Time) {
+func dropCookie(cx *gin.Context, name, value string, duration time.Duration) {
 	cookie := &http.Cookie{
-		Name:     name,
-		Domain:   strings.Split(cx.Request.Host, ":")[0],
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   true,
-		Value:    value,
+		Name:   name,
+		Domain: strings.Split(cx.Request.Host, ":")[0],
+		Path:   "/",
+		Secure: true,
+		Value:  value,
 	}
-	if !expires.IsZero() {
-		cookie.Expires = expires
+	if duration != 0 {
+		cookie.Expires = time.Now().Add(duration)
 	}
 
 	http.SetCookie(cx.Writer, cookie)
@@ -46,15 +45,15 @@ func dropCookie(cx *gin.Context, name, value string, expires time.Time) {
 //
 // dropAccessTokenCookie drops a access token cookie into the response
 //
-func dropAccessTokenCookie(cx *gin.Context, token jose.JWT) {
-	dropCookie(cx, cookieAccessToken, token.Encode(), time.Time{})
+func dropAccessTokenCookie(cx *gin.Context, token jose.JWT, duration time.Duration) {
+	dropCookie(cx, cookieAccessToken, token.Encode(), duration)
 }
 
 //
 // dropRefreshTokenCookie drops a refresh token cookie into the response
 //
-func dropRefreshTokenCookie(cx *gin.Context, token string, expires time.Time) {
-	dropCookie(cx, cookieRefreshToken, token, expires)
+func dropRefreshTokenCookie(cx *gin.Context, token string, duration time.Duration) {
+	dropCookie(cx, cookieRefreshToken, token, duration)
 }
 
 //
@@ -69,12 +68,12 @@ func clearAllCookies(cx *gin.Context) {
 // clearRefreshSessionCookie clears the session cookie
 //
 func clearRefreshTokenCookie(cx *gin.Context) {
-	dropCookie(cx, cookieRefreshToken, "", time.Now().Add(-1*time.Hour))
+	dropCookie(cx, cookieRefreshToken, "", time.Duration(-10*time.Hour))
 }
 
 //
 // clearAccessTokenCookie clears the session cookie
 //
 func clearAccessTokenCookie(cx *gin.Context) {
-	dropCookie(cx, cookieAccessToken, "", time.Now().Add(-1*time.Hour))
+	dropCookie(cx, cookieAccessToken, "", time.Duration(-10*time.Hour))
 }

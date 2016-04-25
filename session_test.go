@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetSessionToken(t *testing.T) {
@@ -63,5 +64,53 @@ func TestGetSessionToken(t *testing.T) {
 		if user.token.Encode() != encoded {
 			t.Errorf("test case %d the tokens are not the same", i)
 		}
+	}
+}
+
+func TestGetRefreshTokenFromCookie(t *testing.T) {
+	cases := []struct {
+		Cookies  []*http.Cookie
+		Expected string
+		Ok       bool
+	}{
+		{
+			Cookies: []*http.Cookie{},
+		},
+		{
+			Cookies: []*http.Cookie{
+				{
+					Name:   "not_a_session_cookie",
+					Path:   "/",
+					Domain: "127.0.0.1",
+				},
+			},
+		},
+		{
+			Cookies: []*http.Cookie{
+				{
+					Name:   cookieRefreshToken,
+					Path:   "/",
+					Domain: "127.0.0.1",
+					Value:  "refresh_token",
+				},
+			},
+			Expected: "refresh_token",
+			Ok:       true,
+		},
+	}
+
+	for i, x := range cases {
+		context := newFakeGinContextWithCookies("GET", "/", x.Cookies)
+
+		token, err := getRefreshTokenFromCookie(context)
+		if err != nil && x.Ok {
+			t.Errorf("case %d, should not have thrown an error: %s, headers: %v", i, err, context.Writer.Header())
+			continue
+		}
+		if err == nil && !x.Ok {
+			t.Errorf("case %d, should have thrown an error", i)
+			continue
+		}
+		assert.Equal(t, x.Expected, token, "case %d, expected token: %v, got: %v", x.Expected, token)
 	}
 }

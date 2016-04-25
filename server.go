@@ -50,7 +50,7 @@ type oauthProxy struct {
 	// the upstream endpoint url
 	endpoint *url.URL
 	// the store interface
-	store Store
+	store storage
 }
 
 type reverseProxy interface {
@@ -75,7 +75,7 @@ func newProxy(cfg *Config) (*oauthProxy, error) {
 		log.SetLevel(log.DebugLevel)
 	}
 
-	log.Infof("starting %s, version: %s, author: %s", prog, version, author)
+	log.Infof("starting %s, author: %s, version: %s, ", prog, author, version)
 
 	service := &oauthProxy{config: cfg}
 
@@ -87,7 +87,7 @@ func newProxy(cfg *Config) (*oauthProxy, error) {
 
 	// step: initialize the store if any
 	if cfg.StoreURL != "" {
-		if service.store, err = newStore(cfg.StoreURL); err != nil {
+		if service.store, err = newStorage(cfg.StoreURL); err != nil {
 			return nil, err
 		}
 	}
@@ -223,17 +223,33 @@ func (r *oauthProxy) redirectToAuthorization(cx *gin.Context) {
 // setupReverseProxy create a reverse http proxy from the upstream
 //
 func (r *oauthProxy) setupReverseProxy(upstream *url.URL) (reverseProxy, error) {
+	// step: create the default dialer
+	dialer := (&net.Dialer{
+		KeepAlive: 10 * time.Second,
+		Timeout:   10 * time.Second,
+	}).Dial
+
+	// step: are we using a unix socket?
+	if upstream.Scheme == "unix" {
+		log.Infof("using the unix domain socket: %s for upstream", upstream.Host)
+		socketPath := upstream.Host
+		dialer = func(network, address string) (net.Conn, error) {
+			return net.Dial("unix", socketPath)
+		}
+		upstream.Path = ""
+		upstream.Host = "domain-sock"
+		upstream.Scheme = "http"
+	}
+	// step: create the reverse proxy
 	proxy := httputil.NewSingleHostReverseProxy(upstream)
+
+	// step: customize the http transport
 	proxy.Transport = &http.Transport{
-		Dial: (&net.Dialer{
-			KeepAlive: 10 * time.Second,
-			Timeout:   10 * time.Second,
-		}).Dial,
+		Dial: dialer,
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: r.config.SkipUpstreamTLSVerify,
 		},
-		DisableKeepAlives:   !r.config.Keepalives,
-		TLSHandshakeTimeout: 10 * time.Second,
+		DisableKeepAlives: !r.config.Keepalives,
 	}
 
 	return proxy, nil
@@ -253,7 +269,7 @@ func (r oauthProxy) setupRouter() error {
 		r.router.Use(r.securityHandler())
 	}
 	// step: add the routing
-	oauth := r.router.Group(oauthURL).Use(r.crossSiteHandler())
+	oauth := r.router.Group(oauthURL).Use(r.crossOriginResourceHandler(r.config.CrossOrigin))
 	{
 		oauth.GET(authorizationURL, r.oauthAuthorizationHandler)
 		oauth.GET(callbackURL, r.oauthCallbackHandler)

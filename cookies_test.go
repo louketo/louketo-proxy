@@ -14,3 +14,48 @@ limitations under the License.
 */
 
 package main
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestDropCookie(t *testing.T) {
+	context := newFakeGinContext("GET", "/admin")
+	dropCookie(context, "test-cookie", "test-value", 0)
+
+	assert.Equal(t, context.Writer.Header().Get("Set-Cookie"),
+		"test-cookie=test-value; Path=/; Domain=127.0.0.1; Secure",
+		"we have not set the cookie, headers: %v", context.Writer.Header())
+
+	context = newFakeGinContext("GET", "/admin")
+	dropCookie(context, "test-cookie", "test-value", 0)
+	assert.NotEqual(t, context.Writer.Header().Get("Set-Cookie"),
+		"test-cookie=test-value; Path=/; Domain=127.0.0.2; HttpOnly; Secure",
+		"we have not set the cookie, headers: %v", context.Writer.Header())
+}
+
+func TestClearAccessTokenCookie(t *testing.T) {
+	context := newFakeGinContext("GET", "/admin")
+	clearAccessTokenCookie(context)
+	assert.Contains(t, context.Writer.Header().Get("Set-Cookie"),
+		"kc-access=; Path=/; Domain=127.0.0.1; Expires=",
+		"we have not cleared the, headers: %v", context.Writer.Header())
+}
+
+func TestClearRefreshAccessTokenCookie(t *testing.T) {
+	context := newFakeGinContext("GET", "/admin")
+	clearRefreshTokenCookie(context)
+	assert.Contains(t, context.Writer.Header().Get("Set-Cookie"),
+		"kc-state=; Path=/; Domain=127.0.0.1; Expires=",
+		"we have not cleared the, headers: %v", context.Writer.Header())
+}
+
+func TestClearAllCookies(t *testing.T) {
+	context := newFakeGinContext("GET", "/admin")
+	clearAllCookies(context)
+	assert.Contains(t, context.Writer.Header().Get("Set-Cookie"),
+		"kc-access=; Path=/; Domain=127.0.0.1; Expires=",
+		"we have not cleared the, headers: %v", context.Writer.Header())
+}

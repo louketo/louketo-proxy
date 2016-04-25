@@ -4,6 +4,9 @@ bin/
 release/
 cover.html
 cover.out
+tests/db.bolt
+test.sock
+tests/redis.conf
 
 *.iml
 config.yml

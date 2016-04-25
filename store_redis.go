@@ -28,16 +28,20 @@ type redisStore struct {
 }
 
 // newRedisStore creates a new redis store
-func newRedisStore(location *url.URL) (Store, error) {
+func newRedisStore(location *url.URL) (storage, error) {
 	log.Infof("creating a redis client for store: %s", location.Host)
+
+	// step: get any password
+	password := ""
+	if location.User != nil {
+		password, _ = location.User.Password()
+	}
 
 	// step: parse the url notation
 	client := redis.NewClient(&redis.Options{
-		Addr:         location.Host,
-		DB:           0,
-		DialTimeout:  10 * time.Second,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		Addr:     location.Host,
+		DB:       0,
+		Password: password,
 	})
 
 	return redisStore{

@@ -20,9 +20,11 @@ import (
 	"time"
 )
 
+const gitSHA = "v1.0.3-2-g0082034-dirty"
+
 const (
 	prog        = "keycloak-proxy"
-	version     = "v1.0.3"
+	version     = "v1.0.3" + " (git+sha: " + gitSHA + ")"
 	author      = "Rohith"
 	email       = "gambol99@gmail.com"
 	description = "is a proxy using the keycloak service for auth and authorization"
@@ -101,7 +103,7 @@ type Config struct {
 	// DiscoveryURL is the url for the keycloak server
 	DiscoveryURL string `json:"discovery-url" yaml:"discovery-url"`
 	// ClientID is the client id
-	ClientID string `json:"clientid" yaml:"clientid"`
+	ClientID string `json:"client-id" yaml:"client-id"`
 	// ClientSecret is the secret for AS
 	ClientSecret string `json:"client-secret" yaml:"client-secret"`
 	// RevocationEndpoint is the token revocation endpoint to revoke refresh tokens
@@ -114,6 +116,8 @@ type Config struct {
 	EnableSecurityFilter bool `json:"enable-security-filter" yaml:"enable-security-filter"`
 	// EnableRefreshTokens indicate's you wish to ignore using refresh tokens and re-auth on expireation of access token
 	EnableRefreshTokens bool `json:"enable-refresh-tokens" yaml:"enable-refresh-tokens"`
+	// IdleDuration is the max amount of time a session can last without being used
+	IdleDuration time.Duration `json:"idle-duration" yaml:"idle-duration"`
 	// EncryptionKey is the encryption key used to encrypt the refresh token
 	EncryptionKey string `json:"encryption-key" yaml:"encryption-key"`
 	// ClaimsMatch is a series of checks, the claims in the token must match those here
@@ -136,8 +140,8 @@ type Config struct {
 	Upstream string `json:"upstream" yaml:"upstream"`
 	// TagData is passed to the templates
 	TagData map[string]string `json:"tag-data" yaml:"tag-data"`
-	// CORS permits adding headers to the /oauth handlers
-	CORS *CORS `json:"cors" yaml:"cors"`
+	// CrossOrigin permits adding headers to the /oauth handlers
+	CrossOrigin CORS `json:"cors" yaml:"cors"`
 	// Header permits adding customs headers across the board
 	Header map[string]string `json:"headers" yaml:"headers"`
 	// Scopes is a list of scope we should request
@@ -149,7 +153,7 @@ type Config struct {
 	// ForbiddenPage is a access forbidden page
 	ForbiddenPage string `json:"forbidden-page" yaml:"forbidden-page"`
 	// SkipTokenVerification tells the service to skipp verifying the access token - for testing purposes
-	SkipTokenVerification bool
+	SkipTokenVerification bool `json:"skip-token-verification" yaml:"skip-token-verification"`
 	// Verbose switches on debug logging
 	Verbose bool `json:"verbose" yaml:"verbose"`
 	// Hostname is a list of hostname's the service should response to
@@ -158,9 +162,9 @@ type Config struct {
 	StoreURL string `json:"store-url" yaml:"store-url"`
 }
 
-// Store is used to hold the offline refresh token, assuming you don't want to use
+// store is used to hold the offline refresh token, assuming you don't want to use
 // the default practice of a encrypted cookie
-type Store interface {
+type storage interface {
 	// Add the token to the store
 	Set(string, string) error
 	// Get retrieves a token from the store

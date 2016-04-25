@@ -1,4 +1,18 @@
 
+
+#### **1.0.3 (April 30th, 2016)**
+
+FIXES:
+ * Fixes the cookie sessions expiraton
+
+FEATURES:
+ * Adding a idle duration configuration option which controls the expiration of access token cookie and thus session. 
+   If the session is not used within that period, the session is removed. 
+ * The upstream endpoint has also be a unix socket
+ 
+BREAKING CHANGES:
+ * Change the client id in json/yaml config file from clientid -> client-id
+ 
 #### **1.0.2 (April 22th, 2016)**
 
 FIXES:
