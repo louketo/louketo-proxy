@@ -41,7 +41,7 @@ type boltdbStore struct {
 	client *bolt.DB
 }
 
-func newBoltDBStore(location *url.URL) (Store, error) {
+func newBoltDBStore(location *url.URL) (storage, error) {
 	// step: drop the initial slash
 	path := strings.TrimPrefix(location.Path, "/")
 

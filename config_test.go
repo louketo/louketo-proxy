@@ -37,14 +37,14 @@ func TestReadConfiguration(t *testing.T) {
 		{
 			Content: `
 discovery_url: https://keyclock.domain.com/
-clientid: <client_id>
+client-id: <client_id>
 secret: <secret>
 `,
 		},
 		{
 			Content: `
 discovery_url: https://keyclock.domain.com
-clientid: <client_id>
+client-id: <client_id>
 secret: <secret>
 upstream: http://127.0.0.1:8080
 redirection_url: http://127.0.0.1:3000

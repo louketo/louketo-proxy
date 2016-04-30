@@ -20,9 +20,9 @@ import (
 	"net/url"
 )
 
-// newStore creates the store client for use
-func newStore(location string) (Store, error) {
-	var store Store
+// newStorage creates the store client for use
+func newStorage(location string) (storage, error) {
+	var store storage
 	var err error
 
 	u, err := url.Parse(location)

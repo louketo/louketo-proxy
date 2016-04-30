@@ -3,13 +3,15 @@
 # is the url for retrieve the openid configuration - normally the <server>/auth/realm/<realm_name>
 discovery-url: https://keycloak.example.com/auth/realms/commons
 # the client id for the 'client' application
-clientid: <CLIENT_ID>
+client-id: <CLIENT_ID>
 # the secret associated to the 'client' application
 client-secret: <CLIENT_SECRET>
 # the interface definition you wish the proxy to listen, all interfaces is specified as ':<port>'
 listen: 127.0.0.1:3000
 # whether to request offline access and use a refresh token
 enable-refresh-tokens: true
+# the max amount of time a session can stay alive without being used
+idle-duration: 24h
 # log all incoming requests
 log-requests: true
 # log in json format
@@ -31,8 +33,7 @@ upstream: http://127.0.0.1:80
 # upstream-keepalives specified wheather you want keepalive on the upstream endpoint
 upstream-keepalives: true
 # additional scopes to add to add to the default (openid+email+profile)
-scopes:
-  - vpn-user
+scopes: []
 # enables a more extra secuirty features
 enable-security-filter: true
 # a map of claims that MUST exist in the token presented and the value is it MUST match

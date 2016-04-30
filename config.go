@@ -31,13 +31,13 @@ import (
 // newDefaultConfig returns a initialized config
 func newDefaultConfig() *Config {
 	return &Config{
-		Listen:         "127.0.0.1:3000",
-		RedirectionURL: "http://127.0.0.1:3000",
-		Upstream:       "http://127.0.0.1:8081",
-		TagData:        make(map[string]string, 0),
-		ClaimsMatch:    make(map[string]string, 0),
-		Header:         make(map[string]string, 0),
-		CORS:           &CORS{},
+		Listen:                "127.0.0.1:3000",
+		RedirectionURL:        "http://127.0.0.1:3000",
+		Upstream:              "http://127.0.0.1:8081",
+		TagData:               make(map[string]string, 0),
+		ClaimsMatch:           make(map[string]string, 0),
+		Header:                make(map[string]string, 0),
+		CrossOrigin:           CORS{},
 		SkipUpstreamTLSVerify: true,
 	}
 }
@@ -155,11 +155,17 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 	if cx.IsSet("upstream-keepalives") {
 		config.Keepalives = cx.Bool("upstream-keepalives")
 	}
+	if cx.IsSet("idle-duration") {
+		config.IdleDuration = cx.Duration("idle-duration")
+	}
 	if cx.IsSet("skip-token-verification") {
 		config.SkipTokenVerification = cx.Bool("skip-token-verification")
 	}
 	if cx.IsSet("skip-upstream-tls-verify") {
 		config.SkipUpstreamTLSVerify = cx.Bool("skip-upstream-tls-verify")
+	}
+	if cx.IsSet("enable-refresh-tokens") {
+		config.EnableRefreshTokens = cx.Bool("enable-refresh-tokens")
 	}
 	if cx.IsSet("encryption-key") {
 		config.EncryptionKey = cx.String("encryption-key")
@@ -210,22 +216,22 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 		config.Hostnames = cx.StringSlice("hostname")
 	}
 	if cx.IsSet("cors-origins") {
-		config.CORS.Origins = cx.StringSlice("cors-origins")
+		config.CrossOrigin.Origins = cx.StringSlice("cors-origins")
 	}
 	if cx.IsSet("cors-methods") {
-		config.CORS.Methods = cx.StringSlice("cors-methods")
+		config.CrossOrigin.Methods = cx.StringSlice("cors-methods")
 	}
 	if cx.IsSet("cors-headers") {
-		config.CORS.Headers = cx.StringSlice("cors-headers")
+		config.CrossOrigin.Headers = cx.StringSlice("cors-headers")
 	}
 	if cx.IsSet("cors-exposed-headers") {
-		config.CORS.ExposedHeaders = cx.StringSlice("cors-exposed-headers")
+		config.CrossOrigin.ExposedHeaders = cx.StringSlice("cors-exposed-headers")
 	}
 	if cx.IsSet("cors-max-age") {
-		config.CORS.MaxAge = cx.Duration("cors-max-age")
+		config.CrossOrigin.MaxAge = cx.Duration("cors-max-age")
 	}
 	if cx.IsSet("cors-credentials") {
-		config.CORS.Credentials = cx.BoolT("cors-credentials")
+		config.CrossOrigin.Credentials = cx.BoolT("cors-credentials")
 	}
 	if cx.IsSet("tag") {
 		config.TagData, err = decodeKeyPairs(cx.StringSlice("tag"))
@@ -302,6 +308,10 @@ func getOptions() []cli.Flag {
 			Name:  "discovery-url",
 			Usage: "the discovery url to retrieve the openid configuration",
 		},
+		cli.DurationFlag{
+			Name:  "idle-duration",
+			Usage: "the expiration of the access token cookie, if not used within this time its removed",
+		},
 		cli.StringFlag{
 			Name:  "upstream-url",
 			Usage: "the url for the upstream endpoint you wish to proxy to",
@@ -309,12 +319,16 @@ func getOptions() []cli.Flag {
 		},
 		cli.StringFlag{
 			Name:  "revocation-url",
-			Usage: "the url for the revocation endpoint to revoke refresh token, not all providers support the revocation_endpoint",
+			Usage: "the url for the revocation endpoint to revoke refresh token",
 			Value: "/oauth2/revoke",
 		},
 		cli.BoolTFlag{
 			Name:  "upstream-keepalives",
-			Usage: "enables or disables the keepalive connections for upstream endpoint (defaults true)",
+			Usage: "enables or disables the keepalive connections for upstream endpoint",
+		},
+		cli.BoolFlag{
+			Name:  "enable-refresh-tokens",
+			Usage: "enables the handling of the refresh tokens",
 		},
 		cli.StringFlag{
 			Name:  "encryption-key",
@@ -322,15 +336,15 @@ func getOptions() []cli.Flag {
 		},
 		cli.StringFlag{
 			Name:  "store-url",
-			Usage: "the store url to use for storing the refresh tokens, i.e. redis://127.0.0.1:6379, file:///etc/tokens.file",
+			Usage: "url for the storage subsystem, e.g redis://127.0.0.1:6379, file:///etc/tokens.file",
 		},
 		cli.BoolFlag{
 			Name:  "no-redirects",
-			Usage: "do not have back redirects when no authentication is present, simple reply with 401 code",
+			Usage: "do not have back redirects when no authentication is present, 401 them",
 		},
 		cli.StringFlag{
 			Name:  "redirection-url",
-			Usage: fmt.Sprintf("the redirection url, namely the site url, note: %s will be added to it", oauthURL),
+			Usage: fmt.Sprintf("redirection url for the oauth callback url (%s is added)", oauthURL),
 		},
 		cli.StringSliceFlag{
 			Name:  "hostname",
@@ -358,7 +372,7 @@ func getOptions() []cli.Flag {
 		},
 		cli.StringSliceFlag{
 			Name:  "claim",
-			Usage: "a series of key pair values which must match the claims in the token present e.g. aud=myapp, iss=http://example.com etcd",
+			Usage: "keypair values for matching access token claims e.g. aud=myapp, iss=http://example.*",
 		},
 		cli.StringSliceFlag{
 			Name:  "resource",
@@ -374,11 +388,11 @@ func getOptions() []cli.Flag {
 		},
 		cli.StringSliceFlag{
 			Name:  "tag",
-			Usage: "a keypair tag which is passed to the templates when render, i.e. title='My Page',site='my name' etc",
+			Usage: "keypair's passed to the templates at render,e.g title='My Page'",
 		},
 		cli.StringSliceFlag{
 			Name:  "cors-origins",
-			Usage: "a set of origins to add to the CORS access control (Access-Control-Allow-Origin)",
+			Usage: "list of origins to add to the CORE origins control (Access-Control-Allow-Origin)",
 		},
 		cli.StringSliceFlag{
 			Name:  "cors-methods",
@@ -406,11 +420,7 @@ func getOptions() []cli.Flag {
 		},
 		cli.BoolFlag{
 			Name:  "skip-token-verification",
-			Usage: "testing purposes ONLY, the option allows you to bypass the token verification, expiration and roles are still enforced",
-		},
-		cli.BoolFlag{
-			Name:  "proxy-protocol",
-			Usage: "switches on proxy protocol support on the listen (not supported yet)",
+			Usage: "TESTING ONLY; bypass's token verification, expiration and roles enforced",
 		},
 		cli.BoolFlag{
 			Name:  "offline-session",

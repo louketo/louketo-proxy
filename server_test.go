@@ -94,7 +94,7 @@ func newFakeKeycloakConfig(t *testing.T) *Config {
 				Roles:       []string{},
 			},
 		},
-		CORS: &CORS{},
+		CrossOrigin: CORS{},
 	}
 }
 
@@ -210,6 +210,15 @@ func newFakeGinContext(method, uri string) *gin.Context {
 		},
 		Writer: newFakeResponse(),
 	}
+}
+
+func newFakeGinContextWithCookies(method, url string, cookies []*http.Cookie) *gin.Context {
+	cx := newFakeGinContext(method, url)
+	for _, x := range cookies {
+		cx.Request.AddCookie(x)
+	}
+
+	return cx
 }
 
 func newFakeJWTToken(t *testing.T, claims jose.Claims) *jose.JWT {

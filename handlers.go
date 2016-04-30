@@ -21,190 +21,12 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strings"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/coreos/go-oidc/jose"
 	"github.com/gin-gonic/gin"
 )
-
-//
-// authenticationHandler is responsible for verifying the access token
-//
-func (r *oauthProxy) authenticationHandler() gin.HandlerFunc {
-	return func(cx *gin.Context) {
-		// step: is authentication required on this uri?
-		if _, found := cx.Get(cxEnforce); !found {
-			log.Debugf("skipping the authentication handler, resource not protected")
-			cx.Next()
-			return
-		}
-
-		// step: grab the user identity from the request
-		user, err := getIdentity(cx)
-		if err != nil {
-			log.WithFields(log.Fields{
-				"error": err.Error(),
-			}).Errorf("failed to get session, redirecting for authorization")
-
-			r.redirectToAuthorization(cx)
-			return
-		}
-
-		// step: inject the user into the context
-		cx.Set(userContextName, user)
-
-		// step: verify the access token
-		if r.config.SkipTokenVerification {
-			log.Warnf("skip token verification enabled, skipping verification process - FOR TESTING ONLY")
-
-			if user.isExpired() {
-				log.WithFields(log.Fields{
-					"username":   user.name,
-					"expired_on": user.expiresAt.String(),
-				}).Errorf("the session has expired and verification switch off")
-
-				r.redirectToAuthorization(cx)
-			}
-
-			return
-		}
-
-		// step: verify the access token
-		if err := verifyToken(r.client, user.token); err != nil {
-
-			// step: if the error post verification is anything other than a token expired error
-			// we immediately throw an access forbidden - as there is something messed up in the token
-			if err != ErrAccessTokenExpired {
-				log.WithFields(log.Fields{
-					"error": err.Error(),
-				}).Errorf("verification of the access token failed")
-
-				r.accessForbidden(cx)
-				return
-			}
-
-			// step: are we refreshing the access tokens?
-			if !r.config.EnableRefreshTokens {
-				log.WithFields(log.Fields{
-					"email":      user.name,
-					"expired_on": user.expiresAt.String(),
-				}).Errorf("the session has expired and access token refreshing is disabled")
-
-				r.redirectToAuthorization(cx)
-				return
-			}
-
-			// step: we do not refresh bearer token requests
-			if user.isBearer() {
-				log.WithFields(log.Fields{
-					"email":      user.name,
-					"expired_on": user.expiresAt.String(),
-				}).Errorf("the session has expired and we are using bearer tokens")
-
-				r.redirectToAuthorization(cx)
-				return
-			}
-
-			log.WithFields(log.Fields{
-				"email":     user.email,
-				"client_ip": cx.ClientIP(),
-			}).Infof("the accces token for user: %s has expired, attemping to refresh the token", user.email)
-
-			// step: check if the user has refresh token
-			rToken, err := r.retrieveRefreshToken(cx, user)
-			if err != nil {
-				log.WithFields(log.Fields{
-					"email": user.email,
-					"error": err.Error(),
-				}).Errorf("unable to find a refresh token for the client: %s", user.email)
-
-				r.redirectToAuthorization(cx)
-				return
-			}
-
-			log.WithFields(log.Fields{
-				"email": user.email,
-			}).Infof("found a refresh token, attempting to refresh access token for user: %s", user.email)
-
-			// step: attempts to refresh the access token
-			token, expires, err := refreshToken(r.client, rToken)
-			if err != nil {
-				// step: has the refresh token expired
-				switch err {
-				case ErrRefreshTokenExpired:
-					log.WithFields(log.Fields{"token": token}).Warningf("the refresh token has expired")
-					clearAllCookies(cx)
-				default:
-					log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to refresh the access token")
-				}
-
-				r.redirectToAuthorization(cx)
-				return
-			}
-
-			// step: inject the refreshed access token
-			log.WithFields(log.Fields{
-				"email":             user.email,
-				"access_expires_in": expires.Sub(time.Now()).String(),
-			}).Infof("injecting refreshed access token, expires on: %s", expires.Format(time.RFC1123))
-
-			// step: clear the cookie up
-			dropAccessTokenCookie(cx, token)
-
-			if r.useStore() {
-				go func(t jose.JWT, rt string) {
-					// step: the access token has been updated, we need to delete old reference and update the store
-					if err := r.DeleteRefreshToken(t); err != nil {
-						log.WithFields(log.Fields{
-							"error": err.Error(),
-						}).Errorf("unable to delete the old refresh tokem from store")
-					}
-
-					// step: store the new refresh token reference place the session in the store
-					if err := r.StoreRefreshToken(t, rt); err != nil {
-						log.WithFields(log.Fields{
-							"error": err.Error(),
-						}).Errorf("failed to place the refresh token in the store")
-
-						return
-					}
-				}(user.token, rToken)
-			}
-
-			// step: update the with the new access token
-			user.token = token
-
-			// step: inject the user into the context
-			cx.Set(userContextName, user)
-		}
-
-		cx.Next()
-	}
-}
-
-//
-// retrieveRefreshToken retrieves the refresh token from store or c
-//
-func (r oauthProxy) retrieveRefreshToken(cx *gin.Context, user *userContext) (string, error) {
-	var token string
-	var err error
-
-	// step: get the refresh token from the store or cookie
-	switch r.useStore() {
-	case true:
-		token, err = r.GetRefreshToken(user.token)
-	default:
-		token, err = getRefreshTokenFromCookie(cx)
-	}
-
-	// step: decode the cookie
-	if err != nil {
-		return token, err
-	}
-
-	return decodeText(token, r.config.EncryptionKey)
-}
 
 //
 // oauthAuthorizationHandler is responsible for performing the redirection to oauth provider
@@ -325,10 +147,11 @@ func (r oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 		"email":    identity.Email,
 		"expires":  identity.ExpiresAt.Format(time.RFC822Z),
 		"duration": identity.ExpiresAt.Sub(time.Now()).String(),
+		"idle":     r.config.IdleDuration.String(),
 	}).Infof("issuing a new access token for user, email: %s", identity.Email)
 
 	// step: drop's a session cookie with the access token
-	dropAccessTokenCookie(cx, session)
+	dropAccessTokenCookie(cx, session, r.config.IdleDuration)
 
 	// step: does the response has a refresh token and we are NOT ignore refresh tokens?
 	if r.config.EnableRefreshTokens && response.RefreshToken != "" {
@@ -352,7 +175,7 @@ func (r oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 				}).Warnf("failed to save the refresh token in the store")
 			}
 		default:
-			dropRefreshTokenCookie(cx, encrypted, time.Time{})
+			dropRefreshTokenCookie(cx, encrypted, r.config.IdleDuration*2)
 		}
 	}
 
@@ -500,4 +323,116 @@ func (r oauthProxy) logoutHandler(cx *gin.Context) {
 	}
 
 	cx.AbortWithStatus(http.StatusOK)
+}
+
+//
+// proxyHandler is responsible to proxy the requests on to the upstream endpoint
+//
+func (r *oauthProxy) proxyHandler(cx *gin.Context) {
+	// step: double check, if enforce is true and no user context it's a internal error
+	if _, found := cx.Get(cxEnforce); found {
+		if _, found := cx.Get(userContextName); !found {
+			log.Errorf("no user context found for a secure request")
+			cx.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// step: retrieve the user context if any
+	if user, found := cx.Get(userContextName); found {
+		id := user.(*userContext)
+		cx.Request.Header.Add("X-Auth-UserId", id.id)
+		cx.Request.Header.Add("X-Auth-Subject", id.preferredName)
+		cx.Request.Header.Add("X-Auth-Username", id.name)
+		cx.Request.Header.Add("X-Auth-Email", id.email)
+		cx.Request.Header.Add("X-Auth-ExpiresIn", id.expiresAt.String())
+		cx.Request.Header.Add("X-Auth-Token", id.token.Encode())
+		cx.Request.Header.Add("X-Auth-Roles", strings.Join(id.roles, ","))
+	}
+
+	// step: add the default headers
+	cx.Request.Header.Add("X-Forwarded-For", cx.Request.RemoteAddr)
+	cx.Request.Header.Set("X-Forwarded-Agent", prog)
+	cx.Request.Header.Set("X-Forwarded-Agent-Version", version)
+
+	// step: is this connection upgrading?
+	if isUpgradedConnection(cx.Request) {
+		log.Debugf("upgrading the connnection to %s", cx.Request.Header.Get(headerUpgrade))
+		if err := tryUpdateConnection(cx, r.endpoint); err != nil {
+			log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to upgrade the connection")
+
+			cx.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+		cx.Abort()
+
+		return
+	}
+
+	r.upstream.ServeHTTP(cx.Writer, cx.Request)
+}
+
+//
+// expirationHandler checks if the token has expired
+//
+func (r *oauthProxy) expirationHandler(cx *gin.Context) {
+	// step: get the access token from the request
+	user, err := getIdentity(cx)
+	if err != nil {
+		cx.AbortWithError(http.StatusUnauthorized, err)
+		return
+	}
+	// step: check the access is not expired
+	if user.isExpired() {
+		cx.AbortWithError(http.StatusUnauthorized, err)
+		return
+	}
+
+	cx.AbortWithStatus(http.StatusOK)
+}
+
+//
+// tokenHandler display access token to screen
+//
+func (r *oauthProxy) tokenHandler(cx *gin.Context) {
+	// step: extract the access token from the request
+	user, err := getIdentity(cx)
+	if err != nil {
+		cx.AbortWithError(http.StatusBadRequest, fmt.Errorf("unable to retrieve session, error: %s", err))
+		return
+	}
+
+	// step: write the json content
+	cx.Writer.Header().Set("Content-Type", "application/json")
+	cx.String(http.StatusOK, fmt.Sprintf("%s", user.token.Payload))
+}
+
+//
+// healthHandler is a health check handler for the service
+//
+func (r *oauthProxy) healthHandler(cx *gin.Context) {
+	cx.String(http.StatusOK, "OK")
+}
+
+//
+// retrieveRefreshToken retrieves the refresh token from store or c
+//
+func (r oauthProxy) retrieveRefreshToken(cx *gin.Context, user *userContext) (string, error) {
+	var token string
+	var err error
+
+	// step: get the refresh token from the store or cookie
+	switch r.useStore() {
+	case true:
+		token, err = r.GetRefreshToken(user.token)
+	default:
+		token, err = getRefreshTokenFromCookie(cx)
+	}
+
+	// step: decode the cookie
+	if err != nil {
+		return token, err
+	}
+
+	return decodeText(token, r.config.EncryptionKey)
 }
