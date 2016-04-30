@@ -1,8 +1,5 @@
 variables:
   REGISTRY: quay.io
-  REGISTRY_AUTHOR: ukhomeofficedigital
-  REGISTRY_EMAIL: gitlab@digital.homeoffice.gov.uk
-  REGISTRY_USER: ukhomeofficedigital+gitlab
   NAME: go-keycloak-proxy
 
 stages:

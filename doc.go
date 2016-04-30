@@ -20,11 +20,9 @@ import (
 	"time"
 )
 
-const gitSHA = "v1.0.3-2-gab17cf6"
-
 const (
 	prog        = "keycloak-proxy"
-	version     = "v1.0.4" + " (git+sha: " + gitSHA + ")"
+	version     = "v1.0.4"
 	author      = "Rohith"
 	email       = "gambol99@gmail.com"
 	description = "is a proxy using the keycloak service for auth and authorization"

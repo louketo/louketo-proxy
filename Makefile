@@ -23,12 +23,12 @@ golang:
 version:
 	@sed -i "s/const gitSHA =.*/const gitSHA = \"${GIT_SHA}\"/" doc.go
 
-build: version
+build:
 	@echo "--> Compiling the project"
 	mkdir -p bin
 	godep go build -o bin/${NAME}
 
-static: version golang deps
+static: golang deps
 	@echo "--> Compiling the static binary"
 	mkdir -p bin
 	CGO_ENABLED=0 GOOS=linux godep go build -a -tags netgo -ldflags '-w' -o bin/${NAME}
