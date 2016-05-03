@@ -81,7 +81,7 @@ The configuration can come from a yaml/json file and or the command line options
 # is the url for retrieve the openid configuration - normally the <server>/auth/realm/<realm_name>
 discovery-url: https://keycloak.example.com/auth/realms/<REALM_NAME>
 # the client id for the 'client' application
-clientid: <CLIENT_ID>
+client-id: <CLIENT_ID>
 # the secret associated to the 'client' application
 secret: <CLIENT_SECRET>
 # the interface definition you wish the proxy to listen, all interfaces is specified as ':<port>'
@@ -133,11 +133,11 @@ d) Create the various roles under the client or existing clients for authorizati
 ##### **- The default config**
 
 ```YAML
-discovery_url: https://keycloak.example.com/auth/realms/<REALM_NAME>
-clientid: <CLIENT_ID>
+discovery-url: https://keycloak.example.com/auth/realms/<REALM_NAME>
+client-id: <CLIENT_ID>
 client-secret: <CLIENT_SECRET>
 listen: 127.0.0.1:3000
-redirection_url: http://127.0.0.3000
+redirection-url: http://127.0.0.3000
 refresh_session: false
 encryption_key: AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j
 upstream: http://127.0.0.1:80
