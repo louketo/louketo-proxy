@@ -37,6 +37,7 @@ func newDefaultConfig() *Config {
 		TagData:               make(map[string]string, 0),
 		ClaimsMatch:           make(map[string]string, 0),
 		Header:                make(map[string]string, 0),
+		SecureCookie:          true,
 		CrossOrigin:           CORS{},
 		SkipUpstreamTLSVerify: true,
 	}
@@ -169,6 +170,9 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 	}
 	if cx.IsSet("encryption-key") {
 		config.EncryptionKey = cx.String("encryption-key")
+	}
+	if cx.IsSet("secure-cookie") {
+		config.SecureCookie = cx.Bool("secure-cookie")
 	}
 	if cx.IsSet("store-url") {
 		config.StoreURL = cx.String("store-url")
@@ -329,6 +333,10 @@ func getOptions() []cli.Flag {
 		cli.BoolFlag{
 			Name:  "enable-refresh-tokens",
 			Usage: "enables the handling of the refresh tokens",
+		},
+		cli.BoolTFlag{
+			Name:  "secure-cookie",
+			Usage: "enforces the cookie to be secure, default to true",
 		},
 		cli.StringFlag{
 			Name:  "encryption-key",

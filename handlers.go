@@ -151,7 +151,7 @@ func (r oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 	}).Infof("issuing a new access token for user, email: %s", identity.Email)
 
 	// step: drop's a session cookie with the access token
-	dropAccessTokenCookie(cx, session, r.config.IdleDuration)
+	dropAccessTokenCookie(cx, session, r.config.IdleDuration, r.config.SecureCookie)
 
 	// step: does the response has a refresh token and we are NOT ignore refresh tokens?
 	if r.config.EnableRefreshTokens && response.RefreshToken != "" {
@@ -175,7 +175,7 @@ func (r oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 				}).Warnf("failed to save the refresh token in the store")
 			}
 		default:
-			dropRefreshTokenCookie(cx, encrypted, r.config.IdleDuration*2)
+			dropRefreshTokenCookie(cx, encrypted, r.config.IdleDuration*2, r.config.SecureCookie)
 		}
 	}
 
@@ -249,7 +249,7 @@ func (r oauthProxy) logoutHandler(cx *gin.Context) {
 		return
 	}
 	// step: delete the access token
-	clearAccessTokenCookie(cx)
+	clearAccessTokenCookie(cx, r.config.SecureCookie)
 
 	log.WithFields(log.Fields{
 		"email":     user.email,
@@ -315,7 +315,7 @@ func (r oauthProxy) logoutHandler(cx *gin.Context) {
 			}).Errorf("invalid response from revocation endpoint")
 		}
 	}
-	clearAllCookies(cx)
+	clearAllCookies(cx, r.config.SecureCookie)
 
 	if redirectURL != "" {
 		r.redirectToURL(redirectURL, cx)
