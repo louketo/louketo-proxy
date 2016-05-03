@@ -247,7 +247,7 @@ func (r *oauthProxy) authenticationHandler() gin.HandlerFunc {
 				switch err {
 				case ErrRefreshTokenExpired:
 					log.WithFields(log.Fields{"token": token}).Warningf("the refresh token has expired")
-					clearAllCookies(cx)
+					clearAllCookies(cx, r.config.SecureCookie)
 				default:
 					log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to refresh the access token")
 				}
@@ -263,7 +263,7 @@ func (r *oauthProxy) authenticationHandler() gin.HandlerFunc {
 			}).Infof("injecting refreshed access token, expires on: %s", expires.Format(time.RFC1123))
 
 			// step: clear the cookie up
-			dropAccessTokenCookie(cx, token, r.config.IdleDuration)
+			dropAccessTokenCookie(cx, token, r.config.IdleDuration, r.config.SecureCookie)
 
 			if r.useStore() {
 				go func(t jose.JWT, rt string) {
@@ -285,7 +285,7 @@ func (r *oauthProxy) authenticationHandler() gin.HandlerFunc {
 				}(user.token, rToken)
 			} else {
 				// step: update the expiration on the refresh token
-				dropRefreshTokenCookie(cx, rToken, r.config.IdleDuration*2)
+				dropRefreshTokenCookie(cx, rToken, r.config.IdleDuration*2, r.config.SecureCookie)
 			}
 
 			// step: update the with the new access token

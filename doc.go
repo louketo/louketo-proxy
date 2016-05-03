@@ -118,6 +118,8 @@ type Config struct {
 	IdleDuration time.Duration `json:"idle-duration" yaml:"idle-duration"`
 	// EncryptionKey is the encryption key used to encrypt the refresh token
 	EncryptionKey string `json:"encryption-key" yaml:"encryption-key"`
+	// SecureCookie enforces the cookie as secure
+	SecureCookie bool `json:"secure-cookie" yaml:"secure-cookie"`
 	// ClaimsMatch is a series of checks, the claims in the token must match those here
 	ClaimsMatch map[string]string `json:"claims" yaml:"claims"`
 	// Keepalives specifies wheather we use keepalives on the upstream
