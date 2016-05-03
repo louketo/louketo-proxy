@@ -1,9 +1,21 @@
 
+#### **1.0.5 (May 3th, 2016)**
 
-#### **1.0.3 (April 30th, 2016)**
+FEATURES:
+ * You can choose the cookie name of the access and refresh token via --cookie-{access,refresh}-name
+ * An additional option --add-claims to inject custom claims from the token into the authentication headers
+   i.e. --add-claims=given_name would add X-Auth-Given-Name (assumed the claims exists)
+ * Added the --secure-cookie option to control the 'secure' flag on the cookie
+ 
+BREAKING CHANGES:
+ * Changed the claims option from 'claims' to 'match-claims' (command line and config)
+ * Changed keepalive config option to the same as the command line 'keepalive' -> 'upstream-keepalives' 
+ * Changed the config option from 'upstream' to 'upstream-url', same as command line
+ 
+#### **1.0.4 (April 30th, 2016)**
 
 FIXES:
- * Fixes the cookie sessions expiraton
+ * Fixes the cookie sessions expiration
 
 FEATURES:
  * Adding a idle duration configuration option which controls the expiration of access token cookie and thus session. 

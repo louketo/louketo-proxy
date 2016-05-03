@@ -28,19 +28,33 @@ tls-ca-certificate:
 redirection-url: http://127.0.0.3000
 # the encryption key used to encode the session state
 encryption-key: vGcLt8ZUdPX5fXhtLZaPHZkGWHZrT6T8xKHWf5RPfqAocuiQ6nUbNHyc3oF2toO2tr
+# the name of the access cookie, defaults to kc-access
+access-cookie-name:
+# the name of the refresh cookie, default to kc-state
+refresh-cookie-name:
 # the upstream endpoint which we should proxy request
-upstream: http://127.0.0.1:80
+upstream-url: http://127.0.0.1:80
 # upstream-keepalives specified wheather you want keepalive on the upstream endpoint
 upstream-keepalives: true
+# skip the tls verification of the upstream url
+skip-upstream-tls-verify: true|false
 # additional scopes to add to add to the default (openid+email+profile)
 scopes: []
 # enables a more extra secuirty features
 enable-security-filter: true
+# headers permits you to inject custom headers into all request
+headers:
+  myheader_name: my_header_value
 # a map of claims that MUST exist in the token presented and the value is it MUST match
 # So for example, you could match the audience or the issuer or some custom attribute
-claims:
+match-claims:
   aud: openvpn
   iss: https://keycloak.example.com/auth/realms/commons
+# a list of claims to inject into the authentication headers i.e. given_name -> X-Auth-Given-Name
+add-claims:
+- given_name
+- family_name
+- name
 # a collection of resource i.e. urls that you wish to protect
 resources:
   - url: /admin/test

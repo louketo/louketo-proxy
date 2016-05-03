@@ -25,6 +25,7 @@ import (
 )
 
 func TestGetSessionToken(t *testing.T) {
+	p := newFakeKeycloakProxy(t)
 	token := getFakeAccessToken(t)
 	encoded := token.Encode()
 
@@ -53,7 +54,7 @@ func TestGetSessionToken(t *testing.T) {
 	}
 
 	for i, c := range testCases {
-		user, err := getIdentity(c.Context)
+		user, err := p.getIdentity(c.Context)
 		if err != nil && c.Ok {
 			t.Errorf("test case %d should not have errored", i)
 			continue
@@ -68,6 +69,7 @@ func TestGetSessionToken(t *testing.T) {
 }
 
 func TestGetRefreshTokenFromCookie(t *testing.T) {
+	p := newFakeKeycloakProxy(t)
 	cases := []struct {
 		Cookies  []*http.Cookie
 		Expected string
@@ -102,7 +104,7 @@ func TestGetRefreshTokenFromCookie(t *testing.T) {
 	for i, x := range cases {
 		context := newFakeGinContextWithCookies("GET", "/", x.Cookies)
 
-		token, err := getRefreshTokenFromCookie(context)
+		token, err := p.getRefreshTokenFromCookie(context)
 		if err != nil && x.Ok {
 			t.Errorf("case %d, should not have thrown an error: %s, headers: %v", i, err, context.Writer.Header())
 			continue

@@ -444,7 +444,7 @@ func TestAdmissionHandlerClaims(t *testing.T) {
 
 	for i, c := range tests {
 		// step: if closure so we need to get the handler each time
-		proxy.config.ClaimsMatch = c.Matches
+		proxy.config.MatchClaims = c.Matches
 		handler := proxy.admissionHandler()
 		// step: inject a resource
 

@@ -22,46 +22,53 @@ import (
 )
 
 func TestDropCookie(t *testing.T) {
+	p := newFakeKeycloakProxy(t)
+
 	context := newFakeGinContext("GET", "/admin")
-	dropCookie(context, "test-cookie", "test-value", 0, true)
+	p.dropCookie(context, "test-cookie", "test-value", 0)
 
 	assert.Equal(t, context.Writer.Header().Get("Set-Cookie"),
 		"test-cookie=test-value; Path=/; Domain=127.0.0.1; Secure",
 		"we have not set the cookie, headers: %v", context.Writer.Header())
 
 	context = newFakeGinContext("GET", "/admin")
-	dropCookie(context, "test-cookie", "test-value", 0, false)
+	p.config.SecureCookie = false
+	p.dropCookie(context, "test-cookie", "test-value", 0)
 
 	assert.Equal(t, context.Writer.Header().Get("Set-Cookie"),
 		"test-cookie=test-value; Path=/; Domain=127.0.0.1",
 		"we have not set the cookie, headers: %v", context.Writer.Header())
 
 	context = newFakeGinContext("GET", "/admin")
-	dropCookie(context, "test-cookie", "test-value", 0, true)
+	p.config.SecureCookie = true
+	p.dropCookie(context, "test-cookie", "test-value", 0)
 	assert.NotEqual(t, context.Writer.Header().Get("Set-Cookie"),
 		"test-cookie=test-value; Path=/; Domain=127.0.0.2; HttpOnly; Secure",
 		"we have not set the cookie, headers: %v", context.Writer.Header())
 }
 
 func TestClearAccessTokenCookie(t *testing.T) {
+	p := newFakeKeycloakProxy(t)
 	context := newFakeGinContext("GET", "/admin")
-	clearAccessTokenCookie(context, true)
+	p.clearAccessTokenCookie(context)
 	assert.Contains(t, context.Writer.Header().Get("Set-Cookie"),
 		"kc-access=; Path=/; Domain=127.0.0.1; Expires=",
 		"we have not cleared the, headers: %v", context.Writer.Header())
 }
 
 func TestClearRefreshAccessTokenCookie(t *testing.T) {
+	p := newFakeKeycloakProxy(t)
 	context := newFakeGinContext("GET", "/admin")
-	clearRefreshTokenCookie(context, true)
+	p.clearRefreshTokenCookie(context)
 	assert.Contains(t, context.Writer.Header().Get("Set-Cookie"),
 		"kc-state=; Path=/; Domain=127.0.0.1; Expires=",
 		"we have not cleared the, headers: %v", context.Writer.Header())
 }
 
 func TestClearAllCookies(t *testing.T) {
+	p := newFakeKeycloakProxy(t)
 	context := newFakeGinContext("GET", "/admin")
-	clearAllCookies(context, true)
+	p.clearAllCookies(context)
 	assert.Contains(t, context.Writer.Header().Get("Set-Cookie"),
 		"kc-access=; Path=/; Domain=127.0.0.1; Expires=",
 		"we have not cleared the, headers: %v", context.Writer.Header())

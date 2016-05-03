@@ -151,7 +151,7 @@ func (r oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 	}).Infof("issuing a new access token for user, email: %s", identity.Email)
 
 	// step: drop's a session cookie with the access token
-	dropAccessTokenCookie(cx, session, r.config.IdleDuration, r.config.SecureCookie)
+	r.dropAccessTokenCookie(cx, session.Encode(), r.config.IdleDuration)
 
 	// step: does the response has a refresh token and we are NOT ignore refresh tokens?
 	if r.config.EnableRefreshTokens && response.RefreshToken != "" {
@@ -175,7 +175,7 @@ func (r oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 				}).Warnf("failed to save the refresh token in the store")
 			}
 		default:
-			dropRefreshTokenCookie(cx, encrypted, r.config.IdleDuration*2, r.config.SecureCookie)
+			r.dropRefreshTokenCookie(cx, encrypted, r.config.IdleDuration*2)
 		}
 	}
 
@@ -243,13 +243,13 @@ func (r oauthProxy) logoutHandler(cx *gin.Context) {
 	redirectURL := cx.Request.URL.Query().Get("redirect")
 
 	// step: drop the access token
-	user, err := getIdentity(cx)
+	user, err := r.getIdentity(cx)
 	if err != nil {
 		cx.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 	// step: delete the access token
-	clearAccessTokenCookie(cx, r.config.SecureCookie)
+	r.clearAccessTokenCookie(cx)
 
 	log.WithFields(log.Fields{
 		"email":     user.email,
@@ -315,7 +315,7 @@ func (r oauthProxy) logoutHandler(cx *gin.Context) {
 			}).Errorf("invalid response from revocation endpoint")
 		}
 	}
-	clearAllCookies(cx, r.config.SecureCookie)
+	r.clearAllCookies(cx)
 
 	if redirectURL != "" {
 		r.redirectToURL(redirectURL, cx)
@@ -328,48 +328,63 @@ func (r oauthProxy) logoutHandler(cx *gin.Context) {
 //
 // proxyHandler is responsible to proxy the requests on to the upstream endpoint
 //
-func (r *oauthProxy) proxyHandler(cx *gin.Context) {
-	// step: double check, if enforce is true and no user context it's a internal error
-	if _, found := cx.Get(cxEnforce); found {
-		if _, found := cx.Get(userContextName); !found {
-			log.Errorf("no user context found for a secure request")
-			cx.AbortWithStatus(http.StatusInternalServerError)
+func (r oauthProxy) proxyHandler() gin.HandlerFunc {
+	// step: we don't wanna do this every time, quicker to perform once
+	customClaims := make(map[string]string)
+	for _, x := range r.config.AddClaims {
+		customClaims[x] = fmt.Sprintf("X-Auth-%s", toHeader(x))
+	}
+
+	return func(cx *gin.Context) {
+		// step: double check, if enforce is true and no user context it's a internal error
+		if _, found := cx.Get(cxEnforce); found {
+			if _, found := cx.Get(userContextName); !found {
+				log.Errorf("no user context found for a secure request")
+				cx.AbortWithStatus(http.StatusInternalServerError)
+				return
+			}
+		}
+
+		// step: retrieve the user context if any
+		if user, found := cx.Get(userContextName); found {
+			id := user.(*userContext)
+			cx.Request.Header.Add("X-Auth-UserId", id.id)
+			cx.Request.Header.Add("X-Auth-Subject", id.preferredName)
+			cx.Request.Header.Add("X-Auth-Username", id.name)
+			cx.Request.Header.Add("X-Auth-Email", id.email)
+			cx.Request.Header.Add("X-Auth-ExpiresIn", id.expiresAt.String())
+			cx.Request.Header.Add("X-Auth-Token", id.token.Encode())
+			cx.Request.Header.Add("X-Auth-Roles", strings.Join(id.roles, ","))
+
+			// step: inject any custom claims
+			for claim, header := range customClaims {
+				if claim, found := id.claims[claim]; found {
+					cx.Request.Header.Add(header, fmt.Sprintf("%v", claim))
+				}
+			}
+		}
+
+		// step: add the default headers
+		cx.Request.Header.Add("X-Forwarded-For", cx.Request.RemoteAddr)
+		cx.Request.Header.Set("X-Forwarded-Agent", prog)
+		cx.Request.Header.Set("X-Forwarded-Agent-Version", version)
+
+		// step: is this connection upgrading?
+		if isUpgradedConnection(cx.Request) {
+			log.Debugf("upgrading the connnection to %s", cx.Request.Header.Get(headerUpgrade))
+			if err := tryUpdateConnection(cx, r.endpoint); err != nil {
+				log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to upgrade the connection")
+
+				cx.AbortWithStatus(http.StatusInternalServerError)
+				return
+			}
+			cx.Abort()
+
 			return
 		}
+
+		r.upstream.ServeHTTP(cx.Writer, cx.Request)
 	}
-
-	// step: retrieve the user context if any
-	if user, found := cx.Get(userContextName); found {
-		id := user.(*userContext)
-		cx.Request.Header.Add("X-Auth-UserId", id.id)
-		cx.Request.Header.Add("X-Auth-Subject", id.preferredName)
-		cx.Request.Header.Add("X-Auth-Username", id.name)
-		cx.Request.Header.Add("X-Auth-Email", id.email)
-		cx.Request.Header.Add("X-Auth-ExpiresIn", id.expiresAt.String())
-		cx.Request.Header.Add("X-Auth-Token", id.token.Encode())
-		cx.Request.Header.Add("X-Auth-Roles", strings.Join(id.roles, ","))
-	}
-
-	// step: add the default headers
-	cx.Request.Header.Add("X-Forwarded-For", cx.Request.RemoteAddr)
-	cx.Request.Header.Set("X-Forwarded-Agent", prog)
-	cx.Request.Header.Set("X-Forwarded-Agent-Version", version)
-
-	// step: is this connection upgrading?
-	if isUpgradedConnection(cx.Request) {
-		log.Debugf("upgrading the connnection to %s", cx.Request.Header.Get(headerUpgrade))
-		if err := tryUpdateConnection(cx, r.endpoint); err != nil {
-			log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to upgrade the connection")
-
-			cx.AbortWithStatus(http.StatusInternalServerError)
-			return
-		}
-		cx.Abort()
-
-		return
-	}
-
-	r.upstream.ServeHTTP(cx.Writer, cx.Request)
 }
 
 //
@@ -377,7 +392,7 @@ func (r *oauthProxy) proxyHandler(cx *gin.Context) {
 //
 func (r *oauthProxy) expirationHandler(cx *gin.Context) {
 	// step: get the access token from the request
-	user, err := getIdentity(cx)
+	user, err := r.getIdentity(cx)
 	if err != nil {
 		cx.AbortWithError(http.StatusUnauthorized, err)
 		return
@@ -396,7 +411,7 @@ func (r *oauthProxy) expirationHandler(cx *gin.Context) {
 //
 func (r *oauthProxy) tokenHandler(cx *gin.Context) {
 	// step: extract the access token from the request
-	user, err := getIdentity(cx)
+	user, err := r.getIdentity(cx)
 	if err != nil {
 		cx.AbortWithError(http.StatusBadRequest, fmt.Errorf("unable to retrieve session, error: %s", err))
 		return
@@ -415,7 +430,7 @@ func (r *oauthProxy) healthHandler(cx *gin.Context) {
 }
 
 //
-// retrieveRefreshToken retrieves the refresh token from store or c
+// retrieveRefreshToken retrieves the refresh token from store or cookie
 //
 func (r oauthProxy) retrieveRefreshToken(cx *gin.Context, user *userContext) (string, error) {
 	var token string
@@ -426,7 +441,7 @@ func (r oauthProxy) retrieveRefreshToken(cx *gin.Context, user *userContext) (st
 	case true:
 		token, err = r.GetRefreshToken(user.token)
 	default:
-		token, err = getRefreshTokenFromCookie(cx)
+		token, err = r.getRefreshTokenFromCookie(cx)
 	}
 
 	// step: decode the cookie

@@ -35,11 +35,13 @@ func newDefaultConfig() *Config {
 		RedirectionURL:        "http://127.0.0.1:3000",
 		Upstream:              "http://127.0.0.1:8081",
 		TagData:               make(map[string]string, 0),
-		ClaimsMatch:           make(map[string]string, 0),
-		Header:                make(map[string]string, 0),
+		MatchClaims:           make(map[string]string, 0),
+		Headers:               make(map[string]string, 0),
+		CookieAccessName:      cookieAccessToken,
+		CookieRefreshName:     cookieRefreshToken,
 		SecureCookie:          true,
-		CrossOrigin:           CORS{},
 		SkipUpstreamTLSVerify: true,
+		CrossOrigin:           CORS{},
 	}
 }
 
@@ -105,7 +107,7 @@ func (r *Config) isValid() error {
 		}
 	}
 	// step: validate the claims are validate regex's
-	for k, claim := range r.ClaimsMatch {
+	for k, claim := range r.MatchClaims {
 		// step: validate the regex
 		if _, err := regexp.Compile(claim); err != nil {
 			return fmt.Errorf("the claim matcher: %s for claim: %s is not a valid regex", claim, k)
@@ -154,7 +156,7 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 		config.RevocationEndpoint = cx.String("revocation-url")
 	}
 	if cx.IsSet("upstream-keepalives") {
-		config.Keepalives = cx.Bool("upstream-keepalives")
+		config.UpstreamKeepalives = cx.Bool("upstream-keepalives")
 	}
 	if cx.IsSet("idle-duration") {
 		config.IdleDuration = cx.Duration("idle-duration")
@@ -173,6 +175,15 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 	}
 	if cx.IsSet("secure-cookie") {
 		config.SecureCookie = cx.Bool("secure-cookie")
+	}
+	if cx.IsSet("cookie-access-name") {
+		config.CookieAccessName = cx.String("cookie-access-name")
+	}
+	if cx.IsSet("cookie-refresh-name") {
+		config.CookieRefreshName = cx.String("cookie-refresh-name")
+	}
+	if cx.IsSet("add-claims") {
+		config.AddClaims = cx.StringSlice("add-claims")
 	}
 	if cx.IsSet("store-url") {
 		config.StoreURL = cx.String("store-url")
@@ -243,14 +254,14 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 			return err
 		}
 	}
-	if cx.IsSet("claim") {
-		config.ClaimsMatch, err = decodeKeyPairs(cx.StringSlice("claim"))
+	if cx.IsSet("match-claims") {
+		config.MatchClaims, err = decodeKeyPairs(cx.StringSlice("match-claims"))
 		if err != nil {
 			return err
 		}
 	}
-	if cx.IsSet("header") {
-		config.Header, err = decodeKeyPairs(cx.StringSlice("header"))
+	if cx.IsSet("headers") {
+		config.Headers, err = decodeKeyPairs(cx.StringSlice("headers"))
 		if err != nil {
 			return err
 		}
@@ -312,9 +323,17 @@ func getOptions() []cli.Flag {
 			Name:  "discovery-url",
 			Usage: "the discovery url to retrieve the openid configuration",
 		},
+		cli.StringSliceFlag{
+			Name:  "scope",
+			Usage: "a variable list of scopes requested when authenticating the user",
+		},
 		cli.DurationFlag{
 			Name:  "idle-duration",
 			Usage: "the expiration of the access token cookie, if not used within this time its removed",
+		},
+		cli.StringFlag{
+			Name:  "redirection-url",
+			Usage: fmt.Sprintf("redirection url for the oauth callback url (%s is added)", oauthURL),
 		},
 		cli.StringFlag{
 			Name:  "upstream-url",
@@ -325,6 +344,10 @@ func getOptions() []cli.Flag {
 			Name:  "revocation-url",
 			Usage: "the url for the revocation endpoint to revoke refresh token",
 			Value: "/oauth2/revoke",
+		},
+		cli.StringFlag{
+			Name:  "store-url",
+			Usage: "url for the storage subsystem, e.g redis://127.0.0.1:6379, file:///etc/tokens.file",
 		},
 		cli.BoolTFlag{
 			Name:  "upstream-keepalives",
@@ -339,20 +362,22 @@ func getOptions() []cli.Flag {
 			Usage: "enforces the cookie to be secure, default to true",
 		},
 		cli.StringFlag{
-			Name:  "encryption-key",
-			Usage: "the encryption key used to encrpytion the session state",
+			Name:  "cookie-access-name",
+			Usage: "the name of the cookie use to hold the access token",
+			Value: defaults.CookieAccessName,
 		},
 		cli.StringFlag{
-			Name:  "store-url",
-			Usage: "url for the storage subsystem, e.g redis://127.0.0.1:6379, file:///etc/tokens.file",
+			Name:  "cookie-refresh-name",
+			Usage: "the name of the cookie used to hold the encrypted refresh token",
+			Value: defaults.CookieRefreshName,
+		},
+		cli.StringFlag{
+			Name:  "encryption-key",
+			Usage: "the encryption key used to encrpytion the session state",
 		},
 		cli.BoolFlag{
 			Name:  "no-redirects",
 			Usage: "do not have back redirects when no authentication is present, 401 them",
-		},
-		cli.StringFlag{
-			Name:  "redirection-url",
-			Usage: fmt.Sprintf("redirection url for the oauth callback url (%s is added)", oauthURL),
 		},
 		cli.StringSliceFlag{
 			Name:  "hostname",
@@ -375,12 +400,12 @@ func getOptions() []cli.Flag {
 			Usage: "whether to skip the verification of any upstream TLS (defaults to true)",
 		},
 		cli.StringSliceFlag{
-			Name:  "scope",
-			Usage: "a variable list of scopes requested when authenticating the user",
+			Name:  "match-claims",
+			Usage: "keypair values for matching access token claims e.g. aud=myapp, iss=http://example.*",
 		},
 		cli.StringSliceFlag{
-			Name:  "claim",
-			Usage: "keypair values for matching access token claims e.g. aud=myapp, iss=http://example.*",
+			Name:  "add-claims",
+			Usage: "retrieve extra claims from the token and inject into headers, e.g given_name -> X-Auth-Given-Name",
 		},
 		cli.StringSliceFlag{
 			Name:  "resource",
@@ -421,6 +446,10 @@ func getOptions() []cli.Flag {
 		cli.BoolFlag{
 			Name:  "cors-credentials",
 			Usage: "the credentials access control header (Access-Control-Allow-Credentials)",
+		},
+		cli.StringSliceFlag{
+			Name:  "headers",
+			Usage: "Add custom headers to the upstream request, key=value",
 		},
 		cli.BoolFlag{
 			Name:  "enable-security-filter",

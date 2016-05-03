@@ -60,6 +60,9 @@ func newFakeKeycloakConfig(t *testing.T) *Config {
 		SkipTokenVerification: true,
 		Scopes:                []string{},
 		EnableRefreshTokens:   false,
+		SecureCookie:          true,
+		CookieAccessName:      cookieAccessToken,
+		CookieRefreshName:     cookieRefreshToken,
 		Resources: []*Resource{
 			{
 				URL:     fakeAdminRoleURL,
