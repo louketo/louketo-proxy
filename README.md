@@ -25,7 +25,7 @@ USAGE:
    keycloak-proxy [global options] command [command options] [arguments...]
 
 VERSION:
-   v1.0.2
+   v1.0.4
 
 AUTHOR(S):
    Rohith <gambol99@gmail.com>
@@ -41,6 +41,7 @@ GLOBAL OPTIONS:
 --revocation-url "/oauth2/revoke"                       the url for the revocation endpoint to revoke refresh token, not all providers support the revocation_endpoint
 --upstream-keepalives                                   enables or disables the keepalive connections for upstream endpoint (defaults true)
 --encryption-key                                        the encryption key used to encrpytion the session state
+--secure-cookie                                         enforces the cookie to be secure, default to true
 --store-url                                             the store url to use for storing the refresh tokens, i.e. redis://127.0.0.1:6379, file:///etc/tokens.file
 --no-redirects                                          do not have back redirects when no authentication is present, simple reply with 401 code
 --redirection-url                                       the redirection url, namely the site url, note: /oauth will be added to it
