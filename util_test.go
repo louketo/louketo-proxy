@@ -271,6 +271,35 @@ func TestCapitalize(t *testing.T) {
 	}
 }
 
+func TestMergeMaps(t *testing.T) {
+	cases := []struct {
+		Source   map[string]string
+		Dest     map[string]string
+		Expected map[string]string
+	}{
+		{
+			Source: map[string]string{
+				"a": "b",
+				"b": "b",
+			},
+			Dest: map[string]string{
+				"c": "c",
+			},
+			Expected: map[string]string{
+				"a": "b",
+				"b": "b",
+				"c": "c",
+			},
+		},
+	}
+	for i, x := range cases {
+		merged := mergeMaps(x.Source, x.Dest)
+		if !reflect.DeepEqual(x.Expected, merged) {
+			t.Errorf("case %d, expected: %v but got: %v", i, x.Expected, merged)
+		}
+	}
+}
+
 func getFakeURL(location string) *url.URL {
 	u, _ := url.Parse(location)
 	return u

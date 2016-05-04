@@ -183,7 +183,7 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 		config.CookieRefreshName = cx.String("cookie-refresh-name")
 	}
 	if cx.IsSet("add-claims") {
-		config.AddClaims = cx.StringSlice("add-claims")
+		config.AddClaims = append(config.AddClaims, cx.StringSlice("add-claims")...)
 	}
 	if cx.IsSet("store-url") {
 		config.StoreURL = cx.String("store-url")
@@ -228,19 +228,19 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 		config.Scopes = cx.StringSlice("scope")
 	}
 	if cx.IsSet("hostname") {
-		config.Hostnames = cx.StringSlice("hostname")
+		config.Hostnames = append(config.Hostnames, cx.StringSlice("hostname")...)
 	}
 	if cx.IsSet("cors-origins") {
-		config.CrossOrigin.Origins = cx.StringSlice("cors-origins")
+		config.CrossOrigin.Origins = append(config.CrossOrigin.Origins, cx.StringSlice("cors-origins")...)
 	}
 	if cx.IsSet("cors-methods") {
-		config.CrossOrigin.Methods = cx.StringSlice("cors-methods")
+		config.CrossOrigin.Methods = append(config.CrossOrigin.Methods, cx.StringSlice("cors-methods")...)
 	}
 	if cx.IsSet("cors-headers") {
-		config.CrossOrigin.Headers = cx.StringSlice("cors-headers")
+		config.CrossOrigin.Headers = append(config.CrossOrigin.Headers, cx.StringSlice("cors-headers")...)
 	}
 	if cx.IsSet("cors-exposed-headers") {
-		config.CrossOrigin.ExposedHeaders = cx.StringSlice("cors-exposed-headers")
+		config.CrossOrigin.ExposedHeaders = append(config.CrossOrigin.ExposedHeaders, cx.StringSlice("cors-exposed-headers")...)
 	}
 	if cx.IsSet("cors-max-age") {
 		config.CrossOrigin.MaxAge = cx.Duration("cors-max-age")
@@ -249,22 +249,25 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 		config.CrossOrigin.Credentials = cx.BoolT("cors-credentials")
 	}
 	if cx.IsSet("tag") {
-		config.TagData, err = decodeKeyPairs(cx.StringSlice("tag"))
+		tags, err := decodeKeyPairs(cx.StringSlice("tag"))
 		if err != nil {
 			return err
 		}
+		mergeMaps(config.MatchClaims, tags)
 	}
 	if cx.IsSet("match-claims") {
-		config.MatchClaims, err = decodeKeyPairs(cx.StringSlice("match-claims"))
+		claims, err := decodeKeyPairs(cx.StringSlice("match-claims"))
 		if err != nil {
 			return err
 		}
+		mergeMaps(config.MatchClaims, claims)
 	}
 	if cx.IsSet("headers") {
-		config.Headers, err = decodeKeyPairs(cx.StringSlice("headers"))
+		headers, err := decodeKeyPairs(cx.StringSlice("headers"))
 		if err != nil {
 			return err
 		}
+		mergeMaps(config.MatchClaims, headers)
 	}
 	if cx.IsSet("resource") {
 		for _, x := range cx.StringSlice("resource") {
