@@ -355,3 +355,14 @@ func capitalize(s string) string {
 
 	return string(unicode.ToUpper(r)) + s[n:]
 }
+
+//
+// mergeMaps simples copies the keys from source to destination
+//
+func mergeMaps(source, dest map[string]string) map[string]string {
+	for k, v := range source {
+		dest[k] = v
+	}
+
+	return dest
+}
