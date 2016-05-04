@@ -26,16 +26,16 @@ import (
 //
 // getIdentity retrieves the user identity from a request, either from a session cookie or a bearer token
 //
-func getIdentity(cx *gin.Context) (*userContext, error) {
+func (r oauthProxy) getIdentity(cx *gin.Context) (*userContext, error) {
 	// step: check for a bearer token or cookie with jwt token
 	isBearer := false
-	token, err := getAccessTokenFromCookie(cx)
+	token, err := r.getAccessTokenFromCookie(cx)
 	if err != nil {
 		if err != ErrSessionNotFound {
 			return nil, err
 		}
 		// step: else attempt to grab token from the bearer token]
-		token, err = getTokenFromBearer(cx)
+		token, err = r.getTokenFromBearer(cx)
 		if err != nil {
 			return nil, err
 		}
@@ -63,7 +63,7 @@ func getIdentity(cx *gin.Context) (*userContext, error) {
 //
 // getTokenFromBearer attempt to retrieve token from bearer token
 //
-func getTokenFromBearer(cx *gin.Context) (jose.JWT, error) {
+func (r oauthProxy) getTokenFromBearer(cx *gin.Context) (jose.JWT, error) {
 	auth := cx.Request.Header.Get(authorizationHeader)
 	if auth == "" {
 		return jose.JWT{}, ErrSessionNotFound
@@ -80,8 +80,8 @@ func getTokenFromBearer(cx *gin.Context) (jose.JWT, error) {
 //
 // getAccessTokenFromCookie attempt to grab access token from cookie
 //
-func getAccessTokenFromCookie(cx *gin.Context) (jose.JWT, error) {
-	cookie := findCookie(cookieAccessToken, cx.Request.Cookies())
+func (r oauthProxy) getAccessTokenFromCookie(cx *gin.Context) (jose.JWT, error) {
+	cookie := findCookie(r.config.CookieAccessName, cx.Request.Cookies())
 	if cookie == nil {
 		return jose.JWT{}, ErrSessionNotFound
 	}
@@ -90,10 +90,10 @@ func getAccessTokenFromCookie(cx *gin.Context) (jose.JWT, error) {
 }
 
 //
-// getRefreshTokenFromCookie
+// getRefreshTokenFromCookie returns the refresh token from the cookie if any
 //
-func getRefreshTokenFromCookie(cx *gin.Context) (string, error) {
-	cookie := findCookie(cookieRefreshToken, cx.Request.Cookies())
+func (r oauthProxy) getRefreshTokenFromCookie(cx *gin.Context) (string, error) {
+	cookie := findCookie(r.config.CookieRefreshName, cx.Request.Cookies())
 	if cookie == nil {
 		return "", ErrSessionNotFound
 	}

@@ -194,42 +194,6 @@ func TestContainedIn(t *testing.T) {
 	assert.True(t, containedIn("1", []string{"1", "2", "3", "4"}))
 }
 
-func TestValidateResources(t *testing.T) {
-	testCases := []struct {
-		Resources []*Resource
-		Ok        bool
-	}{
-		{
-			Resources: []*Resource{
-				{
-					URL: "/test",
-				},
-				{
-					URL:     "/test1",
-					Methods: []string{},
-				},
-			},
-			Ok: true,
-		},
-		{
-			Resources: []*Resource{
-				{
-					URL: "/test",
-				},
-				{},
-			},
-		},
-	}
-
-	for i, c := range testCases {
-		err := validateResources(c.Resources)
-		if err != nil && c.Ok {
-			t.Errorf("case %d should not have failed", i)
-			continue
-		}
-	}
-}
-
 func TestFileExists(t *testing.T) {
 	if fileExists("no_such_file_exsit_32323232") {
 		t.Errorf("we should have received false")
@@ -257,6 +221,54 @@ func TestIsUpgradedConnection(t *testing.T) {
 	assert.False(t, isUpgradedConnection(&http.Request{Header: header}))
 	header.Set(headerUpgrade, "set")
 	assert.True(t, isUpgradedConnection(&http.Request{Header: header}))
+}
+
+func TestToHeader(t *testing.T) {
+	cases := []struct {
+		Word     string
+		Expected string
+	}{
+		{
+			Word:     "given_name",
+			Expected: "Given-Name",
+		},
+		{
+			Word:     "family%name",
+			Expected: "Family-Name",
+		},
+		{
+			Word:     "perferredname",
+			Expected: "Perferredname",
+		},
+	}
+	for i, x := range cases {
+		assert.Equal(t, x.Expected, toHeader(x.Word), "case %d, expected: %s but got: %s",
+			i, x.Expected, toHeader(x.Word))
+	}
+}
+
+func TestCapitalize(t *testing.T) {
+	cases := []struct {
+		Word     string
+		Expected string
+	}{
+		{
+			Word:     "given",
+			Expected: "Given",
+		},
+		{
+			Word:     "1iven",
+			Expected: "1iven",
+		},
+		{
+			Word:     "Test this",
+			Expected: "Test this",
+		},
+	}
+	for i, x := range cases {
+		assert.Equal(t, x.Expected, capitalize(x.Word), "case %d, expected: %s but got: %s", i, x.Expected,
+			capitalize(x.Word))
+	}
 }
 
 func getFakeURL(location string) *url.URL {

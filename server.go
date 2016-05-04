@@ -123,7 +123,7 @@ func newProxy(cfg *Config) (*oauthProxy, error) {
 	for _, resource := range cfg.Resources {
 		log.Infof("protecting resources under uri: %s", resource)
 	}
-	for name, value := range cfg.ClaimsMatch {
+	for name, value := range cfg.MatchClaims {
 		log.Infof("the token must container the claim: %s, required: %s", name, value)
 	}
 
@@ -249,7 +249,7 @@ func (r *oauthProxy) setupReverseProxy(upstream *url.URL) (reverseProxy, error) 
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: r.config.SkipUpstreamTLSVerify,
 		},
-		DisableKeepAlives: !r.config.Keepalives,
+		DisableKeepAlives: !r.config.UpstreamKeepalives,
 	}
 
 	return proxy, nil

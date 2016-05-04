@@ -114,16 +114,22 @@ type Config struct {
 	EnableSecurityFilter bool `json:"enable-security-filter" yaml:"enable-security-filter"`
 	// EnableRefreshTokens indicate's you wish to ignore using refresh tokens and re-auth on expireation of access token
 	EnableRefreshTokens bool `json:"enable-refresh-tokens" yaml:"enable-refresh-tokens"`
+	// CookieAccessName is the name of the access cookie holding the access token
+	CookieAccessName string `json:"cookie-access-name" yaml:"cookie-access-name"`
+	// CookieRefreshName is the name of the refresh cookie
+	CookieRefreshName string `json:"cookie-refresh-name" yaml:"cookie-refresh-name"`
+	// SecureCookie enforces the cookie as secure
+	SecureCookie bool `json:"secure-cookie" yaml:"secure-cookie"`
 	// IdleDuration is the max amount of time a session can last without being used
 	IdleDuration time.Duration `json:"idle-duration" yaml:"idle-duration"`
 	// EncryptionKey is the encryption key used to encrypt the refresh token
 	EncryptionKey string `json:"encryption-key" yaml:"encryption-key"`
-	// SecureCookie enforces the cookie as secure
-	SecureCookie bool `json:"secure-cookie" yaml:"secure-cookie"`
-	// ClaimsMatch is a series of checks, the claims in the token must match those here
-	ClaimsMatch map[string]string `json:"claims" yaml:"claims"`
-	// Keepalives specifies wheather we use keepalives on the upstream
-	Keepalives bool `json:"keepalives" yaml:"keepalives"`
+	// MatchClaims is a series of checks, the claims in the token must match those here
+	MatchClaims map[string]string `json:"match-claims" yaml:"match-claims"`
+	// AddClaims is a series of claims that should be added to the auth headers
+	AddClaims []string `json:"add-claims" yaml:"add-claims"`
+	// UpstreamKeepalives specifies wheather we use keepalives on the upstream
+	UpstreamKeepalives bool `json:"upstream-keepalives" yaml:"upstream-keepalives"`
 	// Listen is the binding interface
 	Listen string `json:"listen" yaml:"listen"`
 	// ProxyProtocol enables proxy protocol
@@ -137,13 +143,13 @@ type Config struct {
 	// SkipUpstreamTLSVerify skips the verification of any upstream tls
 	SkipUpstreamTLSVerify bool `json:"skip-upstream-tls-verify" yaml:"skip-upstream-tls-verify"`
 	// Upstream is the upstream endpoint i.e whom were proxying to
-	Upstream string `json:"upstream" yaml:"upstream"`
+	Upstream string `json:"upstream-url" yaml:"upstream-url"`
 	// TagData is passed to the templates
 	TagData map[string]string `json:"tag-data" yaml:"tag-data"`
 	// CrossOrigin permits adding headers to the /oauth handlers
 	CrossOrigin CORS `json:"cors" yaml:"cors"`
-	// Header permits adding customs headers across the board
-	Header map[string]string `json:"headers" yaml:"headers"`
+	// Headers permits adding customs headers across the board
+	Headers map[string]string `json:"headers" yaml:"headers"`
 	// Scopes is a list of scope we should request
 	Scopes []string `json:"scopes" yaml:"scopes"`
 	// Resources is a list of protected resources

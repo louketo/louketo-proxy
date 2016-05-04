@@ -46,7 +46,7 @@ secret: <secret>
 discovery_url: https://keyclock.domain.com
 client-id: <client_id>
 secret: <secret>
-upstream: http://127.0.0.1:8080
+upstream-url: http://127.0.0.1:8080
 redirection_url: http://127.0.0.1:3000
 `,
 			Ok: true,
@@ -116,7 +116,7 @@ func TestIsConfig(t *testing.T) {
 				ClientSecret:   "client",
 				RedirectionURL: "http://120.0.0.1",
 				Upstream:       "http://120.0.0.1",
-				ClaimsMatch: map[string]string{
+				MatchClaims: map[string]string{
 					"test": "&&&[",
 				},
 			},

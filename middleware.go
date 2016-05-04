@@ -56,6 +56,9 @@ func (r *oauthProxy) loggingHandler() gin.HandlerFunc {
 // entryPointHandler checks to see if the request requires authentication
 //
 func (r oauthProxy) entryPointHandler() gin.HandlerFunc {
+	// step: create the proxy handler
+	proxy := r.proxyHandler()
+
 	return func(cx *gin.Context) {
 		if strings.HasPrefix(cx.Request.URL.Path, oauthURL) {
 			cx.Next()
@@ -79,65 +82,14 @@ func (r oauthProxy) entryPointHandler() gin.HandlerFunc {
 		cx.Next()
 
 		// step: add a custom headers to the request
-		for k, v := range r.config.Header {
-			cx.Request.Header.Set(k, v)
+		for k, v := range r.config.Headers {
+			cx.Request.Header.Add(k, v)
 		}
+
 		// step: check the request has not been aborted and if not, proxy request
 		if !cx.IsAborted() {
-			r.proxyHandler(cx)
+			proxy(cx)
 		}
-	}
-}
-
-//
-// crossOriginResourceHandler injects the CORS headers, if set, for request made to /oauth
-//
-func (r *oauthProxy) crossOriginResourceHandler(c CORS) gin.HandlerFunc {
-	return func(cx *gin.Context) {
-		if len(c.Origins) > 0 {
-			cx.Writer.Header().Set("Access-Control-Allow-Origin", strings.Join(c.Origins, ","))
-		}
-		if len(c.Methods) > 0 {
-			cx.Writer.Header().Set("Access-Control-Allow-Methods", strings.Join(c.Methods, ","))
-		}
-		if len(c.Headers) > 0 {
-			cx.Writer.Header().Set("Access-Control-Allow-Headers", strings.Join(c.Headers, ","))
-		}
-		if len(c.ExposedHeaders) > 0 {
-			cx.Writer.Header().Set("Access-Control-Expose-Headers", strings.Join(c.ExposedHeaders, ","))
-		}
-		if c.Credentials {
-			cx.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		}
-		if c.MaxAge > 0 {
-			cx.Writer.Header().Set("Access-Control-Max-Age", fmt.Sprintf("%d", int(c.MaxAge.Seconds())))
-		}
-	}
-}
-
-//
-// securityHandler performs numerous security checks on the request
-//
-func (r *oauthProxy) securityHandler() gin.HandlerFunc {
-	// step: create the security options
-	secure := secure.New(secure.Options{
-		AllowedHosts:         r.config.Hostnames,
-		BrowserXssFilter:     true,
-		ContentTypeNosniff:   true,
-		FrameDeny:            true,
-		STSIncludeSubdomains: true,
-		STSSeconds:           31536000,
-	})
-
-	return func(cx *gin.Context) {
-		// step: pass through the security middleware
-		if err := secure.Process(cx.Writer, cx.Request); err != nil {
-			log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed security middleware")
-			cx.Abort()
-			return
-		}
-		// step: permit the request to continue
-		cx.Next()
 	}
 }
 
@@ -154,7 +106,7 @@ func (r *oauthProxy) authenticationHandler() gin.HandlerFunc {
 		}
 
 		// step: grab the user identity from the request
-		user, err := getIdentity(cx)
+		user, err := r.getIdentity(cx)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err.Error(),
@@ -247,7 +199,7 @@ func (r *oauthProxy) authenticationHandler() gin.HandlerFunc {
 				switch err {
 				case ErrRefreshTokenExpired:
 					log.WithFields(log.Fields{"token": token}).Warningf("the refresh token has expired")
-					clearAllCookies(cx, r.config.SecureCookie)
+					r.clearAllCookies(cx)
 				default:
 					log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to refresh the access token")
 				}
@@ -263,7 +215,7 @@ func (r *oauthProxy) authenticationHandler() gin.HandlerFunc {
 			}).Infof("injecting refreshed access token, expires on: %s", expires.Format(time.RFC1123))
 
 			// step: clear the cookie up
-			dropAccessTokenCookie(cx, token, r.config.IdleDuration, r.config.SecureCookie)
+			r.dropAccessTokenCookie(cx, token.Encode(), r.config.IdleDuration)
 
 			if r.useStore() {
 				go func(t jose.JWT, rt string) {
@@ -285,7 +237,7 @@ func (r *oauthProxy) authenticationHandler() gin.HandlerFunc {
 				}(user.token, rToken)
 			} else {
 				// step: update the expiration on the refresh token
-				dropRefreshTokenCookie(cx, rToken, r.config.IdleDuration*2, r.config.SecureCookie)
+				r.dropRefreshTokenCookie(cx, rToken, r.config.IdleDuration*2)
 			}
 
 			// step: update the with the new access token
@@ -305,7 +257,7 @@ func (r *oauthProxy) authenticationHandler() gin.HandlerFunc {
 func (r *oauthProxy) admissionHandler() gin.HandlerFunc {
 	// step: compile the regex's for the claims
 	claimMatches := make(map[string]*regexp.Regexp, 0)
-	for k, v := range r.config.ClaimsMatch {
+	for k, v := range r.config.MatchClaims {
 		claimMatches[k] = regexp.MustCompile(v)
 	}
 
@@ -403,5 +355,57 @@ func (r *oauthProxy) admissionHandler() gin.HandlerFunc {
 			"resource": resource.URL,
 			"expires":  user.expiresAt.Sub(time.Now()).String(),
 		}).Debugf("resource access permitted: %s", cx.Request.RequestURI)
+	}
+}
+
+//
+// crossOriginResourceHandler injects the CORS headers, if set, for request made to /oauth
+//
+func (r *oauthProxy) crossOriginResourceHandler(c CORS) gin.HandlerFunc {
+	return func(cx *gin.Context) {
+		if len(c.Origins) > 0 {
+			cx.Writer.Header().Set("Access-Control-Allow-Origin", strings.Join(c.Origins, ","))
+		}
+		if len(c.Methods) > 0 {
+			cx.Writer.Header().Set("Access-Control-Allow-Methods", strings.Join(c.Methods, ","))
+		}
+		if len(c.Headers) > 0 {
+			cx.Writer.Header().Set("Access-Control-Allow-Headers", strings.Join(c.Headers, ","))
+		}
+		if len(c.ExposedHeaders) > 0 {
+			cx.Writer.Header().Set("Access-Control-Expose-Headers", strings.Join(c.ExposedHeaders, ","))
+		}
+		if c.Credentials {
+			cx.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		}
+		if c.MaxAge > 0 {
+			cx.Writer.Header().Set("Access-Control-Max-Age", fmt.Sprintf("%d", int(c.MaxAge.Seconds())))
+		}
+	}
+}
+
+//
+// securityHandler performs numerous security checks on the request
+//
+func (r *oauthProxy) securityHandler() gin.HandlerFunc {
+	// step: create the security options
+	secure := secure.New(secure.Options{
+		AllowedHosts:         r.config.Hostnames,
+		BrowserXssFilter:     true,
+		ContentTypeNosniff:   true,
+		FrameDeny:            true,
+		STSIncludeSubdomains: true,
+		STSSeconds:           31536000,
+	})
+
+	return func(cx *gin.Context) {
+		// step: pass through the security middleware
+		if err := secure.Process(cx.Writer, cx.Request); err != nil {
+			log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed security middleware")
+			cx.Abort()
+			return
+		}
+		// step: permit the request to continue
+		cx.Next()
 	}
 }

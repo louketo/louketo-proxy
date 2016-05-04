@@ -7,6 +7,7 @@
   - Supports role based uri controls
   - Websocket connection upgrading
   - Token claim matching for additional ACL controls
+  - Custom claim injections into authenticated requests
   - Stateless offline refresh tokens with optional predefined session limits
   - TLS and mutual TLS support
   - JSON field bases access logs
@@ -25,7 +26,7 @@ USAGE:
    keycloak-proxy [global options] command [command options] [arguments...]
 
 VERSION:
-   v1.0.4
+   v1.0.5
 
 AUTHOR(S):
    Rohith <gambol99@gmail.com>
@@ -84,7 +85,7 @@ discovery-url: https://keycloak.example.com/auth/realms/<REALM_NAME>
 # the client id for the 'client' application
 client-id: <CLIENT_ID>
 # the secret associated to the 'client' application
-secret: <CLIENT_SECRET>
+client-secret: <CLIENT_SECRET>
 # the interface definition you wish the proxy to listen, all interfaces is specified as ':<port>'
 listen: 127.0.0.1:3000
 # whether to enable refresh tokens
@@ -98,7 +99,7 @@ redirection-url: http://127.0.0.3000
 # the encryption key used to encode the session state
 encryption-key: <ENCRYPTION_KEY>
 # the upstream endpoint which we should proxy request
-upstream: http://127.0.0.1:80
+upstream-url: http://127.0.0.1:80
 # additional scopes to add to add to the default (openid+email+profile)
 scopes:
   - vpn-user
@@ -141,7 +142,7 @@ listen: 127.0.0.1:3000
 redirection-url: http://127.0.0.3000
 refresh_session: false
 encryption_key: AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j
-upstream: http://127.0.0.1:80
+upstream-url: http://127.0.0.1:80
 
 resources:
   - url: /admin
@@ -195,7 +196,7 @@ DEBU[0002] resource access permitted: /favicon.ico       access=permitted bearer
 ---
 #### **- Upstream Headers**
 
-On protected resources the upstream endpoint will receive a number of headers added by the proxy;
+On protected resources the upstream endpoint will receive a number of headers added by the proxy, along with an custom claims.
 
 ```GO
 # add the header to the upstream endpoint
@@ -212,6 +213,41 @@ cx.Request.Header.Add("X-Forwarded-For", <CLIENT_IP>)
 cx.Request.Header.Add("X-Forwarded-Proto", <CLIENT_PROTO>)
 ```
 
+#### **- Custom Claims**
+
+You can inject additional claims from the access token into the authentication token via the --add-claims or config array. For example, the token from Keycloak provider
+might include the following claims.
+
+```YAML
+"resource_access": {},
+"name": "Rohith Jayawardene",
+"preferred_username": "rohith.jayawardene",
+"given_name": "Rohith",
+"family_name": "Jayawardene",
+"email": "gambol99@gmail.com"
+```
+
+In order to request you receive the given_name, family_name and name we could add --add-claims=given_name --add-claims=family_name etc. Or in the configuration file
+
+```YAML
+add-claims:
+- given_name
+- family_name
+- name
+```
+
+Which would add the following headers to the authenticated request
+
+```shell
+X-Auth-Email: gambol99@gmail.com
+X-Auth-Expiresin: 2016-05-03 22:27:43 +0000 UTC
+X-Auth-Family-Name: Jayawardene
+X-Auth-Given-Name: Rohith
+X-Auth-Name: Rohith Jayawardene
+X-Auth-Roles: test-role
+X-Auth-Subject: rohith.jayawardene
+```
+
 #### **- Encryption Key**
 
 In order to remain stateless and not have to rely on a central cache to persist the 'refresh_tokens', the refresh token is encrypted and added as a cookie using *crypto/aes*.
@@ -220,7 +256,13 @@ Naturally the key must be the same if your running behind a load balancer etc. T
 #### **- Claim Matching**
 
 The proxy supports adding a variable list of claim matches against the presented tokens for additional access control. So for example you can match the 'iss' or 'aud' to the token or custom attributes;
-note each of the matches are regex's. Examples,  --claim 'aud=sso.*' --claim iss=https://.*'
+note each of the matches are regex's. Examples,  --match-claims 'aud=sso.*' --claim iss=https://.*' or via the configuratin file.
+
+```YAML
+match-claims:
+  aud: openvpn
+  iss: https://keycloak.example.com/auth/realms/commons
+```  
 
 #### **- Custom Pages**
 
@@ -267,7 +309,7 @@ Or on the command line
 The proxy support enforcing mutual TLS for the clients by simply adding the --tls-ca-certificate command line option or config file option. All clients connecting must present a ceritificate
 which was signed by the CA being used.
 
-#### **- Tokens && Stores**
+#### **- Refresh Tokens &Stores**
 
 Refresh tokens are either be stored as an encrypted cookie or placed (encrypted) in a shared / local store. At present, redis and boltdb are the only two methods supported. To enable a local boltdb store. --store-url boltdb:///PATH or relative path boltdb://PATH. For redis the option is redis://HOST:PORT. In both cases the refresh token is encrypted before placing into the store
 
@@ -305,6 +347,12 @@ or via the command line arguments
 --cors-headers [--cors-headers option]                  a set of headers to add to the CORS access control (Access-Control-Allow-Headers)
 --cors-exposes-headers [--cors-exposes-headers option]  set the expose cors headers access control (Access-Control-Expose-Headers)
 ```
+
+#### **- Upsteam URL**
+
+You can control the upstream endpoint via the --upstream-url or config option. Both http and https is supported and you can control
+the TLS verification via the --skip-upstream-tls-verify or config option, along with enabling or disabling keepalives on the upstream via 
+--upstream-keepalives option. Note, the proxy can also upstream via a unix socket, --upstream-url unix://path/to/the/file.sock
 
 #### **- Endpoints**
 

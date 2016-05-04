@@ -31,6 +31,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-oidc/oidc"
@@ -39,6 +41,7 @@ import (
 
 var (
 	httpMethodRegex = regexp.MustCompile("^(ANY|GET|POST|DELETE|PATCH|HEAD|PUT|TRACE|CONNECT)$")
+	symbolsFilter   = regexp.MustCompilePOSIX("[_$><\\[\\].,\\+-/'%^&*()!\\\\]+")
 )
 
 //
@@ -328,14 +331,27 @@ func tryUpdateConnection(cx *gin.Context, endpoint *url.URL) error {
 }
 
 //
-// validateResources checks and validates each of the resources
+// toHeader is a helper method to play nice in the headers
 //
-func validateResources(resources []*Resource) error {
-	for _, x := range resources {
-		if err := x.IsValid(); err != nil {
-			return err
-		}
+func toHeader(v string) string {
+	var list []string
+
+	// step: filter out any symbols and convert to dashes
+	for _, x := range symbolsFilter.Split(v, -1) {
+		list = append(list, capitalize(x))
 	}
 
-	return nil
+	return strings.Join(list, "-")
+}
+
+//
+// capitalize capitalizes the first letter of a word
+//
+func capitalize(s string) string {
+	if s == "" {
+		return ""
+	}
+	r, n := utf8.DecodeRuneInString(s)
+
+	return string(unicode.ToUpper(r)) + s[n:]
 }
