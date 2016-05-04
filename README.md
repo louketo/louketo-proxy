@@ -24,54 +24,59 @@ NAME:
 
 USAGE:
    keycloak-proxy [global options] command [command options] [arguments...]
-
+   
 VERSION:
    v1.0.5
-
+   
 AUTHOR(S):
-   Rohith <gambol99@gmail.com>
-
+   Rohith <gambol99@gmail.com> 
+   
 COMMANDS:
 GLOBAL OPTIONS:
---config                                                the path to the configuration file for the keycloak proxy
---listen "127.0.0.1:3000"                               the interface the service should be listening on
---client-secret                                         the client secret used to authenticate to the oauth server
---client-id                                             the client id used to authenticate to the oauth serves
---discovery-url                                         the discovery url to retrieve the openid configuration
---upstream-url "http://127.0.0.1:8081"                  the url for the upstream endpoint you wish to proxy to
---revocation-url "/oauth2/revoke"                       the url for the revocation endpoint to revoke refresh token, not all providers support the revocation_endpoint
---upstream-keepalives                                   enables or disables the keepalive connections for upstream endpoint (defaults true)
---encryption-key                                        the encryption key used to encrpytion the session state
---secure-cookie                                         enforces the cookie to be secure, default to true
---store-url                                             the store url to use for storing the refresh tokens, i.e. redis://127.0.0.1:6379, file:///etc/tokens.file
---no-redirects                                          do not have back redirects when no authentication is present, simple reply with 401 code
---redirection-url                                       the redirection url, namely the site url, note: /oauth will be added to it
---hostname [--hostname option --hostname option]        a list of hostnames the service will respond to, defaults to all
---tls-cert                                              the path to a certificate file used for TLS
---tls-private-key                                       the path to the private key for TLS support
---tls-ca-certificate                                    the path to the ca certificate used for mutual TLS
---skip-upstream-tls-verify                              whether to skip the verification of any upstream TLS (defaults to true)
---scope [--scope option --scope option]                 a variable list of scopes requested when authenticating the user
---claim [--claim option --claim option]                 a series of key pair values which must match the claims in the token present e.g. aud=myapp, iss=http://example.com etcd
---resource [--resource option --resource option]        a list of resources 'uri=/admin|methods=GET|roles=role1,role2'
---signin-page                                           a custom template displayed for signin
---forbidden-page                                        a custom template used for access forbidden
---tag [--tag option --tag option]                       a keypair tag which is passed to the templates when render, i.e. title='My Page',site='my name' etc
---cors-origins [--cors-origins option --cors-origins option]      a set of origins to add to the CORS access control (Access-Control-Allow-Origin)
---cors-methods [--cors-methods option --cors-methods option]      the method permitted in the access control (Access-Control-Allow-Methods)
---cors-headers [--cors-headers option --cors-headers option]      a set of headers to add to the CORS access control (Access-Control-Allow-Headers)
---cors-exposes-headers [--cors-exposes-headers option --cors-exposes-headers option]   set the expose cors headers access control (Access-Control-Expose-Headers)
---cors-max-age "0"                                      the max age applied to cors headers (Access-Control-Max-Age)
---cors-credentials                                      the credentials access control header (Access-Control-Allow-Credentials)
---enable-security-filter                                enables the security filter handler
---skip-token-verification                               testing purposes ONLY, the option allows you to bypass the token verification, expiration and roles are still enforced
---proxy-protocol                                        switches on proxy protocol support on the listen (not supported yet)
---offline-session                                       enables the offline session of tokens via offline access (defaults false)
---json-logging                                          switch on json logging rather than text (defaults true)
---log-requests                                          switch on logging of all incoming requests (defaults true)
---verbose                                               switch on debug / verbose logging
---help, -h                                              show help
---version, -v                                           print the version
+   --config 										the path to the configuration file for the keycloak proxy
+   --listen "127.0.0.1:3000"								the interface the service should be listening on
+   --client-secret 									the client secret used to authenticate to the oauth server
+   --client-id 										the client id used to authenticate to the oauth serves
+   --discovery-url 									the discovery url to retrieve the openid configuration
+   --scope [--scope option --scope option]						a variable list of scopes requested when authenticating the user
+   --idle-duration "0"									the expiration of the access token cookie, if not used within this time its removed
+   --redirection-url 									redirection url for the oauth callback url (/oauth is added)
+   --upstream-url "http://127.0.0.1:8081"						the url for the upstream endpoint you wish to proxy to
+   --revocation-url "/oauth2/revoke"							the url for the revocation endpoint to revoke refresh token
+   --store-url 										url for the storage subsystem, e.g redis://127.0.0.1:6379, file:///etc/tokens.file
+   --upstream-keepalives								enables or disables the keepalive connections for upstream endpoint
+   --enable-refresh-tokens								enables the handling of the refresh tokens
+   --secure-cookie									enforces the cookie to be secure, default to true
+   --cookie-access-name "kc-access"							the name of the cookie use to hold the access token
+   --cookie-refresh-name "kc-state"							the name of the cookie used to hold the encrypted refresh token
+   --encryption-key 									the encryption key used to encrpytion the session state
+   --no-redirects									do not have back redirects when no authentication is present, 401 them
+   --hostname [--hostname option --hostname option]					a list of hostnames the service will respond to, defaults to all
+   --tls-cert 										the path to a certificate file used for TLS
+   --tls-private-key 									the path to the private key for TLS support
+   --tls-ca-certificate 								the path to the ca certificate used for mutual TLS
+   --skip-upstream-tls-verify								whether to skip the verification of any upstream TLS (defaults to true)
+   --match-claims [--match-claims option --match-claims option]				keypair values for matching access token claims e.g. aud=myapp, iss=http://example.*
+   --add-claims [--add-claims option --add-claims option]				retrieve extra claims from the token and inject into headers, e.g given_name -> X-Auth-Given-Name
+   --resource [--resource option --resource option]					a list of resources 'uri=/admin|methods=GET|roles=role1,role2'
+   --signin-page 									a custom template displayed for signin
+   --forbidden-page 									a custom template used for access forbidden
+   --tag [--tag option --tag option]							keypair's passed to the templates at render,e.g title='My Page'
+   --cors-origins [--cors-origins option --cors-origins option]				list of origins to add to the CORE origins control (Access-Control-Allow-Origin)
+   --cors-methods [--cors-methods option --cors-methods option]				the method permitted in the access control (Access-Control-Allow-Methods)
+   --cors-headers [--cors-headers option --cors-headers option]				a set of headers to add to the CORS access control (Access-Control-Allow-Headers)
+   --cors-exposes-headers [--cors-exposes-headers option --cors-exposes-headers option]	set the expose cors headers access control (Access-Control-Expose-Headers)
+   --cors-max-age "0"									the max age applied to cors headers (Access-Control-Max-Age)
+   --cors-credentials									the credentials access control header (Access-Control-Allow-Credentials)
+   --headers [--headers option --headers option]					Add custom headers to the upstream request, key=value
+   --enable-security-filter								enables the security filter handler
+   --skip-token-verification								TESTING ONLY; bypass's token verification, expiration and roles enforced
+   --offline-session									enables the offline session of tokens via offline access (defaults false)
+   --json-logging									switch on json logging rather than text (defaults true)
+   --log-requests									switch on logging of all incoming requests (defaults true)
+   --verbose										switch on debug / verbose logging
+   --help, -h										show help
+   --version, -v									print the version
 
 ```
 
