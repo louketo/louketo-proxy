@@ -462,10 +462,6 @@ func getOptions() []cli.Flag {
 			Name:  "skip-token-verification",
 			Usage: "TESTING ONLY; bypass's token verification, expiration and roles enforced",
 		},
-		cli.BoolFlag{
-			Name:  "offline-session",
-			Usage: "enables the offline session of tokens via offline access (defaults false)",
-		},
 		cli.BoolTFlag{
 			Name:  "json-logging",
 			Usage: "switch on json logging rather than text (defaults true)",
