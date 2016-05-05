@@ -16,6 +16,7 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -248,43 +249,41 @@ func (r oauthProxy) logoutHandler(cx *gin.Context) {
 		cx.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
-	// step: delete the access token
-	r.clearAccessTokenCookie(cx)
-
-	log.WithFields(log.Fields{
-		"email":     user.email,
-		"client_ip": cx.ClientIP(),
-		"redirect":  redirectURL,
-	}).Infof("logging out the user: %s", user.email)
+	// step: can either use the id token or the refresh token
+	identityToken := user.token.Encode()
+	if refresh, err := r.retrieveRefreshToken(cx, user); err == nil {
+		identityToken = refresh
+	}
+	// step: delete all the cookies
+	r.clearAllCookies(cx)
 
 	// step: check if the user has a state session and if so, revoke it
-	rToken, err := r.retrieveRefreshToken(cx, user)
-	if err == nil {
-		if r.useStore() {
+	if r.useStore() {
+		go func() {
 			if err := r.DeleteRefreshToken(user.token); err != nil {
-				log.WithFields(log.Fields{
-					"error": err.Error(),
-				}).Errorf("unable to remove the refresh token from store")
+				log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to remove the refresh token from store")
 			}
-		}
+		}()
+	}
 
-		// step: the user has a offline session, we need to revoke the access and invalidate the the offline token
+	// step: do we have a revocation endpoint?
+	if r.config.RevocationEndpoint != "" {
 		client, err := r.client.OAuthClient()
 		if err != nil {
-			log.WithFields(log.Fields{
-				"error": err.Error(),
-			}).Errorf("unable to retrieve the openid client")
+			log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to retrieve the openid client")
 
 			cx.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
 
-		// step: construct the url for revocation
-		params := url.Values{}
-		params.Add("refresh_token", rToken)
-		params.Add("token", rToken)
+		// step: add the authentication headers
+		// @TODO need to add the authenticated request to go-oidc
+		encodedID := url.QueryEscape(r.config.ClientID)
+		encodedSecret := url.QueryEscape(r.config.ClientSecret)
 
-		request, err := http.NewRequest("POST", r.config.RevocationEndpoint, nil)
+		// step: construct the url for revocation
+		request, err := http.NewRequest("POST", r.config.RevocationEndpoint,
+			bytes.NewBufferString(fmt.Sprintf("refresh_token=%s", identityToken)))
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err.Error(),
@@ -294,29 +293,33 @@ func (r oauthProxy) logoutHandler(cx *gin.Context) {
 			return
 		}
 
-		request.PostForm = params
+		// step: add the authentication headers and content-type
+		request.SetBasicAuth(encodedID, encodedSecret)
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 		// step: attempt to make the
 		response, err := client.HttpClient().Do(request)
 		if err != nil {
-			log.WithFields(log.Fields{
-				"error": err.Error(),
-			}).Errorf("unable to post to revocation endpoint")
+			log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to post to revocation endpoint")
+
 			return
 		}
 
-		if response.StatusCode != http.StatusOK {
-			// step: read the response content
+		// step: throw in a log
+		if response.StatusCode != http.StatusNoContent {
 			content, _ := ioutil.ReadAll(response.Body)
 			log.WithFields(log.Fields{
 				"status":   response.StatusCode,
 				"response": fmt.Sprintf("%s", content),
 			}).Errorf("invalid response from revocation endpoint")
+		} else {
+			log.WithFields(log.Fields{
+				"user": user.email,
+			}).Infof("successfully logged out of the endpoint")
 		}
 	}
-	r.clearAllCookies(cx)
 
+	// step: should we redirect the user
 	if redirectURL != "" {
 		r.redirectToURL(redirectURL, cx)
 		return
