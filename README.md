@@ -318,9 +318,13 @@ which was signed by the CA being used.
 
 Refresh tokens are either be stored as an encrypted cookie or placed (encrypted) in a shared / local store. At present, redis and boltdb are the only two methods supported. To enable a local boltdb store. --store-url boltdb:///PATH or relative path boltdb://PATH. For redis the option is redis://HOST:PORT. In both cases the refresh token is encrypted before placing into the store
 
-#### **- Refresh & Offline Tokens**
+#### **- Refresh Tokens**
 
 Assuming access response responds with a refresh token and the --enable-refresh-token is true, the proxy will automatically refresh the access token for you. The tokens themselves are kept either as an encrypted (--encryption-key=KEY) cookie (cookie name: kc-state). Alternatively you can place the refresh token (still requires encryption key) in a local boltdb file or shared redis. Naturally the encryption key has to be the same on all instances and boltdb is for single instance only developments.
+
+#### **- Logout Endpoint**
+
+A /oauth/logout?redirect=url is provided as a helper to logout the users, aside from dropping a sessions cookies, we also attempt to refrevoke session access via revocation url (config revocation-url or --revocation-url) with the provider. For keycloak the url for this would be https://keycloak.example.com/auth/realms/REALM_NAME/protocol/openid-connect/logout, for google /oauth/revoke 
 
 #### **- Cross Origin Resource Sharing (CORS)**
 

@@ -1,4 +1,11 @@
 
+#### **1.0.6 (May 6th, 2016)**
+
+FIXES:
+ * Fixed the logout endpoint, ensuring users sessions are revoked. Note: i've not really tested this against Keycloak
+   and Google. Revocation or logouts seems to have somewhat scattered implementation across providers.
+
+
 #### **1.0.5 (May 3th, 2016)**
 
 FEATURES:
