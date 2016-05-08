@@ -386,6 +386,14 @@ func (r oauthProxy) proxyHandler() gin.HandlerFunc {
 			return
 		}
 
+		/*
+		Issue: https://github.com/golang/go/issues/7618
+
+		The reverse proxy does not update the Host header of request, as it's assumed the upstream in on the
+		same domain as the proxy. We could override the Director method, but the latter is easier
+		*/
+		cx.Request.Host = r.endpoint.Host
+
 		r.upstream.ServeHTTP(cx.Writer, cx.Request)
 	}
 }
