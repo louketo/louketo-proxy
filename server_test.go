@@ -48,6 +48,9 @@ const (
 func newFakeKeycloakProxyWithResources(t *testing.T, resources []*Resource) *oauthProxy {
 	kc := newFakeKeycloakProxy(t)
 	kc.config.Resources = resources
+	kc.endpoint = &url.URL{
+		Host: "127.0.0.1",
+	}
 	return kc
 }
 
@@ -107,6 +110,7 @@ func newFakeKeycloakProxy(t *testing.T) *oauthProxy {
 	kc := &oauthProxy{
 		config:   newFakeKeycloakConfig(t),
 		upstream: new(fakeReverseProxy),
+		endpoint: &url.URL{Host: "127.0.0.1"},
 	}
 	kc.router = gin.New()
 	gin.SetMode(gin.ReleaseMode)
