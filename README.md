@@ -100,7 +100,7 @@ tls-cert:
 # the location of a private key for TLS
 tls-private-key:
 # the redirection url, essentially the site url, note: /oauth/callback is added at the end
-redirection-url: http://127.0.0:3000
+redirection-url: http://127.0.0.1:3000
 # the encryption key used to encode the session state
 encryption-key: <ENCRYPTION_KEY>
 # the upstream endpoint which we should proxy request
@@ -169,7 +169,7 @@ bin/keycloak-proxy \
     --client-id=<CLIENT_ID> \
     --client-secret=<SECRET> \
     --listen=127.0.0.1:3000 \
-    --redirection-url=http://127.0.0:3000 \
+    --redirection-url=http://127.0.0.1:3000 \
     --refresh-sessions=true \
     --encryption-key=AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j \
     --upstream-url=http://127.0.0.1:80 \
