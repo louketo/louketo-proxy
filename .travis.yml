@@ -17,6 +17,6 @@ install:
 
 script:
   - make test
-  - '[[ $TRAVIS_BRANCH =~ ^master$ ]] && VERSION=latest make docker-release'
-  - '[[ $TRAVIS_TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+.*$ ]] && VERSION=$TRAVIS_TAG make docker-release'
+  - if [ "$TRAVIS_BRANCH" = "master" ]; then VERSION=latest make docker-release; fi
+  - if [ -n "$TRAVIS_TAG" ]; then VERSION=$TRAVIS_TAG make docker-release; fi
 
