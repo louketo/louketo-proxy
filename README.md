@@ -170,7 +170,7 @@ bin/keycloak-proxy \
     --client-secret=<SECRET> \
     --listen=127.0.0.1:3000 \
     --redirection-url=http://127.0.0.3000 \
-    --refresh-sessions=true \
+    --enable-refresh-tokens=true \
     --encryption-key=AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j \
     --upstream-url=http://127.0.0.1:80 \
     --resource="uri=/admin|methods=GET|roles=test1,test2" \
