@@ -157,6 +157,29 @@ func TestIsConfig(t *testing.T) {
 				Upstream:       "this should fail",
 			},
 		},
+		{
+			Config: &Config{
+				Listen:         ":8080",
+				DiscoveryURL:   "http://127.0.0.1:8080",
+				ClientID:       "client",
+				ClientSecret:   "client",
+				RedirectionURL: "http://120.0.0.1",
+				Upstream:       "this should fail",
+				SecureCookie:   true,
+			},
+		},
+		{
+			Config: &Config{
+				Listen:         ":8080",
+				DiscoveryURL:   "http://127.0.0.1:8080",
+				ClientID:       "client",
+				ClientSecret:   "client",
+				RedirectionURL: "https://120.0.0.1",
+				Upstream:       "this should fail",
+				SecureCookie:   true,
+			},
+			Ok: true,
+		},
 	}
 
 	for i, c := range tests {
