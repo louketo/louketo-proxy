@@ -1,7 +1,9 @@
 #
 #  vim:ts=2:sw=2:et
 #
-secure: "IGH5qFZvCm8E7Zi8fo/Mp5ylKmArPDivIi78dGKDEhxNxMvCmKpdVbf/qCssYmzwujheagSpvMdCcs4sDuM91fM08C4aDUnAijdc68sbYEIgnA/YDyPBgbWuA/i82/ekYaChiiWlNkbxZMtxes+zl1DWthuTRzPyCBbdC/mgC8b6kFrmRNcCWcIzBtLXm+R0Ccx//96cly95k/PYed/v1yo6KIyzP+Sanwww5kWWZ3VxPaTp+Z8p3saCTz9KnJ9c9Lm+dYa7wf3JmfiyqUieA684a7SZgugtI70VkTYjRgVTkPhpbEjeqN7f3/OU4XfE/ytSE0E4i8RH6s9wHc3ECsAnFHRZc6qmIh4o1VPR/3Cv7jSi3caZ77TlqUujyNjZKlM7mxaTvx+y24/5spgabE69GOGzSNSBXX3AfTskdBp5vZt3OhpDtUqiWJSX4KKDE77glnC6C033A9oURoU4vin2yWWWmJFnUT5k1dfCZpdg/mr5uFXHCWAbKrxgpqeBB72YOeqhNN3A9tPS1JkF9vP0BYUqQ3Nvd702nooSZpaOPa5EokupA8LeOs9O4R47kYGv1jDdteDG4f/uEfTpIE9g7/g4CHHHzREQHB0ElE5s05gfhIXnwFekITOFK58lAMZaCzmEU62yIbQxxyLTqlA9HwNgasLLA6md81RE3kA="
+env:
+  global:
+  - secure: IGH5qFZvCm8E7Zi8fo/Mp5ylKmArPDivIi78dGKDEhxNxMvCmKpdVbf/qCssYmzwujheagSpvMdCcs4sDuM91fM08C4aDUnAijdc68sbYEIgnA/YDyPBgbWuA/i82/ekYaChiiWlNkbxZMtxes+zl1DWthuTRzPyCBbdC/mgC8b6kFrmRNcCWcIzBtLXm+R0Ccx//96cly95k/PYed/v1yo6KIyzP+Sanwww5kWWZ3VxPaTp+Z8p3saCTz9KnJ9c9Lm+dYa7wf3JmfiyqUieA684a7SZgugtI70VkTYjRgVTkPhpbEjeqN7f3/OU4XfE/ytSE0E4i8RH6s9wHc3ECsAnFHRZc6qmIh4o1VPR/3Cv7jSi3caZ77TlqUujyNjZKlM7mxaTvx+y24/5spgabE69GOGzSNSBXX3AfTskdBp5vZt3OhpDtUqiWJSX4KKDE77glnC6C033A9oURoU4vin2yWWWmJFnUT5k1dfCZpdg/mr5uFXHCWAbKrxgpqeBB72YOeqhNN3A9tPS1JkF9vP0BYUqQ3Nvd702nooSZpaOPa5EokupA8LeOs9O4R47kYGv1jDdteDG4f/uEfTpIE9g7/g4CHHHzREQHB0ElE5s05gfhIXnwFekITOFK58lAMZaCzmEU62yIbQxxyLTqlA9HwNgasLLA6md81RE3kA="
 
 services:
   - docker
@@ -15,6 +17,6 @@ install:
 
 script:
   - make test
-  - [[ $TRAVIS_BRANCH =~ ^master$ ]] && VERSION=latest make docker-release
-  - [[ $TRAVIS_TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+.*$ ]] && VERSION=$TRAVIS_TAG make docker-release
+  - if [ "$TRAVIS_BRANCH" = "master" ]; then VERSION=latest make docker-release; fi
+  - if [ -n "$TRAVIS_TAG" ]; then VERSION=$TRAVIS_TAG make docker-release; fi
 
