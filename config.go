@@ -94,6 +94,9 @@ func (r *Config) isValid() error {
 		if r.EnableRefreshTokens && (len(r.EncryptionKey) != 16 && len(r.EncryptionKey) != 32) {
 			return fmt.Errorf("the encryption key (%d) must be either 16 or 32 characters for AES-128/AES-256 selection", len(r.EncryptionKey))
 		}
+		if r.SecureCookie && !strings.HasPrefix(r.RedirectionURL, "https") {
+			return fmt.Errorf("the cookie is set to secure but your redirection url is non-tls")
+		}
 		if r.StoreURL != "" {
 			if _, err := url.Parse(r.StoreURL); err != nil {
 				return fmt.Errorf("the store url is invalid, error: %s", err)
