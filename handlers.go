@@ -249,12 +249,12 @@ func (r oauthProxy) logoutHandler(cx *gin.Context) {
 		cx.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
+
 	// step: can either use the id token or the refresh token
 	identityToken := user.token.Encode()
 	if refresh, err := r.retrieveRefreshToken(cx, user); err == nil {
 		identityToken = refresh
 	}
-	// step: delete all the cookies
 	r.clearAllCookies(cx)
 
 	// step: check if the user has a state session and if so, revoke it
@@ -270,7 +270,9 @@ func (r oauthProxy) logoutHandler(cx *gin.Context) {
 	if r.config.RevocationEndpoint != "" {
 		client, err := r.client.OAuthClient()
 		if err != nil {
-			log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to retrieve the openid client")
+			log.WithFields(log.Fields{
+				"error": err.Error(),
+			}).Errorf("unable to retrieve the openid client")
 
 			cx.AbortWithStatus(http.StatusInternalServerError)
 			return
@@ -300,22 +302,25 @@ func (r oauthProxy) logoutHandler(cx *gin.Context) {
 		// step: attempt to make the
 		response, err := client.HttpClient().Do(request)
 		if err != nil {
-			log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to post to revocation endpoint")
+			log.WithFields(log.Fields{
+				"error": err.Error(),
+			}).Errorf("unable to post to revocation endpoint")
 
 			return
 		}
 
-		// step: throw in a log
-		if response.StatusCode != http.StatusNoContent {
+		// step: add a log for debugging
+		switch response.StatusCode {
+		case http.StatusNoContent:
+			log.WithFields(log.Fields{
+				"user": user.email,
+			}).Infof("successfully logged out of the endpoint")
+		default:
 			content, _ := ioutil.ReadAll(response.Body)
 			log.WithFields(log.Fields{
 				"status":   response.StatusCode,
 				"response": fmt.Sprintf("%s", content),
 			}).Errorf("invalid response from revocation endpoint")
-		} else {
-			log.WithFields(log.Fields{
-				"user": user.email,
-			}).Infof("successfully logged out of the endpoint")
 		}
 	}
 
