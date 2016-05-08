@@ -1,13 +1,14 @@
 
 NAME=keycloak-proxy
 AUTHOR=gambol99
+AUTHOR_EMAIL=gambol99@gmail.com
 REGISTRY=docker.io
 GOVERSION=1.6.0
 SUDO=sudo
 ROOT_DIR=${PWD}
 HARDWARE=$(shell uname -m)
 GIT_SHA=$(shell git --no-pager describe --tags --always --dirty)
-VERSION=$(shell awk '/version.*=/ { print $$3 }' doc.go | sed 's/"//g')
+VERSION ?= $(shell awk '/version.*=/ { print $$3 }' doc.go | sed 's/"//g')
 DEPS=$(shell go list -f '{{range .TestImports}}{{.}} {{end}}' ./...)
 PACKAGES=$(shell go list ./...)
 VETARGS?=-asmdecl -atomic -bool -buildtags -copylocks -methods -nilfunc -printf -rangeloops -shift -structtags -unsafeptr
@@ -41,6 +42,16 @@ docker-build:
 docker:
 	@echo "--> Building the docker image"
 	${SUDO} docker build -t ${REGISTRY}/${AUTHOR}/${NAME}:${VERSION} .
+
+docker-release:
+	@echo "--> Building a release image"
+	@make static
+	@make docker-login
+	docker push ${REGISTRY}/${REGISTRY_AUTHOR}/${NAME}:${VERSION}
+
+docker-login:
+	@echo "--> Logging in to registry"
+	docker login -u ${AUTHOR_EMAIL} -p ${REGISTRY_TOKEN} -e ${AUTHOR_EMAIL} ${REGISTRY}
 
 docker-push:
 	@echo "--> Pushing the docker images to the registry"
