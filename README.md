@@ -144,7 +144,7 @@ discovery-url: https://keycloak.example.com/auth/realms/<REALM_NAME>
 client-id: <CLIENT_ID>
 client-secret: <CLIENT_SECRET>
 listen: 127.0.0.1:3000
-redirection-url: http://127.0.0:3000
+redirection-url: http://127.0.0.1:3000
 refresh_session: false
 encryption_key: AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j
 upstream-url: http://127.0.0.1:80
