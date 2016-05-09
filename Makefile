@@ -47,7 +47,7 @@ docker-release:
 	@echo "--> Building a release image"
 	@make static
 	@make docker
-	docker push ${REGISTRY}/${REGISTRY_AUTHOR}/${NAME}:${VERSION}
+	docker push ${REGISTRY}/${AUTHOR}/${NAME}:${VERSION}
 
 docker-push:
 	@echo "--> Pushing the docker images to the registry"
