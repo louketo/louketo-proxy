@@ -46,12 +46,8 @@ docker:
 docker-release:
 	@echo "--> Building a release image"
 	@make static
-	@make docker-login
+	@make docker
 	docker push ${REGISTRY}/${REGISTRY_AUTHOR}/${NAME}:${VERSION}
-
-docker-login:
-	@echo "--> Logging in to registry"
-	docker login -u ${AUTHOR_EMAIL} -p ${REGISTRY_TOKEN} -e ${AUTHOR_EMAIL} ${REGISTRY}
 
 docker-push:
 	@echo "--> Pushing the docker images to the registry"
