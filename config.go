@@ -309,8 +309,9 @@ func getOptions() []cli.Flag {
 
 	return []cli.Flag{
 		cli.StringFlag{
-			Name:  "config",
-			Usage: "the path to the configuration file for the keycloak proxy",
+			Name:   "config",
+			Usage:  "the path to the configuration file for the keycloak proxy",
+			EnvVar: "PROXY_CONFIG_FILE",
 		},
 		cli.StringFlag{
 			Name:  "listen",
@@ -318,16 +319,19 @@ func getOptions() []cli.Flag {
 			Value: defaults.Listen,
 		},
 		cli.StringFlag{
-			Name:  "client-secret",
-			Usage: "the client secret used to authenticate to the oauth server",
+			Name:   "client-secret",
+			Usage:  "the client secret used to authenticate to the oauth server",
+			EnvVar: "PROXY_CLIENT_SECRET",
 		},
 		cli.StringFlag{
-			Name:  "client-id",
-			Usage: "the client id used to authenticate to the oauth serves",
+			Name:   "client-id",
+			Usage:  "the client id used to authenticate to the oauth serves",
+			EnvVar: "PROXY_CLIENT_ID",
 		},
 		cli.StringFlag{
-			Name:  "discovery-url",
-			Usage: "the discovery url to retrieve the openid configuration",
+			Name:   "discovery-url",
+			Usage:  "the discovery url to retrieve the openid configuration",
+			EnvVar: "PROXY_DISCOVERY_URL",
 		},
 		cli.StringSliceFlag{
 			Name:  "scope",
@@ -338,13 +342,15 @@ func getOptions() []cli.Flag {
 			Usage: "the expiration of the access token cookie, if not used within this time its removed",
 		},
 		cli.StringFlag{
-			Name:  "redirection-url",
-			Usage: fmt.Sprintf("redirection url for the oauth callback url (%s is added)", oauthURL),
+			Name:   "redirection-url",
+			Usage:  fmt.Sprintf("redirection url for the oauth callback url (%s is added)", oauthURL),
+			EnvVar: "PROXY_REDIRECTION_URL",
 		},
 		cli.StringFlag{
-			Name:  "upstream-url",
-			Usage: "the url for the upstream endpoint you wish to proxy to",
-			Value: defaults.Upstream,
+			Name:   "upstream-url",
+			Usage:  "the url for the upstream endpoint you wish to proxy to",
+			Value:  defaults.Upstream,
+			EnvVar: "PROXY_UPSTREAM_URL",
 		},
 		cli.StringFlag{
 			Name:  "revocation-url",
@@ -352,8 +358,9 @@ func getOptions() []cli.Flag {
 			Value: "/oauth2/revoke",
 		},
 		cli.StringFlag{
-			Name:  "store-url",
-			Usage: "url for the storage subsystem, e.g redis://127.0.0.1:6379, file:///etc/tokens.file",
+			Name:   "store-url",
+			Usage:  "url for the storage subsystem, e.g redis://127.0.0.1:6379, file:///etc/tokens.file",
+			EnvVar: "PROXY_STORE_URL",
 		},
 		cli.BoolTFlag{
 			Name:  "upstream-keepalives",
