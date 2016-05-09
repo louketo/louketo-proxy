@@ -34,6 +34,13 @@ func TestDecodeResource(t *testing.T) {
 			},
 		},
 		{
+			Option: "uri=/",
+			Ok:     true,
+			Resource: &Resource{
+				URL: "/",
+			},
+		},
+		{
 			Option: "uri=/admin/sso|roles=test,test1",
 			Ok:     true,
 			Resource: &Resource{
