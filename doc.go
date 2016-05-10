@@ -20,6 +20,10 @@ import (
 	"time"
 )
 
+var (
+	gitsha = "no gitsha provided"
+)
+
 const (
 	prog        = "keycloak-proxy"
 	version     = "v1.0.6"
