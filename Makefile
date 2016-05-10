@@ -2,7 +2,7 @@
 NAME=keycloak-proxy
 AUTHOR=gambol99
 AUTHOR_EMAIL=gambol99@gmail.com
-REGISTRY=docker.io
+REGISTRY=quay.io
 GOVERSION=1.6.0
 SUDO=
 ROOT_DIR=${PWD}
@@ -47,7 +47,7 @@ docker-release:
 	@echo "--> Building a release image"
 	@make static
 	@make docker
-	docker push ${REGISTRY}/${AUTHOR}/${NAME}:${VERSION}
+	@docker push ${REGISTRY}/${AUTHOR}/${NAME}:${VERSION}
 
 docker-push:
 	@echo "--> Pushing the docker images to the registry"
