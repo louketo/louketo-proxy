@@ -7,11 +7,13 @@ GOVERSION=1.6.0
 SUDO=
 ROOT_DIR=${PWD}
 HARDWARE=$(shell uname -m)
-GIT_SHA=$(shell git --no-pager describe --tags --always --dirty)
+GIT_SHA=$(shell git --no-pager describe --always)
+BUILD_TIME=$(shell date -u '+%Y-%m-%d_%I:%M:%S%p')
 VERSION ?= $(shell awk '/version.*=/ { print $$3 }' doc.go | sed 's/"//g')
 DEPS=$(shell go list -f '{{range .TestImports}}{{.}} {{end}}' ./...)
 PACKAGES=$(shell go list ./...)
-VETARGS?=-asmdecl -atomic -bool -buildtags -copylocks -methods -nilfunc -printf -rangeloops -shift -structtags -unsafeptr
+LFLAGS ?= -X main.gitsha=${GIT_SHA}
+VETARGS ?= -asmdecl -atomic -bool -buildtags -copylocks -methods -nilfunc -printf -rangeloops -shift -structtags -unsafeptr
 
 .PHONY: test authors changelog build docker static release lint cover vet
 
@@ -27,12 +29,12 @@ version:
 build:
 	@echo "--> Compiling the project"
 	mkdir -p bin
-	godep go build -o bin/${NAME}
+	godep go build -ldflags "${LFLAGS}" -o bin/${NAME}
 
 static: golang deps
 	@echo "--> Compiling the static binary"
 	mkdir -p bin
-	CGO_ENABLED=0 GOOS=linux godep go build -a -tags netgo -ldflags '-w' -o bin/${NAME}
+	CGO_ENABLED=0 GOOS=linux godep go build -a -tags netgo -ldflags "-w ${LFLAGS}" -o bin/${NAME}
 
 docker-build:
 	@echo "--> Compiling the project"
