@@ -28,7 +28,7 @@ func TestDropCookie(t *testing.T) {
 	p.dropCookie(context, "test-cookie", "test-value", 0)
 
 	assert.Equal(t, context.Writer.Header().Get("Set-Cookie"),
-		"test-cookie=test-value; Path=/; Domain=127.0.0.1; Secure",
+		"test-cookie=test-value; Path=/; Domain=127.0.0.1",
 		"we have not set the cookie, headers: %v", context.Writer.Header())
 
 	context = newFakeGinContext("GET", "/admin")

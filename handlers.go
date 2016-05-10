@@ -17,12 +17,12 @@ package main
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
-	"strings"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -32,7 +32,7 @@ import (
 //
 // oauthAuthorizationHandler is responsible for performing the redirection to oauth provider
 //
-func (r oauthProxy) oauthAuthorizationHandler(cx *gin.Context) {
+func (r *oauthProxy) oauthAuthorizationHandler(cx *gin.Context) {
 	// step: we can skip all of this if were not verifying the token
 	if r.config.SkipTokenVerification {
 		cx.AbortWithStatus(http.StatusNotAcceptable)
@@ -55,12 +55,14 @@ func (r oauthProxy) oauthAuthorizationHandler(cx *gin.Context) {
 		accessType = "offline"
 	}
 
-	log.WithFields(log.Fields{
-		"client_ip":   cx.ClientIP(),
-		"access_type": accessType,
-	}).Infof("incoming authorization request from client address: %s", cx.ClientIP())
-
+	// step: generate the authorization url
 	redirectionURL := client.AuthCodeURL(cx.Query("state"), accessType, "")
+
+	log.WithFields(log.Fields{
+		"client_ip":       cx.ClientIP(),
+		"access_type":     accessType,
+		"redirection-url": redirectionURL,
+	}).Debugf("incoming authorization request from client address: %s", cx.ClientIP())
 
 	// step: if we have a custom sign in page, lets display that
 	if r.config.hasCustomSignInPage() {
@@ -81,24 +83,18 @@ func (r oauthProxy) oauthAuthorizationHandler(cx *gin.Context) {
 //
 // oauthCallbackHandler is responsible for handling the response from oauth service
 //
-func (r oauthProxy) oauthCallbackHandler(cx *gin.Context) {
+func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 	// step: is token verification switched on?
 	if r.config.SkipTokenVerification {
 		cx.AbortWithStatus(http.StatusNotAcceptable)
 		return
 	}
 
-	code := cx.Request.URL.Query().Get("code")
-	state := cx.Request.URL.Query().Get("state")
-
 	// step: ensure we have a authorization code to exchange
+	code := cx.Request.URL.Query().Get("code")
 	if code == "" {
 		cx.AbortWithStatus(http.StatusBadRequest)
 		return
-	}
-	// step: ensure we have a state or default to root /
-	if state == "" {
-		state = "/"
 	}
 
 	// step: exchange the authorization for a access token
@@ -180,13 +176,27 @@ func (r oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 		}
 	}
 
+	// step: decode the state variable
+	state := "/"
+	if cx.Request.URL.Query().Get("state") != "" {
+		decoded, err := base64.StdEncoding.DecodeString(cx.Request.URL.Query().Get("state"))
+		if err != nil {
+			log.WithFields(log.Fields{
+				"state": cx.Request.URL.Query().Get("state"),
+				"error": err.Error(),
+			}).Warnf("unabe to decode the state parameter")
+		} else {
+			state = string(decoded)
+		}
+	}
+
 	r.redirectToURL(state, cx)
 }
 
 //
 // loginHandler provide's a generic endpoint for clients to perform a user_credentials login to the provider
 //
-func (r oauthProxy) loginHandler(cx *gin.Context) {
+func (r *oauthProxy) loginHandler(cx *gin.Context) {
 	// step: parse the client credentials
 	username := cx.Request.URL.Query().Get("username")
 	password := cx.Request.URL.Query().Get("password")
@@ -239,7 +249,7 @@ func (r oauthProxy) loginHandler(cx *gin.Context) {
 //  - if the user has a refresh token, the token is invalidated by the provider
 //  - optionally, the user can be redirected by to a url
 //
-func (r oauthProxy) logoutHandler(cx *gin.Context) {
+func (r *oauthProxy) logoutHandler(cx *gin.Context) {
 	// the user can specify a url to redirect the back to
 	redirectURL := cx.Request.URL.Query().Get("redirect")
 
@@ -261,7 +271,9 @@ func (r oauthProxy) logoutHandler(cx *gin.Context) {
 	if r.useStore() {
 		go func() {
 			if err := r.DeleteRefreshToken(user.token); err != nil {
-				log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to remove the refresh token from store")
+				log.WithFields(log.Fields{
+					"error": err.Error(),
+				}).Errorf("unable to remove the refresh token from store")
 			}
 		}()
 	}
@@ -334,76 +346,6 @@ func (r oauthProxy) logoutHandler(cx *gin.Context) {
 }
 
 //
-// proxyHandler is responsible to proxy the requests on to the upstream endpoint
-//
-func (r oauthProxy) proxyHandler() gin.HandlerFunc {
-	// step: we don't wanna do this every time, quicker to perform once
-	customClaims := make(map[string]string)
-	for _, x := range r.config.AddClaims {
-		customClaims[x] = fmt.Sprintf("X-Auth-%s", toHeader(x))
-	}
-
-	return func(cx *gin.Context) {
-		// step: double check, if enforce is true and no user context it's a internal error
-		if _, found := cx.Get(cxEnforce); found {
-			if _, found := cx.Get(userContextName); !found {
-				log.Errorf("no user context found for a secure request")
-				cx.AbortWithStatus(http.StatusInternalServerError)
-				return
-			}
-		}
-
-		// step: retrieve the user context if any
-		if user, found := cx.Get(userContextName); found {
-			id := user.(*userContext)
-			cx.Request.Header.Add("X-Auth-UserId", id.id)
-			cx.Request.Header.Add("X-Auth-Subject", id.preferredName)
-			cx.Request.Header.Add("X-Auth-Username", id.name)
-			cx.Request.Header.Add("X-Auth-Email", id.email)
-			cx.Request.Header.Add("X-Auth-ExpiresIn", id.expiresAt.String())
-			cx.Request.Header.Add("X-Auth-Token", id.token.Encode())
-			cx.Request.Header.Add("X-Auth-Roles", strings.Join(id.roles, ","))
-
-			// step: inject any custom claims
-			for claim, header := range customClaims {
-				if claim, found := id.claims[claim]; found {
-					cx.Request.Header.Add(header, fmt.Sprintf("%v", claim))
-				}
-			}
-		}
-
-		// step: add the default headers
-		cx.Request.Header.Add("X-Forwarded-For", cx.Request.RemoteAddr)
-		cx.Request.Header.Set("X-Forwarded-Agent", prog)
-		cx.Request.Header.Set("X-Forwarded-Agent-Version", version)
-
-		// step: is this connection upgrading?
-		if isUpgradedConnection(cx.Request) {
-			log.Debugf("upgrading the connnection to %s", cx.Request.Header.Get(headerUpgrade))
-			if err := tryUpdateConnection(cx, r.endpoint); err != nil {
-				log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to upgrade the connection")
-
-				cx.AbortWithStatus(http.StatusInternalServerError)
-				return
-			}
-			cx.Abort()
-
-			return
-		}
-
-		/*
-			Issue: https://github.com/golang/go/issues/7618
-
-			The reverse proxy does not update the Host header of request, as it's assumed the upstream in on the
-			same domain as the proxy. We could override the Director method, but the latter is easier
-		*/
-		cx.Request.Host = r.endpoint.Host
-
-		r.upstream.ServeHTTP(cx.Writer, cx.Request)
-	}
-}
-
-//
 // expirationHandler checks if the token has expired
 //
 func (r *oauthProxy) expirationHandler(cx *gin.Context) {
@@ -442,13 +384,14 @@ func (r *oauthProxy) tokenHandler(cx *gin.Context) {
 // healthHandler is a health check handler for the service
 //
 func (r *oauthProxy) healthHandler(cx *gin.Context) {
-	cx.String(http.StatusOK, "OK")
+	cx.Writer.Header().Set(versionHeader, version)
+	cx.String(http.StatusOK, "OK\n")
 }
 
 //
 // retrieveRefreshToken retrieves the refresh token from store or cookie
 //
-func (r oauthProxy) retrieveRefreshToken(cx *gin.Context, user *userContext) (string, error) {
+func (r *oauthProxy) retrieveRefreshToken(cx *gin.Context, user *userContext) (string, error) {
 	var token string
 	var err error
 

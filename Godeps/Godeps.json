@@ -1,12 +1,16 @@
 {
 	"ImportPath": "github.com/gambol99/keycloak-proxy",
 	"GoVersion": "go1.5",
-	"GodepVersion": "v62",
+	"GodepVersion": "v70",
 	"Deps": [
 		{
 			"ImportPath": "github.com/Sirupsen/logrus",
 			"Comment": "v0.10.0-14-g081307d",
 			"Rev": "081307d9bc1364753142d5962fc1d795c742baaf"
+		},
+		{
+			"ImportPath": "github.com/armon/go-proxyproto",
+			"Rev": "609d6338d3a76ec26ac3fe7045a164d9a58436e7"
 		},
 		{
 			"ImportPath": "github.com/boltdb/bolt",
@@ -15,28 +19,28 @@
 		},
 		{
 			"ImportPath": "github.com/codegangsta/cli",
-			"Comment": "1.2.0-237-g71f57d3",
-			"Rev": "71f57d300dd6a780ac1856c005c4b518cfd498ec"
+			"Comment": "v1.17.0-21-g0eb4e0b",
+			"Rev": "0eb4e0be6c214f8904ef6989b11072c7b897c657"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-oidc/http",
-			"Rev": "a443fa229e11fd2d5da13c76763b29c447c451b0"
+			"Rev": "e6174c764e906bd60c76fdfc33faf5e0bdc875d6"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-oidc/jose",
-			"Rev": "a443fa229e11fd2d5da13c76763b29c447c451b0"
+			"Rev": "e6174c764e906bd60c76fdfc33faf5e0bdc875d6"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-oidc/key",
-			"Rev": "a443fa229e11fd2d5da13c76763b29c447c451b0"
+			"Rev": "e6174c764e906bd60c76fdfc33faf5e0bdc875d6"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-oidc/oauth2",
-			"Rev": "a443fa229e11fd2d5da13c76763b29c447c451b0"
+			"Rev": "e6174c764e906bd60c76fdfc33faf5e0bdc875d6"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-oidc/oidc",
-			"Rev": "a443fa229e11fd2d5da13c76763b29c447c451b0"
+			"Rev": "e6174c764e906bd60c76fdfc33faf5e0bdc875d6"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-systemd/journal",
@@ -62,6 +66,11 @@
 		{
 			"ImportPath": "github.com/davecgh/go-spew/spew",
 			"Rev": "5215b55f46b2b919f50a1df0eaa5886afe4e3b3d"
+		},
+		{
+			"ImportPath": "github.com/elazarl/goproxy",
+			"Comment": "v1.0-80-g970f4ed",
+			"Rev": "970f4ed8995ab98f808e4abf06f52660aeaec7a9"
 		},
 		{
 			"ImportPath": "github.com/gin-gonic/gin",

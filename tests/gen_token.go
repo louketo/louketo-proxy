@@ -59,7 +59,7 @@ func main() {
 			Usage:  "a series of keypair claims which should be added to the token",
 		},
 	}
-	app.Action = func(cx *cli.Context) {
+	app.Action = func(cx *cli.Context) error {
 
 		header := jose.JOSEHeader{
 			"alg": "RS256",

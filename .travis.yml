@@ -21,5 +21,4 @@ install:
 script:
   - make test
   - docker login -u ${REGISTRY_USERNAME} -p ${REGISTRY_TOKEN} -e ${AUTHOR_EMAIL} ${REGISTRY}
-  - if [ "$TRAVIS_BRANCH" == "master" ]; then VERSION=latest make docker-release; fi
   - if [ -n "$TRAVIS_TAG" ]; then VERSION=$TRAVIS_TAG make docker-release; fi

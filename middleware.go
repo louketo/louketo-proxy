@@ -39,6 +39,7 @@ func (r *oauthProxy) loggingHandler() gin.HandlerFunc {
 	return func(cx *gin.Context) {
 		start := time.Now()
 		cx.Next()
+
 		latency := time.Now().Sub(start)
 
 		log.WithFields(log.Fields{
@@ -56,9 +57,6 @@ func (r *oauthProxy) loggingHandler() gin.HandlerFunc {
 // entryPointHandler checks to see if the request requires authentication
 //
 func (r oauthProxy) entryPointHandler() gin.HandlerFunc {
-	// step: create the proxy handler
-	proxy := r.proxyHandler()
-
 	return func(cx *gin.Context) {
 		if strings.HasPrefix(cx.Request.URL.Path, oauthURL) {
 			cx.Next()
@@ -78,18 +76,8 @@ func (r oauthProxy) entryPointHandler() gin.HandlerFunc {
 				break
 			}
 		}
-		// step: pass into the authentication and admission handlers
+		// step: pass into the authentication, admission and proxy handlers
 		cx.Next()
-
-		// step: add a custom headers to the request
-		for k, v := range r.config.Headers {
-			cx.Request.Header.Add(k, v)
-		}
-
-		// step: check the request has not been aborted and if not, proxy request
-		if !cx.IsAborted() {
-			proxy(cx)
-		}
 	}
 }
 
@@ -110,7 +98,7 @@ func (r *oauthProxy) authenticationHandler() gin.HandlerFunc {
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err.Error(),
-			}).Errorf("failed to get session, redirecting for authorization")
+			}).Errorf("no session found in request, redirecting for authorization")
 
 			r.redirectToAuthorization(cx)
 			return
@@ -193,7 +181,7 @@ func (r *oauthProxy) authenticationHandler() gin.HandlerFunc {
 			}).Infof("found a refresh token, attempting to refresh access token for user: %s", user.email)
 
 			// step: attempts to refresh the access token
-			token, expires, err := refreshToken(r.client, rToken)
+			token, expires, err := getRefreshedToken(r.client, rToken)
 			if err != nil {
 				// step: has the refresh token expired
 				switch err {
@@ -278,7 +266,7 @@ func (r *oauthProxy) admissionHandler() gin.HandlerFunc {
 		user := uc.(*userContext)
 
 		// step: check the audience for the token is us
-		if !user.isAudience(r.config.ClientID) {
+		if r.config.ClientID != "" && !user.isAudience(r.config.ClientID) {
 			log.WithFields(log.Fields{
 				"username":   user.name,
 				"expired_on": user.expiresAt.String(),
@@ -385,26 +373,70 @@ func (r *oauthProxy) crossOriginResourceHandler(c CORS) gin.HandlerFunc {
 }
 
 //
+// upstreamHeadersHandler is responsible for add the authentication headers for the upstream
+//
+func (r *oauthProxy) upstreamHeadersHandler(custom []string) gin.HandlerFunc {
+	// step: we don't wanna do this every time, quicker to perform once
+	customClaims := make(map[string]string)
+	for _, x := range custom {
+		customClaims[x] = fmt.Sprintf("X-Auth-%s", toHeader(x))
+	}
+
+	return func(cx *gin.Context) {
+		// step: add a custom headers to the request
+		for k, v := range r.config.Headers {
+			cx.Request.Header.Add(k, v)
+		}
+
+		// step: retrieve the user context if any
+		if user, found := cx.Get(userContextName); found {
+			id := user.(*userContext)
+			cx.Request.Header.Add("X-Auth-Userid", id.name)
+			cx.Request.Header.Add("X-Auth-Subject", id.id)
+			cx.Request.Header.Add("X-Auth-Username", id.name)
+			cx.Request.Header.Add("X-Auth-Email", id.email)
+			cx.Request.Header.Add("X-Auth-ExpiresIn", id.expiresAt.String())
+			cx.Request.Header.Add("X-Auth-Token", id.token.Encode())
+			cx.Request.Header.Add("X-Auth-Roles", strings.Join(id.roles, ","))
+			cx.Request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", id.token.Encode()))
+
+			// step: inject any custom claims
+			for claim, header := range customClaims {
+				if claim, found := id.claims[claim]; found {
+					cx.Request.Header.Add(header, fmt.Sprintf("%v", claim))
+				}
+			}
+		}
+		// step: add the default headers
+		cx.Request.Header.Add("X-Forwarded-For", cx.Request.RemoteAddr)
+		cx.Request.Header.Set("X-Forwarded-Agent", prog)
+		cx.Request.Header.Set("X-Forwarded-Host", cx.Request.Host)
+	}
+}
+
+//
 // securityHandler performs numerous security checks on the request
 //
 func (r *oauthProxy) securityHandler() gin.HandlerFunc {
 	// step: create the security options
 	secure := secure.New(secure.Options{
-		AllowedHosts:         r.config.Hostnames,
-		BrowserXssFilter:     true,
-		ContentTypeNosniff:   true,
-		FrameDeny:            true,
-		STSIncludeSubdomains: true,
-		STSSeconds:           31536000,
+		AllowedHosts:       r.config.Hostnames,
+		BrowserXssFilter:   true,
+		ContentTypeNosniff: true,
+		FrameDeny:          true,
 	})
 
 	return func(cx *gin.Context) {
 		// step: pass through the security middleware
 		if err := secure.Process(cx.Writer, cx.Request); err != nil {
-			log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed security middleware")
+			log.WithFields(log.Fields{
+				"error": err.Error(),
+			}).Errorf("failed security middleware")
+
 			cx.Abort()
 			return
 		}
+
 		// step: permit the request to continue
 		cx.Next()
 	}

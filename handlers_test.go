@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc/jose"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestExpirationHandler(t *testing.T) {
@@ -76,9 +77,106 @@ func TestExpirationHandler(t *testing.T) {
 		// step: if closure so we need to get the handler each time
 		proxy.expirationHandler(cx)
 		// step: check the content result
-		if cx.Writer.Status() != c.HTTPCode {
-			t.Errorf("test case %d should have recieved: %d, but got %d", i, c.HTTPCode, cx.Writer.Status())
+		assert.Equal(t, c.HTTPCode, cx.Writer.Status(), "test case %d should have recieved: %d, but got %d", i,
+			c.HTTPCode, cx.Writer.Status())
+	}
+}
+
+func TestAuthorizationURL(t *testing.T) {
+	_, _, u := newTestProxyService(t, nil)
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return fmt.Errorf("no redirect")
+		},
+	}
+	cs := []struct {
+		URL          string
+		ExpectedURL  string
+		ExpectedCode int
+	}{
+		{
+			URL:          "/",
+			ExpectedCode: http.StatusNotFound,
+		},
+		{
+			URL:          "/admin",
+			ExpectedURL:  "/oauth/authorize?state=L2FkbWlu",
+			ExpectedCode: http.StatusTemporaryRedirect,
+		},
+		{
+			URL:          "/admin/test",
+			ExpectedURL:  "/oauth/authorize?state=L2FkbWluL3Rlc3Q=",
+			ExpectedCode: http.StatusTemporaryRedirect,
+		},
+		{
+			URL:          "/admin/../",
+			ExpectedURL:  "/oauth/authorize?state=L2FkbWluLy4uLw==",
+			ExpectedCode: http.StatusTemporaryRedirect,
+		},
+		{
+			URL:          "/admin?test=yes&test1=test",
+			ExpectedURL:  "/oauth/authorize?state=L2FkbWluP3Rlc3Q9eWVzJnRlc3QxPXRlc3Q=",
+			ExpectedCode: http.StatusTemporaryRedirect,
+		},
+	}
+	for i, x := range cs {
+		resp, _ := client.Get(u + x.URL)
+		assert.Equal(t, x.ExpectedCode, resp.StatusCode, "case %d, expect: %v, got: %s", i, x.ExpectedCode, resp.StatusCode)
+		assert.Equal(t, x.ExpectedURL, resp.Header.Get("Location"), "case %d, expect: %v, got: %s", i, x.ExpectedURL, resp.Header.Get("Location"))
+	}
+}
+
+func TestCallbackURL(t *testing.T) {
+	_, _, u := newTestProxyService(t, nil)
+
+	cs := []struct {
+		URL         string
+		ExpectedURL string
+	}{
+		{
+			URL:         "/oauth/authorize?state=L2FkbWlu",
+			ExpectedURL: "/admin",
+		},
+		{
+			URL:         "/oauth/authorize",
+			ExpectedURL: "/",
+		},
+		{
+			URL:         "/oauth/authorize?state=L2FkbWluL3Rlc3QxP3Rlc3QxJmhlbGxv",
+			ExpectedURL: "/admin/test1?test1&hello",
+		},
+	}
+	for i, x := range cs {
+		// step: call the authorization endpoint
+		req, err := http.NewRequest("GET", u+x.URL, nil)
+		if err != nil {
+			continue
 		}
+		resp, err := http.DefaultTransport.RoundTrip(req)
+		if !assert.NoError(t, err, "case %d, should not have failed", i) {
+			continue
+		}
+		openIDURL := resp.Header.Get("Location")
+		if !assert.NotEmpty(t, openIDURL, "case %d, the open id redirection url is empty", i) {
+			continue
+		}
+		req, _ = http.NewRequest("GET", openIDURL, nil)
+		resp, err = http.DefaultTransport.RoundTrip(req)
+		if !assert.NoError(t, err, "case %d, should not have failed calling the opend id url", i) {
+			continue
+		}
+		callbackURL := resp.Header.Get("Location")
+		if !assert.NotEmpty(t, callbackURL, "case %d, should have recieved a callback url", i) {
+			continue
+		}
+		// step: call the callback url
+		req, _ = http.NewRequest("GET", callbackURL, nil)
+		resp, err = http.DefaultTransport.RoundTrip(req)
+		if !assert.NoError(t, err, "case %d, unable to call the callback url", i) {
+			continue
+		}
+		// step: check the callback location is as expected
+		assert.Contains(t, resp.Header.Get("Location"), x.ExpectedURL)
 	}
 }
 
@@ -86,7 +184,7 @@ func TestHealthHandler(t *testing.T) {
 	proxy := newFakeKeycloakProxy(t)
 	context := newFakeGinContext("GET", healthURL)
 	proxy.healthHandler(context)
-	if context.Writer.Status() != http.StatusOK {
-		t.Errorf("we should have recieved a 200 response")
-	}
+	assert.Equal(t, http.StatusOK, context.Writer.Status())
+	assert.NotEmpty(t, context.Writer.Header().Get(versionHeader))
+	assert.Equal(t, version, context.Writer.Header().Get(versionHeader))
 }

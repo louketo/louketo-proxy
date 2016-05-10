@@ -13,6 +13,8 @@
   - TLS and mutual TLS support
   - JSON field bases access logs
   - Custom Sign-in and access forbidden pages
+  - Forwarding proxy support, to sign outbound requests
+  - URL Role Tokenization
 
 ----
 
@@ -24,62 +26,72 @@ NAME:
    keycloak-proxy - is a proxy using the keycloak service for auth and authorization
 
 USAGE:
-   keycloak-proxy [global options] command [command options] [arguments...]
+   keycloak-proxy [options]
 
 VERSION:
-   v1.0.5
+   v1.1.0 (git+sha: 1209149)
 
 AUTHOR(S):
    Rohith <gambol99@gmail.com>
 
 COMMANDS:
 GLOBAL OPTIONS:
-   --config                                     the path to the configuration file for the keycloak proxy
-   --listen "127.0.0.1:3000"                    the interface the service should be listening on
-   --client-secret                              the client secret used to authenticate to the oauth server
-   --client-id                                  the client id used to authenticate to the oauth serves
-   --discovery-url                              the discovery url to retrieve the openid configuration
-   --scope [--scope option --scope option]      a variable list of scopes requested when authenticating the user
-   --idle-duration "0"                          the expiration of the access token cookie, if not used within this time its removed
-   --redirection-url                            redirection url for the oauth callback url (/oauth is added)
-   --upstream-url "http://127.0.0.1:8081"       the url for the upstream endpoint you wish to proxy to
-   --revocation-url "/oauth2/revoke"            the url for the revocation endpoint to revoke refresh token
-   --store-url                                  url for the storage subsystem, e.g redis://127.0.0.1:6379, file:///etc/tokens.file
-   --upstream-keepalives                        enables or disables the keepalive connections for upstream endpoint
-   --enable-refresh-tokens                      enables the handling of the refresh tokens
-   --secure-cookie                              enforces the cookie to be secure, default to true
-   --cookie-access-name "kc-access"             the name of the cookie use to hold the access token
-   --cookie-refresh-name "kc-state"             the name of the cookie used to hold the encrypted refresh token
-   --encryption-key                             the encryption key used to encrpytion the session state
-   --no-redirects                               do not have back redirects when no authentication is present, 401 them
-   --hostname [--hostname option --hostname option]   a list of hostnames the service will respond to, defaults to all
-   --tls-cert                                   the path to a certificate file used for TLS
-   --tls-private-key                            the path to the private key for TLS support
-   --tls-ca-certificate                         the path to the ca certificate used for mutual TLS
-   --skip-upstream-tls-verify                   whether to skip the verification of any upstream TLS (defaults to true)
-   --match-claims [--match-claims option --match-claims option]   keypair values for matching access token claims e.g. aud=myapp, iss=http://example.*
-   --add-claims [--add-claims option --add-claims option]         retrieve extra claims from the token and inject into headers, e.g given_name -> X-Auth-Given-Name
-   --resource [--resource option --resource option]               a list of resources 'uri=/admin|methods=GET|roles=role1,role2'
-   --signin-page                                a custom template displayed for signin
-   --forbidden-page                             a custom template used for access forbidden
-   --tag [--tag option --tag option]            keypair's passed to the templates at render,e.g title='My Page'
-   --cors-origins [--cors-origins option --cors-origins option]   list of origins to add to the CORE origins control (Access-Control-Allow-Origin)
-   --cors-methods [--cors-methods option --cors-methods option]   the method permitted in the access control (Access-Control-Allow-Methods)
-   --cors-headers [--cors-headers option --cors-headers option]   a set of headers to add to the CORS access control (Access-Control-Allow-Headers)
-   --cors-exposes-headers [--cors-exposes-headers option --cors-exposes-headers option]	set the expose cors headers access control (Access-Control-Expose-Headers)
-   --cors-max-age "0"                           the max age applied to cors headers (Access-Control-Max-Age)
-   --cors-credentials                           the credentials access control header (Access-Control-Allow-Credentials)
-   --headers [--headers option --headers option]                  Add custom headers to the upstream request, key=value
-   --enable-security-filter                     enables the security filter handler
-   --skip-token-verification                    TESTING ONLY; bypass's token verification, expiration and roles enforced
-   --offline-session                            enables the offline session of tokens via offline access (defaults false)
-   --json-logging                               switch on json logging rather than text (defaults true)
-   --log-requests                               switch on logging of all incoming requests (defaults true)
-   --verbose                                    switch on debug / verbose logging
-   --help, -h                                   show help
-   --version, -v                                print the version
-
+   --config value                       the path to the configuration file for the keycloak proxy [$PROXY_CONFIG_FILE]
+   --listen value                       the interface the service should be listening on (default: "127.0.0.1:3000")
+   --client-secret value                the client secret used to authenticate to the oauth server (access_type: confidential) [$PROXY_CLIENT_SECRET]
+   --client-id value                    the client id used to authenticate to the oauth service [$PROXY_CLIENT_ID]
+   --discovery-url value                the discovery url to retrieve the openid configuration [$PROXY_DISCOVERY_URL]
+   --scope value                        a variable list of scopes requested when authenticating the user
+   --token-validate-only                validate the token and roles only, no required implement oauth
+   --idle-duration value                the expiration of the access token cookie, if not used within this time its removed (default: 0)
+   --redirection-url value              redirection url for the oauth callback url (/oauth is added) [$PROXY_REDIRECTION_URL]
+   --revocation-url value               the url for the revocation endpoint to revoke refresh token (default: "/oauth2/revoke")
+   --store-url value                    url for the storage subsystem, e.g redis://127.0.0.1:6379, file:///etc/tokens.file [$PROXY_STORE_URL]
+   --upstream-url value                 the url for the upstream endpoint you wish to proxy to [$PROXY_UPSTREAM_URL]
+   --upstream-keepalives                enables or disables the keepalive connections for upstream endpoint
+   --upstream-timeout value             is the maximum amount of time a dial will wait for a connect to complete (default: 10s)
+   --upstream-keepalive-timeout value   specifies the keep-alive period for an active network connection (default: 10s)
+   --enable-refresh-tokens              enables the handling of the refresh tokens
+   --secure-cookie                      enforces the cookie to be secure, default to true
+   --cookie-access-name value           the name of the cookie use to hold the access token (default: "kc-access")
+   --cookie-refresh-name value          the name of the cookie used to hold the encrypted refresh token (default: "kc-state")
+   --encryption-key value               the encryption key used to encrpytion the session state
+   --no-redirects                       do not have back redirects when no authentication is present, 401 them
+   --hostname value                     a list of hostnames the service will respond to, defaults to all
+   --enable-proxy-protocol              whether to enable proxy protocol
+   --enable-forwarding                  enables the forwarding proxy mode, signing outbound request
+   --forwarding-username value          the username to use when logging into the openid provider
+   --forwarding-password value          the password to use when logging into the openid provider
+   --forwarding-domains value           a list of domains which should be signed, anything is just relayed
+   --tls-cert value                     the path to a certificate file used for TLS
+   --tls-private-key value              the path to the private key for TLS support
+   --tls-ca-certificate value           the path to the ca certificate used for mutual TLS
+   --skip-upstream-tls-verify           whether to skip the verification of any upstream TLS (defaults to true)
+   --match-claims value                 keypair values for matching access token claims e.g. aud=myapp, iss=http://example.*
+   --add-claims value                   retrieve extra claims from the token and inject into headers, e.g given_name -> X-Auth-Given-Name
+   --resource value                     a list of resources 'uri=/admin|methods=GET|roles=role1,role2'
+   --headers value                      Add custom headers to the upstream request, key=value
+   --signin-page value                  a custom template displayed for signin
+   --forbidden-page value               a custom template used for access forbidden
+   --tag value                          keypair's passed to the templates at render,e.g title='My Page'
+   --cors-origins value                 list of origins to add to the CORE origins control (Access-Control-Allow-Origin)
+   --cors-methods value                 the method permitted in the access control (Access-Control-Allow-Methods)
+   --cors-headers value                 a set of headers to add to the CORS access control (Access-Control-Allow-Headers)
+   --cors-exposes-headers value         set the expose cors headers access control (Access-Control-Expose-Headers)
+   --cors-max-age value                 the max age applied to cors headers (Access-Control-Max-Age) (default: 0)
+   --cors-credentials                   the credentials access control header (Access-Control-Allow-Credentials)
+   --enable-security-filter             enables the security filter handler
+   --skip-token-verification            TESTING ONLY; bypass token verification, only expiration and roles enforced
+   --json-logging                       switch on json logging rather than text (defaults true)
+   --log-requests                       switch on logging of all incoming requests (defaults true)
+   --verbose                            switch on debug / verbose logging
+   --help, -h                           show help
+   --version, -v                        print the version
 ```
+
+#### **Building**
+
+Assuming you have make + go, simply run make (or 'make static' for static linking). You can also build via docker container: make docker-build
 
 #### **Configuration**
 
@@ -143,10 +155,9 @@ d) Create the various roles under the client or existing clients for authorizati
 ```YAML
 discovery-url: https://keycloak.example.com/auth/realms/<REALM_NAME>
 client-id: <CLIENT_ID>
-client-secret: <CLIENT_SECRET>
+client-secret: <CLIENT_SECRET> # require for access_type: confidential
 listen: 127.0.0.1:3000
 redirection-url: http://127.0.0.1:3000
-refresh_session: false
 encryption_key: AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j
 upstream-url: http://127.0.0.1:80
 
@@ -171,7 +182,7 @@ bin/keycloak-proxy \
     --client-secret=<SECRET> \
     --listen=127.0.0.1:3000 \
     --redirection-url=http://127.0.0.1:3000 \
-    --refresh-sessions=true \
+    --enable-refresh-token=true \
     --encryption-key=AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j \
     --upstream-url=http://127.0.0.1:80 \
     --resource="uri=/admin|methods=GET|roles=test1,test2" \
@@ -199,6 +210,70 @@ DEBU[0002] resource access permitted: /                  access=permitted bearer
 DEBU[0002] resource access permitted: /favicon.ico       access=permitted bearer=false expires=57m51.144004098s resource=/ username=gambol99@gmail.com
 2016-02-06 13:59:01.856716 I | http: proxy error: dial tcp 127.0.0.1:8081: getsockopt: connection refused
 ```
+
+#### **- Forward Signing Proxy (Experimental)**
+
+Lets say you have a bunch of services and you want to apply granular access controls, central auditing, authentication and authorization between endpoints.
+Incoming is covered as detailed above, but you can also switch on a forwarding proxy. Your application can proxy outbound requests through the proxy; requests
+will be signed with an authorization header (i.e. a JWT access token) for the other end to verify. The proxy will then take care of authenticating to the
+OpenID service, refreshing the tokens etc.
+
+Example setup:
+
+You have selection of applications; lets assume to keep the example only those with a specific role per project for access i.e. Project requires project role claim,
+ProjectB requires projectb role claim etc etc. You can setup the
+
+```YAML
+# kubernetes pod example
+- name: keycloak-proxy
+  image: quay.io/gambol99/keycloak-proxy:latest
+  args:
+  - --listen=unix:///var/run/keycloak/proxy.sock
+  - --enable-forwarding=true
+  - --forwarding-username=projecta
+  - --forwarding-password=some_password (better to grab from k8s secrets via env or perhaps vault?)
+  - --forwarding-domains=projectb.svc.cluster.local
+  - --forwarding-domains=projectc.svc.cluster.local
+  # Note: if you don't specify any forwarding domains, all domains will be signed; Also the code checks is the
+  # domain 'contains' the value (it's not a regex) so if you wanted to sign all requests to svc.cluster.local, just use
+  # svc.cluster.local
+  volumeMounts:
+  - name: keycloak-socket
+    mountPoint: /var/run/keycloak
+- name: projecta
+  image: some_images
+  #
+```
+
+Project A can use the /var/run/keycloak/proxy.sock (or you can chunk it on localhost:PORT if you prefer) and setup the application via stanadrd proxy
+setting is projects requests
+
+
+#### **- URL Tokenization (in-progress)**
+---
+
+You can tokenize the url for an authenticated resource, extracting roles from the url itself. Say for example you have an applications where the uri comes in a namespace form, e.g.
+/logs/<namespace> i.e. logs/admin/, logs/app1, logs/app2 etc. you could use
+
+```YAML
+resources:
+- uri: logs/admin
+  roles: [ 'admin' ]
+- uri: logs/app1
+  roles: [ 'app1' ]
+- uri: logs/app2
+  roles: [ 'app2' ]
+```
+
+But it could become annoying, creating roles for namespaces, updating there, then updating config here. An easier way would be map a url token to a role name. i.e.
+
+```YAML
+resources:
+- uri: logs/%role%/
+```
+
+The above will extract role requirement from the url and apply to admission as per usual. /logs/admin will need a admin role, logs/app1 needs the app1 role, etc.   
+
 ---
 #### **- Upstream Headers**
 
@@ -206,7 +281,7 @@ On protected resources the upstream endpoint will receive a number of headers ad
 
 ```GO
 # add the header to the upstream endpoint
-cx.Request.Header.Add("X-Auth-UserId", id.id)
+cx.Request.Header.Add("X-Auth-Userid", id.id)
 cx.Request.Header.Add("X-Auth-Subject", id.preferredName)
 cx.Request.Header.Add("X-Auth-Username", id.name)
 cx.Request.Header.Add("X-Auth-Email", id.email)
@@ -215,8 +290,11 @@ cx.Request.Header.Add("X-Auth-Token", id.token.Encode())
 cx.Request.Header.Add("X-Auth-Roles", strings.Join(id.roles, ","))
 
 # plus the default
-cx.Request.Header.Add("X-Forwarded-For", <CLIENT_IP>)
+cx.Request.Header.Add("X-Forwarded-For", cx.Request.RemoteAddr)
 cx.Request.Header.Add("X-Forwarded-Proto", <CLIENT_PROTO>)
+cx.Request.Header.Set("X-Forwarded-Agent", prog)
+cx.Request.Header.Set("X-Forwarded-Agent-Version", version)
+cx.Request.Header.Set("X-Forwarded-Host", cx.Request.Host)
 ```
 
 #### **- Custom Claims**
@@ -258,6 +336,12 @@ X-Auth-Subject: rohith.jayawardene
 
 In order to remain stateless and not have to rely on a central cache to persist the 'refresh_tokens', the refresh token is encrypted and added as a cookie using *crypto/aes*.
 Naturally the key must be the same if your running behind a load balancer etc. The key length should either 16 or 32 bytes depending or whether you want AES-128 or AES-256.
+
+#### **- ClientID & Secret**
+
+Note, the client secret is optional are is only only for setups where the oauth provider is using access_type = confidential; if the provider is 'public' simple add the client id.
+Alternatively, you might not need the proxy to perform the oauth authentication flow and instead simply verify the identity token (a potential role permissions), in which case, again
+just drop the client secret and use the client id and discovery-url.
 
 #### **- Claim Matching**
 
@@ -369,7 +453,7 @@ the TLS verification via the --skip-upstream-tls-verify or config option, along 
 * **/oauth/authorize** is authentication endpoint which will generate the openid redirect to the provider
 * **/oauth/callback** is provider openid callback endpoint
 * **/oauth/expired** is a helper endpoint to check if a access token has expired, 200 for ok and, 401 for no token and 401 for expired
-* **/oauth/health** is the health checking endpoint for the proxy
+* **/oauth/health** is the health checking endpoint for the proxy, you can also grab version from headers
 * **/oauth/login** provides a relay endpoint to login via grant_type=password i.e. POST /oauth/login?username=USERNAME&password=PASSWORD
 * **/oauth/logout** provides a convenient endpoint to log the user out, it will always attempt to perform a back channel logout of offline tokens
 * **/oauth/token** is a helper endpoint which will display the current access token for you

@@ -28,6 +28,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestCreateOpenIDClient(t *testing.T) {
+	client, _, err := createOpenIDClient(&Config{
+		DiscoveryURL: newFakeOAuthServer(t).getLocation(),
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, client)
+}
+
 func TestDecodeKeyPairs(t *testing.T) {
 	testCases := []struct {
 		List     []string
@@ -194,6 +202,20 @@ func TestContainedIn(t *testing.T) {
 	assert.True(t, containedIn("1", []string{"1", "2", "3", "4"}))
 }
 
+func TestDialAddress(t *testing.T) {
+	assert.Equal(t, dialAddress(getFakeURL("http://127.0.0.1")), "127.0.0.1:80")
+	assert.Equal(t, dialAddress(getFakeURL("https://127.0.0.1")), "127.0.0.1:443")
+	assert.Equal(t, dialAddress(getFakeURL("http://127.0.0.1:8080")), "127.0.0.1:8080")
+}
+
+func TestIsUpgradedConnection(t *testing.T) {
+	header := http.Header{}
+	header.Add(headerUpgrade, "")
+	assert.False(t, isUpgradedConnection(&http.Request{Header: header}))
+	header.Set(headerUpgrade, "set")
+	assert.True(t, isUpgradedConnection(&http.Request{Header: header}))
+}
+
 func TestFileExists(t *testing.T) {
 	if fileExists("no_such_file_exsit_32323232") {
 		t.Errorf("we should have received false")
@@ -207,20 +229,6 @@ func TestFileExists(t *testing.T) {
 	if !fileExists(tmpfile.Name()) {
 		t.Errorf("we should have received a true")
 	}
-}
-
-func TestDialAddress(t *testing.T) {
-	assert.Equal(t, dialAddress(getFakeURL("http://127.0.0.1")), "127.0.0.1:80")
-	assert.Equal(t, dialAddress(getFakeURL("https://127.0.0.1")), "127.0.0.1:443")
-	assert.Equal(t, dialAddress(getFakeURL("http://127.0.0.1:8080")), "127.0.0.1:8080")
-}
-
-func TestIsUpgradedConnection(t *testing.T) {
-	header := http.Header{}
-	header.Add(headerUpgrade, "")
-	assert.False(t, isUpgradedConnection(&http.Request{Header: header}))
-	header.Set(headerUpgrade, "set")
-	assert.True(t, isUpgradedConnection(&http.Request{Header: header}))
 }
 
 func TestToHeader(t *testing.T) {
