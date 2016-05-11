@@ -29,7 +29,7 @@ func main() {
 	kc := cli.NewApp()
 	kc.Name = prog
 	kc.Usage = description
-	kc.Version = fmt.Sprintf("%s, (git+sha: %s)", version, gitsha)
+	kc.Version = version
 	kc.Author = author
 	kc.Email = email
 	kc.Flags = getOptions()

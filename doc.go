@@ -21,21 +21,21 @@ import (
 )
 
 var (
-	gitsha = "no gitsha provided"
+	release = "v1.0.6"
+	gitsha  = "no gitsha provided"
+	version = release + " (git+sha: " + gitsha + ")"
 )
 
 const (
 	prog        = "keycloak-proxy"
-	version     = "v1.0.6"
 	author      = "Rohith"
 	email       = "gambol99@gmail.com"
 	description = "is a proxy using the keycloak service for auth and authorization"
 
 	headerUpgrade       = "Upgrade"
-	cookieAccessToken   = "kc-access"
-	cookieRefreshToken  = "kc-state"
 	userContextName     = "identity"
 	authorizationHeader = "Authorization"
+	versionHeader       = "X-Auth-Proxy-Version"
 
 	oauthURL         = "/oauth"
 	authorizationURL = "/authorize"
@@ -108,6 +108,8 @@ type Config struct {
 	ClientID string `json:"client-id" yaml:"client-id"`
 	// ClientSecret is the secret for AS
 	ClientSecret string `json:"client-secret" yaml:"client-secret"`
+	// TokenValidationOnly indicates we only want to validate the token, not auth a client
+	TokenValidationOnly bool `json:"token-validation-only" json:"token-validation-only"`
 	// RevocationEndpoint is the token revocation endpoint to revoke refresh tokens
 	RevocationEndpoint string `json:"revocation-url" yaml:"revocation-url"`
 	// NoRedirects informs we should hand back a 401 not a redirect
@@ -116,7 +118,7 @@ type Config struct {
 	RedirectionURL string `json:"redirection-url" yaml:"redirection-url"`
 	// EnableSecurityFilter enabled the security handler
 	EnableSecurityFilter bool `json:"enable-security-filter" yaml:"enable-security-filter"`
-	// EnableRefreshTokens indicate's you wish to ignore using refresh tokens and re-auth on expireation of access token
+	// EnableRefreshTokens indicate's you wish to ignore using refresh tokens and re-auth on expiration of access token
 	EnableRefreshTokens bool `json:"enable-refresh-tokens" yaml:"enable-refresh-tokens"`
 	// CookieAccessName is the name of the access cookie holding the access token
 	CookieAccessName string `json:"cookie-access-name" yaml:"cookie-access-name"`

@@ -1,10 +1,29 @@
 
+#### **1.1.0 (unreleased)**
+
+FIXES:
+ * Added a auto build to quay.io on the travis build for master and tags
+ * Fixed the host header to proxy to upstreams outside of the proxy domain (https://github.com/golang/go/issues/7618)
+ * Adding a git+sha to the usage 
+ * Defaulting to gin mode release unless verbose is true
+ * Removed the gin debug logging for tests and builds
+ 
+FEATURES:
+ * Adding environment variables to some of the command line options
+ * Adding the option of a forwarding agent, i.e. you can seat the proxy front of your application,
+   login to keycloak and use the proxy as forwarding agent to sign outbound requests. 
+ * Adding the version information into a header on /oauth/health endpoint
+ * Adding the option to permit auth+authz only, so no issuing tokens just validating them (no need to client-id, client-secret)
+
+BREAKING CHANGES:
+ * Changed the X-Auth-Subject, it not is the actual subject from the token (makes more sense).
+   X-Auth-UserID will either be the subject id or the preferred username 
+
 #### **1.0.6 (May 6th, 2016)**
 
 FIXES:
  * Fixed the logout endpoint, ensuring users sessions are revoked. Note: i've not really tested this against Keycloak
    and Google. Revocation or logouts seems to have somewhat scattered implementation across providers.
-
 
 #### **1.0.5 (May 3th, 2016)**
 

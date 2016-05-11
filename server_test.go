@@ -64,8 +64,9 @@ func newFakeKeycloakConfig(t *testing.T) *Config {
 		Scopes:                []string{},
 		EnableRefreshTokens:   false,
 		SecureCookie:          true,
-		CookieAccessName:      cookieAccessToken,
-		CookieRefreshName:     cookieRefreshToken,
+		CookieAccessName:      "kc-access",
+		CookieRefreshName:     "kc-state",
+		Verbose:               false,
 		Resources: []*Resource{
 			{
 				URL:     fakeAdminRoleURL,
@@ -112,8 +113,8 @@ func newFakeKeycloakProxy(t *testing.T) *oauthProxy {
 		upstream: new(fakeReverseProxy),
 		endpoint: &url.URL{Host: "127.0.0.1"},
 	}
-	kc.router = gin.New()
 	gin.SetMode(gin.ReleaseMode)
+	kc.router = gin.New()
 	// step: add the gin routing
 	kc.setupRouter()
 

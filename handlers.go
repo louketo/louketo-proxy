@@ -356,13 +356,16 @@ func (r oauthProxy) proxyHandler() gin.HandlerFunc {
 		// step: retrieve the user context if any
 		if user, found := cx.Get(userContextName); found {
 			id := user.(*userContext)
-			cx.Request.Header.Add("X-Auth-UserId", id.id)
-			cx.Request.Header.Add("X-Auth-Subject", id.preferredName)
+			cx.Request.Header.Add("X-Auth-UserId", id.name)
+			cx.Request.Header.Add("X-Auth-Subject", id.id)
 			cx.Request.Header.Add("X-Auth-Username", id.name)
 			cx.Request.Header.Add("X-Auth-Email", id.email)
 			cx.Request.Header.Add("X-Auth-ExpiresIn", id.expiresAt.String())
 			cx.Request.Header.Add("X-Auth-Token", id.token.Encode())
 			cx.Request.Header.Add("X-Auth-Roles", strings.Join(id.roles, ","))
+
+			// step: add an authorization header
+			cx.Request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", id.token.Encode()))
 
 			// step: inject any custom claims
 			for claim, header := range customClaims {
@@ -442,7 +445,8 @@ func (r *oauthProxy) tokenHandler(cx *gin.Context) {
 // healthHandler is a health check handler for the service
 //
 func (r *oauthProxy) healthHandler(cx *gin.Context) {
-	cx.String(http.StatusOK, "OK")
+	cx.Writer.Header().Set(versionHeader, version)
+	cx.String(http.StatusOK, "OK\n")
 }
 
 //

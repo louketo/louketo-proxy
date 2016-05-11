@@ -13,6 +13,7 @@
   - TLS and mutual TLS support
   - JSON field bases access logs
   - Custom Sign-in and access forbidden pages
+  - Forwarding proxy support, to sign outbound requests
 
 ----
 
@@ -259,6 +260,11 @@ X-Auth-Subject: rohith.jayawardene
 In order to remain stateless and not have to rely on a central cache to persist the 'refresh_tokens', the refresh token is encrypted and added as a cookie using *crypto/aes*.
 Naturally the key must be the same if your running behind a load balancer etc. The key length should either 16 or 32 bytes depending or whether you want AES-128 or AES-256.
 
+#### **- Validation Only**
+
+Note, you are getting the token issued by another means and can switch the proxy into validation only mode, with --token-validation-only=true. The proxy will not permit
+oauth login, but it will validate the token and signature, as well as implementing uri role admissions.
+
 #### **- Claim Matching**
 
 The proxy supports adding a variable list of claim matches against the presented tokens for additional access control. So for example you can match the 'iss' or 'aud' to the token or custom attributes;
@@ -369,7 +375,7 @@ the TLS verification via the --skip-upstream-tls-verify or config option, along 
 * **/oauth/authorize** is authentication endpoint which will generate the openid redirect to the provider
 * **/oauth/callback** is provider openid callback endpoint
 * **/oauth/expired** is a helper endpoint to check if a access token has expired, 200 for ok and, 401 for no token and 401 for expired
-* **/oauth/health** is the health checking endpoint for the proxy
+* **/oauth/health** is the health checking endpoint for the proxy, you can also grab version from headers
 * **/oauth/login** provides a relay endpoint to login via grant_type=password i.e. POST /oauth/login?username=USERNAME&password=PASSWORD
 * **/oauth/logout** provides a convenient endpoint to log the user out, it will always attempt to perform a back channel logout of offline tokens
 * **/oauth/token** is a helper endpoint which will display the current access token for you

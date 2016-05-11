@@ -22,6 +22,7 @@ import (
 
 	"github.com/coreos/go-oidc/jose"
 	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestEntrypointHandlerSecure(t *testing.T) {
@@ -181,25 +182,24 @@ func TestSecurityHandler(t *testing.T) {
 	handler := kc.securityHandler()
 	context := newFakeGinContext("GET", "/")
 	handler(context)
-	if context.Writer.Status() != http.StatusOK {
-		t.Errorf("we should have received a 200")
-	}
+
+	assert.Equal(t, http.StatusOK, context.Writer.Status(),
+		"we should have received a 200 not %d", context.Writer.Status())
 
 	kc = newFakeKeycloakProxy(t)
 	kc.config.Hostnames = []string{"127.0.0.1"}
 	handler = kc.securityHandler()
 	handler(context)
-	if context.Writer.Status() != http.StatusOK {
-		t.Errorf("we should have received a 200 not %d", context.Writer.Status())
-	}
+	assert.Equal(t, http.StatusOK, context.Writer.Status(),
+		"we should have received a 200 not %d", context.Writer.Status())
 
 	kc = newFakeKeycloakProxy(t)
 	kc.config.Hostnames = []string{"127.0.0.2"}
 	handler = kc.securityHandler()
 	handler(context)
-	if context.Writer.Status() != http.StatusInternalServerError {
-		t.Errorf("we should have received a 500 not %d", context.Writer.Status())
-	}
+
+	assert.Equal(t, http.StatusInternalServerError, context.Writer.Status(),
+		"we should have received a 500 not %d", context.Writer.Status())
 }
 
 func TestCrossSiteHandler(t *testing.T) {
@@ -341,9 +341,8 @@ func TestAdmissionHandlerRoles(t *testing.T) {
 		c.Context.Set(userContextName, c.UserContext)
 
 		handler(c.Context)
-		if c.Context.Writer.Status() != c.HTTPCode {
-			t.Errorf("test case %d should have recieved code: %d, got %d", i, c.HTTPCode, c.Context.Writer.Status())
-		}
+		status := c.Context.Writer.Status()
+		assert.Equal(t, c.HTTPCode, status, "test case %d should have recieved code: %d, got %d", i, c.HTTPCode, status)
 	}
 }
 
@@ -453,9 +452,7 @@ func TestAdmissionHandlerClaims(t *testing.T) {
 
 		handler(c.Context)
 		c.Context.Writer.WriteHeaderNow()
-
-		if c.Context.Writer.Status() != c.HTTPCode {
-			t.Errorf("test case %d should have recieved code: %d, got %d", i, c.HTTPCode, c.Context.Writer.Status())
-		}
+		status := c.Context.Writer.Status()
+		assert.Equal(t, c.HTTPCode, status, "test case %d should have recieved code: %d, got %d", i, c.HTTPCode, status)
 	}
 }

@@ -90,7 +90,7 @@ func TestGetRefreshTokenFromCookie(t *testing.T) {
 		{
 			Cookies: []*http.Cookie{
 				{
-					Name:   cookieRefreshToken,
+					Name:   "kc-state",
 					Path:   "/",
 					Domain: "127.0.0.1",
 					Value:  "refresh_token",

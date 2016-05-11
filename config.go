@@ -37,8 +37,8 @@ func newDefaultConfig() *Config {
 		TagData:               make(map[string]string, 0),
 		MatchClaims:           make(map[string]string, 0),
 		Headers:               make(map[string]string, 0),
-		CookieAccessName:      cookieAccessToken,
-		CookieRefreshName:     cookieRefreshToken,
+		CookieAccessName:      "kc-access",
+		CookieRefreshName:     "kc-state",
 		SecureCookie:          true,
 		SkipUpstreamTLSVerify: true,
 		CrossOrigin:           CORS{},
@@ -73,14 +73,16 @@ func (r *Config) isValid() error {
 	}
 	// step: if the skip verification is off, we need the below
 	if !r.SkipTokenVerification {
+		if !r.TokenValidationOnly {
+			if r.ClientID == "" {
+				return fmt.Errorf("you have not specified the client id")
+			}
+			if r.ClientSecret == "" {
+				return fmt.Errorf("you have not specified the client secret")
+			}
+		}
 		if r.DiscoveryURL == "" {
 			return fmt.Errorf("you have not specified the discovery url")
-		}
-		if r.ClientID == "" {
-			return fmt.Errorf("you have not specified the client id")
-		}
-		if r.ClientSecret == "" {
-			return fmt.Errorf("you have not specified the client secret")
 		}
 		if r.RedirectionURL == "" {
 			return fmt.Errorf("you have not specified the redirection url")
@@ -336,6 +338,10 @@ func getOptions() []cli.Flag {
 		cli.StringSliceFlag{
 			Name:  "scope",
 			Usage: "a variable list of scopes requested when authenticating the user",
+		},
+		cli.BoolFlag{
+			Name:  "token-validate-only",
+			Usage: "validate the token and roles only, no required implement oauth",
 		},
 		cli.DurationFlag{
 			Name:  "idle-duration",

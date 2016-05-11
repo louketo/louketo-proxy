@@ -105,7 +105,7 @@ func newProxy(cfg *Config) (*oauthProxy, error) {
 			return nil, err
 		}
 	} else {
-		log.Infof("TESTING ONLY CONFIG - the verification of the token have been disabled")
+		log.Warnf("TESTING ONLY CONFIG - the verification of the token have been disabled")
 	}
 
 	// step: initialize the gin router
@@ -259,6 +259,12 @@ func (r *oauthProxy) setupReverseProxy(upstream *url.URL) (reverseProxy, error) 
 // setupRouter sets up the gin routing
 //
 func (r oauthProxy) setupRouter() error {
+	// step: default to release mode, only go debug on verbose logging
+	gin.SetMode(gin.ReleaseMode)
+	if r.config.Verbose {
+		gin.SetMode(gin.DebugMode)
+	}
+
 	r.router.Use(gin.Recovery())
 	// step: are we logging the traffic?
 	if r.config.LogRequests {
