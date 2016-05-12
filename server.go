@@ -87,13 +87,13 @@ func newProxy(cfg *Config) (*oauthProxy, error) {
 
 	// step: initialize the store if any
 	if cfg.StoreURL != "" {
-		if service.store, err = newStorage(cfg.StoreURL); err != nil {
+		if service.store, err = createStorage(cfg.StoreURL); err != nil {
 			return nil, err
 		}
 	}
 
 	// step: initialize the reverse http proxy
-	service.upstream, err = service.setupReverseProxy(service.endpoint)
+	service.upstream, err = service.createUpstream(service.endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +120,7 @@ func newProxy(cfg *Config) (*oauthProxy, error) {
 		return nil, err
 	}
 	// step: setup the gin router and add router
-	if err := service.setupRouter(); err != nil {
+	if err := service.createEndpoints(); err != nil {
 		return nil, err
 	}
 	// step: display the protected resources
@@ -224,9 +224,9 @@ func (r *oauthProxy) redirectToAuthorization(cx *gin.Context) {
 }
 
 //
-// setupReverseProxy create a reverse http proxy from the upstream
+// createUpstream create a reverse http proxy from the upstream
 //
-func (r *oauthProxy) setupReverseProxy(upstream *url.URL) (reverseProxy, error) {
+func (r *oauthProxy) createUpstream(upstream *url.URL) (reverseProxy, error) {
 	// step: create the default dialer
 	dialer := (&net.Dialer{
 		KeepAlive: 10 * time.Second,
@@ -260,9 +260,9 @@ func (r *oauthProxy) setupReverseProxy(upstream *url.URL) (reverseProxy, error) 
 }
 
 //
-// setupRouter sets up the gin routing
+// createEndpoints sets up the gin routing
 //
-func (r oauthProxy) setupRouter() error {
+func (r oauthProxy) createEndpoints() error {
 	// step: default to release mode, only go debug on verbose logging
 	gin.SetMode(gin.ReleaseMode)
 	if r.config.Verbose {

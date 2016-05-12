@@ -20,8 +20,8 @@ import (
 	"net/url"
 )
 
-// newStorage creates the store client for use
-func newStorage(location string) (storage, error) {
+// createStorage creates the store client for use
+func createStorage(location string) (storage, error) {
 	var store storage
 	var err error
 

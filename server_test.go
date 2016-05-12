@@ -116,7 +116,7 @@ func newFakeKeycloakProxy(t *testing.T) *oauthProxy {
 	gin.SetMode(gin.ReleaseMode)
 	kc.router = gin.New()
 	// step: add the gin routing
-	kc.setupRouter()
+	kc.createEndpoints()
 
 	return kc
 }
@@ -162,7 +162,7 @@ func TestInitializeReverseProxy(t *testing.T) {
 	proxy := newFakeKeycloakProxy(t)
 
 	uri, _ := url.Parse("http://127.0.0.1:8080")
-	reverse, err := proxy.setupReverseProxy(uri)
+	reverse, err := proxy.createUpstream(uri)
 	assert.NoError(t, err)
 	assert.NotNil(t, reverse)
 }
