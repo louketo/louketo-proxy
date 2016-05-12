@@ -216,8 +216,11 @@ cx.Request.Header.Add("X-Auth-Token", id.token.Encode())
 cx.Request.Header.Add("X-Auth-Roles", strings.Join(id.roles, ","))
 
 # plus the default
-cx.Request.Header.Add("X-Forwarded-For", <CLIENT_IP>)
+cx.Request.Header.Add("X-Forwarded-For", cx.Request.RemoteAddr)
 cx.Request.Header.Add("X-Forwarded-Proto", <CLIENT_PROTO>)
+cx.Request.Header.Set("X-Forwarded-Agent", prog)
+cx.Request.Header.Set("X-Forwarded-Agent-Version", version)
+cx.Request.Header.Set("X-Forwarded-Host", cx.Request.Host)
 ```
 
 #### **- Custom Claims**

@@ -376,11 +376,11 @@ func (r oauthProxy) proxyHandler() gin.HandlerFunc {
 				}
 			}
 		}
-
 		// step: add the default headers
 		cx.Request.Header.Add("X-Forwarded-For", cx.Request.RemoteAddr)
 		cx.Request.Header.Set("X-Forwarded-Agent", prog)
 		cx.Request.Header.Set("X-Forwarded-Agent-Version", version)
+		cx.Request.Header.Set("X-Forwarded-Host", cx.Request.Host)
 
 		// step: is this connection upgrading?
 		if isUpgradedConnection(cx.Request) {
