@@ -261,7 +261,9 @@ func (r oauthProxy) logoutHandler(cx *gin.Context) {
 	if r.useStore() {
 		go func() {
 			if err := r.DeleteRefreshToken(user.token); err != nil {
-				log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to remove the refresh token from store")
+				log.WithFields(log.Fields{
+					"error": err.Error(),
+				}).Errorf("unable to remove the refresh token from store")
 			}
 		}()
 	}
@@ -393,13 +395,13 @@ func (r oauthProxy) proxyHandler() gin.HandlerFunc {
 
 			return
 		}
-
 		/*
 			Issue: https://github.com/golang/go/issues/7618
 
 			The reverse proxy does not update the Host header of request, as it's assumed the upstream in on the
 			same domain as the proxy. We could override the Director method, but the latter is easier
 		*/
+		// @TODO need to investigate how redirects upstream are handled
 		cx.Request.Host = r.endpoint.Host
 
 		r.upstream.ServeHTTP(cx.Writer, cx.Request)
