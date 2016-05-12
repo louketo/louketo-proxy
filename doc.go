@@ -108,8 +108,6 @@ type Config struct {
 	ClientID string `json:"client-id" yaml:"client-id"`
 	// ClientSecret is the secret for AS
 	ClientSecret string `json:"client-secret" yaml:"client-secret"`
-	// TokenValidationOnly indicates we only want to validate the token, not auth a client
-	TokenValidationOnly bool `json:"token-validation-only" json:"token-validation-only"`
 	// RevocationEndpoint is the token revocation endpoint to revoke refresh tokens
 	RevocationEndpoint string `json:"revocation-url" yaml:"revocation-url"`
 	// NoRedirects informs we should hand back a 401 not a redirect

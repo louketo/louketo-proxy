@@ -108,6 +108,10 @@ func newProxy(cfg *Config) (*oauthProxy, error) {
 		log.Warnf("TESTING ONLY CONFIG - the verification of the token have been disabled")
 	}
 
+	if cfg.ClientID == "" && cfg.ClientSecret == "" {
+		log.Warnf("Note: client credentials are not set, depending on provider (confidential|public) you might be able to auth")
+	}
+
 	// step: initialize the gin router
 	service.router = gin.New()
 

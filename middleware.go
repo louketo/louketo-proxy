@@ -278,7 +278,7 @@ func (r *oauthProxy) admissionHandler() gin.HandlerFunc {
 		user := uc.(*userContext)
 
 		// step: check the audience for the token is us
-		if !user.isAudience(r.config.ClientID) {
+		if r.config.ClientID != "" && !user.isAudience(r.config.ClientID) {
 			log.WithFields(log.Fields{
 				"username":   user.name,
 				"expired_on": user.expiresAt.String(),

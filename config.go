@@ -73,13 +73,8 @@ func (r *Config) isValid() error {
 	}
 	// step: if the skip verification is off, we need the below
 	if !r.SkipTokenVerification {
-		if !r.TokenValidationOnly {
-			if r.ClientID == "" {
-				return fmt.Errorf("you have not specified the client id")
-			}
-			if r.ClientSecret == "" {
-				return fmt.Errorf("you have not specified the client secret")
-			}
+		if r.ClientID == "" {
+			return fmt.Errorf("you have not specified the client id")
 		}
 		if r.DiscoveryURL == "" {
 			return fmt.Errorf("you have not specified the discovery url")
@@ -322,12 +317,12 @@ func getOptions() []cli.Flag {
 		},
 		cli.StringFlag{
 			Name:   "client-secret",
-			Usage:  "the client secret used to authenticate to the oauth server",
+			Usage:  "the client secret used to authenticate to the oauth server (access_type: confidential)",
 			EnvVar: "PROXY_CLIENT_SECRET",
 		},
 		cli.StringFlag{
 			Name:   "client-id",
-			Usage:  "the client id used to authenticate to the oauth serves",
+			Usage:  "the client id used to authenticate to the oauth service",
 			EnvVar: "PROXY_CLIENT_ID",
 		},
 		cli.StringFlag{

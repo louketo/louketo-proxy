@@ -13,7 +13,8 @@ FEATURES:
  * Adding the option of a forwarding agent, i.e. you can seat the proxy front of your application,
    login to keycloak and use the proxy as forwarding agent to sign outbound requests. 
  * Adding the version information into a header on /oauth/health endpoint
- * Adding the option to permit auth+authz only, so no issuing tokens just validating them (no need to client-id, client-secret)
+ * Removed the need to specify a client-secret, which means to cope with authz only or public endpoints
+ * Added role url tokenizer, /auth/%role%/ will extract the role element and check the token as it 
 
 BREAKING CHANGES:
  * Changed the X-Auth-Subject, it not is the actual subject from the token (makes more sense).
