@@ -144,10 +144,9 @@ d) Create the various roles under the client or existing clients for authorizati
 ```YAML
 discovery-url: https://keycloak.example.com/auth/realms/<REALM_NAME>
 client-id: <CLIENT_ID>
-client-secret: <CLIENT_SECRET>
+client-secret: <CLIENT_SECRET> # require for access_type: confidential
 listen: 127.0.0.1:3000
 redirection-url: http://127.0.0.1:3000
-refresh_session: false
 encryption_key: AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j
 upstream-url: http://127.0.0.1:80
 
@@ -172,7 +171,7 @@ bin/keycloak-proxy \
     --client-secret=<SECRET> \
     --listen=127.0.0.1:3000 \
     --redirection-url=http://127.0.0.1:3000 \
-    --refresh-sessions=true \
+    --enable-refresh-token=true \
     --encryption-key=AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j \
     --upstream-url=http://127.0.0.1:80 \
     --resource="uri=/admin|methods=GET|roles=test1,test2" \
@@ -200,6 +199,68 @@ DEBU[0002] resource access permitted: /                  access=permitted bearer
 DEBU[0002] resource access permitted: /favicon.ico       access=permitted bearer=false expires=57m51.144004098s resource=/ username=gambol99@gmail.com
 2016-02-06 13:59:01.856716 I | http: proxy error: dial tcp 127.0.0.1:8081: getsockopt: connection refused
 ```
+
+#### **- Signing Forward Proxy**
+
+Lets say you have a bunch of services and you want to apply granular access controls, central auditing, authentication and authorization between endpoints. 
+Incoming is covered as detailed above, but you can also switch on a forwarding proxy. Your application can proxy outbound requests through the proxy; requests
+will be signed with an authorization header (i.e. a JWT access token) for the other end to verify. The proxy will then take care of authenticating to the 
+OpenID service, refreshing the tokens etc. 
+
+Example setup: 
+
+You have selection of applications; lets assume to keep the example only those with a specific role per project for access i.e. Project requires project role claim, 
+ProjectB requires projectb role claim etc etc. You can setup the 
+
+```YAML
+# kubernetes pod example
+- name: keycloak-proxy
+  image: quay.io/gambol99/keycloak-proxy:latest
+  args:
+  - --enable-forwarding=true
+  - --forwarding-username=projecta
+  - --forwarding-password=some_password (better to grab from k8s secrets via env or perhaps vault?)
+  - --forwarding-listen=unix:///var/run/keycloak/proxy.sock
+  - --forwarding-domains=*.svc.cluster.local
+  volumeMounts:
+  - name: keycloak-socket
+    mountPoint: /var/run/keycloak
+- name: projecta
+  image: some_images
+  #
+```
+
+Project A can use the /var/run/keycloak/proxy.sock (or you can chunk it on localhost:PORT if you prefer) and setup the application via stanadrd proxy
+settingis projects requests
+
+
+
+
+#### **- URL Tokenization**
+---
+
+You can tokenize the url for an authenticated resource, extracting roles from the url itself. Say for example you have an applications where the uri comes in a namespace form, e.g. 
+/logs/<namespace> i.e. logs/admin/, logs/app1, logs/app2 etc. you could use 
+
+```YAML
+resources:
+- uri: logs/admin
+  roles: [ 'admin' ]
+- uri: logs/app1
+  roles: [ 'app1' ]
+- uri: logs/app2
+  roles: [ 'app2' ]
+```
+
+But it could become annoying, creating roles for namespaces, updating there, then updating config here. An easier way would be map a url token to a role name. i.e.
+  
+```YAML
+resources:
+- uri: logs/%role%/
+```
+
+The above will extract role requirement from the url and apply to admission as per usual. /logs/admin will need a admin role, logs/app1 needs the app1 role, etc.   
+
 ---
 #### **- Upstream Headers**
 
@@ -263,10 +324,11 @@ X-Auth-Subject: rohith.jayawardene
 In order to remain stateless and not have to rely on a central cache to persist the 'refresh_tokens', the refresh token is encrypted and added as a cookie using *crypto/aes*.
 Naturally the key must be the same if your running behind a load balancer etc. The key length should either 16 or 32 bytes depending or whether you want AES-128 or AES-256.
 
-#### **- Validation Only**
+#### **- ClientID & Secret**
 
-Note, you are getting the token issued by another means and can switch the proxy into validation only mode, with --token-validation-only=true. The proxy will not permit
-oauth login, but it will validate the token and signature, as well as implementing uri role admissions.
+Note, the client secret is optional are is only only for setups where the oauth provider is using access_type = confidential; if the provider is 'public' simple add the client id.
+Alternatively, you might not need the proxy to perform the oauth authentication flow and instead simply verify the identity token (a potential role permissions), in which case, again
+just drop the client secret and use the client id and discovery-url. 
 
 #### **- Claim Matching**
 

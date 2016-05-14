@@ -98,46 +98,41 @@ type CORS struct {
 
 // Config is the configuration for the proxy
 type Config struct {
-	// LogRequests indicates if we should log all the requests
-	LogRequests bool `json:"log-requests" yaml:"log-requests"`
-	// LogFormat is the logging format
-	LogJSONFormat bool `json:"log-json-format" yaml:"log-json-format"`
+	// Listen is the binding interface
+	Listen string `json:"listen" yaml:"listen"`
 	// DiscoveryURL is the url for the keycloak server
 	DiscoveryURL string `json:"discovery-url" yaml:"discovery-url"`
 	// ClientID is the client id
 	ClientID string `json:"client-id" yaml:"client-id"`
 	// ClientSecret is the secret for AS
 	ClientSecret string `json:"client-secret" yaml:"client-secret"`
-	// RevocationEndpoint is the token revocation endpoint to revoke refresh tokens
-	RevocationEndpoint string `json:"revocation-url" yaml:"revocation-url"`
-	// NoRedirects informs we should hand back a 401 not a redirect
-	NoRedirects bool `json:"no-redirects" yaml:"no-redirects"`
 	// RedirectionURL the redirection url
 	RedirectionURL string `json:"redirection-url" yaml:"redirection-url"`
-	// EnableSecurityFilter enabled the security handler
-	EnableSecurityFilter bool `json:"enable-security-filter" yaml:"enable-security-filter"`
-	// EnableRefreshTokens indicate's you wish to ignore using refresh tokens and re-auth on expiration of access token
-	EnableRefreshTokens bool `json:"enable-refresh-tokens" yaml:"enable-refresh-tokens"`
+	// RevocationEndpoint is the token revocation endpoint to revoke refresh tokens
+	RevocationEndpoint string `json:"revocation-url" yaml:"revocation-url"`
+	// Scopes is a list of scope we should request
+	Scopes []string `json:"scopes" yaml:"scopes"`
+	// Upstream is the upstream endpoint i.e whom were proxying to
+	Upstream string `json:"upstream-url" yaml:"upstream-url"`
+	// Resources is a list of protected resources
+	Resources []*Resource `json:"resources" yaml:"resources"`
+	// Headers permits adding customs headers across the board
+	Headers map[string]string `json:"headers" yaml:"headers"`
+
 	// CookieAccessName is the name of the access cookie holding the access token
 	CookieAccessName string `json:"cookie-access-name" yaml:"cookie-access-name"`
 	// CookieRefreshName is the name of the refresh cookie
 	CookieRefreshName string `json:"cookie-refresh-name" yaml:"cookie-refresh-name"`
 	// SecureCookie enforces the cookie as secure
 	SecureCookie bool `json:"secure-cookie" yaml:"secure-cookie"`
+
 	// IdleDuration is the max amount of time a session can last without being used
 	IdleDuration time.Duration `json:"idle-duration" yaml:"idle-duration"`
-	// EncryptionKey is the encryption key used to encrypt the refresh token
-	EncryptionKey string `json:"encryption-key" yaml:"encryption-key"`
 	// MatchClaims is a series of checks, the claims in the token must match those here
 	MatchClaims map[string]string `json:"match-claims" yaml:"match-claims"`
 	// AddClaims is a series of claims that should be added to the auth headers
 	AddClaims []string `json:"add-claims" yaml:"add-claims"`
-	// UpstreamKeepalives specifies wheather we use keepalives on the upstream
-	UpstreamKeepalives bool `json:"upstream-keepalives" yaml:"upstream-keepalives"`
-	// Listen is the binding interface
-	Listen string `json:"listen" yaml:"listen"`
-	// ProxyProtocol enables proxy protocol
-	ProxyProtocol bool `json:"proxy-protocol" yaml:"proxy-protocol"`
+
 	// TLSCertificate is the location for a tls certificate
 	TLSCertificate string `json:"tls-cert" yaml:"tls-cert"`
 	// TLSPrivateKey is the location of a tls private key
@@ -146,30 +141,52 @@ type Config struct {
 	TLSCaCertificate string `json:"tls-ca-certificate" yaml:"tls-ca-certificate"`
 	// SkipUpstreamTLSVerify skips the verification of any upstream tls
 	SkipUpstreamTLSVerify bool `json:"skip-upstream-tls-verify" yaml:"skip-upstream-tls-verify"`
-	// Upstream is the upstream endpoint i.e whom were proxying to
-	Upstream string `json:"upstream-url" yaml:"upstream-url"`
-	// TagData is passed to the templates
-	TagData map[string]string `json:"tag-data" yaml:"tag-data"`
+
 	// CrossOrigin permits adding headers to the /oauth handlers
 	CrossOrigin CORS `json:"cors" yaml:"cors"`
-	// Headers permits adding customs headers across the board
-	Headers map[string]string `json:"headers" yaml:"headers"`
-	// Scopes is a list of scope we should request
-	Scopes []string `json:"scopes" yaml:"scopes"`
-	// Resources is a list of protected resources
-	Resources []*Resource `json:"resources" yaml:"resources"`
+
+	// Hostname is a list of hostname's the service should response to
+	Hostnames []string `json:"hostnames" yaml:"hostnames"`
+
+	// Store is a url for a store resource, used to hold the refresh tokens
+	StoreURL string `json:"store-url" yaml:"store-url"`
+	// EncryptionKey is the encryption key used to encrypt the refresh token
+	EncryptionKey string `json:"encryption-key" yaml:"encryption-key"`
+
+	// EnableSecurityFilter enabled the security handler
+	EnableSecurityFilter bool `json:"enable-security-filter" yaml:"enable-security-filter"`
+	// EnableRefreshTokens indicate's you wish to ignore using refresh tokens and re-auth on expiration of access token
+	EnableRefreshTokens bool `json:"enable-refresh-tokens" yaml:"enable-refresh-tokens"`
+	// LogRequests indicates if we should log all the requests
+	LogRequests bool `json:"log-requests" yaml:"log-requests"`
+	// LogFormat is the logging format
+	LogJSONFormat bool `json:"log-json-format" yaml:"log-json-format"`
+	// NoRedirects informs we should hand back a 401 not a redirect
+	NoRedirects bool `json:"no-redirects" yaml:"no-redirects"`
+	// SkipTokenVerification tells the service to skipp verifying the access token - for testing purposes
+	SkipTokenVerification bool `json:"skip-token-verification" yaml:"skip-token-verification"`
+	// UpstreamKeepalives specifies wheather we use keepalives on the upstream
+	UpstreamKeepalives bool `json:"upstream-keepalives" yaml:"upstream-keepalives"`
+	// Verbose switches on debug logging
+	Verbose bool `json:"verbose" yaml:"verbose"`
+
 	// SignInPage is the relative url for the sign in page
 	SignInPage string `json:"sign-in-page" yaml:"sign-in-page"`
 	// ForbiddenPage is a access forbidden page
 	ForbiddenPage string `json:"forbidden-page" yaml:"forbidden-page"`
-	// SkipTokenVerification tells the service to skipp verifying the access token - for testing purposes
-	SkipTokenVerification bool `json:"skip-token-verification" yaml:"skip-token-verification"`
-	// Verbose switches on debug logging
-	Verbose bool `json:"verbose" yaml:"verbose"`
-	// Hostname is a list of hostname's the service should response to
-	Hostnames []string `json:"hostnames" yaml:"hostnames"`
-	// Store is a url for a store resource, used to hold the refresh tokens
-	StoreURL string `json:"store-url" yaml:"store-url"`
+	// TagData is passed to the templates
+	TagData map[string]string `json:"tag-data" yaml:"tag-data"`
+
+	// EnableForwarding enables the forwarding proxy
+	EnableForwarding bool `json:"enable-forwarding" yaml:"enable-forwarding"`
+	// ForwardingProxyListen indicates where it bind the proxy
+	ForwardingProxyListen string `json:"forwarding-proxy-listen" yaml:"forwarding-proxy-listen"`
+	// ForwardingUsername is the username to login to the oauth service
+	ForwardingUsername string `json:"forwarding-username" yaml:"forwarding-username"`
+	// ForwardingPassword is the password to use for the above
+	ForwardingPassword string `json:"forwarding-password" yaml:"forwarding-password"`
+	// ForwardingDomains is a collection of domains to signs
+	ForwardingDomains []string `json:"forwarding-domains" yaml:"forwarding-domains"`
 }
 
 // store is used to hold the offline refresh token, assuming you don't want to use

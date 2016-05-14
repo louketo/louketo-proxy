@@ -42,6 +42,7 @@ func newDefaultConfig() *Config {
 		SecureCookie:          true,
 		SkipUpstreamTLSVerify: true,
 		CrossOrigin:           CORS{},
+		ForwardingProxyListen: "unix:///var/run/forwarding.sock",
 	}
 }
 
@@ -211,9 +212,6 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 	}
 	if cx.IsSet("enable-security-filter") {
 		config.EnableSecurityFilter = true
-	}
-	if cx.IsSet("proxy-protocol") {
-		config.ProxyProtocol = cx.Bool("proxy-protocol")
 	}
 	if cx.IsSet("json-logging") {
 		config.LogJSONFormat = cx.Bool("json-logging")
