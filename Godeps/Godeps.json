@@ -108,6 +108,14 @@
 			"Rev": "4b41e52ab568cbfd31eda3612d98192da1575c77"
 		},
 		{
+			"ImportPath": "github.com/vulcand/oxy/forward",
+			"Rev": "11677428db34c4a05354d66d028174d0e3c6e905"
+		},
+		{
+			"ImportPath": "github.com/vulcand/oxy/utils",
+			"Rev": "11677428db34c4a05354d66d028174d0e3c6e905"
+		},
+		{
 			"ImportPath": "golang.org/x/net/context",
 			"Rev": "195180cfebf7362bd243a52477697895128c8777"
 		},

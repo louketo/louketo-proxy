@@ -24,7 +24,6 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 	"path"
 	"strings"
@@ -34,6 +33,8 @@ import (
 	"github.com/coreos/go-oidc/jose"
 	"github.com/coreos/go-oidc/oidc"
 	"github.com/gin-gonic/gin"
+	"github.com/vulcand/oxy/forward"
+	"github.com/vulcand/oxy/utils"
 )
 
 type oauthProxy struct {
@@ -235,8 +236,8 @@ func (r *oauthProxy) createUpstream(upstream *url.URL) (reverseProxy, error) {
 
 	// step: are we using a unix socket?
 	if upstream.Scheme == "unix" {
-		log.Infof("using the unix domain socket: %s for upstream", upstream.Host)
-		socketPath := upstream.Host
+		log.Infof("using the unix domain socket: %s%s for upstream", upstream.Host, upstream.Path)
+		socketPath := fmt.Sprintf("%s%s", upstream.Host, upstream.Path)
 		dialer = func(network, address string) (net.Conn, error) {
 			return net.Dial("unix", socketPath)
 		}
@@ -244,16 +245,19 @@ func (r *oauthProxy) createUpstream(upstream *url.URL) (reverseProxy, error) {
 		upstream.Host = "domain-sock"
 		upstream.Scheme = "http"
 	}
-	// step: create the reverse proxy
-	proxy := httputil.NewSingleHostReverseProxy(upstream)
 
-	// step: customize the http transport
-	proxy.Transport = &http.Transport{
-		Dial: dialer,
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: r.config.SkipUpstreamTLSVerify,
-		},
-		DisableKeepAlives: !r.config.UpstreamKeepalives,
+	// step: create the forwarding proxy
+	proxy, err := forward.New(
+		forward.RoundTripper(&http.Transport{
+			Dial: dialer,
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: r.config.SkipUpstreamTLSVerify,
+			},
+			DisableKeepAlives: !r.config.UpstreamKeepalives,
+		}),
+		forward.Logger(&utils.NOPLogger{}))
+	if err != nil {
+		return nil, err
 	}
 
 	return proxy, nil
