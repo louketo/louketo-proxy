@@ -32,8 +32,6 @@ import (
 func newDefaultConfig() *Config {
 	return &Config{
 		Listen:                "127.0.0.1:3000",
-		RedirectionURL:        "http://127.0.0.1:3000",
-		Upstream:              "http://127.0.0.1:8081",
 		TagData:               make(map[string]string, 0),
 		MatchClaims:           make(map[string]string, 0),
 		Headers:               make(map[string]string, 0),
