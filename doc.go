@@ -169,6 +169,8 @@ type Config struct {
 	UpstreamKeepalives bool `json:"upstream-keepalives" yaml:"upstream-keepalives"`
 	// Verbose switches on debug logging
 	Verbose bool `json:"verbose" yaml:"verbose"`
+	// EnableProxyProtocol controls the proxy protocol
+	EnableProxyProtocol bool `json:"enabled-proxy-protocol" yaml:"enabled-proxy-protocol"`
 
 	// SignInPage is the relative url for the sign in page
 	SignInPage string `json:"sign-in-page" yaml:"sign-in-page"`

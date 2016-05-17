@@ -24,17 +24,18 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"path"
+	"runtime"
 	"strings"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/armon/go-proxyproto"
 	"github.com/coreos/go-oidc/jose"
 	"github.com/coreos/go-oidc/oidc"
 	"github.com/gin-gonic/gin"
-	"github.com/vulcand/oxy/forward"
-	"github.com/vulcand/oxy/utils"
 )
 
 type oauthProxy struct {
@@ -61,6 +62,8 @@ type reverseProxy interface {
 func init() {
 	// step: ensure all time is in UTC
 	time.LoadLocation("UTC")
+	// step: set the core
+	runtime.GOMAXPROCS(runtime.NumCPU())
 }
 
 //
@@ -151,26 +154,48 @@ func (r *oauthProxy) Run() error {
 		}
 		caCertPool := x509.NewCertPool()
 		caCertPool.AppendCertsFromPEM(caCert)
-
 		tlsConfig.ClientCAs = caCertPool
 		tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
 	}
 
+	server := &http.Server{
+		Addr:    r.config.Listen,
+		Handler: r.router,
+	}
+
+	// step: create the listener
+	listener, err := net.Listen("tcp", r.config.Listen)
+	if err != nil {
+		return err
+	}
+
+	// step: wrap the listen in a proxy protocol
+	if r.config.EnableProxyProtocol {
+		listener = &proxyproto.Listener{listener}
+	}
+
+	if r.config.TLSCertificate != "" {
+		server.TLSConfig = tlsConfig
+
+		config := cloneTLSConfig(server.TLSConfig)
+		if config.NextProtos == nil {
+			config.NextProtos = []string{"http/1.1"}
+		}
+		if len(config.Certificates) == 0 || r.config.TLSCertificate != "" || r.config.TLSPrivateKey != "" {
+			var err error
+			config.Certificates = make([]tls.Certificate, 1)
+			config.Certificates[0], err = tls.LoadX509KeyPair(r.config.TLSCertificate, r.config.TLSPrivateKey)
+			if err != nil {
+				return err
+			}
+		}
+
+		listener = tls.NewListener(listener, config)
+	}
+
 	go func() {
 		log.Infof("keycloak proxy service starting on %s", r.config.Listen)
-
-		var err error
-		if r.config.TLSCertificate == "" {
-			err = r.router.Run(r.config.Listen)
-		} else {
-			server := &http.Server{
-				Addr:      r.config.Listen,
-				Handler:   r.router,
-				TLSConfig: tlsConfig,
-			}
-			err = server.ListenAndServeTLS(r.config.TLSCertificate, r.config.TLSPrivateKey)
-		}
-		if err != nil {
+		if err = server.Serve(listener); err != nil {
 			log.WithFields(log.Fields{
 				"error": err.Error(),
 			}).Fatalf("failed to start the service")
