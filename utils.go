@@ -18,9 +18,11 @@ package main
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/md5"
 	"crypto/rand"
 	"crypto/tls"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net"
@@ -35,6 +37,7 @@ import (
 	"unicode/utf8"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/coreos/go-oidc/jose"
 	"github.com/coreos/go-oidc/oidc"
 	"github.com/gin-gonic/gin"
 )
@@ -122,9 +125,9 @@ func decodeText(state, key string) (string, error) {
 	return string(encoded), nil
 }
 
-// initializeOpenID initializes the openID configuration, note: the redirection url is deliberately left blank
+// createOpenIDClient initializes the openID configuration, note: the redirection url is deliberately left blank
 // in order to retrieve it from the host header on request
-func initializeOpenID(cfg *Config) (*oidc.Client, oidc.ProviderConfig, error) {
+func createOpenIDClient(cfg *Config) (*oidc.Client, oidc.ProviderConfig, error) {
 	var err error
 	var providerConfig oidc.ProviderConfig
 
@@ -139,7 +142,7 @@ func initializeOpenID(cfg *Config) (*oidc.Client, oidc.ProviderConfig, error) {
 		if err == nil {
 			goto GOT_CONFIG
 		}
-		log.Infof("failed to get provider configuration from discovery url: %s, %s", cfg.DiscoveryURL, err)
+		log.Warnf("failed to get provider configuration from discovery url: %s, %s", cfg.DiscoveryURL, err)
 
 		time.Sleep(time.Second * 3)
 	}
@@ -183,25 +186,40 @@ func decodeKeyPairs(list []string) (map[string]string, error) {
 }
 
 //
-// tryDialEndpoint dials the upstream endpoint via plain
-//
-func tryDialEndpoint(location *url.URL) (net.Conn, error) {
-	switch dialAddress := dialAddress(location); location.Scheme {
-	case "http":
-		return net.Dial("tcp", dialAddress)
-	default:
-		return tls.Dial("tcp", dialAddress, &tls.Config{
-			Rand:               rand.Reader,
-			InsecureSkipVerify: true,
-		})
-	}
-}
-
-//
 // isValidMethod ensure this is a valid http method type
 //
 func isValidMethod(method string) bool {
 	return httpMethodRegex.MatchString(method)
+}
+
+//
+// cloneTLSConfig clones the tls configuration
+//
+func cloneTLSConfig(cfg *tls.Config) *tls.Config {
+	if cfg == nil {
+		return &tls.Config{}
+	}
+	return &tls.Config{
+		Rand:                     cfg.Rand,
+		Time:                     cfg.Time,
+		Certificates:             cfg.Certificates,
+		NameToCertificate:        cfg.NameToCertificate,
+		GetCertificate:           cfg.GetCertificate,
+		RootCAs:                  cfg.RootCAs,
+		NextProtos:               cfg.NextProtos,
+		ServerName:               cfg.ServerName,
+		ClientAuth:               cfg.ClientAuth,
+		ClientCAs:                cfg.ClientCAs,
+		InsecureSkipVerify:       cfg.InsecureSkipVerify,
+		CipherSuites:             cfg.CipherSuites,
+		PreferServerCipherSuites: cfg.PreferServerCipherSuites,
+		SessionTicketsDisabled:   cfg.SessionTicketsDisabled,
+		SessionTicketKey:         cfg.SessionTicketKey,
+		ClientSessionCache:       cfg.ClientSessionCache,
+		MinVersion:               cfg.MinVersion,
+		MaxVersion:               cfg.MaxVersion,
+		CurvePreferences:         cfg.CurvePreferences,
+	}
 }
 
 //
@@ -244,33 +262,18 @@ func containedIn(value string, list []string) bool {
 }
 
 //
-// dialAddress extracts the dial address from the url
+// tryDialEndpoint dials the upstream endpoint via plain
 //
-func dialAddress(location *url.URL) string {
-	items := strings.Split(location.Host, ":")
-	if len(items) != 2 {
-		switch location.Scheme {
-		case "http":
-			return location.Host + ":80"
-		default:
-			return location.Host + ":443"
-		}
+func tryDialEndpoint(location *url.URL) (net.Conn, error) {
+	switch dialAddress := dialAddress(location); location.Scheme {
+	case "http":
+		return net.Dial("tcp", dialAddress)
+	default:
+		return tls.Dial("tcp", dialAddress, &tls.Config{
+			Rand:               rand.Reader,
+			InsecureSkipVerify: true,
+		})
 	}
-
-	return location.Host
-}
-
-//
-// findCookie looks for a cookie in a list of cookies
-//
-func findCookie(name string, cookies []*http.Cookie) *http.Cookie {
-	for _, cookie := range cookies {
-		if cookie.Name == name {
-			return cookie
-		}
-	}
-
-	return nil
 }
 
 //
@@ -331,6 +334,36 @@ func tryUpdateConnection(cx *gin.Context, endpoint *url.URL) error {
 }
 
 //
+// dialAddress extracts the dial address from the url
+//
+func dialAddress(location *url.URL) string {
+	items := strings.Split(location.Host, ":")
+	if len(items) != 2 {
+		switch location.Scheme {
+		case "http":
+			return location.Host + ":80"
+		default:
+			return location.Host + ":443"
+		}
+	}
+
+	return location.Host
+}
+
+//
+// findCookie looks for a cookie in a list of cookies
+//
+func findCookie(name string, cookies []*http.Cookie) *http.Cookie {
+	for _, cookie := range cookies {
+		if cookie.Name == name {
+			return cookie
+		}
+	}
+
+	return nil
+}
+
+//
 // toHeader is a helper method to play nice in the headers
 //
 func toHeader(v string) string {
@@ -365,4 +398,12 @@ func mergeMaps(source, dest map[string]string) map[string]string {
 	}
 
 	return dest
+}
+
+//
+// getHashKey returns a hash of the encodes jwt token
+//
+func getHashKey(token *jose.JWT) string {
+	hash := md5.Sum([]byte(token.Encode()))
+	return hex.EncodeToString(hash[:])
 }

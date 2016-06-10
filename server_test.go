@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"testing"
 
@@ -56,16 +57,16 @@ func newFakeKeycloakProxyWithResources(t *testing.T, resources []*Resource) *oau
 
 func newFakeKeycloakConfig(t *testing.T) *Config {
 	return &Config{
-		DiscoveryURL:          "127.0.0.1:",
+		DiscoveryURL:          "127.0.0.1:8080",
 		ClientID:              fakeClientID,
 		ClientSecret:          fakeSecret,
 		EncryptionKey:         "AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j",
 		SkipTokenVerification: true,
 		Scopes:                []string{},
 		EnableRefreshTokens:   false,
-		SecureCookie:          true,
-		CookieAccessName:      cookieAccessToken,
-		CookieRefreshName:     cookieRefreshToken,
+		SecureCookie:          false,
+		CookieAccessName:      "kc-access",
+		CookieRefreshName:     "kc-state",
 		Resources: []*Resource{
 			{
 				URL:     fakeAdminRoleURL,
@@ -112,12 +113,39 @@ func newFakeKeycloakProxy(t *testing.T) *oauthProxy {
 		upstream: new(fakeReverseProxy),
 		endpoint: &url.URL{Host: "127.0.0.1"},
 	}
-	kc.router = gin.New()
 	gin.SetMode(gin.ReleaseMode)
+	kc.router = gin.New()
 	// step: add the gin routing
-	kc.setupRouter()
+	kc.createEndpoints()
 
 	return kc
+}
+
+func newTestProxyService(t *testing.T, config *Config) (*oauthProxy, *fakeOAuthServer, string) {
+	auth := newFakeOAuthServer(t)
+	if config == nil {
+		config = newFakeKeycloakConfig(t)
+	}
+	config.LogRequests = true
+	config.SkipTokenVerification = false
+	config.DiscoveryURL = auth.getLocation()
+	config.Verbose = false
+	log.SetOutput(ioutil.Discard)
+
+	proxy, err := newProxy(config)
+	if err != nil {
+		t.Fatalf("failed to create proxy service, error: %s", err)
+	}
+	proxy.upstream = new(fakeReverseProxy)
+	service := httptest.NewServer(proxy.router)
+	config.RedirectionURL = service.URL
+
+	proxy.client, proxy.provider, err = createOpenIDClient(config)
+	if err != nil {
+		t.Fatalf("failed to recreate the openid client, error: %s", err)
+	}
+
+	return proxy, auth, service.URL
 }
 
 func TestNewKeycloakProxy(t *testing.T) {
@@ -161,9 +189,9 @@ func TestInitializeReverseProxy(t *testing.T) {
 	proxy := newFakeKeycloakProxy(t)
 
 	uri, _ := url.Parse("http://127.0.0.1:8080")
-	reverse, err := proxy.setupReverseProxy(uri)
+	err := proxy.createUpstream(uri)
 	assert.NoError(t, err)
-	assert.NotNil(t, reverse)
+	assert.NotNil(t, proxy.router)
 }
 
 func TestRedirectURL(t *testing.T) {

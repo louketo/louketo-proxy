@@ -4,7 +4,8 @@
 discovery-url: https://keycloak.example.com/auth/realms/commons
 # the client id for the 'client' application
 client-id: <CLIENT_ID>
-# the secret associated to the 'client' application
+# the secret associated to the 'client' application - note the client_secret is optional, required for
+# oauth2 access_type=confidential i.e. the client is being verified
 client-secret: <CLIENT_SECRET>
 # the interface definition you wish the proxy to listen, all interfaces is specified as ':<port>'
 listen: 127.0.0.1:3000

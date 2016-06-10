@@ -16,23 +16,24 @@ limitations under the License.
 package main
 
 import (
-	"crypto/md5"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/hex"
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 	"path"
+	"runtime"
 	"strings"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/armon/go-proxyproto"
 	"github.com/coreos/go-oidc/jose"
 	"github.com/coreos/go-oidc/oidc"
+	"github.com/elazarl/goproxy"
 	"github.com/gin-gonic/gin"
 )
 
@@ -60,112 +61,191 @@ type reverseProxy interface {
 func init() {
 	// step: ensure all time is in UTC
 	time.LoadLocation("UTC")
+	// step: set the core
+	runtime.GOMAXPROCS(runtime.NumCPU())
 }
 
 //
 // newProxy create's a new proxy from configuration
 //
-func newProxy(cfg *Config) (*oauthProxy, error) {
+func newProxy(config *Config) (*oauthProxy, error) {
 	var err error
 	// step: set the logging level
-	if cfg.LogJSONFormat {
+	if config.LogJSONFormat {
 		log.SetFormatter(&log.JSONFormatter{})
 	}
-	if cfg.Verbose {
+	if config.Verbose {
 		log.SetLevel(log.DebugLevel)
 	}
 
 	log.Infof("starting %s, author: %s, version: %s, ", prog, author, version)
 
-	service := &oauthProxy{config: cfg}
+	service := &oauthProxy{config: config}
 
 	// step: parse the upstream endpoint
-	service.endpoint, err = url.Parse(cfg.Upstream)
+	service.endpoint, err = url.Parse(config.Upstream)
 	if err != nil {
 		return nil, err
 	}
 
 	// step: initialize the store if any
-	if cfg.StoreURL != "" {
-		if service.store, err = newStorage(cfg.StoreURL); err != nil {
+	if config.StoreURL != "" {
+		if service.store, err = createStorage(config.StoreURL); err != nil {
 			return nil, err
 		}
 	}
 
-	// step: initialize the reverse http proxy
-	service.upstream, err = service.setupReverseProxy(service.endpoint)
-	if err != nil {
-		return nil, err
-	}
-
 	// step: initialize the openid client
-	if !cfg.SkipTokenVerification {
-		service.client, service.provider, err = initializeOpenID(cfg)
+	if !config.SkipTokenVerification {
+		service.client, service.provider, err = createOpenIDClient(config)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		log.Infof("TESTING ONLY CONFIG - the verification of the token have been disabled")
+		log.Warnf("TESTING ONLY CONFIG - the verification of the token have been disabled")
 	}
 
-	// step: initialize the gin router
-	service.router = gin.New()
+	if config.ClientID == "" && config.ClientSecret == "" {
+		log.Warnf("Note: client credentials are not set, depending on provider (confidential|public) you might be able to auth")
+	}
 
-	// step: load the templates
-	if err = service.setupTemplates(); err != nil {
-		return nil, err
-	}
-	// step: setup the gin router and add router
-	if err := service.setupRouter(); err != nil {
-		return nil, err
-	}
-	// step: display the protected resources
-	for _, resource := range cfg.Resources {
-		log.Infof("protecting resources under uri: %s", resource)
-	}
-	for name, value := range cfg.MatchClaims {
-		log.Infof("the token must container the claim: %s, required: %s", name, value)
+	// step:
+	switch config.EnableForwarding {
+	case true:
+		log.Infof("enabled forwarding proxy mode")
+		if err := createForwardingProxy(config, service); err != nil {
+			return nil, err
+		}
+	default:
+		if err := createReverseProxy(config, service); err != nil {
+			return nil, err
+		}
 	}
 
 	return service, nil
 }
 
 //
+// createReverseProxy creates a reverse proxy
+//
+func createReverseProxy(config *Config, service *oauthProxy) error {
+	log.Infof("enabled reverse proxy mode, upstream url: %s", config.Upstream)
+
+	// step: display the protected resources
+	for _, resource := range config.Resources {
+		log.Infof("protecting resources under uri: %s", resource)
+	}
+	for name, value := range config.MatchClaims {
+		log.Infof("the token must container the claim: %s, required: %s", name, value)
+	}
+
+	// step: initialize the reverse http proxy
+	if err := service.createUpstream(service.endpoint); err != nil {
+		return err
+	}
+
+	// step: setup the gin router and add router
+	if err := service.createEndpoints(); err != nil {
+		return err
+	}
+
+	// step: load the templates
+	if err := service.createTemplates(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+//
+// createForwardingProxy creates a forwarding proxy
+//
+func createForwardingProxy(config *Config, service *oauthProxy) error {
+	// step: initialize the reverse http proxy
+	if err := service.createUpstream(service.endpoint); err != nil {
+		return err
+	}
+
+	gin.SetMode(gin.ReleaseMode)
+	// step: enable debugging in verbose more
+	if config.Verbose {
+		gin.SetMode(gin.DebugMode)
+	}
+	engine := gin.New()
+
+	// step: default to release mode, only go debug on verbose logging
+	engine.Use(gin.Recovery())
+	service.router = engine
+
+	// step: are we logging the traffic?
+	if config.LogRequests {
+		engine.Use(service.loggingHandler())
+	}
+
+	engine.Use(service.forwardProxyHandler())
+
+	return nil
+}
+
+//
 // Run starts the proxy service
 //
-func (r *oauthProxy) Run() error {
+func (r *oauthProxy) Run() (err error) {
 	tlsConfig := &tls.Config{}
 
 	// step: are we doing mutual tls?
 	if r.config.TLSCaCertificate != "" {
-		log.Infof("enabling mutual tls, reading in the ca: %s", r.config.TLSCaCertificate)
-
+		log.Infof("enabling mutual tls, reading in the signing ca: %s", r.config.TLSCaCertificate)
 		caCert, err := ioutil.ReadFile(r.config.TLSCaCertificate)
 		if err != nil {
 			return err
 		}
+
 		caCertPool := x509.NewCertPool()
 		caCertPool.AppendCertsFromPEM(caCert)
-
 		tlsConfig.ClientCAs = caCertPool
 		tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
 	}
 
+	server := &http.Server{
+		Addr:    r.config.Listen,
+		Handler: r.router,
+	}
+
+	// step: create the listener
+	listener, err := net.Listen("tcp", r.config.Listen)
+	if err != nil {
+		return err
+	}
+
+	// step: wrap the listen in a proxy protocol
+	if r.config.EnableProxyProtocol {
+		log.Infof("enabling the proxy protocol on listener: %s", r.config.Listen)
+		listener = &proxyproto.Listener{listener}
+	}
+
+	if r.config.TLSCertificate != "" {
+		server.TLSConfig = tlsConfig
+
+		config := cloneTLSConfig(server.TLSConfig)
+		if config.NextProtos == nil {
+			config.NextProtos = []string{"http/1.1"}
+		}
+		if len(config.Certificates) == 0 || r.config.TLSCertificate != "" || r.config.TLSPrivateKey != "" {
+			var err error
+			config.Certificates = make([]tls.Certificate, 1)
+			config.Certificates[0], err = tls.LoadX509KeyPair(r.config.TLSCertificate, r.config.TLSPrivateKey)
+			if err != nil {
+				return err
+			}
+		}
+
+		listener = tls.NewListener(listener, config)
+	}
+
 	go func() {
 		log.Infof("keycloak proxy service starting on %s", r.config.Listen)
-
-		var err error
-		if r.config.TLSCertificate == "" {
-			err = r.router.Run(r.config.Listen)
-		} else {
-			server := &http.Server{
-				Addr:      r.config.Listen,
-				Handler:   r.router,
-				TLSConfig: tlsConfig,
-			}
-			err = server.ListenAndServeTLS(r.config.TLSCertificate, r.config.TLSPrivateKey)
-		}
-		if err != nil {
+		if err = server.Serve(listener); err != nil {
 			log.WithFields(log.Fields{
 				"error": err.Error(),
 			}).Fatalf("failed to start the service")
@@ -176,63 +256,19 @@ func (r *oauthProxy) Run() error {
 }
 
 //
-// redirectToURL redirects the user and aborts the context
+// createUpstream create a reverse http proxy from the upstream
 //
-func (r *oauthProxy) redirectToURL(url string, cx *gin.Context) {
-	cx.Redirect(http.StatusTemporaryRedirect, url)
-	cx.Abort()
-}
-
-//
-// accessForbidden redirects the user to the forbidden page
-//
-func (r *oauthProxy) accessForbidden(cx *gin.Context) {
-	if r.config.hasCustomForbiddenPage() {
-		cx.HTML(http.StatusForbidden, path.Base(r.config.ForbiddenPage), r.config.TagData)
-		cx.Abort()
-		return
-	}
-
-	cx.AbortWithStatus(http.StatusForbidden)
-}
-
-//
-// redirectToAuthorization redirects the user to authorization handler
-//
-func (r *oauthProxy) redirectToAuthorization(cx *gin.Context) {
-	if r.config.NoRedirects {
-		cx.AbortWithStatus(http.StatusUnauthorized)
-		return
-	}
-
-	// step: add a state referrer to the authorization page
-	authQuery := fmt.Sprintf("?state=%s", cx.Request.URL.String())
-
-	// step: if verification is switched off, we can't authorization
-	if r.config.SkipTokenVerification {
-		log.Errorf("refusing to redirection to authorization endpoint, skip token verification switched on")
-
-		cx.AbortWithStatus(http.StatusForbidden)
-		return
-	}
-
-	r.redirectToURL(oauthURL+authorizationURL+authQuery, cx)
-}
-
-//
-// setupReverseProxy create a reverse http proxy from the upstream
-//
-func (r *oauthProxy) setupReverseProxy(upstream *url.URL) (reverseProxy, error) {
+func (r *oauthProxy) createUpstream(upstream *url.URL) error {
 	// step: create the default dialer
 	dialer := (&net.Dialer{
-		KeepAlive: 10 * time.Second,
-		Timeout:   10 * time.Second,
+		KeepAlive: r.config.UpstreamKeepaliveTimeout,
+		Timeout:   r.config.UpstreamTimeout,
 	}).Dial
 
 	// step: are we using a unix socket?
 	if upstream.Scheme == "unix" {
-		log.Infof("using the unix domain socket: %s for upstream", upstream.Host)
-		socketPath := upstream.Host
+		log.Infof("using the unix domain socket: %s%s for upstream", upstream.Host, upstream.Path)
+		socketPath := fmt.Sprintf("%s%s", upstream.Host, upstream.Path)
 		dialer = func(network, address string) (net.Conn, error) {
 			return net.Dial("unix", socketPath)
 		}
@@ -240,11 +276,11 @@ func (r *oauthProxy) setupReverseProxy(upstream *url.URL) (reverseProxy, error) 
 		upstream.Host = "domain-sock"
 		upstream.Scheme = "http"
 	}
-	// step: create the reverse proxy
-	proxy := httputil.NewSingleHostReverseProxy(upstream)
 
-	// step: customize the http transport
-	proxy.Transport = &http.Transport{
+	// step: create the forwarding proxy
+	proxy := goproxy.NewProxyHttpServer()
+	// step: update the tls configuration of the reverse proxy
+	proxy.Tr = &http.Transport{
 		Dial: dialer,
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: r.config.SkipUpstreamTLSVerify,
@@ -252,24 +288,35 @@ func (r *oauthProxy) setupReverseProxy(upstream *url.URL) (reverseProxy, error) 
 		DisableKeepAlives: !r.config.UpstreamKeepalives,
 	}
 
-	return proxy, nil
+	r.upstream = proxy
+
+	return nil
 }
 
 //
-// setupRouter sets up the gin routing
+// createEndpoints sets up the gin routing
 //
-func (r oauthProxy) setupRouter() error {
-	r.router.Use(gin.Recovery())
+func (r *oauthProxy) createEndpoints() error {
+	gin.SetMode(gin.ReleaseMode)
+	if r.config.Verbose {
+		gin.SetMode(gin.DebugMode)
+	}
+	engine := gin.New()
+	engine.Use(gin.Recovery())
+
 	// step: are we logging the traffic?
 	if r.config.LogRequests {
-		r.router.Use(r.loggingHandler())
+		engine.Use(r.loggingHandler())
 	}
+
 	// step: enabling the security filter?
 	if r.config.EnableSecurityFilter {
-		r.router.Use(r.securityHandler())
+		engine.Use(r.securityHandler())
 	}
 	// step: add the routing
-	oauth := r.router.Group(oauthURL).Use(r.crossOriginResourceHandler(r.config.CrossOrigin))
+	oauth := engine.Group(oauthURL).Use(
+		r.crossOriginResourceHandler(r.config.CrossOrigin),
+	)
 	{
 		oauth.GET(authorizationURL, r.oauthAuthorizationHandler)
 		oauth.GET(callbackURL, r.oauthCallbackHandler)
@@ -280,15 +327,22 @@ func (r oauthProxy) setupRouter() error {
 		oauth.POST(loginURL, r.loginHandler)
 	}
 
-	r.router.Use(r.entryPointHandler(), r.authenticationHandler(), r.admissionHandler())
+	engine.Use(
+		r.entryPointHandler(),
+		r.authenticationHandler(),
+		r.admissionHandler(),
+		r.upstreamHeadersHandler(r.config.AddClaims),
+		r.upstreamReverseProxyHandler())
+
+	r.router = engine
 
 	return nil
 }
 
 //
-// setupTemplates loads the custom template
+// createTemplates loads the custom template
 //
-func (r *oauthProxy) setupTemplates() error {
+func (r *oauthProxy) createTemplates() error {
 	var list []string
 
 	if r.config.SignInPage != "" {
@@ -354,7 +408,9 @@ func (r *oauthProxy) DeleteRefreshToken(token jose.JWT) error {
 	return nil
 }
 
+//
 // Close is used to close off any resources
+//
 func (r *oauthProxy) CloseStore() error {
 	if r.store != nil {
 		return r.store.Close()
@@ -363,7 +419,46 @@ func (r *oauthProxy) CloseStore() error {
 	return nil
 }
 
-func getHashKey(token *jose.JWT) string {
-	hash := md5.Sum([]byte(token.Encode()))
-	return hex.EncodeToString(hash[:])
+//
+// accessForbidden redirects the user to the forbidden page
+//
+func (r *oauthProxy) accessForbidden(cx *gin.Context) {
+	if r.config.hasCustomForbiddenPage() {
+		cx.HTML(http.StatusForbidden, path.Base(r.config.ForbiddenPage), r.config.TagData)
+		cx.Abort()
+		return
+	}
+
+	cx.AbortWithStatus(http.StatusForbidden)
+}
+
+//
+// redirectToURL redirects the user and aborts the context
+//
+func (r *oauthProxy) redirectToURL(url string, cx *gin.Context) {
+	cx.Redirect(http.StatusTemporaryRedirect, url)
+	cx.Abort()
+}
+
+//
+// redirectToAuthorization redirects the user to authorization handler
+//
+func (r *oauthProxy) redirectToAuthorization(cx *gin.Context) {
+	if r.config.NoRedirects {
+		cx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+
+	// step: add a state referrer to the authorization page
+	authQuery := fmt.Sprintf("?state=%s", base64.StdEncoding.EncodeToString([]byte(cx.Request.URL.RequestURI())))
+
+	// step: if verification is switched off, we can't authorization
+	if r.config.SkipTokenVerification {
+		log.Errorf("refusing to redirection to authorization endpoint, skip token verification switched on")
+
+		cx.AbortWithStatus(http.StatusForbidden)
+		return
+	}
+
+	r.redirectToURL(oauthURL+authorizationURL+authQuery, cx)
 }

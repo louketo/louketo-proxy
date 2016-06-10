@@ -41,9 +41,9 @@ func verifyToken(client *oidc.Client, token jose.JWT) error {
 }
 
 //
-// refreshToken attempts to refresh the access token, returning the parsed token and the time it expires or a error
+// getRefreshedToken attempts to refresh the access token, returning the parsed token and the time it expires or a error
 //
-func refreshToken(client *oidc.Client, t string) (jose.JWT, time.Time, error) {
+func getRefreshedToken(client *oidc.Client, t string) (jose.JWT, time.Time, error) {
 	response, err := getToken(client, oauth2.GrantTypeRefreshToken, t)
 	if err != nil {
 		if strings.Contains(err.Error(), "token expired") {

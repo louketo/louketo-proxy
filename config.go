@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/codegangsta/cli"
 	"gopkg.in/yaml.v2"
@@ -31,28 +32,22 @@ import (
 // newDefaultConfig returns a initialized config
 func newDefaultConfig() *Config {
 	return &Config{
-		Listen:                "127.0.0.1:3000",
-		RedirectionURL:        "http://127.0.0.1:3000",
-		Upstream:              "http://127.0.0.1:8081",
-		TagData:               make(map[string]string, 0),
-		MatchClaims:           make(map[string]string, 0),
-		Headers:               make(map[string]string, 0),
-		CookieAccessName:      cookieAccessToken,
-		CookieRefreshName:     cookieRefreshToken,
-		SecureCookie:          true,
-		SkipUpstreamTLSVerify: true,
-		CrossOrigin:           CORS{},
+		Listen:                   "127.0.0.1:3000",
+		TagData:                  make(map[string]string, 0),
+		MatchClaims:              make(map[string]string, 0),
+		Headers:                  make(map[string]string, 0),
+		UpstreamTimeout:          time.Duration(10) * time.Second,
+		UpstreamKeepaliveTimeout: time.Duration(10) * time.Second,
+		CookieAccessName:         "kc-access",
+		CookieRefreshName:        "kc-state",
+		SecureCookie:             true,
+		SkipUpstreamTLSVerify:    true,
+		CrossOrigin:              CORS{},
 	}
 }
 
 // isValid validates if the config is valid
 func (r *Config) isValid() error {
-	if r.Upstream == "" {
-		return fmt.Errorf("you have not specified an upstream endpoint to proxy to")
-	}
-	if _, err := url.Parse(r.Upstream); err != nil {
-		return fmt.Errorf("the upstream endpoint is invalid, %s", err)
-	}
 	if r.Listen == "" {
 		return fmt.Errorf("you have not specified the listening interface")
 	}
@@ -71,49 +66,65 @@ func (r *Config) isValid() error {
 	if r.TLSCaCertificate != "" && !fileExists(r.TLSCaCertificate) {
 		return fmt.Errorf("the tls ca certificate file %s does not exist", r.TLSCaCertificate)
 	}
-	// step: if the skip verification is off, we need the below
-	if !r.SkipTokenVerification {
-		if r.DiscoveryURL == "" {
-			return fmt.Errorf("you have not specified the discovery url")
-		}
+
+	if r.EnableForwarding {
 		if r.ClientID == "" {
 			return fmt.Errorf("you have not specified the client id")
 		}
-		if r.ClientSecret == "" {
-			return fmt.Errorf("you have not specified the client secret")
+		if r.DiscoveryURL == "" {
+			return fmt.Errorf("you have not specified the discovery url")
 		}
-		if r.RedirectionURL == "" {
-			return fmt.Errorf("you have not specified the redirection url")
+		if r.ForwardingUsername == "" {
+			return fmt.Errorf("no forwarding username")
 		}
-		if strings.HasSuffix(r.RedirectionURL, "/") {
-			r.RedirectionURL = strings.TrimSuffix(r.RedirectionURL, "/")
+		if r.ForwardingPassword == "" {
+			return fmt.Errorf("no forwarding password")
 		}
-		if r.EnableRefreshTokens && r.EncryptionKey == "" {
-			return fmt.Errorf("you have not specified a encryption key for encoding the session state")
+	} else {
+		if r.Upstream == "" {
+			return fmt.Errorf("you have not specified an upstream endpoint to proxy to")
 		}
-		if r.EnableRefreshTokens && (len(r.EncryptionKey) != 16 && len(r.EncryptionKey) != 32) {
-			return fmt.Errorf("the encryption key (%d) must be either 16 or 32 characters for AES-128/AES-256 selection", len(r.EncryptionKey))
+		if _, err := url.Parse(r.Upstream); err != nil {
+			return fmt.Errorf("the upstream endpoint is invalid, %s", err)
 		}
-		if r.SecureCookie && !strings.HasPrefix(r.RedirectionURL, "https") {
-			return fmt.Errorf("the cookie is set to secure but your redirection url is non-tls")
-		}
-		if r.StoreURL != "" {
-			if _, err := url.Parse(r.StoreURL); err != nil {
-				return fmt.Errorf("the store url is invalid, error: %s", err)
+		// step: if the skip verification is off, we need the below
+		if !r.SkipTokenVerification {
+			if r.ClientID == "" {
+				return fmt.Errorf("you have not specified the client id")
+			}
+			if r.DiscoveryURL == "" {
+				return fmt.Errorf("you have not specified the discovery url")
+			}
+			if strings.HasSuffix(r.RedirectionURL, "/") {
+				r.RedirectionURL = strings.TrimSuffix(r.RedirectionURL, "/")
+			}
+			if r.EnableRefreshTokens && r.EncryptionKey == "" {
+				return fmt.Errorf("you have not specified a encryption key for encoding the session state")
+			}
+			if r.EnableRefreshTokens && (len(r.EncryptionKey) != 16 && len(r.EncryptionKey) != 32) {
+				return fmt.Errorf("the encryption key (%d) must be either 16 or 32 characters for AES-128/AES-256 selection", len(r.EncryptionKey))
+			}
+			if r.SecureCookie && !strings.HasPrefix(r.RedirectionURL, "https") {
+				return fmt.Errorf("the cookie is set to secure but your redirection url is non-tls")
+			}
+			if r.StoreURL != "" {
+				if _, err := url.Parse(r.StoreURL); err != nil {
+					return fmt.Errorf("the store url is invalid, error: %s", err)
+				}
 			}
 		}
-	}
-	// step: valid the resources
-	for _, resource := range r.Resources {
-		if err := resource.IsValid(); err != nil {
-			return err
+		// step: valid the resources
+		for _, resource := range r.Resources {
+			if err := resource.IsValid(); err != nil {
+				return err
+			}
 		}
-	}
-	// step: validate the claims are validate regex's
-	for k, claim := range r.MatchClaims {
-		// step: validate the regex
-		if _, err := regexp.Compile(claim); err != nil {
-			return fmt.Errorf("the claim matcher: %s for claim: %s is not a valid regex", claim, k)
+		// step: validate the claims are validate regex's
+		for k, claim := range r.MatchClaims {
+			// step: validate the regex
+			if _, err := regexp.Compile(claim); err != nil {
+				return fmt.Errorf("the claim matcher: %s for claim: %s is not a valid regex", claim, k)
+			}
 		}
 	}
 
@@ -138,7 +149,10 @@ func (r *Config) hasCustomForbiddenPage() bool {
 	return false
 }
 
+//
 // readOptions parses the command line options and constructs a config object
+// @TODO look for a shorter way of doing this, we're maintaining the same options in multiple places, it's tedious!
+//
 func readOptions(cx *cli.Context, config *Config) (err error) {
 	if cx.IsSet("listen") {
 		config.Listen = cx.String("listen")
@@ -160,6 +174,12 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 	}
 	if cx.IsSet("upstream-keepalives") {
 		config.UpstreamKeepalives = cx.Bool("upstream-keepalives")
+	}
+	if cx.IsSet("upstream-timeout") {
+		config.UpstreamTimeout = cx.Duration("upstream-timeout")
+	}
+	if cx.IsSet("upstream-keepalive-timeout") {
+		config.UpstreamKeepaliveTimeout = cx.Duration("upstream-keepalive-timeout")
 	}
 	if cx.IsSet("idle-duration") {
 		config.IdleDuration = cx.Duration("idle-duration")
@@ -206,6 +226,21 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 	if cx.IsSet("tls-ca-certificate") {
 		config.TLSCaCertificate = cx.String("tls-ca-certificate")
 	}
+	if cx.IsSet("enable-proxy-protocol") {
+		config.EnableProxyProtocol = cx.Bool("enable-proxy-protocol")
+	}
+	if cx.IsSet("enable-forwarding") {
+		config.EnableForwarding = cx.Bool("enable-forwarding")
+	}
+	if cx.IsSet("forwarding-username") {
+		config.ForwardingUsername = cx.String("forwarding-username")
+	}
+	if cx.IsSet("forwarding-password") {
+		config.ForwardingPassword = cx.String("forwarding-password")
+	}
+	if cx.IsSet("forwarding-domains") {
+		config.ForwardingDomains = append(config.ForwardingDomains, cx.StringSlice("forwarding-domains")...)
+	}
 	if cx.IsSet("signin-page") {
 		config.SignInPage = cx.String("signin-page")
 	}
@@ -214,9 +249,6 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 	}
 	if cx.IsSet("enable-security-filter") {
 		config.EnableSecurityFilter = true
-	}
-	if cx.IsSet("proxy-protocol") {
-		config.ProxyProtocol = cx.Bool("proxy-protocol")
 	}
 	if cx.IsSet("json-logging") {
 		config.LogJSONFormat = cx.Bool("json-logging")
@@ -320,12 +352,12 @@ func getOptions() []cli.Flag {
 		},
 		cli.StringFlag{
 			Name:   "client-secret",
-			Usage:  "the client secret used to authenticate to the oauth server",
+			Usage:  "the client secret used to authenticate to the oauth server (access_type: confidential)",
 			EnvVar: "PROXY_CLIENT_SECRET",
 		},
 		cli.StringFlag{
 			Name:   "client-id",
-			Usage:  "the client id used to authenticate to the oauth serves",
+			Usage:  "the client id used to authenticate to the oauth service",
 			EnvVar: "PROXY_CLIENT_ID",
 		},
 		cli.StringFlag{
@@ -337,6 +369,10 @@ func getOptions() []cli.Flag {
 			Name:  "scope",
 			Usage: "a variable list of scopes requested when authenticating the user",
 		},
+		cli.BoolFlag{
+			Name:  "token-validate-only",
+			Usage: "validate the token and roles only, no required implement oauth",
+		},
 		cli.DurationFlag{
 			Name:  "idle-duration",
 			Usage: "the expiration of the access token cookie, if not used within this time its removed",
@@ -345,12 +381,6 @@ func getOptions() []cli.Flag {
 			Name:   "redirection-url",
 			Usage:  fmt.Sprintf("redirection url for the oauth callback url (%s is added)", oauthURL),
 			EnvVar: "PROXY_REDIRECTION_URL",
-		},
-		cli.StringFlag{
-			Name:   "upstream-url",
-			Usage:  "the url for the upstream endpoint you wish to proxy to",
-			Value:  defaults.Upstream,
-			EnvVar: "PROXY_UPSTREAM_URL",
 		},
 		cli.StringFlag{
 			Name:  "revocation-url",
@@ -362,9 +392,25 @@ func getOptions() []cli.Flag {
 			Usage:  "url for the storage subsystem, e.g redis://127.0.0.1:6379, file:///etc/tokens.file",
 			EnvVar: "PROXY_STORE_URL",
 		},
+		cli.StringFlag{
+			Name:   "upstream-url",
+			Usage:  "the url for the upstream endpoint you wish to proxy to",
+			Value:  defaults.Upstream,
+			EnvVar: "PROXY_UPSTREAM_URL",
+		},
 		cli.BoolTFlag{
 			Name:  "upstream-keepalives",
 			Usage: "enables or disables the keepalive connections for upstream endpoint",
+		},
+		cli.DurationFlag{
+			Name:  "upstream-timeout",
+			Usage: "is the maximum amount of time a dial will wait for a connect to complete",
+			Value: defaults.UpstreamTimeout,
+		},
+		cli.DurationFlag{
+			Name:  "upstream-keepalive-timeout",
+			Usage: "specifies the keep-alive period for an active network connection",
+			Value: defaults.UpstreamKeepaliveTimeout,
 		},
 		cli.BoolFlag{
 			Name:  "enable-refresh-tokens",
@@ -396,6 +442,26 @@ func getOptions() []cli.Flag {
 			Name:  "hostname",
 			Usage: "a list of hostnames the service will respond to, defaults to all",
 		},
+		cli.BoolFlag{
+			Name:  "enable-proxy-protocol",
+			Usage: "whether to enable proxy protocol",
+		},
+		cli.BoolFlag{
+			Name:  "enable-forwarding",
+			Usage: "enables the forwarding proxy mode, signing outbound request",
+		},
+		cli.StringFlag{
+			Name:  "forwarding-username",
+			Usage: "the username to use when logging into the openid provider",
+		},
+		cli.StringFlag{
+			Name:  "forwarding-password",
+			Usage: "the password to use when logging into the openid provider",
+		},
+		cli.StringSliceFlag{
+			Name:  "forwarding-domains",
+			Usage: "a list of domains which should be signed, anything is just relayed",
+		},
 		cli.StringFlag{
 			Name:  "tls-cert",
 			Usage: "the path to a certificate file used for TLS",
@@ -423,6 +489,10 @@ func getOptions() []cli.Flag {
 		cli.StringSliceFlag{
 			Name:  "resource",
 			Usage: "a list of resources 'uri=/admin|methods=GET|roles=role1,role2'",
+		},
+		cli.StringSliceFlag{
+			Name:  "headers",
+			Usage: "Add custom headers to the upstream request, key=value",
 		},
 		cli.StringFlag{
 			Name:  "signin-page",
@@ -460,17 +530,13 @@ func getOptions() []cli.Flag {
 			Name:  "cors-credentials",
 			Usage: "the credentials access control header (Access-Control-Allow-Credentials)",
 		},
-		cli.StringSliceFlag{
-			Name:  "headers",
-			Usage: "Add custom headers to the upstream request, key=value",
-		},
 		cli.BoolFlag{
 			Name:  "enable-security-filter",
 			Usage: "enables the security filter handler",
 		},
 		cli.BoolFlag{
 			Name:  "skip-token-verification",
-			Usage: "TESTING ONLY; bypass's token verification, expiration and roles enforced",
+			Usage: "TESTING ONLY; bypass token verification, only expiration and roles enforced",
 		},
 		cli.BoolTFlag{
 			Name:  "json-logging",
