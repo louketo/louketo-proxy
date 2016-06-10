@@ -35,6 +35,7 @@ import (
 	"github.com/coreos/go-oidc/oidc"
 	"github.com/elazarl/goproxy"
 	"github.com/gin-gonic/gin"
+	"os"
 )
 
 type oauthProxy struct {
@@ -112,7 +113,6 @@ func newProxy(config *Config) (*oauthProxy, error) {
 	// step:
 	switch config.EnableForwarding {
 	case true:
-		log.Infof("enabled forwarding proxy mode")
 		if err := createForwardingProxy(config, service); err != nil {
 			return nil, err
 		}
@@ -140,7 +140,7 @@ func createReverseProxy(config *Config, service *oauthProxy) error {
 	}
 
 	// step: initialize the reverse http proxy
-	if err := service.createUpstream(service.endpoint); err != nil {
+	if err := service.createUpstreamProxy(service.endpoint); err != nil {
 		return err
 	}
 
@@ -161,8 +161,10 @@ func createReverseProxy(config *Config, service *oauthProxy) error {
 // createForwardingProxy creates a forwarding proxy
 //
 func createForwardingProxy(config *Config, service *oauthProxy) error {
+	log.Infof("enabled forward signing proxy mode")
+
 	// step: initialize the reverse http proxy
-	if err := service.createUpstream(service.endpoint); err != nil {
+	if err := service.createUpstreamProxy(nil); err != nil {
 		return err
 	}
 
@@ -213,15 +215,27 @@ func (r *oauthProxy) Run() (err error) {
 	}
 
 	// step: create the listener
-	listener, err := net.Listen("tcp", r.config.Listen)
-	if err != nil {
-		return err
-	}
+	var listener net.Listener
+	switch strings.HasPrefix(r.config.Listen, "unix://") {
+	case true:
+		socket := strings.Trim(r.config.Listen, "unix://")
+		// step: delete the socket if it exists
+		if exists := fileExists(socket); exists {
+			if err := os.Remove(socket); err != nil {
+				return err
+			}
+		}
 
-	// step: wrap the listen in a proxy protocol
-	if r.config.EnableProxyProtocol {
-		log.Infof("enabling the proxy protocol on listener: %s", r.config.Listen)
-		listener = &proxyproto.Listener{listener}
+		log.Infof("listening on unix socket: %s", r.config.Listen)
+		if listener, err = net.Listen("unix", socket); err != nil {
+			return err
+		}
+
+	default:
+		listener, err = net.Listen("tcp", r.config.Listen)
+		if err != nil {
+			return err
+		}
 	}
 
 	if r.config.TLSCertificate != "" {
@@ -256,9 +270,9 @@ func (r *oauthProxy) Run() (err error) {
 }
 
 //
-// createUpstream create a reverse http proxy from the upstream
+// createUpstreamProxy create a reverse http proxy from the upstream
 //
-func (r *oauthProxy) createUpstream(upstream *url.URL) error {
+func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) error {
 	// step: create the default dialer
 	dialer := (&net.Dialer{
 		KeepAlive: r.config.UpstreamKeepaliveTimeout,
@@ -266,7 +280,7 @@ func (r *oauthProxy) createUpstream(upstream *url.URL) error {
 	}).Dial
 
 	// step: are we using a unix socket?
-	if upstream.Scheme == "unix" {
+	if upstream != nil && upstream.Scheme == "unix" {
 		log.Infof("using the unix domain socket: %s%s for upstream", upstream.Host, upstream.Path)
 		socketPath := fmt.Sprintf("%s%s", upstream.Host, upstream.Path)
 		dialer = func(network, address string) (net.Conn, error) {
@@ -287,7 +301,6 @@ func (r *oauthProxy) createUpstream(upstream *url.URL) error {
 		},
 		DisableKeepAlives: !r.config.UpstreamKeepalives,
 	}
-
 	r.upstream = proxy
 
 	return nil

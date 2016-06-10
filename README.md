@@ -15,6 +15,7 @@
   - Custom Sign-in and access forbidden pages
   - Forwarding proxy support, to sign outbound requests
   - URL Role Tokenization
+  - Listen on unix sockets, proxy upstream to unix sockets
 
 ----
 
@@ -104,7 +105,7 @@ discovery-url: https://keycloak.example.com/auth/realms/<REALM_NAME>
 client-id: <CLIENT_ID>
 # the secret associated to the 'client' application
 client-secret: <CLIENT_SECRET>
-# the interface definition you wish the proxy to listen, all interfaces is specified as ':<port>'
+# the interface definition you wish the proxy to listen, all interfaces is specified as ':<port>', unix sockets as unix://<REL_PATH>|</ABS PATH>
 listen: 127.0.0.1:3000
 # whether to enable refresh tokens
 enable-refresh-token: true
@@ -180,7 +181,7 @@ bin/keycloak-proxy \
     --discovery-url=https://keycloak.example.com/auth/realms/<REALM_NAME> \
     --client-id=<CLIENT_ID> \
     --client-secret=<SECRET> \
-    --listen=127.0.0.1:3000 \
+    --listen=127.0.0.1:3000 \ # unix sockets format unix://path
     --redirection-url=http://127.0.0.1:3000 \
     --enable-refresh-token=true \
     --encryption-key=AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j \
@@ -214,9 +215,10 @@ DEBU[0002] resource access permitted: /favicon.ico       access=permitted bearer
 #### **- Forward Signing Proxy (Experimental)**
 
 Lets say you have a bunch of services and you want to apply granular access controls, central auditing, authentication and authorization between endpoints.
-Incoming is covered as detailed above, but you can also switch on a forwarding proxy. Your application can proxy outbound requests through the proxy; requests
+Incoming is covered as detailed above, but you can use a forwarding proxy. Your application can proxy outbound requests through the proxy; requests
 will be signed with an authorization header (i.e. a JWT access token) for the other end to verify. The proxy will then take care of authenticating to the
-OpenID service, refreshing the tokens etc.
+OpenID service and refreshing the tokens for you. Note, at present the service logs in using oauth client_credentials grant type, so you authentication service, 
+must support direct (username/password) logins. 
 
 Example setup:
 
@@ -228,7 +230,6 @@ ProjectB requires projectb role claim etc etc. You can setup the
 - name: keycloak-proxy
   image: quay.io/gambol99/keycloak-proxy:latest
   args:
-  - --listen=unix:///var/run/keycloak/proxy.sock
   - --enable-forwarding=true
   - --forwarding-username=projecta
   - --forwarding-password=some_password (better to grab from k8s secrets via env or perhaps vault?)
@@ -242,12 +243,14 @@ ProjectB requires projectb role claim etc etc. You can setup the
     mountPoint: /var/run/keycloak
 - name: projecta
   image: some_images
-  #
+  
+# test the forward proxy  
+[jest@starfury keycloak-proxy]$ curl -k --proxy http://127.0.0.1:3000 https://test.projesta.svc.cluster.local
+
 ```
 
 Project A can use the /var/run/keycloak/proxy.sock (or you can chunk it on localhost:PORT if you prefer) and setup the application via stanadrd proxy
 setting is projects requests
-
 
 #### **- URL Tokenization (in-progress)**
 ---

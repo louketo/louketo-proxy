@@ -9,8 +9,7 @@ FIXES:
  * Removed the gin debug logging for tests and builds
  * Removed the default upstream, as it caught people by surprise and some accidentally forwarded to themselves
  * Changed the state parameter (which is used as a redirect) to base64 the value allowing you to use complex urls
- 
- 
+  
 FEATURES:
  * Adding environment variables to some of the command line options
  * Adding the option of a forwarding agent, i.e. you can seat the proxy front of your application,
@@ -19,6 +18,7 @@ FEATURES:
  * Removed the need to specify a client-secret, which means to cope with authz only or public endpoints
  * Added role url tokenizer, /auth/%role%/ will extract the role element and check the token as it 
  * Added proxy protocol support for the listening socket (--enable-proxy-protocol=true)
+ * Added the ability to listen on a unix socket
 
 BREAKING CHANGES:
  * Changed the X-Auth-Subject, it not is the actual subject from the token (makes more sense).
