@@ -24,6 +24,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"path"
 	"runtime"
 	"strings"
@@ -35,7 +36,6 @@ import (
 	"github.com/coreos/go-oidc/oidc"
 	"github.com/elazarl/goproxy"
 	"github.com/gin-gonic/gin"
-	"os"
 )
 
 type oauthProxy struct {
@@ -238,23 +238,28 @@ func (r *oauthProxy) Run() (err error) {
 		}
 	}
 
-	if r.config.TLSCertificate != "" {
+	// step: configure tls
+	if r.config.TLSCertificate != "" && r.config.TLSPrivateKey != "" {
 		server.TLSConfig = tlsConfig
-
-		config := cloneTLSConfig(server.TLSConfig)
-		if config.NextProtos == nil {
-			config.NextProtos = []string{"http/1.1"}
+		if tlsConfig.NextProtos == nil {
+			tlsConfig.NextProtos = []string{"http/1.1"}
 		}
-		if len(config.Certificates) == 0 || r.config.TLSCertificate != "" || r.config.TLSPrivateKey != "" {
+		if len(tlsConfig.Certificates) == 0 || r.config.TLSCertificate != "" || r.config.TLSPrivateKey != "" {
 			var err error
-			config.Certificates = make([]tls.Certificate, 1)
-			config.Certificates[0], err = tls.LoadX509KeyPair(r.config.TLSCertificate, r.config.TLSPrivateKey)
-			if err != nil {
+			tlsConfig.Certificates = make([]tls.Certificate, 1)
+			if tlsConfig.Certificates[0], err = tls.LoadX509KeyPair(r.config.TLSCertificate, r.config.TLSPrivateKey); err != nil {
 				return err
 			}
 		}
+		log.Infof("tls enabled, certificate: %s, key: %s", r.config.TLSCertificate, r.config.TLSPrivateKey)
 
-		listener = tls.NewListener(listener, config)
+		listener = tls.NewListener(listener, tlsConfig)
+	}
+
+	// step: wrap the listen in a proxy protocol
+	if r.config.EnableProxyProtocol {
+		log.Infof("enabling the proxy protocol on listener: %s", r.config.Listen)
+		listener = &proxyproto.Listener{listener}
 	}
 
 	go func() {

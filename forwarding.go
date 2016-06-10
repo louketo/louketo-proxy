@@ -224,6 +224,7 @@ func (r *oauthProxy) forwardProxyHandler() gin.HandlerFunc {
 		}
 
 		// step: sign the outbound request with the access token
+		cx.Request.Header.Add("X-Forwarded-Proto", cx.Request.URL.Scheme)
 		cx.Request.Header.Set("X-Forwarded-Agent", prog)
 		cx.Request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token.Encode()))
 
