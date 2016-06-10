@@ -189,7 +189,7 @@ func TestInitializeReverseProxy(t *testing.T) {
 	proxy := newFakeKeycloakProxy(t)
 
 	uri, _ := url.Parse("http://127.0.0.1:8080")
-	err := proxy.createUpstream(uri)
+	err := proxy.createUpstreamProxy(uri)
 	assert.NoError(t, err)
 	assert.NotNil(t, proxy.router)
 }
