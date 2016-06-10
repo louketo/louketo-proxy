@@ -219,7 +219,7 @@ func (r *oauthProxy) forwardProxyHandler() gin.HandlerFunc {
 		// step: does the host being signed?
 		// a) if the forwarding domain set and we are NOT in the list, just forward it
 		// b) else the list is zero (meaning sign all requests) or we are in the list
-		if len(r.config.ForwardingDomains) > 0 && !containedIn(hostname, r.config.ForwardingDomains) {
+		if len(r.config.ForwardingDomains) > 0 && !containsSubString(hostname, r.config.ForwardingDomains) {
 			goto PROXY
 		}
 

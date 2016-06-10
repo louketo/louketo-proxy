@@ -202,6 +202,16 @@ func TestContainedIn(t *testing.T) {
 	assert.True(t, containedIn("1", []string{"1", "2", "3", "4"}))
 }
 
+func TestContainsSubString(t *testing.T) {
+	assert.True(t, containsSubString("svc.cluster.local", []string{"nginx.pr1.svc.cluster.local"}))
+	assert.True(t, containsSubString("cluster.local", []string{"nginx.pr1.svc.cluster.local"}))
+	assert.True(t, containsSubString("pr1", []string{"nginx.pr1.svc.cluster.local"}))
+}
+
+func BenchmarkContainsSubString(t *testing.B) {
+	containsSubString("svc.cluster.local", []string{"nginx.pr1.svc.cluster.local"})
+}
+
 func TestDialAddress(t *testing.T) {
 	assert.Equal(t, dialAddress(getFakeURL("http://127.0.0.1")), "127.0.0.1:80")
 	assert.Equal(t, dialAddress(getFakeURL("https://127.0.0.1")), "127.0.0.1:443")

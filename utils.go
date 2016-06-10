@@ -262,6 +262,19 @@ func containedIn(value string, list []string) bool {
 }
 
 //
+// containsSubString checks if substring exists
+//
+func containsSubString(value string, list []string) bool {
+	for _, x := range list {
+		if strings.Contains(x, value) {
+			return true
+		}
+	}
+
+	return false
+}
+
+//
 // tryDialEndpoint dials the upstream endpoint via plain
 //
 func tryDialEndpoint(location *url.URL) (net.Conn, error) {
