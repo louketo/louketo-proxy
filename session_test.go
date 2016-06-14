@@ -26,7 +26,7 @@ import (
 
 func TestGetSessionToken(t *testing.T) {
 	p := newFakeKeycloakProxy(t)
-	token := getFakeAccessToken(t)
+	token := getFakeAccessToken()
 	encoded := token.Encode()
 
 	testCases := []struct {

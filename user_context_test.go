@@ -24,8 +24,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func getFakeAccessToken(t *testing.T) jose.JWT {
-	testToken, err := jose.NewJWT(
+func getFakeAccessToken() jose.JWT {
+	testToken, _ := jose.NewJWT(
 		jose.JOSEHeader{
 			"alg": "RS256",
 		},
@@ -55,9 +55,6 @@ func getFakeAccessToken(t *testing.T) jose.JWT {
 			"given_name":         "Rohith",
 		},
 	)
-	if err != nil {
-		t.Fatalf("unable to generate a token: %s", err)
-	}
 
 	return testToken
 }
@@ -150,7 +147,7 @@ func TestIsBearerToken(t *testing.T) {
 }
 
 func TestGetUserContext(t *testing.T) {
-	context, err := extractIdentity(getFakeAccessToken(t))
+	context, err := extractIdentity(getFakeAccessToken())
 	assert.NoError(t, err)
 	assert.NotNil(t, context)
 	assert.Equal(t, "1e11e539-8256-4b3b-bda8-cc0d56cddb48", context.id)
@@ -159,6 +156,13 @@ func TestGetUserContext(t *testing.T) {
 	roles := []string{"openvpn:dev-vpn"}
 	if !reflect.DeepEqual(context.roles, roles) {
 		t.Errorf("the claims are not the same, %v <-> %v", context.roles, roles)
+	}
+}
+
+func BenchmarkExtractIdentity(b *testing.B) {
+	token := getFakeAccessToken()
+	for n := 0; n < b.N; n++ {
+		extractIdentity(token)
 	}
 }
 

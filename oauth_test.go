@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc/jose"
+	"github.com/coreos/go-oidc/oauth2"
 	"github.com/gin-gonic/gin"
 )
 
@@ -219,12 +220,31 @@ func (r *fakeOAuthServer) tokenHandler(cx *gin.Context) {
 		return
 	}
 
-	cx.JSON(http.StatusOK, tokenResponse{
-		IDToken:      token.Encode(),
-		AccessToken:  token.Encode(),
-		RefreshToken: token.Encode(),
-		ExpiresIn:    expiration.Second(),
-	})
+	switch cx.PostForm("grant_type") {
+	case oauth2.GrantTypeUserCreds:
+		username := cx.PostForm("username")
+		password := cx.PostForm("password")
+		if username == "" || password == "" {
+			cx.AbortWithStatus(http.StatusBadRequest)
+			return
+		}
+		cx.JSON(http.StatusOK, tokenResponse{
+			IDToken:      token.Encode(),
+			AccessToken:  token.Encode(),
+			RefreshToken: token.Encode(),
+			ExpiresIn:    expiration.Second(),
+		})
+	case oauth2.GrantTypeAuthCode:
+		cx.JSON(http.StatusOK, tokenResponse{
+			IDToken:      token.Encode(),
+			AccessToken:  token.Encode(),
+			RefreshToken: token.Encode(),
+			ExpiresIn:    expiration.Second(),
+		})
+	default:
+		fmt.Println("dsdsd")
+		cx.AbortWithStatus(http.StatusBadRequest)
+	}
 }
 
 func getRandomString(n int) string {

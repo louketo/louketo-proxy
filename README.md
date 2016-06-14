@@ -7,14 +7,14 @@
 ----
 
   - Supports role based uri controls
-  - Websocket connection upgrading
+  - Web Socket connection upgrading
   - Token claim matching for additional ACL controls
   - Custom claim injections into authenticated requests
   - Stateless offline refresh tokens with optional predefined session limits
   - TLS and mutual TLS support
   - JSON field bases access logs
   - Custom Sign-in and access forbidden pages
-  - Forwarding proxy support, to sign outbound requests
+  - Forward Signed Proxy
   - URL Role Tokenization
   - Listen on unix sockets, proxy upstream to unix sockets
 
@@ -97,7 +97,7 @@ Assuming you have make + go, simply run make (or 'make static' for static linkin
 
 #### **Configuration**
 
-The configuration can come from a yaml/json file and or the command line options (note, command options have a higher priority and will override any options referenced in a config file)
+Configuration can come from a yaml/json file and or the command line options (note, command options have a higher priority and will override or merge any options referenced in a config file)
 
 ```YAML
 # is the url for retrieve the openid configuration - normally the <server>/auth/realm/<realm_name>
@@ -123,34 +123,35 @@ upstream-url: http://127.0.0.1:80
 # additional scopes to add to add to the default (openid+email+profile)
 scopes:
   - vpn-user
-
 # a collection of resource i.e. urls that you wish to protect
 resources:
-  - url: /admin/test
-    # the methods on this url that should be protected, if missing, we assuming all
-    methods:
-      - GET
-    # a list of roles the user must have in order to accces urls under the above
-    roles:
-      - openvpn:vpn-user
-      - openvpn:prod-vpn
-      - test
-  - url: /admin
-    methods:
-      - GET
-    roles:
-      - openvpn:vpn-user
-      - openvpn:commons-prod-vpn
+- url: /admin/test
+  # the methods on this url that should be protected, if missing, we assuming all
+  methods:
+  - GET
+  # a list of roles the user must have in order to access urls under the above
+  # If all you want is authentication ONLY, simply remove the roles array - the user must be authenticated but
+  # no roles are required
+  roles:
+  - openvpn:vpn-user
+  - openvpn:prod-vpn
+  - test
+- url: /admin
+  methods:
+  - GET
+  roles:
+  - openvpn:vpn-user
+  - openvpn:commons-prod-vpn
 ```
 
 #### **Example Usage**
 
 Assuming you have some web service you wish protected by Keycloak;
 
-a) Create the *client* under the Keycloak GUI or CLI; the client protocol is *'openid-connect'*, access-type:  *confidential*.
-b) Add a Valid Redirect URIs of *http://127.0.0.1:3000/oauth/callback*.
-c) Grab the client id and client secret.
-d) Create the various roles under the client or existing clients for authorization purposes.
+* Create the *client* under the Keycloak GUI or CLI; the client protocol is *'openid-connect'*, access-type:  *confidential*.
+* Add a Valid Redirect URIs of *http://127.0.0.1:3000/oauth/callback*.
+* Grab the client id and client secret.
+* Create the various roles under the client or existing clients for authorization purposes.
 
 ##### **- The default config**
 
@@ -162,17 +163,16 @@ listen: 127.0.0.1:3000
 redirection-url: http://127.0.0.1:3000
 encryption_key: AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j
 upstream-url: http://127.0.0.1:80
-
 resources:
-  - url: /admin
-    methods:
-      - GET
-    roles:
-      - client:test1
-      - client:test2
-  - url: /backend
-    roles:
-      - client:test1
+- url: /admin
+  methods:
+  - GET
+  roles:
+  - client:test1
+  - client:test2
+- url: /backend
+  roles:
+  - client:test1
 ```
 
 Note, anything defined in the configuration file can also be configured as command line options, so the above would be reflected as;
@@ -215,16 +215,14 @@ DEBU[0002] resource access permitted: /favicon.ico       access=permitted bearer
 
 #### **- Forward Signing Proxy (Experimental)**
 
-Lets say you have a bunch of services and you want to apply granular access controls, central auditing, authentication and authorization between endpoints.
-Incoming is covered as detailed above, but you can use a forwarding proxy. Your application can proxy outbound requests through the proxy; requests
-will be signed with an authorization header (i.e. a JWT access token) for the other end to verify. The proxy will then take care of authenticating to the
-OpenID service and refreshing the tokens for you. Note, at present the service logs in using oauth client_credentials grant type, so you authentication service, 
+Forward signing provides a mechanism for authentication and authorization between services, using the keycloak issued tokens for granular control. When operating with in the more, the proxy will automatically acquire a access token (handling the refreshing or logins) and tag Authorization headers on outbound request's (TLS via HTTP CONNECT is fully supported). You control which domains are tagged by the --forwarding-domains option. Note, this option use a **contains** comparison on domains. So, if you wanted to match all domains under *.svc.cluster.local can and simply use: --forwarding-domain=svc.cluster.local.
+
+At present the service logs in using oauth client_credentials grant type, so your authentication service, 
 must support direct (username/password) logins. 
 
 Example setup:
 
-You have selection of applications; lets assume to keep the example only those with a specific role per project for access i.e. Project requires project role claim,
-ProjectB requires projectb role claim etc etc. You can setup the
+You have collection of micro-services which are permitted to speak to one another; you've already setup the credentials, roles, clients etc in Keycloak, providing granular role controls over issue tokens. 
 
 ```YAML
 # kubernetes pod example
@@ -233,9 +231,9 @@ ProjectB requires projectb role claim etc etc. You can setup the
   args:
   - --enable-forwarding=true
   - --forwarding-username=projecta
-  - --forwarding-password=some_password (better to grab from k8s secrets via env or perhaps vault?)
+  - --forwarding-password=some_password 
+  - --forwarding-domains=projecta.svc.cluster.local
   - --forwarding-domains=projectb.svc.cluster.local
-  - --forwarding-domains=projectc.svc.cluster.local
   # Note: if you don't specify any forwarding domains, all domains will be signed; Also the code checks is the
   # domain 'contains' the value (it's not a regex) so if you wanted to sign all requests to svc.cluster.local, just use
   # svc.cluster.local
@@ -247,11 +245,9 @@ ProjectB requires projectb role claim etc etc. You can setup the
   
 # test the forward proxy  
 [jest@starfury keycloak-proxy]$ curl -k --proxy http://127.0.0.1:3000 https://test.projesta.svc.cluster.local
-
 ```
 
-Project A can use the /var/run/keycloak/proxy.sock (or you can chunk it on localhost:PORT if you prefer) and setup the application via stanadrd proxy
-setting is projects requests
+Receiver side you could setup the keycloak-proxy (--no=redirects=true) and permit this proxy to verify and handle admission for you. Alternatively, the access token can found as a bearer token in the request. 
 
 #### **- URL Tokenization (in-progress)**
 ---
@@ -285,13 +281,15 @@ On protected resources the upstream endpoint will receive a number of headers ad
 
 ```GO
 # add the header to the upstream endpoint
-cx.Request.Header.Add("X-Auth-Userid", id.id)
-cx.Request.Header.Add("X-Auth-Subject", id.preferredName)
+id := user.(*userContext)
+cx.Request.Header.Add("X-Auth-Userid", id.name)
+cx.Request.Header.Add("X-Auth-Subject", id.id)
 cx.Request.Header.Add("X-Auth-Username", id.name)
 cx.Request.Header.Add("X-Auth-Email", id.email)
 cx.Request.Header.Add("X-Auth-ExpiresIn", id.expiresAt.String())
 cx.Request.Header.Add("X-Auth-Token", id.token.Encode())
 cx.Request.Header.Add("X-Auth-Roles", strings.Join(id.roles, ","))
+cx.Request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", id.token.Encode()))
 
 # plus the default
 cx.Request.Header.Add("X-Forwarded-For", cx.Request.RemoteAddr)
@@ -303,8 +301,7 @@ cx.Request.Header.Set("X-Forwarded-Host", cx.Request.Host)
 
 #### **- Custom Claims**
 
-You can inject additional claims from the access token into the authentication token via the --add-claims or config array. For example, the token from Keycloak provider
-might include the following claims.
+You can inject additional claims from the access token into the authentication token via the --add-claims option. For example, a token from Keycloak provider might include the following claims.
 
 ```YAML
 "resource_access": {},
@@ -315,7 +312,7 @@ might include the following claims.
 "email": "gambol99@gmail.com"
 ```
 
-In order to request you receive the given_name, family_name and name we could add --add-claims=given_name --add-claims=family_name etc. Or in the configuration file
+In order to request you receive the given_name, family_name and name in the authentication header we would add --add-claims=given_name --add-claims=family_name etc. Or in the configuration file
 
 ```YAML
 add-claims:
@@ -324,16 +321,12 @@ add-claims:
 - name
 ```
 
-Which would add the following headers to the authenticated request
+This would add the additional headers to the authenticated request along with standard ones.
 
 ```shell
-X-Auth-Email: gambol99@gmail.com
-X-Auth-Expiresin: 2016-05-03 22:27:43 +0000 UTC
 X-Auth-Family-Name: Jayawardene
 X-Auth-Given-Name: Rohith
 X-Auth-Name: Rohith Jayawardene
-X-Auth-Roles: test-role
-X-Auth-Subject: rohith.jayawardene
 ```
 
 #### **- Encryption Key**
@@ -343,14 +336,14 @@ Naturally the key must be the same if your running behind a load balancer etc. T
 
 #### **- ClientID & Secret**
 
-Note, the client secret is optional are is only only for setups where the oauth provider is using access_type = confidential; if the provider is 'public' simple add the client id.
-Alternatively, you might not need the proxy to perform the oauth authentication flow and instead simply verify the identity token (a potential role permissions), in which case, again
+Note, the client secret is optional and only required for setups where the oauth provider is using access_type = confidential; if the provider is 'public' simple add the client id.
+Alternatively, you might not need the proxy to perform the oauth authentication flow and instead simply verify the identity token (and potential role permissions), in which case, again
 just drop the client secret and use the client id and discovery-url.
 
 #### **- Claim Matching**
 
 The proxy supports adding a variable list of claim matches against the presented tokens for additional access control. So for example you can match the 'iss' or 'aud' to the token or custom attributes;
-note each of the matches are regex's. Examples,  --match-claims 'aud=sso.*' --claim iss=https://.*' or via the configuratin file.
+note each of the matches are regex's. Examples,  --match-claims 'aud=sso.*' --claim iss=https://.*' or via the configuration file. Note, each of matches are regex's
 
 ```YAML
 match-claims:
@@ -360,10 +353,7 @@ match-claims:
 
 #### **- Custom Pages**
 
-By default the proxy will immediately redirect you for authentication and hand back 403 for access denied. Most users will probably want to present the user with a more friendly
-sign-in and access denied page. You can pass the command line options (or via config file) paths to the files i.e. --signin-pag=PATH. The sign-in page will have a 'redirect'
-passed into the scope hold the oauth redirection url. If you wish pass additional variables into the templates, perhaps title, sitename etc, you can use the --tag key=pair i.e.
---tag title="This is my site"; the variable would be accessible from {{ .title }}
+By default the proxy will immediately redirect you for authentication and hand back 403 for access denied. Most users will probably want to present the user with a more friendly sign-in and access denied page. You can pass the command line options (or via config file) paths to the files i.e. --signin-page=PATH. The sign-in page will have a 'redirect' variable passed into the scope and holding the oauth redirection url. If you wish pass additional variables into the templates, perhaps title, sitename etc, you can use the --tag key=pair i.e. --tag title="This is my site"; the variable would be accessible from {{ .title }}
 
 ```HTML
 <html>
@@ -375,8 +365,7 @@ passed into the scope hold the oauth redirection url. If you wish pass additiona
 
 #### **- White-listed URL's**
 
-Depending on how the application urls are laid out, you might want protect the root / url but have exceptions on a list of paths, i.e. /health etc. Although you should probably
-fix this by fixing up the paths, you can add excepts to the protected resources. (Note: it's an array, so the order is important)
+Depending on how the application url's are laid out, you might want protect the root / url but have exceptions on a list of paths, i.e. /health etc. Although you should probably fix this by fixing up the paths, you can add excepts to the protected resources. (Note: it's an array, so the order is important)
 
 ```YAML
   resources:
@@ -400,20 +389,17 @@ Or on the command line
 
 #### **- Mutual TLS**
 
-The proxy support enforcing mutual TLS for the clients by simply adding the --tls-ca-certificate command line option or config file option. All clients connecting must present a ceritificate
-which was signed by the CA being used.
-
-#### **- Refresh Tokens &Stores**
-
-Refresh tokens are either be stored as an encrypted cookie or placed (encrypted) in a shared / local store. At present, redis and boltdb are the only two methods supported. To enable a local boltdb store. --store-url boltdb:///PATH or relative path boltdb://PATH. For redis the option is redis://HOST:PORT. In both cases the refresh token is encrypted before placing into the store
+The proxy support enforcing mutual TLS for the clients by simply adding the --tls-ca-certificate command line option or config file option. All clients connecting must present a certificate which was signed by the CA being used.
 
 #### **- Refresh Tokens**
 
-Assuming access response responds with a refresh token and the --enable-refresh-token is true, the proxy will automatically refresh the access token for you. The tokens themselves are kept either as an encrypted (--encryption-key=KEY) cookie (cookie name: kc-state). Alternatively you can place the refresh token (still requires encryption key) in a local boltdb file or shared redis. Naturally the encryption key has to be the same on all instances and boltdb is for single instance only developments.
+Assuming a request for an access token contains a refresh token and the --enable-refresh-token is true, the proxy will automatically refresh the access token for you. The tokens themselves are kept either as an encrypted *(--encryption-key=KEY)* cookie *(cookie name: kc-state).* or a store *(still requires encryption key)*. 
+
+At present the only store supported are[Redis](https://github.com/antirez/redis) and [Boltdb](https://github.com/boltdb/bolt). To enable a local boltdb store. --store-url boltdb:///PATH or relative path boltdb://PATH. For redis the option is redis://[USER:PASSWORD@]HOST:PORT. In both cases the refresh token is encrypted before placing into the store. 
 
 #### **- Logout Endpoint**
 
-A /oauth/logout?redirect=url is provided as a helper to logout the users, aside from dropping a sessions cookies, we also attempt to refrevoke session access via revocation url (config revocation-url or --revocation-url) with the provider. For keycloak the url for this would be https://keycloak.example.com/auth/realms/REALM_NAME/protocol/openid-connect/logout, for google /oauth/revoke
+A /oauth/logout?redirect=url is provided as a helper to logout the users, aside from dropping a sessions cookies, we also attempt to revoke session access via revocation url (config revocation-url or --revocation-url) with the provider. For keycloak the url for this would be https://keycloak.example.com/auth/realms/REALM_NAME/protocol/openid-connect/logout, for google /oauth/revoke
 
 #### **- Cross Origin Resource Sharing (CORS)**
 
@@ -448,9 +434,7 @@ or via the command line arguments
 
 #### **- Upsteam URL**
 
-You can control the upstream endpoint via the --upstream-url or config option. Both http and https is supported and you can control
-the TLS verification via the --skip-upstream-tls-verify or config option, along with enabling or disabling keepalives on the upstream via
---upstream-keepalives option. Note, the proxy can also upstream via a unix socket, --upstream-url unix://path/to/the/file.sock
+You can control the upstream endpoint via the --upstream-url option. Both http and https is supported with TLS verification and keepalive support configured via the --skip-upstream-tls-verify / --upstream-keepalives option. Note, the proxy can also upstream via a unix socket, --upstream-url unix://path/to/the/file.sock
 
 #### **- Endpoints**
 

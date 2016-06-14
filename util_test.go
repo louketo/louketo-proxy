@@ -17,6 +17,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -29,8 +30,9 @@ import (
 )
 
 func TestCreateOpenIDClient(t *testing.T) {
+	_, auth, _ := newTestProxyService(t, nil)
 	client, _, err := createOpenIDClient(&Config{
-		DiscoveryURL: newFakeOAuthServer(t).getLocation(),
+		DiscoveryURL: auth.location.String() + "/auth/realms/hod-test",
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, client)
@@ -209,7 +211,14 @@ func TestContainsSubString(t *testing.T) {
 }
 
 func BenchmarkContainsSubString(t *testing.B) {
-	containsSubString("svc.cluster.local", []string{"nginx.pr1.svc.cluster.local"})
+	for n := 0; n < t.N; n++ {
+		containsSubString("svc.cluster.local", []string{"nginx.pr1.svc.cluster.local"})
+	}
+}
+
+func TestCloneTLSConfig(t *testing.T) {
+	assert.NotNil(t, cloneTLSConfig(nil))
+	assert.NotNil(t, cloneTLSConfig(&tls.Config{}))
 }
 
 func TestDialAddress(t *testing.T) {
