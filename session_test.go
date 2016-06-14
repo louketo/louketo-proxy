@@ -26,7 +26,7 @@ import (
 
 func TestGetSessionToken(t *testing.T) {
 	p := newFakeKeycloakProxy(t)
-	token := getFakeAccessToken()
+	token := newFakeAccessToken()
 	encoded := token.Encode()
 
 	testCases := []struct {
@@ -65,6 +65,36 @@ func TestGetSessionToken(t *testing.T) {
 		if user.token.Encode() != encoded {
 			t.Errorf("test case %d the tokens are not the same", i)
 		}
+	}
+}
+
+func TestGetTokenFromBearer(t *testing.T) {
+	p := newFakeKeycloakProxy(t)
+	ac := newFakeAccessToken()
+	cs := []struct {
+		Error error
+		Token string
+	}{
+		{
+			Token: "",
+			Error: ErrSessionNotFound,
+		},
+		{
+			Token: "Bearer",
+			Error: ErrInvalidSession,
+		},
+		{
+			Token: fmt.Sprintf("Bearer %s", ac.Encode()),
+			Error: nil,
+		},
+	}
+	for i, x := range cs {
+		cx := newFakeGinContext("GET", "/")
+		if x.Token != "" {
+			cx.Request.Header.Set(authorizationHeader, x.Token)
+		}
+		_, err := p.getTokenFromBearer(cx)
+		assert.Equal(t, x.Error, err, "case %d, expected error: %v, got: %v", i, x.Error, err)
 	}
 }
 

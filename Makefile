@@ -122,7 +122,7 @@ cover:
 test: deps
 	@echo "--> Running the tests"
 	@export GIN_MODE=release
-	@godep go test -v
+	@godep go test -v -bench=.
 	@$(MAKE) gofmt
 	@$(MAKE) vet
 	@$(MAKE) cover
