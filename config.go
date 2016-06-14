@@ -346,9 +346,10 @@ func getOptions() []cli.Flag {
 			EnvVar: "PROXY_CONFIG_FILE",
 		},
 		cli.StringFlag{
-			Name:  "listen",
-			Usage: "the interface the service should be listening on",
-			Value: defaults.Listen,
+			Name:   "listen",
+			Usage:  "the interface the service should be listening on",
+			Value:  defaults.Listen,
+			EnvVar: "PROXY_LISTEN",
 		},
 		cli.StringFlag{
 			Name:   "client-secret",
@@ -374,8 +375,9 @@ func getOptions() []cli.Flag {
 			Usage: "validate the token and roles only, no required implement oauth",
 		},
 		cli.DurationFlag{
-			Name:  "idle-duration",
-			Usage: "the expiration of the access token cookie, if not used within this time its removed",
+			Name:   "idle-duration",
+			Usage:  "the expiration of the access token cookie, if not used within this time its removed",
+			EnvVar: "PROXY_IDLE_DURATION",
 		},
 		cli.StringFlag{
 			Name:   "redirection-url",
@@ -383,9 +385,10 @@ func getOptions() []cli.Flag {
 			EnvVar: "PROXY_REDIRECTION_URL",
 		},
 		cli.StringFlag{
-			Name:  "revocation-url",
-			Usage: "the url for the revocation endpoint to revoke refresh token",
-			Value: "/oauth2/revoke",
+			Name:   "revocation-url",
+			Usage:  "the url for the revocation endpoint to revoke refresh token",
+			Value:  "/oauth2/revoke",
+			EnvVar: "PROXY_REVOCATION_URL",
 		},
 		cli.StringFlag{
 			Name:   "store-url",
@@ -460,7 +463,7 @@ func getOptions() []cli.Flag {
 		},
 		cli.StringSliceFlag{
 			Name:  "forwarding-domains",
-			Usage: "a list of domains which should be signed, anything is just relayed",
+			Usage: "a list of domains which should be signed; everything else is relayed unsigned",
 		},
 		cli.StringFlag{
 			Name:  "tls-cert",
