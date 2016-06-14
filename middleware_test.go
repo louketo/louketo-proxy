@@ -178,10 +178,6 @@ func TestEntrypointHandler(t *testing.T) {
 	}
 }
 
-func TestAuthenticationHandler(t *testing.T) {
-
-}
-
 func TestSecurityHandler(t *testing.T) {
 	kc := newFakeKeycloakProxy(t)
 	handler := kc.securityHandler()
@@ -243,7 +239,8 @@ func TestCrossSiteHandler(t *testing.T) {
 		for k, v := range c.Headers {
 			value := context.Writer.Header().Get(k)
 			if value == "" {
-				t.Errorf("case %d, should have had the %s header set, headers: %v", i, k, context.Writer.Header())
+				t.Errorf("case %d, should have had the %s header set, headers: %v",
+					i, k, context.Writer.Header())
 				continue
 			}
 			if value != v {

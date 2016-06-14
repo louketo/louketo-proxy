@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func getFakeAccessToken() jose.JWT {
+func newFakeAccessToken() jose.JWT {
 	testToken, _ := jose.NewJWT(
 		jose.JOSEHeader{
 			"alg": "RS256",
@@ -147,7 +147,7 @@ func TestIsBearerToken(t *testing.T) {
 }
 
 func TestGetUserContext(t *testing.T) {
-	context, err := extractIdentity(getFakeAccessToken())
+	context, err := extractIdentity(newFakeAccessToken())
 	assert.NoError(t, err)
 	assert.NotNil(t, context)
 	assert.Equal(t, "1e11e539-8256-4b3b-bda8-cc0d56cddb48", context.id)
@@ -160,7 +160,7 @@ func TestGetUserContext(t *testing.T) {
 }
 
 func BenchmarkExtractIdentity(b *testing.B) {
-	token := getFakeAccessToken()
+	token := newFakeAccessToken()
 	for n := 0; n < b.N; n++ {
 		extractIdentity(token)
 	}

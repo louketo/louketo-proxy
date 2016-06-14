@@ -134,7 +134,7 @@ func TestLoginHandler(t *testing.T) {
 }
 
 func TestTokenHandler(t *testing.T) {
-	token := getFakeAccessToken()
+	token := newFakeAccessToken()
 	_, _, u := newTestProxyService(t, nil)
 	url := u + oauthURL + tokenURL
 

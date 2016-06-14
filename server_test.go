@@ -55,7 +55,7 @@ func newFakeKeycloakProxyWithResources(t *testing.T, resources []*Resource) *oau
 	return kc
 }
 
-func newFakeKeycloakConfig(t *testing.T) *Config {
+func newFakeKeycloakConfig() *Config {
 	return &Config{
 		DiscoveryURL:          "127.0.0.1:8080",
 		ClientID:              fakeClientID,
@@ -109,7 +109,7 @@ func newFakeKeycloakProxy(t *testing.T) *oauthProxy {
 	log.SetOutput(ioutil.Discard)
 
 	kc := &oauthProxy{
-		config:   newFakeKeycloakConfig(t),
+		config:   newFakeKeycloakConfig(),
 		upstream: new(fakeReverseProxy),
 		endpoint: &url.URL{Host: "127.0.0.1"},
 	}
@@ -122,24 +122,29 @@ func newFakeKeycloakProxy(t *testing.T) *oauthProxy {
 }
 
 func newTestProxyService(t *testing.T, config *Config) (*oauthProxy, *fakeOAuthServer, string) {
+	log.SetOutput(ioutil.Discard)
+	// step: create a fake oauth server
 	auth := newFakeOAuthServer(t)
+	// step: use the default config if required
 	if config == nil {
-		config = newFakeKeycloakConfig(t)
+		config = newFakeKeycloakConfig()
 	}
+	// step: set the config
 	config.LogRequests = true
 	config.SkipTokenVerification = false
 	config.DiscoveryURL = auth.getLocation()
 	config.Verbose = false
-	log.SetOutput(ioutil.Discard)
-
+	// step: create a proxy
 	proxy, err := newProxy(config)
 	if err != nil {
 		t.Fatalf("failed to create proxy service, error: %s", err)
 	}
+	// step: create an fake upstream endpoint
 	proxy.upstream = new(fakeReverseProxy)
+	// step: create the fake http server and update the url
 	service := httptest.NewServer(proxy.router)
 	config.RedirectionURL = service.URL
-
+	// step: we need to update the client config
 	proxy.client, proxy.provider, err = createOpenIDClient(config)
 	if err != nil {
 		t.Fatalf("failed to recreate the openid client, error: %s", err)
@@ -149,7 +154,7 @@ func newTestProxyService(t *testing.T, config *Config) (*oauthProxy, *fakeOAuthS
 }
 
 func TestNewKeycloakProxy(t *testing.T) {
-	proxy, err := newProxy(newFakeKeycloakConfig(t))
+	proxy, err := newProxy(newFakeKeycloakConfig())
 	assert.NoError(t, err)
 	assert.NotNil(t, proxy)
 	assert.NotNil(t, proxy.config)
@@ -185,11 +190,16 @@ func TestRedirectToAuthorizationUnauthorized(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, context.Writer.Status())
 }
 
-func TestInitializeReverseProxy(t *testing.T) {
-	proxy := newFakeKeycloakProxy(t)
+func TestCreateReverseProxy(t *testing.T) {
+	proxy, _, _ := newTestProxyService(t, nil)
+	err := createReverseProxy(proxy.config, proxy)
+	assert.NoError(t, err)
+	assert.NotNil(t, proxy.router)
+}
 
-	uri, _ := url.Parse("http://127.0.0.1:8080")
-	err := proxy.createUpstreamProxy(uri)
+func TestCreateForwardProxy(t *testing.T) {
+	proxy, _, _ := newTestProxyService(t, nil)
+	err := createForwardingProxy(proxy.config, proxy)
 	assert.NoError(t, err)
 	assert.NotNil(t, proxy.router)
 }
