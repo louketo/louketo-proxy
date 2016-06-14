@@ -18,6 +18,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"testing"
 	"time"
 
@@ -80,6 +81,80 @@ func TestExpirationHandler(t *testing.T) {
 		assert.Equal(t, c.HTTPCode, cx.Writer.Status(), "test case %d should have recieved: %d, but got %d", i,
 			c.HTTPCode, cx.Writer.Status())
 	}
+}
+
+func TestLoginHandler(t *testing.T) {
+	_, _, u := newTestProxyService(t, nil)
+
+	cs := []struct {
+		Username     string
+		Password     string
+		ExpectedCode int
+	}{
+		{
+			Username:     "",
+			Password:     "",
+			ExpectedCode: http.StatusBadRequest,
+		},
+		{
+			Username:     "test",
+			Password:     "",
+			ExpectedCode: http.StatusBadRequest,
+		},
+		{
+			Username:     "",
+			Password:     "test",
+			ExpectedCode: http.StatusBadRequest,
+		},
+		{
+			Username:     "test",
+			Password:     "test",
+			ExpectedCode: http.StatusOK,
+		},
+	}
+
+	for i, x := range cs {
+		u := u + oauthURL + loginURL
+		query := url.Values{}
+		if x.Username != "" {
+			query.Add("username", x.Username)
+		}
+		if x.Password != "" {
+			query.Add("password", x.Password)
+		}
+
+		resp, err := http.Post(u+"?"+query.Encode(), "", nil)
+		if err != nil {
+			t.Errorf("case %d, unable to make requets, error: %s", i, err)
+			continue
+		}
+		assert.Equal(t, x.ExpectedCode, resp.StatusCode, "case %d, expect: %v, got: %d",
+			i, x.ExpectedCode, resp.StatusCode)
+	}
+}
+
+func TestTokenHandler(t *testing.T) {
+	token := getFakeAccessToken()
+	_, _, u := newTestProxyService(t, nil)
+	url := u + oauthURL + tokenURL
+
+	// step: get a request
+	req, _ := http.NewRequest("GET", url, nil)
+	req.Header.Set("Authorization", "Bearer "+token.Encode())
+	resp, err := http.DefaultTransport.RoundTrip(req)
+	if err != nil {
+		t.Errorf("failed to make request, error: %s", err)
+		t.FailNow()
+	}
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	req, _ = http.NewRequest("GET", url, nil)
+	resp, err = http.DefaultTransport.RoundTrip(req)
+	if err != nil {
+		t.Errorf("failed to make request, error: %s", err)
+		t.FailNow()
+	}
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
 
 func TestAuthorizationURL(t *testing.T) {

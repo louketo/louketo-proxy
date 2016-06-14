@@ -149,7 +149,8 @@ func TestEntrypointWhiteListing(t *testing.T) {
 }
 
 func TestEntrypointHandler(t *testing.T) {
-	proxy := newFakeKeycloakProxy(t)
+	proxy, _, _ := newTestProxyService(t, nil)
+
 	handler := proxy.entryPointHandler()
 
 	tests := []struct {

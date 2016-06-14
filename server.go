@@ -163,6 +163,10 @@ func createReverseProxy(config *Config, service *oauthProxy) error {
 func createForwardingProxy(config *Config, service *oauthProxy) error {
 	log.Infof("enabled forward signing proxy mode")
 
+	if config.SkipUpstreamTLSVerify {
+		log.Warnf("TLS verification switched off; in forward signing mode it's recommended you verify! (--skip-upstream-tls-verify=false)")
+	}
+
 	// step: initialize the reverse http proxy
 	if err := service.createUpstreamProxy(nil); err != nil {
 		return err
