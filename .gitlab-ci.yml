@@ -9,17 +9,25 @@ stages:
 
 tests:
   stage: tests
-  image: golang:1.6.0
+  image: golang:1.6.2
+  before_script:
+  - mkdir -p /go/src/github.com/gambol99
+  - ln -sf /builds/go/keycloak-proxy /go/src/github.com/gambol99
+  - cd /go/src/github.com/gambol99/keycloak-proxy
   script:
-    - make deps
-    - make test
+  - make deps
+  - make test
 
 build:
   stage: build
-  image: golang:1.6.0
+  image: golang:1.6.2
+  before_script:
+  - mkdir -p /go/src/github.com/gambol99
+  - ln -sf /builds/go/keycloak-proxy /go/src/github.com/gambol99
+  - cd /go/src/github.com/gambol99/keycloak-proxy
   script:
-    - make deps
-    - make static
+  - make deps
+  - make static
   artifacts:
     paths:
     - bin/
