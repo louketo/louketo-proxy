@@ -20,5 +20,4 @@ install:
 
 script:
   - make test
-  - docker login -u ${REGISTRY_USERNAME} -p ${REGISTRY_TOKEN} -e ${AUTHOR_EMAIL} ${REGISTRY}
-  - if [ -n "$TRAVIS_TAG" ]; then VERSION=$TRAVIS_TAG make docker-release; fi
+  - if [ -n "$TRAVIS_TAG" ]; then docker login -u ${REGISTRY_USERNAME} -p ${REGISTRY_TOKEN} -e ${AUTHOR_EMAIL} ${REGISTRY}; VERSION=$TRAVIS_TAG make docker-release; fi
