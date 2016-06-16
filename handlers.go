@@ -233,6 +233,9 @@ func (r *oauthProxy) loginHandler(cx *gin.Context) {
 		cx.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
+	
+	// step: drop the access token
+	r.dropAccessTokenCookie(cx, token.AccessToken, r.config.IdleDuration)
 
 	cx.JSON(http.StatusOK, tokenResponse{
 		IDToken:      token.IDToken,
