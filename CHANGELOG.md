@@ -1,5 +1,17 @@
 
-#### **1.1.0 (unreleased)**
+
+#### **1.2.0**
+
+BREAKING CHANGES:
+ * Changed the /oauth/login handler to use post form values rather than query parameter to ensure (to a degree) they
+   are not logged
+
+#### **1.1.1**
+
+FIXES:
+ * Fixed the configuration bug which required a redirection-url even when redirection was shifted off
+
+#### **1.1.0**
 
 FIXES:
  * Added a auto build to quay.io on the travis build for master and tags

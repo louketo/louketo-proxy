@@ -198,8 +198,8 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 //
 func (r *oauthProxy) loginHandler(cx *gin.Context) {
 	// step: parse the client credentials
-	username := cx.Request.URL.Query().Get("username")
-	password := cx.Request.URL.Query().Get("password")
+	username := cx.Request.PostFormValue("username")
+	password := cx.Request.PostFormValue("password")
 
 	if username == "" || password == "" {
 		log.WithFields(log.Fields{

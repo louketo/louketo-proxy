@@ -31,7 +31,7 @@ USAGE:
    keycloak-proxy [options]
 
 VERSION:
-   v1.1.0 (git+sha: 1209149)
+   v1.2.0 (git+sha: fc38244)
 
 AUTHOR(S):
    Rohith <gambol99@gmail.com>
@@ -442,6 +442,6 @@ You can control the upstream endpoint via the --upstream-url option. Both http a
 * **/oauth/callback** is provider openid callback endpoint
 * **/oauth/expired** is a helper endpoint to check if a access token has expired, 200 for ok and, 401 for no token and 401 for expired
 * **/oauth/health** is the health checking endpoint for the proxy, you can also grab version from headers
-* **/oauth/login** provides a relay endpoint to login via grant_type=password i.e. POST /oauth/login?username=USERNAME&password=PASSWORD
+* **/oauth/login** provides a relay endpoint to login via grant_type=password i.e. POST /oauth/login form values are username=USERNAME&password=PASSWORD
 * **/oauth/logout** provides a convenient endpoint to log the user out, it will always attempt to perform a back channel logout of offline tokens
 * **/oauth/token** is a helper endpoint which will display the current access token for you
