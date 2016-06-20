@@ -115,15 +115,15 @@ func TestLoginHandler(t *testing.T) {
 
 	for i, x := range cs {
 		u := u + oauthURL + loginURL
-		query := url.Values{}
+		values := url.Values{}
 		if x.Username != "" {
-			query.Add("username", x.Username)
+			values.Add("username", x.Username)
 		}
 		if x.Password != "" {
-			query.Add("password", x.Password)
+			values.Add("password", x.Password)
 		}
 
-		resp, err := http.Post(u+"?"+query.Encode(), "", nil)
+		resp, err := http.PostForm(u, values)
 		if err != nil {
 			t.Errorf("case %d, unable to make requets, error: %s", i, err)
 			continue
