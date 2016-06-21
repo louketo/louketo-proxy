@@ -1,4 +1,3 @@
-
 NAME=keycloak-proxy
 AUTHOR=gambol99
 AUTHOR_EMAIL=gambol99@gmail.com
@@ -40,6 +39,13 @@ docker-build:
 	@echo "--> Compiling the project"
 	${SUDO} docker run --rm -v ${ROOT_DIR}:/go/src/github.com/gambol99/keycloak-proxy \
 		-w /go/src/github.com/gambol99/keycloak-proxy -e GOOS=linux golang:${GOVERSION} make static
+
+docker-test:
+	@echo "--> Running the docker test"
+	${SUDO} docker run --rm -ti -p 3000:3000 \
+	    -v ${ROOT_DIR}/config.yml:/etc/keycloak/config.yml:ro \
+	    -v ${ROOT_DIR}/tests:/opt/tests:ro \
+	    ${REGISTRY}/${AUTHOR}/${NAME}:${VERSION} --config /etc/keycloak/config.yml
 
 docker:
 	@echo "--> Building the docker image"
