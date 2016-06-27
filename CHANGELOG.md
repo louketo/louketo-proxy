@@ -1,4 +1,8 @@
 
+#### **1.2.1**
+
+CHANGES:
+ * Updated the dockerfile to create a user and group and not run at root
 
 #### **1.2.0**
 
