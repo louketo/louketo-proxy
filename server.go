@@ -36,6 +36,7 @@ import (
 	"github.com/coreos/go-oidc/oidc"
 	"github.com/elazarl/goproxy"
 	"github.com/gin-gonic/gin"
+	httplog "log"
 )
 
 type oauthProxy struct {
@@ -78,6 +79,9 @@ func newProxy(config *Config) (*oauthProxy, error) {
 	if config.Verbose {
 		log.SetLevel(log.DebugLevel)
 	}
+	// step: disable the logging for http server - stop us from getting all those
+	// annoying EOF from tcp health checks
+	httplog.SetOutput(ioutil.Discard)
 
 	log.Infof("starting %s, author: %s, version: %s, ", prog, author, version)
 
