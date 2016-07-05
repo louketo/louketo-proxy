@@ -1,4 +1,10 @@
 
+#### **1.2.2**
+
+CHANGES:
+ * General Code fix uo
+ * removing from dockerfile user and group
+
 #### **1.2.1**
 
 CHANGES:
