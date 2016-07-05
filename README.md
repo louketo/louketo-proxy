@@ -432,7 +432,7 @@ or via the command line arguments
 --cors-exposes-headers [--cors-exposes-headers option]  set the expose cors headers access control (Access-Control-Expose-Headers)
 ```
 
-#### **- Upsteam URL**
+#### **- Upstream URL**
 
 You can control the upstream endpoint via the --upstream-url option. Both http and https is supported with TLS verification and keepalive support configured via the --skip-upstream-tls-verify / --upstream-keepalives option. Note, the proxy can also upstream via a unix socket, --upstream-url unix://path/to/the/file.sock
 
@@ -445,3 +445,4 @@ You can control the upstream endpoint via the --upstream-url option. Both http a
 * **/oauth/login** provides a relay endpoint to login via grant_type=password i.e. POST /oauth/login form values are username=USERNAME&password=PASSWORD
 * **/oauth/logout** provides a convenient endpoint to log the user out, it will always attempt to perform a back channel logout of offline tokens
 * **/oauth/token** is a helper endpoint which will display the current access token for you
+* **/oauth/metrics** is a prometheus metrics handler
