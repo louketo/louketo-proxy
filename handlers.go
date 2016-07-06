@@ -392,6 +392,14 @@ func (r *oauthProxy) healthHandler(cx *gin.Context) {
 }
 
 //
+//
+//
+func (r *oauthProxy) metricsHandler(cx *gin.Context) {
+	r.prometheusHandler.ServeHTTP(cx.Writer, cx.Request)
+	cx.Abort()
+}
+
+//
 // retrieveRefreshToken retrieves the refresh token from store or cookie
 //
 func (r *oauthProxy) retrieveRefreshToken(cx *gin.Context, user *userContext) (string, error) {

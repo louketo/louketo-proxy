@@ -50,6 +50,8 @@ func (r *oauthProxy) loggingHandler() gin.HandlerFunc {
 			"path":      cx.Request.URL.Path,
 			"latency":   latency.String(),
 		}).Infof("[%d] |%s| |%10v| %-5s %s", cx.Writer.Status(), cx.ClientIP(), latency, cx.Request.Method, cx.Request.URL.Path)
+
+		r.httpMetrics.WithLabelValues(fmt.Sprintf("%d", cx.Writer.Status()), cx.Request.Method).Inc()
 	}
 }
 

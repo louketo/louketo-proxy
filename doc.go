@@ -45,6 +45,7 @@ const (
 	expiredURL       = "/expired"
 	logoutURL        = "/logout"
 	loginURL         = "/login"
+	metricsURL       = "/metrics"
 
 	claimPreferredName  = "preferred_username"
 	claimAudience       = "aud"
