@@ -25,7 +25,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/codegangsta/cli"
+	"github.com/urfave/cli"
 	"gopkg.in/yaml.v2"
 )
 
@@ -154,22 +154,22 @@ func (r *Config) hasCustomForbiddenPage() bool {
 // @TODO look for a shorter way of doing this, we're maintaining the same options in multiple places, it's tedious!
 //
 func readOptions(cx *cli.Context, config *Config) (err error) {
-	if cx.IsSet("listen") {
+	if cx.String("listen") != "" {
 		config.Listen = cx.String("listen")
 	}
-	if cx.IsSet("client-secret") {
+	if cx.String("client-secret") != "" {
 		config.ClientSecret = cx.String("client-secret")
 	}
-	if cx.IsSet("client-id") {
+	if cx.String("client-id") != "" {
 		config.ClientID = cx.String("client-id")
 	}
-	if cx.IsSet("discovery-url") {
+	if cx.String("discovery-url") != "" {
 		config.DiscoveryURL = cx.String("discovery-url")
 	}
-	if cx.IsSet("upstream-url") {
+	if cx.String("upstream-url") != "" {
 		config.Upstream = cx.String("upstream-url")
 	}
-	if cx.IsSet("revocation-url") {
+	if cx.String("revocation-url") != "" {
 		config.RevocationEndpoint = cx.String("revocation-url")
 	}
 	if cx.IsSet("upstream-keepalives") {
@@ -208,13 +208,13 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 	if cx.IsSet("add-claims") {
 		config.AddClaims = append(config.AddClaims, cx.StringSlice("add-claims")...)
 	}
-	if cx.IsSet("store-url") {
+	if cx.String("store-url") != "" {
 		config.StoreURL = cx.String("store-url")
 	}
 	if cx.IsSet("no-redirects") {
 		config.NoRedirects = cx.Bool("no-redirects")
 	}
-	if cx.IsSet("redirection-url") {
+	if cx.String("redirection-url") != "" {
 		config.RedirectionURL = cx.String("redirection-url")
 	}
 	if cx.IsSet("tls-cert") {
@@ -375,9 +375,8 @@ func getOptions() []cli.Flag {
 			Usage: "validate the token and roles only, no required implement oauth",
 		},
 		cli.DurationFlag{
-			Name:   "idle-duration",
-			Usage:  "the expiration of the access token cookie, if not used within this time its removed",
-			EnvVar: "PROXY_IDLE_DURATION",
+			Name:  "idle-duration",
+			Usage: "the expiration of the access token cookie, if not used within this time its removed",
 		},
 		cli.StringFlag{
 			Name:   "redirection-url",

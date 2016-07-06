@@ -122,10 +122,10 @@ encryption-key: <ENCRYPTION_KEY>
 upstream-url: http://127.0.0.1:80
 # additional scopes to add to add to the default (openid+email+profile)
 scopes:
-  - vpn-user
+- vpn-user
 # a collection of resource i.e. urls that you wish to protect
 resources:
-- url: /admin/test
+- uri: /admin/test
   # the methods on this url that should be protected, if missing, we assuming all
   methods:
   - GET
@@ -136,7 +136,7 @@ resources:
   - openvpn:vpn-user
   - openvpn:prod-vpn
   - test
-- url: /admin
+- uri: /admin
   methods:
   - GET
   roles:
@@ -164,13 +164,13 @@ redirection-url: http://127.0.0.1:3000
 encryption_key: AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j
 upstream-url: http://127.0.0.1:80
 resources:
-- url: /admin
+- uri: /admin
   methods:
   - GET
   roles:
   - client:test1
   - client:test2
-- url: /backend
+- uri: /backend
   roles:
   - client:test1
 ```

@@ -22,11 +22,6 @@
 			"Rev": "144418e1475d8bf7abbdc48583500f1a20c62ea7"
 		},
 		{
-			"ImportPath": "github.com/codegangsta/cli",
-			"Comment": "v1.17.0-21-g0eb4e0b",
-			"Rev": "0eb4e0be6c214f8904ef6989b11072c7b897c657"
-		},
-		{
 			"ImportPath": "github.com/coreos/go-oidc/http",
 			"Rev": "e6174c764e906bd60c76fdfc33faf5e0bdc875d6"
 		},
@@ -154,6 +149,11 @@
 		{
 			"ImportPath": "github.com/unrolled/secure",
 			"Rev": "4b41e52ab568cbfd31eda3612d98192da1575c77"
+		},
+		{
+			"ImportPath": "github.com/urfave/cli",
+			"Comment": "v1.18.0",
+			"Rev": "1efa31f08b9333f1bd4882d61f9d668a70cd902e"
 		},
 		{
 			"ImportPath": "golang.org/x/net/context",
