@@ -29,66 +29,70 @@ NAME:
 
 USAGE:
    keycloak-proxy [options]
-
+   
 VERSION:
-   v1.2.0 (git+sha: fc38244)
-
+   v1.2.2 (git+sha: f569f4b-dirty)
+   
 AUTHOR(S):
-   Rohith <gambol99@gmail.com>
-
+   Rohith <gambol99@gmail.com> 
+   
 COMMANDS:
+     help, h  Shows a list of commands or help for one command
+
 GLOBAL OPTIONS:
-   --config value                       the path to the configuration file for the keycloak proxy [$PROXY_CONFIG_FILE]
-   --listen value                       the interface the service should be listening on (default: "127.0.0.1:3000")
-   --client-secret value                the client secret used to authenticate to the oauth server (access_type: confidential) [$PROXY_CLIENT_SECRET]
-   --client-id value                    the client id used to authenticate to the oauth service [$PROXY_CLIENT_ID]
-   --discovery-url value                the discovery url to retrieve the openid configuration [$PROXY_DISCOVERY_URL]
-   --scope value                        a variable list of scopes requested when authenticating the user
-   --token-validate-only                validate the token and roles only, no required implement oauth
-   --idle-duration value                the expiration of the access token cookie, if not used within this time its removed (default: 0)
-   --redirection-url value              redirection url for the oauth callback url (/oauth is added) [$PROXY_REDIRECTION_URL]
-   --revocation-url value               the url for the revocation endpoint to revoke refresh token (default: "/oauth2/revoke")
-   --store-url value                    url for the storage subsystem, e.g redis://127.0.0.1:6379, file:///etc/tokens.file [$PROXY_STORE_URL]
-   --upstream-url value                 the url for the upstream endpoint you wish to proxy to [$PROXY_UPSTREAM_URL]
-   --upstream-keepalives                enables or disables the keepalive connections for upstream endpoint
-   --upstream-timeout value             is the maximum amount of time a dial will wait for a connect to complete (default: 10s)
-   --upstream-keepalive-timeout value   specifies the keep-alive period for an active network connection (default: 10s)
-   --enable-refresh-tokens              enables the handling of the refresh tokens
-   --secure-cookie                      enforces the cookie to be secure, default to true
-   --cookie-access-name value           the name of the cookie use to hold the access token (default: "kc-access")
-   --cookie-refresh-name value          the name of the cookie used to hold the encrypted refresh token (default: "kc-state")
-   --encryption-key value               the encryption key used to encrpytion the session state
-   --no-redirects                       do not have back redirects when no authentication is present, 401 them
-   --hostname value                     a list of hostnames the service will respond to, defaults to all
-   --enable-proxy-protocol              whether to enable proxy protocol
-   --enable-forwarding                  enables the forwarding proxy mode, signing outbound request
-   --forwarding-username value          the username to use when logging into the openid provider
-   --forwarding-password value          the password to use when logging into the openid provider
-   --forwarding-domains value           a list of domains which should be signed, anything is just relayed
-   --tls-cert value                     the path to a certificate file used for TLS
-   --tls-private-key value              the path to the private key for TLS support
-   --tls-ca-certificate value           the path to the ca certificate used for mutual TLS
-   --skip-upstream-tls-verify           whether to skip the verification of any upstream TLS (defaults to true)
-   --match-claims value                 keypair values for matching access token claims e.g. aud=myapp, iss=http://example.*
-   --add-claims value                   retrieve extra claims from the token and inject into headers, e.g given_name -> X-Auth-Given-Name
-   --resource value                     a list of resources 'uri=/admin|methods=GET|roles=role1,role2'
-   --headers value                      Add custom headers to the upstream request, key=value
-   --signin-page value                  a custom template displayed for signin
-   --forbidden-page value               a custom template used for access forbidden
-   --tag value                          keypair's passed to the templates at render,e.g title='My Page'
-   --cors-origins value                 list of origins to add to the CORE origins control (Access-Control-Allow-Origin)
-   --cors-methods value                 the method permitted in the access control (Access-Control-Allow-Methods)
-   --cors-headers value                 a set of headers to add to the CORS access control (Access-Control-Allow-Headers)
-   --cors-exposes-headers value         set the expose cors headers access control (Access-Control-Expose-Headers)
-   --cors-max-age value                 the max age applied to cors headers (Access-Control-Max-Age) (default: 0)
-   --cors-credentials                   the credentials access control header (Access-Control-Allow-Credentials)
-   --enable-security-filter             enables the security filter handler
-   --skip-token-verification            TESTING ONLY; bypass token verification, only expiration and roles enforced
-   --json-logging                       switch on json logging rather than text (defaults true)
-   --log-requests                       switch on logging of all incoming requests (defaults true)
-   --verbose                            switch on debug / verbose logging
-   --help, -h                           show help
-   --version, -v                        print the version
+   --config value                      the path to the configuration file for the keycloak proxy [$PROXY_CONFIG_FILE]
+   --listen value                      the interface the service should be listening on (default: "127.0.0.1:3000") [$PROXY_LISTEN]
+   --client-secret value               the client secret used to authenticate to the oauth server (access_type: confidential) [$PROXY_CLIENT_SECRET]
+   --client-id value                   the client id used to authenticate to the oauth service [$PROXY_CLIENT_ID]
+   --discovery-url value               the discovery url to retrieve the openid configuration [$PROXY_DISCOVERY_URL]
+   --scope value                       a variable list of scopes requested when authenticating the user
+   --token-validate-only               validate the token and roles only, no required implement oauth
+   --idle-duration value               the expiration of the access token cookie, if not used within this time its removed (default: 0)
+   --redirection-url value             redirection url for the oauth callback url (/oauth is added) [$PROXY_REDIRECTION_URL]
+   --revocation-url value              the url for the revocation endpoint to revoke refresh token (default: "/oauth2/revoke") [$PROXY_REVOCATION_URL]
+   --store-url value                   url for the storage subsystem, e.g redis://127.0.0.1:6379, file:///etc/tokens.file [$PROXY_STORE_URL]
+   --upstream-url value                the url for the upstream endpoint you wish to proxy to [$PROXY_UPSTREAM_URL]
+   --upstream-keepalives               enables or disables the keepalive connections for upstream endpoint
+   --upstream-timeout value            is the maximum amount of time a dial will wait for a connect to complete (default: 10s)
+   --upstream-keepalive-timeout value  specifies the keep-alive period for an active network connection (default: 10s)
+   --enable-refresh-tokens             enables the handling of the refresh tokens
+   --secure-cookie                     enforces the cookie to be secure, default to true
+   --cookie-access-name value          the name of the cookie use to hold the access token (default: "kc-access")
+   --cookie-refresh-name value         the name of the cookie used to hold the encrypted refresh token (default: "kc-state")
+   --encryption-key value              the encryption key used to encrpytion the session state
+   --no-redirects                      do not have back redirects when no authentication is present, 401 them
+   --hostname value                    a list of hostnames the service will respond to, defaults to all
+   --enable-metrics                    enable the prometheus metrics collector on /oauth/metrics
+   --enable-proxy-protocol             whether to enable proxy protocol
+   --enable-forwarding                 enables the forwarding proxy mode, signing outbound request
+   --forwarding-username value         the username to use when logging into the openid provider
+   --forwarding-password value         the password to use when logging into the openid provider
+   --forwarding-domains value          a list of domains which should be signed; everything else is relayed unsigned
+   --tls-cert value                    the path to a certificate file used for TLS
+   --tls-private-key value             the path to the private key for TLS support
+   --tls-ca-certificate value          the path to the ca certificate used for mutual TLS
+   --skip-upstream-tls-verify          whether to skip the verification of any upstream TLS (defaults to true)
+   --match-claims value                keypair values for matching access token claims e.g. aud=myapp, iss=http://example.*
+   --add-claims value                  retrieve extra claims from the token and inject into headers, e.g given_name -> X-Auth-Given-Name
+   --resource value                    a list of resources 'uri=/admin|methods=GET|roles=role1,role2'
+   --headers value                     Add custom headers to the upstream request, key=value
+   --signin-page value                 a custom template displayed for signin
+   --forbidden-page value              a custom template used for access forbidden
+   --tag value                         keypair's passed to the templates at render,e.g title='My Page'
+   --cors-origins value                list of origins to add to the CORE origins control (Access-Control-Allow-Origin)
+   --cors-methods value                the method permitted in the access control (Access-Control-Allow-Methods)
+   --cors-headers value                a set of headers to add to the CORS access control (Access-Control-Allow-Headers)
+   --cors-exposes-headers value        set the expose cors headers access control (Access-Control-Expose-Headers)
+   --cors-max-age value                the max age applied to cors headers (Access-Control-Max-Age) (default: 0)
+   --cors-credentials                  the credentials access control header (Access-Control-Allow-Credentials)
+   --enable-security-filter            enables the security filter handler
+   --skip-token-verification           TESTING ONLY; bypass token verification, only expiration and roles enforced
+   --json-logging                      switch on json logging rather than text (defaults true)
+   --log-requests                      switch on logging of all incoming requests (defaults true)
+   --verbose                           switch on debug / verbose logging
+   --help, -h                          show help
+   --version, -v                       print the version
+
 ```
 
 #### **Building**
@@ -446,3 +450,7 @@ You can control the upstream endpoint via the --upstream-url option. Both http a
 * **/oauth/logout** provides a convenient endpoint to log the user out, it will always attempt to perform a back channel logout of offline tokens
 * **/oauth/token** is a helper endpoint which will display the current access token for you
 * **/oauth/metrics** is a prometheus metrics handler
+
+#### **Metrics**
+
+Assuming the --enable-metrics has been set, a prometheus endpoint can be found on /oauth/metrics

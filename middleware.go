@@ -24,6 +24,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-oidc/jose"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/unrolled/secure"
 )
 
@@ -50,8 +51,31 @@ func (r *oauthProxy) loggingHandler() gin.HandlerFunc {
 			"path":      cx.Request.URL.Path,
 			"latency":   latency.String(),
 		}).Infof("[%d] |%s| |%10v| %-5s %s", cx.Writer.Status(), cx.ClientIP(), latency, cx.Request.Method, cx.Request.URL.Path)
+	}
+}
 
-		r.httpMetrics.WithLabelValues(fmt.Sprintf("%d", cx.Writer.Status()), cx.Request.Method).Inc()
+//
+// metricHandler is responsible for collecting metrics
+//
+func (r *oauthProxy) metricsHandler() gin.HandlerFunc {
+	log.Infof("enabled the service metrics middleware, available on %s%s", oauthURL, metricsURL)
+
+	statusMetrics := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "http_request_total",
+			Help: "The HTTP requests broken partitioned by status code",
+		},
+		[]string{"code", "method"},
+	)
+
+	// step: register the metric with prometheus
+	prometheus.MustRegisterOrGet(statusMetrics)
+
+	return func(cx *gin.Context) {
+		// step: permit to next stage
+		cx.Next()
+		// step: update the metrics
+		statusMetrics.WithLabelValues(fmt.Sprintf("%d", cx.Writer.Status()), cx.Request.Method).Inc()
 	}
 }
 

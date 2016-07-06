@@ -57,8 +57,6 @@ type oauthProxy struct {
 	store storage
 	// the prometheus handler
 	prometheusHandler http.Handler
-	// the http request metrics
-	httpMetrics *prometheus.CounterVec
 }
 
 type reverseProxy interface {
@@ -96,8 +94,7 @@ func newProxy(config *Config) (*oauthProxy, error) {
 	}
 
 	// step: parse the upstream endpoint
-	service.endpoint, err = url.Parse(config.Upstream)
-	if err != nil {
+	if service.endpoint, err = url.Parse(config.Upstream); err != nil {
 		return nil, err
 	}
 
@@ -122,7 +119,7 @@ func newProxy(config *Config) (*oauthProxy, error) {
 		log.Warnf("Note: client credentials are not set, depending on provider (confidential|public) you might be able to auth")
 	}
 
-	// step:
+	// step: are we running in forwarding more?
 	switch config.EnableForwarding {
 	case true:
 		if err := createForwardingProxy(config, service); err != nil {
@@ -156,13 +153,8 @@ func createReverseProxy(config *Config, service *oauthProxy) error {
 		return err
 	}
 
-	// step: setup the gin router and add router
+	// step: create the endpoints
 	if err := service.createEndpoints(); err != nil {
-		return err
-	}
-
-	// step: create the metrics
-	if err := service.createMetrics(); err != nil {
 		return err
 	}
 
@@ -340,6 +332,8 @@ func (r *oauthProxy) createEndpoints() error {
 	if r.config.Verbose {
 		gin.SetMode(gin.DebugMode)
 	}
+
+	//step: create the egin router
 	engine := gin.New()
 	engine.Use(gin.Recovery())
 
@@ -353,6 +347,11 @@ func (r *oauthProxy) createEndpoints() error {
 		engine.Use(r.securityHandler())
 	}
 
+	// step: enabling the metrics?
+	if r.config.EnableMetrics {
+		engine.Use(r.metricsHandler())
+	}
+
 	// step: add the routing
 	oauth := engine.Group(oauthURL).Use(r.crossOriginResourceHandler(r.config.CrossOrigin))
 	{
@@ -363,7 +362,9 @@ func (r *oauthProxy) createEndpoints() error {
 		oauth.GET(expiredURL, r.expirationHandler)
 		oauth.GET(logoutURL, r.logoutHandler)
 		oauth.POST(loginURL, r.loginHandler)
-		oauth.GET(metricsURL, r.metricsHandler)
+		if r.config.EnableMetrics {
+			oauth.GET(metricsURL, r.metricsEndpointHandler)
+		}
 	}
 
 	engine.Use(
@@ -374,27 +375,6 @@ func (r *oauthProxy) createEndpoints() error {
 		r.upstreamReverseProxyHandler())
 
 	r.router = engine
-
-	return nil
-}
-
-//
-// createMetrics creates the prometheus metrics endpoints
-//
-func (r *oauthProxy) createMetrics() error {
-	log.Infof("creating the service metrics, available on %s%s", oauthURL, metricsURL)
-
-	r.httpMetrics = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "http_request_total",
-			Help: "The HTTP requests broken partitioned by status code",
-		},
-		[]string{"code", "method"},
-	)
-
-	// step: register the metric with prometheus
-	collector := prometheus.MustRegisterOrGet(r.httpMetrics)
-	r.httpMetrics = collector.(*prometheus.CounterVec)
 
 	return nil
 }
