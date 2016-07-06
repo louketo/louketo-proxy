@@ -20,7 +20,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/codegangsta/cli"
+	"github.com/urfave/cli"
 )
 
 func TestNewDefaultConfig(t *testing.T) {
