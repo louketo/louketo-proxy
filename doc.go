@@ -120,6 +120,9 @@ type Config struct {
 	// Headers permits adding customs headers across the board
 	Headers map[string]string `json:"headers" yaml:"headers"`
 
+	// EnableMetrics indicates if the metrics is enabled
+	EnableMetrics bool `json:"enable-metrics" yaml:"enable-metrics"`
+
 	// CookieAccessName is the name of the access cookie holding the access token
 	CookieAccessName string `json:"cookie-access-name" yaml:"cookie-access-name"`
 	// CookieRefreshName is the name of the refresh cookie

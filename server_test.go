@@ -129,11 +129,13 @@ func newTestProxyService(t *testing.T, config *Config) (*oauthProxy, *fakeOAuthS
 	if config == nil {
 		config = newFakeKeycloakConfig()
 	}
+
 	// step: set the config
 	config.LogRequests = true
 	config.SkipTokenVerification = false
 	config.DiscoveryURL = auth.getLocation()
 	config.Verbose = false
+
 	// step: create a proxy
 	proxy, err := newProxy(config)
 	if err != nil {

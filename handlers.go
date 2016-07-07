@@ -392,9 +392,9 @@ func (r *oauthProxy) healthHandler(cx *gin.Context) {
 }
 
 //
+// metricsEndpointHandler forwards the request into the prometheus handler
 //
-//
-func (r *oauthProxy) metricsHandler(cx *gin.Context) {
+func (r *oauthProxy) metricsEndpointHandler(cx *gin.Context) {
 	r.prometheusHandler.ServeHTTP(cx.Writer, cx.Request)
 	cx.Abort()
 }

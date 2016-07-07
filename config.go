@@ -190,9 +190,6 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 	if cx.IsSet("skip-upstream-tls-verify") {
 		config.SkipUpstreamTLSVerify = cx.Bool("skip-upstream-tls-verify")
 	}
-	if cx.IsSet("enable-refresh-tokens") {
-		config.EnableRefreshTokens = cx.Bool("enable-refresh-tokens")
-	}
 	if cx.IsSet("encryption-key") {
 		config.EncryptionKey = cx.String("encryption-key")
 	}
@@ -226,11 +223,17 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 	if cx.IsSet("tls-ca-certificate") {
 		config.TLSCaCertificate = cx.String("tls-ca-certificate")
 	}
+	if cx.IsSet("enable-metrics") {
+		config.EnableMetrics = cx.Bool("enable-metrics")
+	}
 	if cx.IsSet("enable-proxy-protocol") {
 		config.EnableProxyProtocol = cx.Bool("enable-proxy-protocol")
 	}
 	if cx.IsSet("enable-forwarding") {
 		config.EnableForwarding = cx.Bool("enable-forwarding")
+	}
+	if cx.IsSet("enable-refresh-tokens") {
+		config.EnableRefreshTokens = cx.Bool("enable-refresh-tokens")
 	}
 	if cx.IsSet("forwarding-username") {
 		config.ForwardingUsername = cx.String("forwarding-username")
@@ -443,6 +446,10 @@ func getOptions() []cli.Flag {
 		cli.StringSliceFlag{
 			Name:  "hostname",
 			Usage: "a list of hostnames the service will respond to, defaults to all",
+		},
+		cli.BoolFlag{
+			Name:  "enable-metrics",
+			Usage: "enable the prometheus metrics collector on /oauth/metrics",
 		},
 		cli.BoolFlag{
 			Name:  "enable-proxy-protocol",

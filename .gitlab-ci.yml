@@ -29,6 +29,7 @@ build:
   - make deps
   - make static
   artifacts:
+    expire_in: 1 week
     paths:
     - bin/
   only:
