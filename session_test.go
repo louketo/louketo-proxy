@@ -25,7 +25,7 @@ import (
 )
 
 func TestGetSessionToken(t *testing.T) {
-	p := newFakeKeycloakProxy(t)
+	p, _, _ := newTestProxyService(nil)
 	token := newFakeAccessToken()
 	encoded := token.Encode()
 
@@ -69,7 +69,7 @@ func TestGetSessionToken(t *testing.T) {
 }
 
 func TestGetTokenFromBearer(t *testing.T) {
-	p := newFakeKeycloakProxy(t)
+	p, _, _ := newTestProxyService(nil)
 	ac := newFakeAccessToken()
 	cs := []struct {
 		Error error
@@ -99,7 +99,7 @@ func TestGetTokenFromBearer(t *testing.T) {
 }
 
 func TestGetRefreshTokenFromCookie(t *testing.T) {
-	p := newFakeKeycloakProxy(t)
+	p, _, _ := newTestProxyService(nil)
 	cases := []struct {
 		Cookies  []*http.Cookie
 		Expected string

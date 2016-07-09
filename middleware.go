@@ -34,13 +34,12 @@ const (
 )
 
 //
-// loggingHandler is a custom http logger
+// loggingMiddleware is a custom http logger
 //
-func (r *oauthProxy) loggingHandler() gin.HandlerFunc {
+func (r *oauthProxy) loggingMiddleware() gin.HandlerFunc {
 	return func(cx *gin.Context) {
 		start := time.Now()
 		cx.Next()
-
 		latency := time.Now().Sub(start)
 
 		log.WithFields(log.Fields{
@@ -55,9 +54,9 @@ func (r *oauthProxy) loggingHandler() gin.HandlerFunc {
 }
 
 //
-// metricHandler is responsible for collecting metrics
+// metricsMiddleware is responsible for collecting metrics
 //
-func (r *oauthProxy) metricsHandler() gin.HandlerFunc {
+func (r *oauthProxy) metricsMiddleware() gin.HandlerFunc {
 	log.Infof("enabled the service metrics middleware, available on %s%s", oauthURL, metricsURL)
 
 	statusMetrics := prometheus.NewCounterVec(
@@ -80,9 +79,9 @@ func (r *oauthProxy) metricsHandler() gin.HandlerFunc {
 }
 
 //
-// entryPointHandler checks to see if the request requires authentication
+// entrypointMiddleware checks to see if the request requires authentication
 //
-func (r oauthProxy) entryPointHandler() gin.HandlerFunc {
+func (r oauthProxy) entrypointMiddleware() gin.HandlerFunc {
 	return func(cx *gin.Context) {
 		if strings.HasPrefix(cx.Request.URL.Path, oauthURL) {
 			cx.Next()
@@ -108,13 +107,16 @@ func (r oauthProxy) entryPointHandler() gin.HandlerFunc {
 }
 
 //
-// authenticationHandler is responsible for verifying the access token
+// authenticationMiddleware is responsible for verifying the access token
 //
-func (r *oauthProxy) authenticationHandler() gin.HandlerFunc {
+func (r *oauthProxy) authenticationMiddleware() gin.HandlerFunc {
 	return func(cx *gin.Context) {
 		// step: is authentication required on this uri?
 		if _, found := cx.Get(cxEnforce); !found {
-			log.Debugf("skipping the authentication handler, resource not protected")
+			log.WithFields(log.Fields{
+				"uri": cx.Request.URL.Path,
+			}).Debugf("skipping the authentication handler, resource not protected")
+
 			cx.Next()
 			return
 		}
@@ -266,9 +268,9 @@ func (r *oauthProxy) authenticationHandler() gin.HandlerFunc {
 }
 
 //
-// admissionHandler is responsible checking the access token against the protected resource
+// admissionMiddleware is responsible checking the access token against the protected resource
 //
-func (r *oauthProxy) admissionHandler() gin.HandlerFunc {
+func (r *oauthProxy) admissionMiddleware() gin.HandlerFunc {
 	// step: compile the regex's for the claims
 	claimMatches := make(map[string]*regexp.Regexp, 0)
 	for k, v := range r.config.MatchClaims {
@@ -373,9 +375,9 @@ func (r *oauthProxy) admissionHandler() gin.HandlerFunc {
 }
 
 //
-// crossOriginResourceHandler injects the CORS headers, if set, for request made to /oauth
+// corsMiddleware injects the CORS headers, if set, for request made to /oauth
 //
-func (r *oauthProxy) crossOriginResourceHandler(c CORS) gin.HandlerFunc {
+func (r *oauthProxy) corsMiddleware(c CORS) gin.HandlerFunc {
 	return func(cx *gin.Context) {
 		if len(c.Origins) > 0 {
 			cx.Writer.Header().Set("Access-Control-Allow-Origin", strings.Join(c.Origins, ","))
@@ -399,9 +401,9 @@ func (r *oauthProxy) crossOriginResourceHandler(c CORS) gin.HandlerFunc {
 }
 
 //
-// upstreamHeadersHandler is responsible for add the authentication headers for the upstream
+// headersMiddleware is responsible for add the authentication headers for the upstream
 //
-func (r *oauthProxy) upstreamHeadersHandler(custom []string) gin.HandlerFunc {
+func (r *oauthProxy) headersMiddleware(custom []string) gin.HandlerFunc {
 	// step: we don't wanna do this every time, quicker to perform once
 	customClaims := make(map[string]string)
 	for _, x := range custom {
@@ -441,9 +443,9 @@ func (r *oauthProxy) upstreamHeadersHandler(custom []string) gin.HandlerFunc {
 }
 
 //
-// securityHandler performs numerous security checks on the request
+// securityMiddleware performs numerous security checks on the request
 //
-func (r *oauthProxy) securityHandler() gin.HandlerFunc {
+func (r *oauthProxy) securityMiddleware() gin.HandlerFunc {
 	// step: create the security options
 	secure := secure.New(secure.Options{
 		AllowedHosts:       r.config.Hostnames,

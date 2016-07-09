@@ -25,7 +25,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"sync"
-	"testing"
 	"time"
 
 	"github.com/coreos/go-oidc/jose"
@@ -98,13 +97,13 @@ var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 //
 // newFakeOAuthServer simulates a oauth service
 //
-func newFakeOAuthServer(t *testing.T) *fakeOAuthServer {
+func newFakeOAuthServer() *fakeOAuthServer {
 	// step: load the private key
 	block, _ := pem.Decode([]byte(fakePrivateKey))
 	// step: parse the private key
 	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 	if err != nil {
-		t.Fatalf("failed to parse the private key, error: %s", err)
+		panic("failed to parse the private key, error: " + err.Error())
 	}
 
 	service := &fakeOAuthServer{
@@ -148,7 +147,7 @@ func newFakeOAuthServer(t *testing.T) *fakeOAuthServer {
 
 	location, err := url.Parse(httptest.NewServer(r).URL)
 	if err != nil {
-		t.Fatalf("unable to create fake oauth service, error: %s", err)
+		panic("unable to create fake oauth service, error: " + err.Error())
 	}
 	service.location = location
 	service.claims["iss"] = service.getLocation()

@@ -25,6 +25,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func BenchmarkEntrypointHandler(b *testing.B) {
+	p, _, _ := newTestProxyService(nil)
+	handler := p.entrypointMiddleware()
+
+	for n := 0; n < b.N; n++ {
+		handler(newFakeGinContext("GET", "/"))
+	}
+}
+
 func TestEntrypointHandlerSecure(t *testing.T) {
 	proxy := newFakeKeycloakProxyWithResources(t, []*Resource{
 		{
@@ -42,7 +51,7 @@ func TestEntrypointHandlerSecure(t *testing.T) {
 		},
 	})
 
-	handler := proxy.entryPointHandler()
+	handler := proxy.entrypointMiddleware()
 
 	tests := []struct {
 		Context *gin.Context
@@ -84,7 +93,7 @@ func TestEntrypointMethods(t *testing.T) {
 		},
 	})
 
-	handler := proxy.entryPointHandler()
+	handler := proxy.entrypointMiddleware()
 
 	tests := []struct {
 		Context *gin.Context
@@ -124,7 +133,7 @@ func TestEntrypointWhiteListing(t *testing.T) {
 			Methods: []string{"ANY"},
 		},
 	})
-	handler := proxy.entryPointHandler()
+	handler := proxy.entrypointMiddleware()
 
 	tests := []struct {
 		Context *gin.Context
@@ -149,9 +158,9 @@ func TestEntrypointWhiteListing(t *testing.T) {
 }
 
 func TestEntrypointHandler(t *testing.T) {
-	proxy, _, _ := newTestProxyService(t, nil)
+	proxy, _, _ := newTestProxyService(nil)
 
-	handler := proxy.entryPointHandler()
+	handler := proxy.entrypointMiddleware()
 
 	tests := []struct {
 		Context *gin.Context
@@ -179,24 +188,24 @@ func TestEntrypointHandler(t *testing.T) {
 }
 
 func TestSecurityHandler(t *testing.T) {
-	kc := newFakeKeycloakProxy(t)
-	handler := kc.securityHandler()
+	p, _, _ := newTestProxyService(nil)
+	handler := p.securityMiddleware()
 	context := newFakeGinContext("GET", "/")
 	handler(context)
 
 	assert.Equal(t, http.StatusOK, context.Writer.Status(),
 		"we should have received a 200 not %d", context.Writer.Status())
 
-	kc = newFakeKeycloakProxy(t)
-	kc.config.Hostnames = []string{"127.0.0.1"}
-	handler = kc.securityHandler()
+	p, _, _ = newTestProxyService(nil)
+	p.config.Hostnames = []string{"127.0.0.1"}
+	handler = p.securityMiddleware()
 	handler(context)
 	assert.Equal(t, http.StatusOK, context.Writer.Status(),
 		"we should have received a 200 not %d", context.Writer.Status())
 
-	kc = newFakeKeycloakProxy(t)
-	kc.config.Hostnames = []string{"127.0.0.2"}
-	handler = kc.securityHandler()
+	p, _, _ = newTestProxyService(nil)
+	p.config.Hostnames = []string{"127.0.0.2"}
+	handler = p.securityMiddleware()
 	handler(context)
 
 	assert.Equal(t, http.StatusInternalServerError, context.Writer.Status(),
@@ -204,7 +213,7 @@ func TestSecurityHandler(t *testing.T) {
 }
 
 func TestCrossSiteHandler(t *testing.T) {
-	proxy := newFakeKeycloakProxy(t)
+	p, _, _ := newTestProxyService(nil)
 
 	cases := []struct {
 		Cors    CORS
@@ -231,7 +240,7 @@ func TestCrossSiteHandler(t *testing.T) {
 	}
 
 	for i, c := range cases {
-		handler := proxy.crossOriginResourceHandler(c.Cors)
+		handler := p.corsMiddleware(c.Cors)
 		// call the handler and check the responses
 		context := newFakeGinContext("GET", "/oauth/test")
 		handler(context)
@@ -251,7 +260,7 @@ func TestCrossSiteHandler(t *testing.T) {
 }
 
 func TestCustomHeadersHandler(t *testing.T) {
-	p := newFakeKeycloakProxy(t)
+	p, _, _ := newTestProxyService(nil)
 
 	cases := []struct {
 		Identity     *userContext
@@ -301,7 +310,7 @@ func TestCustomHeadersHandler(t *testing.T) {
 		},
 	}
 	for i, x := range cases {
-		handler := p.upstreamHeadersHandler(x.CustomClaims)
+		handler := p.headersMiddleware(x.CustomClaims)
 		context := newFakeGinContext("GET", "/nothing")
 		if x.Identity != nil {
 			context.Set(userContextName, x.Identity)
@@ -340,7 +349,7 @@ func TestAdmissionHandlerRoles(t *testing.T) {
 			Methods: []string{"ANY"},
 		},
 	})
-	handler := proxy.admissionHandler()
+	handler := proxy.admissionMiddleware()
 
 	tests := []struct {
 		Context     *gin.Context
@@ -514,7 +523,7 @@ func TestAdmissionHandlerClaims(t *testing.T) {
 	for i, c := range tests {
 		// step: if closure so we need to get the handler each time
 		proxy.config.MatchClaims = c.Matches
-		handler := proxy.admissionHandler()
+		handler := proxy.admissionMiddleware()
 		// step: inject a resource
 
 		c.Context.Set(cxEnforce, proxy.config.Resources[0])

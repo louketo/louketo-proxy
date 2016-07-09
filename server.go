@@ -194,10 +194,10 @@ func createForwardingProxy(config *Config, service *oauthProxy) error {
 
 	// step: are we logging the traffic?
 	if config.LogRequests {
-		engine.Use(service.loggingHandler())
+		engine.Use(service.loggingMiddleware())
 	}
 
-	engine.Use(service.forwardProxyHandler())
+	engine.Use(service.forwardProxyMiddleware())
 
 	return nil
 }
@@ -339,22 +339,23 @@ func (r *oauthProxy) createEndpoints() error {
 
 	// step: are we logging the traffic?
 	if r.config.LogRequests {
-		engine.Use(r.loggingHandler())
-	}
-
-	// step: enabling the security filter?
-	if r.config.EnableSecurityFilter {
-		engine.Use(r.securityHandler())
+		engine.Use(r.loggingMiddleware())
 	}
 
 	// step: enabling the metrics?
 	if r.config.EnableMetrics {
-		engine.Use(r.metricsHandler())
+		engine.Use(r.metricsMiddleware())
+	}
+
+	// step: enabling the security filter?
+	if r.config.EnableSecurityFilter {
+		engine.Use(r.securityMiddleware())
 	}
 
 	// step: add the routing
-	oauth := engine.Group(oauthURL).Use(r.crossOriginResourceHandler(r.config.CrossOrigin))
+	oauth := engine.Group(oauthURL)
 	{
+		oauth.Use(r.corsMiddleware(r.config.CrossOrigin))
 		oauth.GET(authorizationURL, r.oauthAuthorizationHandler)
 		oauth.GET(callbackURL, r.oauthCallbackHandler)
 		oauth.GET(healthURL, r.healthHandler)
@@ -368,11 +369,11 @@ func (r *oauthProxy) createEndpoints() error {
 	}
 
 	engine.Use(
-		r.entryPointHandler(),
-		r.authenticationHandler(),
-		r.admissionHandler(),
-		r.upstreamHeadersHandler(r.config.AddClaims),
-		r.upstreamReverseProxyHandler())
+		r.entrypointMiddleware(),
+		r.authenticationMiddleware(),
+		r.admissionMiddleware(),
+		r.headersMiddleware(r.config.AddClaims),
+		r.reverveProxyMiddleware())
 
 	r.router = engine
 

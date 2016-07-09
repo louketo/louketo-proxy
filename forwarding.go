@@ -27,9 +27,9 @@ import (
 )
 
 //
-// upstreamReverseProxyHandler is responsible for handles reverse proxy request to the upstream endpoint
+// reverveProxyMiddleware is responsible for handles reverse proxy request to the upstream endpoint
 //
-func (r *oauthProxy) upstreamReverseProxyHandler() gin.HandlerFunc {
+func (r *oauthProxy) reverveProxyMiddleware() gin.HandlerFunc {
 	return func(cx *gin.Context) {
 		if cx.IsAborted() {
 			return
@@ -59,9 +59,9 @@ func (r *oauthProxy) upstreamReverseProxyHandler() gin.HandlerFunc {
 }
 
 //
-// forwardProxyHandler is responsible for signing outbound requests
+// forwardProxyMiddleware is responsible for signing outbound requests
 //
-func (r *oauthProxy) forwardProxyHandler() gin.HandlerFunc {
+func (r *oauthProxy) forwardProxyMiddleware() gin.HandlerFunc {
 	var token jose.JWT
 	var identity *oidc.Identity
 	var refreshToken string

@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	release = "v1.2.2"
+	release = "v1.2.3"
 	gitsha  = "no gitsha provided"
 	version = release + " (git+sha: " + gitsha + ")"
 )
@@ -122,6 +122,8 @@ type Config struct {
 
 	// EnableMetrics indicates if the metrics is enabled
 	EnableMetrics bool `json:"enable-metrics" yaml:"enable-metrics"`
+	// EnableURIMetrics indicates we want to keep metrics on uri request times
+	EnableURIMetrics bool `json:"enable-uri-metrics" yaml:"enable-uri-metrics"`
 
 	// CookieAccessName is the name of the access cookie holding the access token
 	CookieAccessName string `json:"cookie-access-name" yaml:"cookie-access-name"`

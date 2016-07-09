@@ -27,7 +27,7 @@ import (
 )
 
 func TestExpirationHandler(t *testing.T) {
-	proxy := newFakeKeycloakProxy(t)
+	proxy, _, _ := newTestProxyService(nil)
 
 	cases := []struct {
 		Token    *jose.JWT
@@ -84,7 +84,7 @@ func TestExpirationHandler(t *testing.T) {
 }
 
 func TestLoginHandler(t *testing.T) {
-	_, _, u := newTestProxyService(t, nil)
+	_, _, u := newTestProxyService(nil)
 
 	cs := []struct {
 		Username     string
@@ -135,7 +135,7 @@ func TestLoginHandler(t *testing.T) {
 
 func TestTokenHandler(t *testing.T) {
 	token := newFakeAccessToken()
-	_, _, u := newTestProxyService(t, nil)
+	_, _, u := newTestProxyService(nil)
 	url := u + oauthURL + tokenURL
 
 	// step: get a request
@@ -158,7 +158,7 @@ func TestTokenHandler(t *testing.T) {
 }
 
 func TestAuthorizationURL(t *testing.T) {
-	_, _, u := newTestProxyService(t, nil)
+	_, _, u := newTestProxyService(nil)
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return fmt.Errorf("no redirect")
@@ -202,7 +202,7 @@ func TestAuthorizationURL(t *testing.T) {
 }
 
 func TestCallbackURL(t *testing.T) {
-	_, _, u := newTestProxyService(t, nil)
+	_, _, u := newTestProxyService(nil)
 
 	cs := []struct {
 		URL         string
@@ -256,9 +256,9 @@ func TestCallbackURL(t *testing.T) {
 }
 
 func TestHealthHandler(t *testing.T) {
-	proxy := newFakeKeycloakProxy(t)
+	p, _, _ := newTestProxyService(nil)
 	context := newFakeGinContext("GET", healthURL)
-	proxy.healthHandler(context)
+	p.healthHandler(context)
 	assert.Equal(t, http.StatusOK, context.Writer.Status())
 	assert.NotEmpty(t, context.Writer.Header().Get(versionHeader))
 	assert.Equal(t, version, context.Writer.Header().Get(versionHeader))

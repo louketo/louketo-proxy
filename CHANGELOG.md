@@ -1,4 +1,16 @@
 
+#### **1.2.3 (Unreleased)**
+
+FEATURES:
+ * Added a prometheus metrics endpoint, at present a break down by status_code is provided
+ 
+CHANGES:
+ * Updated the godeps for codegangsta cli to it's renamed version
+
+FIXES:
+ * Fixed the environment variable command line options, the IsSet in cli does not check enviroment
+   variable setters
+
 #### **1.2.2**
 
 CHANGES:

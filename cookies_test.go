@@ -22,7 +22,7 @@ import (
 )
 
 func TestDropCookie(t *testing.T) {
-	p := newFakeKeycloakProxy(t)
+	p, _, _ := newTestProxyService(nil)
 
 	context := newFakeGinContext("GET", "/admin")
 	p.dropCookie(context, "test-cookie", "test-value", 0)
@@ -48,7 +48,7 @@ func TestDropCookie(t *testing.T) {
 }
 
 func TestClearAccessTokenCookie(t *testing.T) {
-	p := newFakeKeycloakProxy(t)
+	p, _, _ := newTestProxyService(nil)
 	context := newFakeGinContext("GET", "/admin")
 	p.clearAccessTokenCookie(context)
 	assert.Contains(t, context.Writer.Header().Get("Set-Cookie"),
@@ -57,7 +57,7 @@ func TestClearAccessTokenCookie(t *testing.T) {
 }
 
 func TestClearRefreshAccessTokenCookie(t *testing.T) {
-	p := newFakeKeycloakProxy(t)
+	p, _, _ := newTestProxyService(nil)
 	context := newFakeGinContext("GET", "/admin")
 	p.clearRefreshTokenCookie(context)
 	assert.Contains(t, context.Writer.Header().Get("Set-Cookie"),
@@ -66,7 +66,7 @@ func TestClearRefreshAccessTokenCookie(t *testing.T) {
 }
 
 func TestClearAllCookies(t *testing.T) {
-	p := newFakeKeycloakProxy(t)
+	p, _, _ := newTestProxyService(nil)
 	context := newFakeGinContext("GET", "/admin")
 	p.clearAllCookies(context)
 	assert.Contains(t, context.Writer.Header().Get("Set-Cookie"),

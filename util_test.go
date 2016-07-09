@@ -30,7 +30,7 @@ import (
 )
 
 func TestCreateOpenIDClient(t *testing.T) {
-	_, auth, _ := newTestProxyService(t, nil)
+	_, auth, _ := newTestProxyService(nil)
 	client, _, err := createOpenIDClient(&Config{
 		DiscoveryURL: auth.location.String() + "/auth/realms/hod-test",
 	})
