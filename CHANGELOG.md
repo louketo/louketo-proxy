@@ -3,6 +3,7 @@
 
 FEATURES:
  * Added a prometheus metrics endpoint, at present a break down by status_code is provided
+ * Added the ability to override the cookie domain from the default host header
  
 CHANGES:
  * Updated the godeps for codegangsta cli to it's renamed version
