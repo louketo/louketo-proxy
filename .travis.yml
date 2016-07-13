@@ -14,7 +14,7 @@ services:
 language: go
 go:
   - 1.6
-
+  - 1.7beta2
 install:
   - go get github.com/tools/godep
 
