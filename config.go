@@ -66,6 +66,9 @@ func (r *Config) isValid() error {
 	if r.TLSCaCertificate != "" && !fileExists(r.TLSCaCertificate) {
 		return fmt.Errorf("the tls ca certificate file %s does not exist", r.TLSCaCertificate)
 	}
+	if r.TLSClientCertificate != "" && !fileExists(r.TLSClientCertificate) {
+		return fmt.Errorf("the tls client certificate %s does not exist", r.TLSClientCertificate)
+	}
 
 	if r.EnableForwarding {
 		if r.ClientID == "" {
@@ -225,6 +228,9 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 	}
 	if cx.IsSet("tls-ca-certificate") {
 		config.TLSCaCertificate = cx.String("tls-ca-certificate")
+	}
+	if cx.IsSet("tls-client-certificate") {
+		config.TLSClientCertificate = cx.String("tls-client-certificate")
 	}
 	if cx.IsSet("enable-metrics") {
 		config.EnableMetrics = cx.Bool("enable-metrics")
@@ -489,6 +495,10 @@ func getOptions() []cli.Flag {
 		cli.StringFlag{
 			Name:  "tls-ca-certificate",
 			Usage: "the path to the ca certificate used for mutual TLS",
+		},
+		cli.StringFlag{
+			Name:  "tls-client-certificate",
+			Usage: "the path to the client certificate, used to outbound connections in reverse and forwarding proxy modes",
 		},
 		cli.BoolTFlag{
 			Name:  "skip-upstream-tls-verify",

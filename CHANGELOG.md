@@ -4,6 +4,11 @@
 FEATURES:
  * Added a prometheus metrics endpoint, at present a break down by status_code is provided
  * Added the ability to override the cookie domain from the default host header
+ * Added the ability to load a client certificate used by the reverse and forwarding upstream 
+   proxies.
+
+TODO:
+ * Need a means to updating the client certificate once expired.
  
 CHANGES:
  * Updated the godeps for codegangsta cli to it's renamed version

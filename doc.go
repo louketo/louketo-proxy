@@ -147,6 +147,8 @@ type Config struct {
 	TLSPrivateKey string `json:"tls-private-key" yaml:"tls-private-key"`
 	// TLSCaCertificate is the CA certificate which the client cert must be signed
 	TLSCaCertificate string `json:"tls-ca-certificate" yaml:"tls-ca-certificate"`
+	// TLSClientCertificate is path to a client certificate to use for outbound connections
+	TLSClientCertificate string `json:"tls-client-certificate" yaml:"tls-client-certificate"`
 	// SkipUpstreamTLSVerify skips the verification of any upstream tls
 	SkipUpstreamTLSVerify bool `json:"skip-upstream-tls-verify" yaml:"skip-upstream-tls-verify"`
 
