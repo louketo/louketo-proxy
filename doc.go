@@ -125,6 +125,8 @@ type Config struct {
 	// EnableURIMetrics indicates we want to keep metrics on uri request times
 	EnableURIMetrics bool `json:"enable-uri-metrics" yaml:"enable-uri-metrics"`
 
+	// CookieDomain is a list of domains the cookie is available to
+	CookieDomain string `json:"cookie-domain" yaml:"cookie-domain"`
 	// CookieAccessName is the name of the access cookie holding the access token
 	CookieAccessName string `json:"cookie-access-name" yaml:"cookie-access-name"`
 	// CookieRefreshName is the name of the refresh cookie

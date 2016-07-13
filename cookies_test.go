@@ -45,6 +45,13 @@ func TestDropCookie(t *testing.T) {
 	assert.NotEqual(t, context.Writer.Header().Get("Set-Cookie"),
 		"test-cookie=test-value; Path=/; Domain=127.0.0.2; HttpOnly; Secure",
 		"we have not set the cookie, headers: %v", context.Writer.Header())
+
+	p.config.CookieDomain = "test.com"
+	p.dropCookie(context, "test-cookie", "test-value", 0)
+	p.config.SecureCookie = false
+	assert.NotEqual(t, context.Writer.Header().Get("Set-Cookie"),
+		"test-cookie=test-value; Path=/; Domain=test.com;",
+		"we have not set the cookie, headers: %v", context.Writer.Header())
 }
 
 func TestClearAccessTokenCookie(t *testing.T) {

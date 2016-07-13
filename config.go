@@ -202,6 +202,9 @@ func readOptions(cx *cli.Context, config *Config) (err error) {
 	if cx.IsSet("cookie-refresh-name") {
 		config.CookieRefreshName = cx.String("cookie-refresh-name")
 	}
+	if cx.IsSet("cookie-domain") {
+		config.CookieDomain = cx.String("cookie-domain")
+	}
 	if cx.IsSet("add-claims") {
 		config.AddClaims = append(config.AddClaims, cx.StringSlice("add-claims")...)
 	}
@@ -424,6 +427,10 @@ func getOptions() []cli.Flag {
 		cli.BoolTFlag{
 			Name:  "secure-cookie",
 			Usage: "enforces the cookie to be secure, default to true",
+		},
+		cli.StringSliceFlag{
+			Name:  "cookie-domain",
+			Usage: "a domain the access cookie is available to, defaults host header",
 		},
 		cli.StringFlag{
 			Name:  "cookie-access-name",
