@@ -309,14 +309,34 @@ func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) error {
 		upstream.Scheme = "http"
 	}
 
+	// step: create the upstream tls configure
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: r.config.SkipUpstreamTLSVerify,
+	}
+
+	// step: are we using a client certificate
+	// @TODO provide a means of reload on the client certificate when it expires. I'm not sure if it's just a
+	// case of update the http transport settings - Also we to place this go-routine?
+	if r.config.TLSClientCertificate != "" {
+		cert, err := ioutil.ReadFile(r.config.TLSClientCertificate)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pool := x509.NewCertPool()
+		pool.AppendCertsFromPEM(cert)
+
+		// step: update the upstream tls to use the client certificate
+		tlsConfig.ClientCAs = pool
+		tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
+	}
+
 	// step: create the forwarding proxy
 	proxy := goproxy.NewProxyHttpServer()
+
 	// step: update the tls configuration of the reverse proxy
 	proxy.Tr = &http.Transport{
-		Dial: dialer,
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: r.config.SkipUpstreamTLSVerify,
-		},
+		Dial:              dialer,
+		TLSClientConfig:   tlsConfig,
 		DisableKeepAlives: !r.config.UpstreamKeepalives,
 	}
 	r.upstream = proxy
