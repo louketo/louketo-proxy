@@ -23,7 +23,7 @@
 Keycloak-proxy is a proxy service which at the risk of stating the obvious integrates with the [Keycloak](https://github.com/keycloak/keycloak) authentication service. Although technically the service has no dependency on Keycloak itself and would quite happily work with any OpenID provider. The service supports both access tokens in browser cookie or bearer tokens.
 
 ```shell
-[jest@starfury keycloak-proxy]$ bin/keycloak-proxy help
+[jest@starfury keycloak-proxy]$ bin/keycloak-proxy --help
 NAME:
    keycloak-proxy - is a proxy using the keycloak service for auth and authorization
 
@@ -31,7 +31,7 @@ USAGE:
    keycloak-proxy [options]
    
 VERSION:
-   v1.2.2 (git+sha: f569f4b-dirty)
+   v1.2.3 (git+sha: 887471f)
    
 AUTHOR(S):
    Rohith <gambol99@gmail.com> 
@@ -57,6 +57,7 @@ GLOBAL OPTIONS:
    --upstream-keepalive-timeout value  specifies the keep-alive period for an active network connection (default: 10s)
    --enable-refresh-tokens             enables the handling of the refresh tokens
    --secure-cookie                     enforces the cookie to be secure, default to true
+   --cookie-domain value               a domain the access cookie is available to, defaults host header
    --cookie-access-name value          the name of the cookie use to hold the access token (default: "kc-access")
    --cookie-refresh-name value         the name of the cookie used to hold the encrypted refresh token (default: "kc-state")
    --encryption-key value              the encryption key used to encrpytion the session state
@@ -71,6 +72,7 @@ GLOBAL OPTIONS:
    --tls-cert value                    the path to a certificate file used for TLS
    --tls-private-key value             the path to the private key for TLS support
    --tls-ca-certificate value          the path to the ca certificate used for mutual TLS
+   --tls-client-certificate value      the path to the client certificate, used to outbound connections in reverse and forwarding proxy modes
    --skip-upstream-tls-verify          whether to skip the verification of any upstream TLS (defaults to true)
    --match-claims value                keypair values for matching access token claims e.g. aud=myapp, iss=http://example.*
    --add-claims value                  retrieve extra claims from the token and inject into headers, e.g given_name -> X-Auth-Given-Name
