@@ -1,5 +1,5 @@
 
-#### **1.2.3 (Unreleased)**
+#### **1.2.3**
 
 FEATURES:
  * Added a prometheus metrics endpoint, at present a break down by status_code is provided
