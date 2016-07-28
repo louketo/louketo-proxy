@@ -19,13 +19,13 @@ spec:
         imagePullPolicy: Always
         args:
           - --config /etc/secrets/forwarding.yml
-          #- --discovery-url https://sso.example.com/auth/realms/hod-test
+          - --discovery-url https://sso.example.com/auth/realms/hod-test
           - --client-id broker
-          #- --client-secret
+          - --client-secret
           - --listen 127.0.0.1:3000
           - --enable-forwarding true
-          #- --forwarding-username username
-          #- --forwarding-password password
+          - --forwarding-username username
+          - --forwarding-password password
           - --log-requests true
           - --log-json-format true
           - --verbose true

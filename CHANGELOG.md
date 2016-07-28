@@ -1,4 +1,16 @@
 
+#### **1.2.4**
+
+FEATURES
+ * Added the ability to set the forwarding proxy certificates
+
+FIXES:
+ * Fixes the expiration of the access token, if no idle-duration is
+ * Fixed the forwarding proxy for SSL
+ 
+BREAKING CHANGES:
+ * Fixed up the config resource definition to use 'uri' not 'url' 
+ 
 #### **1.2.3**
 
 FEATURES:

@@ -16,8 +16,9 @@ limitations under the License.
 package main
 
 import (
-	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDecodeResource(t *testing.T) {
@@ -71,14 +72,12 @@ func TestDecodeResource(t *testing.T) {
 	}
 
 	for i, c := range testCases {
-		rc, err := newResource().Parse(c.Option)
+		rc, err := newResource().parse(c.Option)
 		if c.Ok && err != nil {
 			t.Errorf("test case %d should not have failed, error: %s", i, err)
 			continue
 		}
-		if !reflect.DeepEqual(c.Resource, rc) {
-			t.Errorf("test case %d are not equal %v - %v", i, c.Resource, rc)
-		}
+		assert.Equal(t, rc, c.Resource)
 	}
 }
 
@@ -110,7 +109,7 @@ func TestIsValid(t *testing.T) {
 	}
 
 	for i, c := range testCases {
-		err := c.Resource.IsValid()
+		err := c.Resource.valid()
 		if err != nil && c.Ok {
 			t.Errorf("case %d should not have failed", i)
 		}
@@ -122,7 +121,7 @@ func TestResourceString(t *testing.T) {
 		Roles: []string{"1", "2", "3"},
 	}
 	if s := resource.String(); s == "" {
-		t.Errorf("we should have recieved a string")
+		t.Error("we should have recieved a string")
 	}
 }
 
@@ -131,7 +130,7 @@ func TestGetRoles(t *testing.T) {
 		Roles: []string{"1", "2", "3"},
 	}
 
-	if resource.GetRoles() != "1,2,3" {
+	if resource.getRoles() != "1,2,3" {
 		t.Error("the resource roles not as expected")
 	}
 }

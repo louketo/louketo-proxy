@@ -16,6 +16,7 @@ limitations under the License.
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -161,7 +162,7 @@ func TestAuthorizationURL(t *testing.T) {
 	_, _, u := newTestProxyService(nil)
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return fmt.Errorf("no redirect")
+			return errors.New("no redirect")
 		},
 	}
 	cs := []struct {

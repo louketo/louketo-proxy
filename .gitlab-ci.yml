@@ -1,6 +1,7 @@
 variables:
   REGISTRY: quay.io
   NAME: go-keycloak-proxy
+  GOVERSION: 1.6.3
 
 stages:
   - tests
@@ -9,7 +10,7 @@ stages:
 
 tests:
   stage: tests
-  image: golang:1.6.2
+  image: golang:${GOVERSION}
   before_script:
   - mkdir -p /go/src/github.com/gambol99
   - ln -sf /builds/go/keycloak-proxy /go/src/github.com/gambol99
@@ -20,7 +21,7 @@ tests:
 
 build:
   stage: build
-  image: golang:1.6.2
+  image: golang:${GOVERSION}
   before_script:
   - mkdir -p /go/src/github.com/gambol99
   - ln -sf /builds/go/keycloak-proxy /go/src/github.com/gambol99
@@ -29,7 +30,7 @@ build:
   - make deps
   - make static
   artifacts:
-    expire_in: 1 week
+    expire_in: 1w
     paths:
     - bin/
   only:

@@ -27,6 +27,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"time"
 )
 
 func TestCreateOpenIDClient(t *testing.T) {
@@ -113,7 +114,7 @@ func TestDecodeText(t *testing.T) {
 
 	encrypted, err := encodeText(fakeText, fakeKey)
 	if !assert.NoError(t, err) {
-		t.Errorf("the encryptStateSession() should not have handed an error")
+		t.Error("the encryptStateSession() should not have handed an error")
 		t.FailNow()
 	}
 	assert.NotEmpty(t, encrypted)
@@ -235,9 +236,25 @@ func TestIsUpgradedConnection(t *testing.T) {
 	assert.True(t, isUpgradedConnection(&http.Request{Header: header}))
 }
 
+func TestIdValidHTTPMethod(t *testing.T) {
+	cs := []struct {
+		Method string
+		Ok     bool
+	}{
+		{Method: "GET", Ok: true},
+		{Method: "GETT"},
+		{Method: "CONNECT"},
+		{Method: "PUT", Ok: true},
+		{Method: "PATCH", Ok: true},
+	}
+	for _, x := range cs {
+		assert.Equal(t, x.Ok, isValidHTTPMethod(x.Method))
+	}
+}
+
 func TestFileExists(t *testing.T) {
 	if fileExists("no_such_file_exsit_32323232") {
-		t.Errorf("we should have received false")
+		t.Error("we should have received false")
 	}
 	tmpfile, err := ioutil.TempFile("/tmp", fmt.Sprintf("test_file_%d", os.Getpid()))
 	if err != nil {
@@ -246,7 +263,29 @@ func TestFileExists(t *testing.T) {
 	defer os.Remove(tmpfile.Name())
 
 	if !fileExists(tmpfile.Name()) {
-		t.Errorf("we should have received a true")
+		t.Error("we should have received a true")
+	}
+}
+
+func TestGetWithin(t *testing.T) {
+	cs := []struct {
+		Expires  time.Time
+		Percent  float64
+		Expected time.Duration
+	}{
+		{
+			Expires:  time.Now().Add(time.Duration(1) * time.Hour),
+			Percent:  0.10,
+			Expected: 359000000000,
+		},
+		{
+			Expires:  time.Now().Add(time.Duration(1) * time.Hour),
+			Percent:  0.20,
+			Expected: 719000000000,
+		},
+	}
+	for _, x := range cs {
+		assert.Equal(t, x.Expected, getWithin(x.Expires, x.Percent))
 	}
 }
 
@@ -327,7 +366,59 @@ func TestMergeMaps(t *testing.T) {
 	}
 }
 
+func TestReadConfiguration(t *testing.T) {
+	testCases := []struct {
+		Content string
+		Ok      bool
+	}{
+		{
+			Content: `
+discovery_url: https://keyclock.domain.com/
+client-id: <client_id>
+secret: <secret>
+`,
+		},
+		{
+			Content: `
+discovery_url: https://keyclock.domain.com
+client-id: <client_id>
+secret: <secret>
+upstream-url: http://127.0.0.1:8080
+redirection_url: http://127.0.0.1:3000
+`,
+			Ok: true,
+		},
+	}
+
+	for i, test := range testCases {
+		// step: write the fake config file
+		file := writeFakeConfigFile(t, test.Content)
+
+		config := new(Config)
+		err := readConfigFile(file.Name(), config)
+		if test.Ok && err != nil {
+			os.Remove(file.Name())
+			t.Errorf("test case %d should not have failed, config: %v, error: %s", i, config, err)
+		}
+		os.Remove(file.Name())
+	}
+}
+
 func getFakeURL(location string) *url.URL {
 	u, _ := url.Parse(location)
 	return u
+}
+
+func writeFakeConfigFile(t *testing.T, content string) *os.File {
+	f, err := ioutil.TempFile("", "node_label_file")
+	if err != nil {
+		t.Fatalf("unexpected error creating node_label_file: %v", err)
+	}
+	f.Close()
+
+	if err := ioutil.WriteFile(f.Name(), []byte(content), 0700); err != nil {
+		t.Fatalf("unexpected error writing node label file: %v", err)
+	}
+
+	return f
 }

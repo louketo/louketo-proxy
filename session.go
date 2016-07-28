@@ -26,17 +26,17 @@ import (
 //
 // getIdentity retrieves the user identity from a request, either from a session cookie or a bearer token
 //
-func (r oauthProxy) getIdentity(cx *gin.Context) (*userContext, error) {
-	// step: check for a bearer token or cookie with jwt token
+func (r *oauthProxy) getIdentity(cx *gin.Context) (*userContext, error) {
 	isBearer := false
+
+	// step: check for a bearer token or cookie with jwt token
 	token, err := r.getAccessTokenFromCookie(cx)
 	if err != nil {
 		if err != ErrSessionNotFound {
 			return nil, err
 		}
 		// step: else attempt to grab token from the bearer token]
-		token, err = r.getTokenFromBearer(cx)
-		if err != nil {
+		if token, err = r.getTokenFromBearer(cx); err != nil {
 			return nil, err
 		}
 		isBearer = true
@@ -47,9 +47,10 @@ func (r oauthProxy) getIdentity(cx *gin.Context) (*userContext, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	user.bearerToken = isBearer
 
-	// step: add some logging
+	// step: add some logging for debug purposed
 	log.WithFields(log.Fields{
 		"id":    user.id,
 		"name":  user.name,
@@ -63,7 +64,7 @@ func (r oauthProxy) getIdentity(cx *gin.Context) (*userContext, error) {
 //
 // getTokenFromBearer attempt to retrieve token from bearer token
 //
-func (r oauthProxy) getTokenFromBearer(cx *gin.Context) (jose.JWT, error) {
+func (r *oauthProxy) getTokenFromBearer(cx *gin.Context) (jose.JWT, error) {
 	auth := cx.Request.Header.Get(authorizationHeader)
 	if auth == "" {
 		return jose.JWT{}, ErrSessionNotFound
@@ -80,7 +81,7 @@ func (r oauthProxy) getTokenFromBearer(cx *gin.Context) (jose.JWT, error) {
 //
 // getAccessTokenFromCookie attempt to grab access token from cookie
 //
-func (r oauthProxy) getAccessTokenFromCookie(cx *gin.Context) (jose.JWT, error) {
+func (r *oauthProxy) getAccessTokenFromCookie(cx *gin.Context) (jose.JWT, error) {
 	cookie := findCookie(r.config.CookieAccessName, cx.Request.Cookies())
 	if cookie == nil {
 		return jose.JWT{}, ErrSessionNotFound
@@ -92,11 +93,11 @@ func (r oauthProxy) getAccessTokenFromCookie(cx *gin.Context) (jose.JWT, error) 
 //
 // getRefreshTokenFromCookie returns the refresh token from the cookie if any
 //
-func (r oauthProxy) getRefreshTokenFromCookie(cx *gin.Context) (string, error) {
-	cookie := findCookie(r.config.CookieRefreshName, cx.Request.Cookies())
-	if cookie == nil {
-		return "", ErrSessionNotFound
+func (r *oauthProxy) getRefreshTokenFromCookie(cx *gin.Context) (string, error) {
+	if cookie := findCookie(r.config.CookieRefreshName, cx.Request.Cookies()); cookie != nil {
+		return cookie.Value, nil
 	}
 
-	return cookie.Value, nil
+	return "", ErrSessionNotFound
+
 }
