@@ -1,6 +1,3 @@
-#
-#  vim:ts=2:sw=2:et
-#
 env:
   global:
   - secure: TNsg6LtrEmf7Q2JxmCR4A7vEapS/ikM4LBTJqhq9k6/ugy2ZlE4I9neXwGQLI/ohCYF1FXV+qg18qXJUzz0dQTZ1Sfma2hVUh2wU5E58J16g7SeubSYLJ79kBAJRYoNOrgWyBHKRSvXvYN6Lj9o+BgZSi5q9q7nlw3oNeY/LuZ9WGUQmK0HQwS0m/bHAfcrsTafWvrILA1d+dHM5YRElDrVOaVy7QOj1mK3aqPyMIS82PBSTwdR27FekDrZKKrHt0DAfARDgOfMyl7Dzfhn26tSBTBwRXVu73bFQGYpa9vUfyKZb6EWYKdhSEdWOCW4Znk98HdPSGRJtXuIVR3K+wbxc0gkCeNLBqZ1QK5aVl96SB8RITQ3Ah/JYczp1gSGGAeW/ov7fgZ0DRUdj8QPxvOxq7V57LbnP3L2M+0KwpYCqpvxPBH5NC6G/T0iOK9v9Om0fk8DcNmws+RYc39JIaYZv+9cmeZf5XrNfN1cPo7wGMIuBzvz6uA+cRYaHgzo1pvwnL2fgNLQEeDjpD7QbFkxj87y3E0D0afS5vC1jgd32GmM+tFkXXhN7mi8mBvnn7IN4PC8SNa4alfyvxwwG+AWcut7fErPZA7EwDAGBEt3j9S9xb6GwqY7fFT+3+2VFXH0mW9KK+p/wT+sigGsFVAQIGjitvR+EzThPvezXDaA=
@@ -9,15 +6,41 @@ env:
   - REGISTRY=quay.io
 
 services:
-  - docker
+- docker
 
 language: go
+
 go:
-  - 1.6
-  - 1.7beta2
+- 1.6
+- 1.7beta2
+
 install:
-  - go get github.com/tools/godep
+- go get github.com/tools/godep
 
 script:
-  - make test
-  - if [ -n "$TRAVIS_TAG" ]; then docker login -u ${REGISTRY_USERNAME} -p ${REGISTRY_TOKEN} -e ${AUTHOR_EMAIL} ${REGISTRY}; VERSION=$TRAVIS_TAG make docker-release; fi
+- make test
+
+before_deploy:
+- NAME=GOOS=windows GOARCH=amd64 godep go build -o bin/keycloak-proxy-windows-amd64.exe
+- NAME=GOOS=windows GOARCH=386 godep go build -o bin/keycloak-proxy-windows-i386.exe
+- NAME=GOOS=linux GOARCH=amd64 godep go build -o bin/keycloak-proxy-linux-amd64
+- NAME=GOOS=linux GOARCH=386 godep go build -o bin/keycloak-proxy-linux-i386
+
+#after_deploy:
+#- docker login -u ${REGISTRY_USERNAME} -p ${REGISTRY_TOKEN} -e ${AUTHOR_EMAIL} ${REGISTRY}
+#- VERSION=$TRAVIS_TAG make docker-release
+
+deploy:
+  skip_cleanup: true
+  on:
+    go: 1.6
+    repo: chrisns/keycloak-proxy
+    tags: true
+  provider: releases
+  api_key:
+    secure: oJIAfReZ1VeZe76yQ3hQtfJ5Pqc7T4m4tsUcT7+JpbfSAEqcibaPRc3BwB+w0JZen1BSzhyKmVpZAixyQ4u3Zn9ucHo2FJT6UJxF7hvMivgvB/37qZuOoNxKb0gr8PScFX9l+Xf2aIxd+dV08lb+5p9j+rgs9ciYCXBdmEsqGKSFFxBn+aL0U6fRyiPwaz18XS0dC4A2eztFv2MYSqFw/q2sG7VHHZH9XMQ8sc1ic9KO7wc9vq3RgUoxwdGeWkQF5i4+1oMORkN/vjPqy3O0qffweNEp3QvamrllszflnACSjLbd88O3gdTj5lbTyqfrH0l6et0/XN1AG01D1VjRV89R5pjRA6/84QKy59KNeh7lDrqRnKDpM3Njrwykdp7lCf9G2IfbtuRW/0YEU4p+TKKlgVORqUQOiB42seCPk41v65ThVKrAZpNRVe0th4JVUiqd5U2Eb5SwLRzmuD7G7iidqoyTolaxRmTEzbQ7Xql/szKwvhJLYmzyAVekDrCyVAYeW1fmX9zWQxs5MswuDIcCIJTTOppOXqQsb+rYO922UptMlrN7b1w624WOUKt88HbRAPbt/Du0g96oYOsXKNgMrCHl35nGflGReVONezZBHZbi7AgJRZzDdXmSt3NWyWaDBMJv8UwB1cKfBbBSJFk8vIWUMkd4XHnSss9hgcM=
+  file:
+    - "bin/keycloak-proxy-windows-amd64.exe"
+    - "bin/keycloak-proxy-windows-i386.exe"
+    - "bin/keycloak-proxy-linux-amd64"
+    - "bin/keycloak-proxy-linux-i386"
