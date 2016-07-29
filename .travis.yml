@@ -26,19 +26,19 @@ before_deploy:
 - NAME=GOOS=linux GOARCH=amd64 godep go build -o bin/keycloak-proxy-linux-amd64
 - NAME=GOOS=linux GOARCH=386 godep go build -o bin/keycloak-proxy-linux-i386
 
-#after_deploy:
-#- docker login -u ${REGISTRY_USERNAME} -p ${REGISTRY_TOKEN} -e ${AUTHOR_EMAIL} ${REGISTRY}
-#- VERSION=$TRAVIS_TAG make docker-release
+after_deploy:
+- docker login -u ${REGISTRY_USERNAME} -p ${REGISTRY_TOKEN} -e ${AUTHOR_EMAIL} ${REGISTRY}
+- VERSION=$TRAVIS_TAG make docker-release
 
 deploy:
   skip_cleanup: true
   on:
     go: 1.6
-    repo: chrisns/keycloak-proxy
+    repo: gambol99/keycloak-proxy
     tags: true
   provider: releases
   api_key:
-    secure: oJIAfReZ1VeZe76yQ3hQtfJ5Pqc7T4m4tsUcT7+JpbfSAEqcibaPRc3BwB+w0JZen1BSzhyKmVpZAixyQ4u3Zn9ucHo2FJT6UJxF7hvMivgvB/37qZuOoNxKb0gr8PScFX9l+Xf2aIxd+dV08lb+5p9j+rgs9ciYCXBdmEsqGKSFFxBn+aL0U6fRyiPwaz18XS0dC4A2eztFv2MYSqFw/q2sG7VHHZH9XMQ8sc1ic9KO7wc9vq3RgUoxwdGeWkQF5i4+1oMORkN/vjPqy3O0qffweNEp3QvamrllszflnACSjLbd88O3gdTj5lbTyqfrH0l6et0/XN1AG01D1VjRV89R5pjRA6/84QKy59KNeh7lDrqRnKDpM3Njrwykdp7lCf9G2IfbtuRW/0YEU4p+TKKlgVORqUQOiB42seCPk41v65ThVKrAZpNRVe0th4JVUiqd5U2Eb5SwLRzmuD7G7iidqoyTolaxRmTEzbQ7Xql/szKwvhJLYmzyAVekDrCyVAYeW1fmX9zWQxs5MswuDIcCIJTTOppOXqQsb+rYO922UptMlrN7b1w624WOUKt88HbRAPbt/Du0g96oYOsXKNgMrCHl35nGflGReVONezZBHZbi7AgJRZzDdXmSt3NWyWaDBMJv8UwB1cKfBbBSJFk8vIWUMkd4XHnSss9hgcM=
+    secure: "[rohith please put github oauth key here]"
   file:
     - "bin/keycloak-proxy-windows-amd64.exe"
     - "bin/keycloak-proxy-windows-i386.exe"
