@@ -21,14 +21,18 @@ import (
 	"crypto/md5"
 	"crypto/rand"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
@@ -40,12 +44,34 @@ import (
 	"github.com/coreos/go-oidc/jose"
 	"github.com/coreos/go-oidc/oidc"
 	"github.com/gin-gonic/gin"
+	"github.com/urfave/cli"
+	"gopkg.in/yaml.v2"
 )
 
 var (
-	httpMethodRegex = regexp.MustCompile("^(ANY|GET|POST|DELETE|PATCH|HEAD|PUT|TRACE|CONNECT)$")
+	httpMethodRegex = regexp.MustCompile("^(ANY|GET|POST|DELETE|PATCH|HEAD|PUT|TRACE)$")
 	symbolsFilter   = regexp.MustCompilePOSIX("[_$><\\[\\].,\\+-/'%^&*()!\\\\]+")
 )
+
+//
+// readConfigFile reads and parses the configuration file
+//
+func readConfigFile(filename string, config *Config) error {
+	// step: read in the contents of the file
+	content, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return err
+	}
+	// step: attempt to un-marshal the data
+	switch ext := filepath.Ext(filename); ext {
+	case "json":
+		err = json.Unmarshal(content, config)
+	default:
+		err = yaml.Unmarshal(content, config)
+	}
+
+	return err
+}
 
 //
 // encryptDataBlock encrypts the plaintext string with the key
@@ -186,9 +212,9 @@ func decodeKeyPairs(list []string) (map[string]string, error) {
 }
 
 //
-// isValidMethod ensure this is a valid http method type
+// isValidHTTPMethod ensure this is a valid http method type
 //
-func isValidMethod(method string) bool {
+func isValidHTTPMethod(method string) bool {
 	return httpMethodRegex.MatchString(method)
 }
 
@@ -414,9 +440,49 @@ func mergeMaps(source, dest map[string]string) map[string]string {
 }
 
 //
+// loadCA loads the certificate authority
+//
+func loadCA(cert, key string) (*tls.Certificate, error) {
+	caCert, err := ioutil.ReadFile(cert)
+	if err != nil {
+		return nil, err
+	}
+
+	caKey, err := ioutil.ReadFile(key)
+	if err != nil {
+		return nil, err
+	}
+
+	ca, err := tls.X509KeyPair(caCert, caKey)
+	if err != nil {
+		return nil, err
+	}
+
+	ca.Leaf, err = x509.ParseCertificate(ca.Certificate[0])
+
+	return &ca, err
+}
+
+//
+// getWithin calculates a duration of x percent of the time period, i.e. something
+// expires in 1 hours, get me a duration within 80%
+//
+func getWithin(expires time.Time, in float64) time.Duration {
+	seconds := int(float64(expires.Sub(time.Now()).Seconds()) * in)
+	return time.Duration(seconds) * time.Second
+}
+
+//
 // getHashKey returns a hash of the encodes jwt token
 //
 func getHashKey(token *jose.JWT) string {
 	hash := md5.Sum([]byte(token.Encode()))
 	return hex.EncodeToString(hash[:])
+}
+
+//
+// printError display the command line usage and error
+//
+func printError(message string, args ...interface{}) *cli.ExitError {
+	return cli.NewExitError(fmt.Sprintf("[error] "+message, args...), 1)
 }

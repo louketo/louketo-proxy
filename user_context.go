@@ -25,32 +25,6 @@ import (
 )
 
 //
-// userContext represents a user
-//
-type userContext struct {
-	// the id of the user
-	id string
-	// the email associated to the user
-	email string
-	// a name of the user
-	name string
-	// the preferred name
-	preferredName string
-	// the expiration of the access token
-	expiresAt time.Time
-	// a set of roles associated
-	roles []string
-	// the audience for the token
-	audience string
-	// the access token itself
-	token jose.JWT
-	// the claims associated to the token
-	claims jose.Claims
-	// whether the context is from a session cookie or authorization header
-	bearerToken bool
-}
-
-//
 // extractIdentity parse the jwt token and extracts the various elements is order to construct
 //
 func extractIdentity(token jose.JWT) (*userContext, error) {
@@ -144,6 +118,13 @@ func (r userContext) isExpired() bool {
 //
 func (r userContext) isBearer() bool {
 	return r.bearerToken
+}
+
+//
+// isCooke checks if it's by a cookie
+//
+func (r userContext) isCookie() bool {
+	return !r.isBearer()
 }
 
 //

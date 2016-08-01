@@ -116,6 +116,10 @@ format:
 	@echo "--> Running go fmt"
 	@gofmt -s -w *.go
 
+bench:
+	@echo "--> Running go bench"
+	@godep go test -v -bench=.
+
 coverage:
 	@echo "--> Running go coverage"
 	@godep go test -coverprofile cover.out
@@ -127,8 +131,7 @@ cover:
 
 test: deps
 	@echo "--> Running the tests"
-	@export GIN_MODE=release
-	@godep go test -v -bench=.
+	@godep go test -v
 	@$(MAKE) gofmt
 	@$(MAKE) vet
 	@$(MAKE) cover

@@ -84,11 +84,11 @@ func (r *oauthProxy) metricsMiddleware() gin.HandlerFunc {
 func (r oauthProxy) entrypointMiddleware() gin.HandlerFunc {
 	return func(cx *gin.Context) {
 		if strings.HasPrefix(cx.Request.URL.Path, oauthURL) {
-			cx.Next()
 			return
 		}
 
-		// step: check if authentication is required - gin doesn't support wildcard url, so we have have to use prefixes
+		// step: check if authentication is required - gin doesn't support wildcard url
+		// so we have to use prefixes
 		for _, resource := range r.config.Resources {
 			if strings.HasPrefix(cx.Request.URL.Path, resource.URL) {
 				if resource.WhiteListed {
@@ -101,8 +101,6 @@ func (r oauthProxy) entrypointMiddleware() gin.HandlerFunc {
 				break
 			}
 		}
-		// step: pass into the authentication, admission and proxy handlers
-		cx.Next()
 	}
 }
 
@@ -111,13 +109,15 @@ func (r oauthProxy) entrypointMiddleware() gin.HandlerFunc {
 //
 func (r *oauthProxy) authenticationMiddleware() gin.HandlerFunc {
 	return func(cx *gin.Context) {
+		// step: grab the client ip address - quicker to do once
+		clientIP := cx.ClientIP()
+
 		// step: is authentication required on this uri?
 		if _, found := cx.Get(cxEnforce); !found {
 			log.WithFields(log.Fields{
 				"uri": cx.Request.URL.Path,
-			}).Debugf("skipping the authentication handler, resource not protected")
+			}).Debugf("skipping the authentication as resource not protected")
 
-			cx.Next()
 			return
 		}
 
@@ -141,6 +141,7 @@ func (r *oauthProxy) authenticationMiddleware() gin.HandlerFunc {
 
 			if user.isExpired() {
 				log.WithFields(log.Fields{
+					"client_ip":  clientIP,
 					"username":   user.name,
 					"expired_on": user.expiresAt.String(),
 				}).Errorf("the session has expired and verification switch off")
@@ -153,35 +154,37 @@ func (r *oauthProxy) authenticationMiddleware() gin.HandlerFunc {
 
 		// step: verify the access token
 		if err := verifyToken(r.client, user.token); err != nil {
-
 			// step: if the error post verification is anything other than a token expired error
 			// we immediately throw an access forbidden - as there is something messed up in the token
 			if err != ErrAccessTokenExpired {
 				log.WithFields(log.Fields{
-					"error": err.Error(),
-				}).Errorf("verification of the access token failed")
+					"client_ip": clientIP,
+					"error":     err.Error(),
+				}).Errorf("access token failed verification")
 
 				r.accessForbidden(cx)
 				return
 			}
 
-			// step: are we refreshing the access tokens?
+			// step: check if we are refreshing the access tokens and if not re-auth
 			if !r.config.EnableRefreshTokens {
 				log.WithFields(log.Fields{
 					"email":      user.name,
 					"expired_on": user.expiresAt.String(),
-				}).Errorf("the session has expired and access token refreshing is disabled")
+					"client_ip":  clientIP,
+				}).Errorf("session expired and access token refreshing is disabled")
 
 				r.redirectToAuthorization(cx)
 				return
 			}
 
-			// step: we do not refresh bearer token requests
+			// step: are they using a bearer token
 			if user.isBearer() {
 				log.WithFields(log.Fields{
 					"email":      user.name,
 					"expired_on": user.expiresAt.String(),
-				}).Errorf("the session has expired and we are using bearer tokens")
+					"client_ip":  clientIP,
+				}).Errorf("session has expired and client is using bearer token")
 
 				r.redirectToAuthorization(cx)
 				return
@@ -189,15 +192,16 @@ func (r *oauthProxy) authenticationMiddleware() gin.HandlerFunc {
 
 			log.WithFields(log.Fields{
 				"email":     user.email,
-				"client_ip": cx.ClientIP(),
-			}).Infof("the accces token for user: %s has expired, attemping to refresh the token", user.email)
+				"client_ip": clientIP,
+			}).Infof("accces token for user: %s has expired, attemping to refresh the token", user.email)
 
 			// step: check if the user has refresh token
 			rToken, err := r.retrieveRefreshToken(cx, user)
 			if err != nil {
 				log.WithFields(log.Fields{
-					"email": user.email,
-					"error": err.Error(),
+					"email":     user.email,
+					"error":     err.Error(),
+					"client_ip": clientIP,
 				}).Errorf("unable to find a refresh token for the client: %s", user.email)
 
 				r.redirectToAuthorization(cx)
@@ -205,19 +209,25 @@ func (r *oauthProxy) authenticationMiddleware() gin.HandlerFunc {
 			}
 
 			log.WithFields(log.Fields{
-				"email": user.email,
-			}).Infof("found a refresh token, attempting to refresh access token for user: %s", user.email)
+				"email":     user.email,
+				"client_ip": clientIP,
+			}).Info("attempting to refresh access token for user")
 
-			// step: attempts to refresh the access token
 			token, expires, err := getRefreshedToken(r.client, rToken)
 			if err != nil {
-				// step: has the refresh token expired
+				// step: has the refresh token expired?
 				switch err {
 				case ErrRefreshTokenExpired:
-					log.WithFields(log.Fields{"token": token}).Warningf("the refresh token has expired")
+					log.WithFields(log.Fields{
+						"email":     user.email,
+						"client_ip": clientIP,
+					}).Warningf("refresh token has expired for user")
+
 					r.clearAllCookies(cx)
 				default:
-					log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to refresh the access token")
+					log.WithFields(log.Fields{
+						"error": err.Error(),
+					}).Errorf("failed to refresh the access token")
 				}
 
 				r.redirectToAuthorization(cx)
@@ -225,35 +235,33 @@ func (r *oauthProxy) authenticationMiddleware() gin.HandlerFunc {
 			}
 
 			// step: inject the refreshed access token
+			accessDuration := expires.Sub(time.Now())
+
 			log.WithFields(log.Fields{
-				"email":             user.email,
-				"access_expires_in": expires.Sub(time.Now()).String(),
+				"email":      user.email,
+				"expires_in": accessDuration.String(),
+				"client_ip":  clientIP,
 			}).Infof("injecting refreshed access token, expires on: %s", expires.Format(time.RFC1123))
 
-			// step: clear the cookie up
-			r.dropAccessTokenCookie(cx, token.Encode(), r.config.IdleDuration)
+			// step: drop's a session cookie with the access token
+			duration := expires.Sub(time.Now())
+			if r.useStore() {
+				duration = duration * 10
+			}
+
+			r.dropAccessTokenCookie(cx, token.Encode(), duration)
 
 			if r.useStore() {
 				go func(t jose.JWT, rt string) {
-					// step: the access token has been updated, we need to delete old reference and update the store
-					if err := r.DeleteRefreshToken(t); err != nil {
-						log.WithFields(log.Fields{
-							"error": err.Error(),
-						}).Errorf("unable to delete the old refresh tokem from store")
-					}
-
-					// step: store the new refresh token reference place the session in the store
+					// step: store the new refresh token
 					if err := r.StoreRefreshToken(t, rt); err != nil {
 						log.WithFields(log.Fields{
 							"error": err.Error(),
-						}).Errorf("failed to place the refresh token in the store")
+						}).Errorf("failed to store refresh token")
 
 						return
 					}
 				}(user.token, rToken)
-			} else {
-				// step: update the expiration on the refresh token
-				r.dropRefreshTokenCookie(cx, rToken, r.config.IdleDuration*2)
 			}
 
 			// step: update the with the new access token
@@ -278,29 +286,22 @@ func (r *oauthProxy) admissionMiddleware() gin.HandlerFunc {
 	}
 
 	return func(cx *gin.Context) {
-		// step: if authentication is required on this, grab the resource spec
-		ur, found := cx.Get(cxEnforce)
-		if !found {
+		// step: is this resource enforcing?
+		if _, found := cx.Get(cxEnforce); !found {
 			return
 		}
 
-		// step: grab the identity from the context
-		uc, found := cx.Get(userContextName)
-		if !found {
-			panic("there is no identity in the request context")
-		}
-
-		resource := ur.(*Resource)
-		user := uc.(*userContext)
+		resource := cx.MustGet(cxEnforce).(*Resource)
+		user := cx.MustGet(userContextName).(*userContext)
 
 		// step: check the audience for the token is us
 		if r.config.ClientID != "" && !user.isAudience(r.config.ClientID) {
 			log.WithFields(log.Fields{
-				"username":   user.name,
+				"email":      user.email,
 				"expired_on": user.expiresAt.String(),
-				"issued":     user.audience,
-				"clientid":   r.config.ClientID,
-			}).Warnf("the access token audience is not us, redirecting back for authentication")
+				"issuer":     user.audience,
+				"client_id":  r.config.ClientID,
+			}).Warnf("access token audience is not us, redirecting back for authentication")
 
 			r.accessForbidden(cx)
 			return
@@ -311,9 +312,9 @@ func (r *oauthProxy) admissionMiddleware() gin.HandlerFunc {
 			if !hasRoles(resource.Roles, user.roles) {
 				log.WithFields(log.Fields{
 					"access":   "denied",
-					"username": user.name,
+					"email":    user.email,
 					"resource": resource.URL,
-					"required": resource.GetRoles(),
+					"required": resource.getRoles(),
 				}).Warnf("access denied, invalid roles")
 
 				r.accessForbidden(cx)
@@ -321,14 +322,14 @@ func (r *oauthProxy) admissionMiddleware() gin.HandlerFunc {
 			}
 		}
 
-		// step: if we have any claim matching, validate the tokens has the claims
+		// step: if we have any claim matching, lets validate the tokens has the claims
 		for claimName, match := range claimMatches {
 			// step: if the claim is NOT in the token, we access deny
 			value, found, err := user.claims.StringClaim(claimName)
 			if err != nil {
 				log.WithFields(log.Fields{
 					"access":   "denied",
-					"username": user.name,
+					"email":    user.email,
 					"resource": resource.URL,
 					"error":    err.Error(),
 				}).Errorf("unable to extract the claim from token")
@@ -340,7 +341,7 @@ func (r *oauthProxy) admissionMiddleware() gin.HandlerFunc {
 			if !found {
 				log.WithFields(log.Fields{
 					"access":   "denied",
-					"username": user.name,
+					"email":    user.email,
 					"resource": resource.URL,
 					"claim":    claimName,
 				}).Warnf("the token does not have the claim")
@@ -353,7 +354,7 @@ func (r *oauthProxy) admissionMiddleware() gin.HandlerFunc {
 			if !match.MatchString(value) {
 				log.WithFields(log.Fields{
 					"access":   "denied",
-					"username": user.name,
+					"email":    user.email,
 					"resource": resource.URL,
 					"claim":    claimName,
 					"issued":   value,
@@ -367,10 +368,10 @@ func (r *oauthProxy) admissionMiddleware() gin.HandlerFunc {
 
 		log.WithFields(log.Fields{
 			"access":   "permitted",
-			"username": user.name,
+			"email":    user.email,
 			"resource": resource.URL,
 			"expires":  user.expiresAt.Sub(time.Now()).String(),
-		}).Debugf("resource access permitted: %s", cx.Request.RequestURI)
+		}).Debugf("access permitted to resource")
 	}
 }
 
@@ -411,7 +412,7 @@ func (r *oauthProxy) headersMiddleware(custom []string) gin.HandlerFunc {
 	}
 
 	return func(cx *gin.Context) {
-		// step: add a custom headers to the request
+		// step: add any custom headers to the request
 		for k, v := range r.config.Headers {
 			cx.Request.Header.Add(k, v)
 		}
@@ -435,9 +436,8 @@ func (r *oauthProxy) headersMiddleware(custom []string) gin.HandlerFunc {
 				}
 			}
 		}
-		// step: add the default headers
+
 		cx.Request.Header.Add("X-Forwarded-For", cx.Request.RemoteAddr)
-		cx.Request.Header.Set("X-Forwarded-Agent", prog)
 		cx.Request.Header.Set("X-Forwarded-Host", cx.Request.Host)
 	}
 }
@@ -455,17 +455,12 @@ func (r *oauthProxy) securityMiddleware() gin.HandlerFunc {
 	})
 
 	return func(cx *gin.Context) {
-		// step: pass through the security middleware
 		if err := secure.Process(cx.Writer, cx.Request); err != nil {
 			log.WithFields(log.Fields{
 				"error": err.Error(),
 			}).Errorf("failed security middleware")
 
 			cx.Abort()
-			return
 		}
-
-		// step: permit the request to continue
-		cx.Next()
 	}
 }

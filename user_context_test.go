@@ -16,7 +16,6 @@ limitations under the License.
 package main
 
 import (
-	"reflect"
 	"testing"
 	"time"
 
@@ -109,10 +108,10 @@ func TestIsAudience(t *testing.T) {
 		audience: "test",
 	}
 	if !user.isAudience("test") {
-		t.Errorf("return should not have been false")
+		t.Error("return should not have been false")
 	}
 	if user.isAudience("test1") {
-		t.Errorf("return should not have been true")
+		t.Error("return should not have been true")
 	}
 }
 
@@ -121,10 +120,10 @@ func TestGetUserRoles(t *testing.T) {
 		roles: []string{"1", "2", "3"},
 	}
 	if user.getRoles() != "1,2,3" {
-		t.Errorf("we should have received a true resposne")
+		t.Error("we should have received a true resposne")
 	}
 	if user.getRoles() == "nothing" {
-		t.Errorf("we should have recieved a false response")
+		t.Error("we should have recieved a false response")
 	}
 }
 
@@ -133,7 +132,7 @@ func TestIsExpired(t *testing.T) {
 		expiresAt: time.Now(),
 	}
 	if !user.isExpired() {
-		t.Errorf("we should have been false")
+		t.Error("we should have been false")
 	}
 }
 
@@ -141,22 +140,28 @@ func TestIsBearerToken(t *testing.T) {
 	user := &userContext{
 		bearerToken: true,
 	}
-	if !user.isBearer() {
-		t.Errorf("the bearer token should have been true")
+	assert.True(t, user.isBearer())
+	assert.False(t, user.isCookie())
+}
+
+func TestIsCookie(t *testing.T) {
+	user := &userContext{
+		bearerToken: false,
 	}
+	assert.False(t, user.isBearer())
+	assert.True(t, user.isCookie())
 }
 
 func TestGetUserContext(t *testing.T) {
+	roles := []string{"openvpn:dev-vpn"}
+
 	context, err := extractIdentity(newFakeAccessToken())
 	assert.NoError(t, err)
 	assert.NotNil(t, context)
 	assert.Equal(t, "1e11e539-8256-4b3b-bda8-cc0d56cddb48", context.id)
 	assert.Equal(t, "gambol99@gmail.com", context.email)
 	assert.Equal(t, "rjayawardene", context.preferredName)
-	roles := []string{"openvpn:dev-vpn"}
-	if !reflect.DeepEqual(context.roles, roles) {
-		t.Errorf("the claims are not the same, %v <-> %v", context.roles, roles)
-	}
+	assert.Equal(t, roles, context.roles)
 }
 
 func BenchmarkExtractIdentity(b *testing.B) {
@@ -167,15 +172,13 @@ func BenchmarkExtractIdentity(b *testing.B) {
 }
 
 func TestGetUserRealmRoleContext(t *testing.T) {
+	roles := []string{"dsp-dev-vpn", "vpn-user", "dsp-prod-vpn", "openvpn:dev-vpn"}
+
 	context, err := extractIdentity(getFakeRealmAccessToken(t))
 	assert.NoError(t, err)
 	assert.NotNil(t, context)
 	assert.Equal(t, "1e11e539-8256-4b3b-bda8-cc0d56cddb48", context.id)
 	assert.Equal(t, "gambol99@gmail.com", context.email)
 	assert.Equal(t, "rjayawardene", context.preferredName)
-	roles := []string{"dsp-dev-vpn", "vpn-user", "dsp-prod-vpn", "openvpn:dev-vpn"}
-	if !reflect.DeepEqual(context.roles, roles) {
-		t.Errorf("the claims are not the same, %v <-> %v", context.roles, roles)
-	}
-
+	assert.Equal(t, roles, context.roles)
 }

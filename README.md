@@ -23,7 +23,6 @@
 Keycloak-proxy is a proxy service which at the risk of stating the obvious integrates with the [Keycloak](https://github.com/keycloak/keycloak) authentication service. Although technically the service has no dependency on Keycloak itself and would quite happily work with any OpenID provider. The service supports both access tokens in browser cookie or bearer tokens.
 
 ```shell
-[jest@starfury keycloak-proxy]$ bin/keycloak-proxy --help
 NAME:
    keycloak-proxy - is a proxy using the keycloak service for auth and authorization
 
@@ -31,7 +30,7 @@ USAGE:
    keycloak-proxy [options]
    
 VERSION:
-   v1.2.3 (git+sha: 887471f)
+   v1.2.4 (git+sha: 6b14da3-dirty)
    
 AUTHOR(S):
    Rohith <gambol99@gmail.com> 
@@ -47,7 +46,6 @@ GLOBAL OPTIONS:
    --discovery-url value               the discovery url to retrieve the openid configuration [$PROXY_DISCOVERY_URL]
    --scope value                       a variable list of scopes requested when authenticating the user
    --token-validate-only               validate the token and roles only, no required implement oauth
-   --idle-duration value               the expiration of the access token cookie, if not used within this time its removed (default: 0)
    --redirection-url value             redirection url for the oauth callback url (/oauth is added) [$PROXY_REDIRECTION_URL]
    --revocation-url value              the url for the revocation endpoint to revoke refresh token (default: "/oauth2/revoke") [$PROXY_REVOCATION_URL]
    --store-url value                   url for the storage subsystem, e.g redis://127.0.0.1:6379, file:///etc/tokens.file [$PROXY_STORE_URL]
@@ -64,6 +62,7 @@ GLOBAL OPTIONS:
    --no-redirects                      do not have back redirects when no authentication is present, 401 them
    --hostname value                    a list of hostnames the service will respond to, defaults to all
    --enable-metrics                    enable the prometheus metrics collector on /oauth/metrics
+   --localhost-only-metrics            enforces the metrics page can only been requested from 127.0.0.1
    --enable-proxy-protocol             whether to enable proxy protocol
    --enable-forwarding                 enables the forwarding proxy mode, signing outbound request
    --forwarding-username value         the username to use when logging into the openid provider
@@ -72,11 +71,12 @@ GLOBAL OPTIONS:
    --tls-cert value                    the path to a certificate file used for TLS
    --tls-private-key value             the path to the private key for TLS support
    --tls-ca-certificate value          the path to the ca certificate used for mutual TLS
+   --tls-ca-key value                  the path the ca private key, used by the forward signing proxy
    --tls-client-certificate value      the path to the client certificate, used to outbound connections in reverse and forwarding proxy modes
    --skip-upstream-tls-verify          whether to skip the verification of any upstream TLS (defaults to true)
    --match-claims value                keypair values for matching access token claims e.g. aud=myapp, iss=http://example.*
    --add-claims value                  retrieve extra claims from the token and inject into headers, e.g given_name -> X-Auth-Given-Name
-   --resource value                    a list of resources 'uri=/admin|methods=GET|roles=role1,role2'
+   --resource value                    a list of resources 'uri=/admin|methods=GET,PUT|roles=role1,role2'
    --headers value                     Add custom headers to the upstream request, key=value
    --signin-page value                 a custom template displayed for signin
    --forbidden-page value              a custom template used for access forbidden

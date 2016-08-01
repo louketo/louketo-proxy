@@ -98,8 +98,10 @@ func newFakeKeycloakConfig() *Config {
 
 func newTestProxyService(config *Config) (*oauthProxy, *fakeOAuthServer, string) {
 	log.SetOutput(ioutil.Discard)
+
 	// step: create a fake oauth server
 	auth := newFakeOAuthServer()
+
 	// step: use the default config if required
 	if config == nil {
 		config = newFakeKeycloakConfig()
@@ -148,76 +150,6 @@ func TestNewKeycloakProxy(t *testing.T) {
 	assert.NotNil(t, proxy.config)
 	assert.NotNil(t, proxy.router)
 	assert.NotNil(t, proxy.endpoint)
-}
-
-func TestRedirectToAuthorization(t *testing.T) {
-	context := newFakeGinContext("GET", "/admin")
-	p, _, _ := newTestProxyService(nil)
-
-	p.config.SkipTokenVerification = false
-	p.redirectToAuthorization(context)
-	assert.Equal(t, http.StatusTemporaryRedirect, context.Writer.Status())
-}
-
-func TestRedirectToAuthorizationSkipToken(t *testing.T) {
-	context := newFakeGinContext("GET", "/admin")
-	p, _, _ := newTestProxyService(nil)
-
-	p.config.SkipTokenVerification = true
-	p.redirectToAuthorization(context)
-	assert.Equal(t, http.StatusForbidden, context.Writer.Status())
-}
-
-func TestRedirectToAuthorizationUnauthorized(t *testing.T) {
-	context := newFakeGinContext("GET", "/admin")
-	p, _, _ := newTestProxyService(nil)
-	p.config.SkipTokenVerification = false
-	p.config.NoRedirects = true
-
-	p.redirectToAuthorization(context)
-	assert.Equal(t, http.StatusUnauthorized, context.Writer.Status())
-}
-
-func TestCreateReverseProxy(t *testing.T) {
-	proxy, _, _ := newTestProxyService(nil)
-	err := createReverseProxy(proxy.config, proxy)
-	assert.NoError(t, err)
-	assert.NotNil(t, proxy.router)
-}
-
-func TestCreateForwardProxy(t *testing.T) {
-	proxy, _, _ := newTestProxyService(nil)
-	err := createForwardingProxy(proxy.config, proxy)
-	assert.NoError(t, err)
-	assert.NotNil(t, proxy.router)
-}
-
-func TestRedirectURL(t *testing.T) {
-	context := newFakeGinContext("GET", "/admin")
-	p, _, _ := newTestProxyService(nil)
-
-	if p.redirectToURL("http://127.0.0.1", context); context.Writer.Status() != http.StatusTemporaryRedirect {
-		t.Errorf("we should have recieved a redirect")
-	}
-
-	if !context.IsAborted() {
-		t.Errorf("the context should have been aborted")
-	}
-}
-
-func TestAccessForbidden(t *testing.T) {
-	context := newFakeGinContext("GET", "/admin")
-	p, _, _ := newTestProxyService(nil)
-
-	p.config.SkipTokenVerification = false
-	if p.accessForbidden(context); context.Writer.Status() != http.StatusForbidden {
-		t.Errorf("we should have recieved a forbidden access")
-	}
-
-	p.config.SkipTokenVerification = true
-	if p.accessForbidden(context); context.Writer.Status() != http.StatusForbidden {
-		t.Errorf("we should have recieved a forbidden access")
-	}
 }
 
 func newFakeResponse() *fakeResponse {

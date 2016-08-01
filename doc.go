@@ -17,11 +17,14 @@ package main
 
 import (
 	"errors"
+	"net/http"
 	"time"
+
+	"github.com/coreos/go-oidc/jose"
 )
 
 var (
-	release = "v1.2.3"
+	release = "v1.2.4"
 	gitsha  = "no gitsha provided"
 	version = release + " (git+sha: " + gitsha + ")"
 )
@@ -72,7 +75,7 @@ var (
 // Resource represents a url resource to protect
 type Resource struct {
 	// URL the url for the resource
-	URL string `json:"url" yaml:"url"`
+	URL string `json:"uri" yaml:"uri"`
 	// Methods the method type
 	Methods []string `json:"methods" yaml:"methods"`
 	// WhiteListed permits the prefix through
@@ -124,6 +127,8 @@ type Config struct {
 	EnableMetrics bool `json:"enable-metrics" yaml:"enable-metrics"`
 	// EnableURIMetrics indicates we want to keep metrics on uri request times
 	EnableURIMetrics bool `json:"enable-uri-metrics" yaml:"enable-uri-metrics"`
+	// LocalhostMetrics indicated the metrics can only be consume via localhost
+	LocalhostMetrics bool `json:"localhost-only-metrics" yaml:"localhost-only-metrics"`
 
 	// CookieDomain is a list of domains the cookie is available to
 	CookieDomain string `json:"cookie-domain" yaml:"cookie-domain"`
@@ -134,8 +139,6 @@ type Config struct {
 	// SecureCookie enforces the cookie as secure
 	SecureCookie bool `json:"secure-cookie" yaml:"secure-cookie"`
 
-	// IdleDuration is the max amount of time a session can last without being used
-	IdleDuration time.Duration `json:"idle-duration" yaml:"idle-duration"`
 	// MatchClaims is a series of checks, the claims in the token must match those here
 	MatchClaims map[string]string `json:"match-claims" yaml:"match-claims"`
 	// AddClaims is a series of claims that should be added to the auth headers
@@ -147,6 +150,8 @@ type Config struct {
 	TLSPrivateKey string `json:"tls-private-key" yaml:"tls-private-key"`
 	// TLSCaCertificate is the CA certificate which the client cert must be signed
 	TLSCaCertificate string `json:"tls-ca-certificate" yaml:"tls-ca-certificate"`
+	// TLSCaPrivateKey is the CA private key used for signing
+	TLSCaPrivateKey string `json:"tls-ca-key" yaml:"tls-ca-key"`
 	// TLSClientCertificate is path to a client certificate to use for outbound connections
 	TLSClientCertificate string `json:"tls-client-certificate" yaml:"tls-client-certificate"`
 	// SkipUpstreamTLSVerify skips the verification of any upstream tls
@@ -214,6 +219,39 @@ type storage interface {
 	Delete(string) error
 	// Close is used to close off any resources
 	Close() error
+}
+
+//
+// reverseProxy is a wrapper
+//
+type reverseProxy interface {
+	ServeHTTP(rw http.ResponseWriter, req *http.Request)
+}
+
+//
+// userContext represents a user
+//
+type userContext struct {
+	// the id of the user
+	id string
+	// the email associated to the user
+	email string
+	// a name of the user
+	name string
+	// the preferred name
+	preferredName string
+	// the expiration of the access token
+	expiresAt time.Time
+	// a set of roles associated
+	roles []string
+	// the audience for the token
+	audience string
+	// the access token itself
+	token jose.JWT
+	// the claims associated to the token
+	claims jose.Claims
+	// whether the context is from a session cookie or authorization header
+	bearerToken bool
 }
 
 // tokenResponse

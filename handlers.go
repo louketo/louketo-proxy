@@ -27,6 +27,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
+	"net"
 )
 
 //
@@ -120,7 +121,7 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 	}
 
 	// step: verify the token is valid
-	if err := verifyToken(r.client, session); err != nil {
+	if err = verifyToken(r.client, session); err != nil {
 		log.WithFields(log.Fields{
 			"error": err.Error(),
 		}).Errorf("unable to verify the id token")
@@ -144,11 +145,11 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 		"email":    identity.Email,
 		"expires":  identity.ExpiresAt.Format(time.RFC822Z),
 		"duration": identity.ExpiresAt.Sub(time.Now()).String(),
-		"idle":     r.config.IdleDuration.String(),
 	}).Infof("issuing a new access token for user, email: %s", identity.Email)
 
 	// step: drop's a session cookie with the access token
-	r.dropAccessTokenCookie(cx, session.Encode(), r.config.IdleDuration)
+	duration := identity.ExpiresAt.Sub(time.Now())
+	r.dropAccessTokenCookie(cx, session.Encode(), duration)
 
 	// step: does the response has a refresh token and we are NOT ignore refresh tokens?
 	if r.config.EnableRefreshTokens && response.RefreshToken != "" {
@@ -172,7 +173,12 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 				}).Warnf("failed to save the refresh token in the store")
 			}
 		default:
-			r.dropRefreshTokenCookie(cx, encrypted, r.config.IdleDuration*2)
+			// step: can we decode the refresh token? else we
+			if _, ident, err := parseToken(response.RefreshToken); err != nil {
+				r.dropRefreshTokenCookie(cx, encrypted, time.Duration(72)*time.Hour)
+			} else {
+				r.dropRefreshTokenCookie(cx, encrypted, ident.ExpiresAt.Sub(time.Now()))
+			}
 		}
 	}
 
@@ -234,8 +240,8 @@ func (r *oauthProxy) loginHandler(cx *gin.Context) {
 		return
 	}
 
-	// step: drop the access token
-	r.dropAccessTokenCookie(cx, token.AccessToken, r.config.IdleDuration)
+	// @TODO add this back ---- step: drop the access token
+	//r.dropAccessTokenCookie(cx, token.AccessToken, )
 
 	cx.JSON(http.StatusOK, tokenResponse{
 		IDToken:      token.IDToken,
@@ -392,11 +398,17 @@ func (r *oauthProxy) healthHandler(cx *gin.Context) {
 }
 
 //
-// metricsEndpointHandler forwards the request into the prometheus handler
+// metricsHandler forwards the request into the prometheus handler
 //
-func (r *oauthProxy) metricsEndpointHandler(cx *gin.Context) {
+func (r *oauthProxy) metricsHandler(cx *gin.Context) {
+	if r.config.LocalhostMetrics {
+		if !net.ParseIP(cx.ClientIP()).IsLoopback() {
+			r.accessForbidden(cx)
+			return
+		}
+	}
+
 	r.prometheusHandler.ServeHTTP(cx.Writer, cx.Request)
-	cx.Abort()
 }
 
 //

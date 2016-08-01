@@ -241,7 +241,6 @@ func (r *fakeOAuthServer) tokenHandler(cx *gin.Context) {
 			ExpiresIn:    expiration.Second(),
 		})
 	default:
-		fmt.Println("dsdsd")
 		cx.AbortWithStatus(http.StatusBadRequest)
 	}
 }

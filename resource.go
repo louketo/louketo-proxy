@@ -16,6 +16,7 @@ limitations under the License.
 package main
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -26,18 +27,17 @@ func newResource() *Resource {
 }
 
 //
-// Parse decodes a resource definition
+// parse decodes a resource definition
 //
-func (r *Resource) Parse(resource string) (*Resource, error) {
+func (r *Resource) parse(resource string) (*Resource, error) {
 	if resource == "" {
-		return nil, fmt.Errorf("the resource has no options")
+		return nil, errors.New("the resource has no options")
 	}
 
 	for _, x := range strings.Split(resource, "|") {
-		// step: split up the keypair
 		kp := strings.Split(x, "=")
 		if len(kp) != 2 {
-			return nil, fmt.Errorf("invalid resource keypair, should be (uri|roles|method|white-listed)=comma_values")
+			return nil, errors.New("invalid resource keypair, should be (uri|roles|methods|white-listed)=comma_values")
 		}
 		switch kp[0] {
 		case "uri":
@@ -49,20 +49,21 @@ func (r *Resource) Parse(resource string) (*Resource, error) {
 		case "white-listed":
 			value, err := strconv.ParseBool(kp[1])
 			if err != nil {
-				return nil, fmt.Errorf("the value of whitelisted must be true|TRUE|T or it's false equivilant")
+				return nil, errors.New("the value of whitelisted must be true|TRUE|T or it's false equivilant")
 			}
 			r.WhiteListed = value
 		default:
-			return nil, fmt.Errorf("invalid identifier, should be roles, uri or methods")
+			return nil, errors.New("invalid identifier, should be roles, uri or methods")
 		}
 	}
 
 	return r, nil
 }
 
-// IsValid ensure the resource is valid
-func (r *Resource) IsValid() error {
-	// step: ensure everything is initialized
+//
+// valid ensure the resource is valid
+//
+func (r *Resource) valid() error {
 	if r.Methods == nil {
 		r.Methods = make([]string, 0)
 	}
@@ -71,12 +72,12 @@ func (r *Resource) IsValid() error {
 	}
 
 	if strings.HasPrefix(r.URL, oauthURL) {
-		return fmt.Errorf("this is used by the oauth handlers")
+		return errors.New("this is used by the oauth handlers")
 	}
 
 	// step: check we have a url
 	if r.URL == "" {
-		return fmt.Errorf("resource does not have url")
+		return errors.New("resource does not have url")
 	}
 
 	// step: add any of no methods
@@ -86,7 +87,7 @@ func (r *Resource) IsValid() error {
 
 	// step: check the method is valid
 	for _, m := range r.Methods {
-		if !isValidMethod(m) {
+		if !isValidHTTPMethod(m) {
 			return fmt.Errorf("invalid method %s", m)
 		}
 	}
@@ -94,8 +95,8 @@ func (r *Resource) IsValid() error {
 	return nil
 }
 
-// GetRoles gets a list of roles
-func (r Resource) GetRoles() string {
+// getRoles gets a list of roles
+func (r Resource) getRoles() string {
 	return strings.Join(r.Roles, ",")
 }
 
