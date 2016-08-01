@@ -3,13 +3,16 @@
 
 FEATURES
  * Added the ability to set the forwarding proxy certificates
+ * Added logging for outbound forward signing requests
 
 FIXES:
  * Fixes the expiration of the access token, if no idle-duration is
  * Fixed the forwarding proxy for SSL
+ * Fixed the bug in the containedSubString method
  
 BREAKING CHANGES:
  * Fixed up the config resource definition to use 'uri' not 'url' 
+ * Removed the --idle-duration option, was never really implemented well
  
 #### **1.2.3**
 

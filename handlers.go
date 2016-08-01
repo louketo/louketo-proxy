@@ -20,6 +20,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"path"
@@ -27,7 +28,6 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
-	"net"
 )
 
 //
@@ -143,7 +143,7 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 
 	log.WithFields(log.Fields{
 		"email":    identity.Email,
-		"expires":  identity.ExpiresAt.Format(time.RFC822Z),
+		"expires":  identity.ExpiresAt.Format(time.RFC3339),
 		"duration": identity.ExpiresAt.Sub(time.Now()).String(),
 	}).Infof("issuing a new access token for user, email: %s", identity.Email)
 
@@ -173,7 +173,10 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 				}).Warnf("failed to save the refresh token in the store")
 			}
 		default:
-			// step: can we decode the refresh token? else we
+			//
+			// step: attempt to decode the refresh token (not all refresh tokens are jwt tokens;
+			// gooogle for instance.
+			//
 			if _, ident, err := parseToken(response.RefreshToken); err != nil {
 				r.dropRefreshTokenCookie(cx, encrypted, time.Duration(72)*time.Hour)
 			} else {
@@ -190,7 +193,7 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 			log.WithFields(log.Fields{
 				"state": cx.Request.URL.Query().Get("state"),
 				"error": err.Error(),
-			}).Warnf("unabe to decode the state parameter")
+			}).Warnf("unable to decode the state parameter")
 		} else {
 			state = string(decoded)
 		}
@@ -210,7 +213,7 @@ func (r *oauthProxy) loginHandler(cx *gin.Context) {
 	if username == "" || password == "" {
 		log.WithFields(log.Fields{
 			"client_ip": cx.ClientIP(),
-		}).Errorf("the request does not have both username and password")
+		}).Errorf("request does not have both username and password")
 
 		cx.AbortWithStatus(http.StatusBadRequest)
 		return
@@ -240,8 +243,19 @@ func (r *oauthProxy) loginHandler(cx *gin.Context) {
 		return
 	}
 
-	// @TODO add this back ---- step: drop the access token
-	//r.dropAccessTokenCookie(cx, token.AccessToken, )
+	// step: parse the token
+	_, identity, err := parseToken(token.AccessToken)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"client_ip": cx.ClientIP(),
+			"error":     err.Error(),
+		}).Errorf("unable to decode the access token")
+
+		cx.AbortWithStatus(http.StatusNotImplemented)
+		return
+	}
+
+	r.dropAccessTokenCookie(cx, token.AccessToken, identity.ExpiresAt.Sub(time.Now()))
 
 	cx.JSON(http.StatusOK, tokenResponse{
 		IDToken:      token.IDToken,

@@ -25,6 +25,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -106,7 +107,7 @@ func decryptDataBlock(cipherText, key []byte) ([]byte, error) {
 	// The IV needs to be unique, but not secure. Therefore it's common to
 	// include it at the beginning of the ciphertext.
 	if len(cipherText) < aes.BlockSize {
-		return []byte{}, fmt.Errorf("failed to descrypt the ciphertext, the text is too short")
+		return []byte{}, errors.New("failed to descrypt the ciphertext, the text is too short")
 	}
 
 	iv := cipherText[:aes.BlockSize]
@@ -172,7 +173,7 @@ func createOpenIDClient(cfg *Config) (*oidc.Client, oidc.ProviderConfig, error) 
 
 		time.Sleep(time.Second * 3)
 	}
-	return nil, oidc.ProviderConfig{}, fmt.Errorf("failed to retrieve the provider configuration from discovery url")
+	return nil, oidc.ProviderConfig{}, errors.New("failed to retrieve the provider configuration from discovery url")
 
 GOT_CONFIG:
 	client, err := oidc.NewClient(oidc.ClientConfig{
@@ -183,6 +184,9 @@ GOT_CONFIG:
 		},
 		RedirectURL: fmt.Sprintf("%s/oauth/callback", cfg.RedirectionURL),
 		Scope:       append(cfg.Scopes, oidc.DefaultScope...),
+		HTTPClient: &http.Client{
+			Timeout: time.Second * 10,
+		},
 	})
 	if err != nil {
 		return nil, oidc.ProviderConfig{}, err
@@ -292,7 +296,7 @@ func containedIn(value string, list []string) bool {
 //
 func containsSubString(value string, list []string) bool {
 	for _, x := range list {
-		if strings.Contains(x, value) {
+		if strings.Contains(value, x) {
 			return true
 		}
 	}

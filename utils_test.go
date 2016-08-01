@@ -206,9 +206,17 @@ func TestContainedIn(t *testing.T) {
 }
 
 func TestContainsSubString(t *testing.T) {
-	assert.True(t, containsSubString("svc.cluster.local", []string{"nginx.pr1.svc.cluster.local"}))
-	assert.True(t, containsSubString("cluster.local", []string{"nginx.pr1.svc.cluster.local"}))
-	assert.True(t, containsSubString("pr1", []string{"nginx.pr1.svc.cluster.local"}))
+	assert.False(t, containsSubString("bar.com", []string{"foo.bar.com"}))
+	assert.True(t, containsSubString("www.foo.bar.com", []string{"foo.bar.com"}))
+	assert.True(t, containsSubString("foo.bar.com", []string{"bar.com"}))
+	assert.True(t, containsSubString("star.domain.com", []string{"domain.com", "domain1.com"}))
+	assert.True(t, containsSubString("star.domain1.com", []string{"domain.com", "domain1.com"}))
+	assert.True(t, containsSubString("test.test.svc.cluster.local", []string{"svc.cluster.local"}))
+
+	assert.False(t, containsSubString("star.domain1.com", []string{"domain.com", "sub.domain1.com"}))
+	assert.False(t, containsSubString("svc.cluster.local", []string{"nginx.pr1.svc.cluster.local"}))
+	assert.False(t, containsSubString("cluster.local", []string{"nginx.pr1.svc.cluster.local"}))
+	assert.False(t, containsSubString("pr1", []string{"nginx.pr1.svc.cluster.local"}))
 }
 
 func BenchmarkContainsSubString(t *testing.B) {

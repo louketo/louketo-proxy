@@ -104,8 +104,7 @@ func newProxy(config *Config) (*oauthProxy, error) {
 
 	// step: initialize the openid client
 	if !config.SkipTokenVerification {
-		service.client, service.provider, err = createOpenIDClient(config)
-		if err != nil {
+		if service.client, service.provider, err = createOpenIDClient(config); err != nil {
 			return nil, err
 		}
 	} else {
@@ -113,7 +112,7 @@ func newProxy(config *Config) (*oauthProxy, error) {
 	}
 
 	if config.ClientID == "" && config.ClientSecret == "" {
-		log.Warnf("Note: client credentials are not set, depending on provider (confidential|public) you might be able to auth")
+		log.Warnf("Note: client credentials are not set, depending on provider (confidential|public) you might be unable to auth")
 	}
 
 	// step: are we running in forwarding more?
@@ -227,7 +226,7 @@ func (r *oauthProxy) createForwardingProxy() error {
 		if err != nil {
 			return fmt.Errorf("unable to load certificate authority, error: %s", err)
 		}
-		// step: handle the connect method
+		// step: implement the goproxy connect method
 		proxy.OnRequest().HandleConnectFunc(
 			func(host string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string) {
 				return &goproxy.ConnectAction{
@@ -241,30 +240,31 @@ func (r *oauthProxy) createForwardingProxy() error {
 		proxy.OnRequest().HandleConnect(goproxy.AlwaysMitm)
 	}
 
+	proxy.OnResponse().DoFunc(func(resp *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
+		// @NOTES, somewhat annoying but goproxy hands back a nil response on proxy client
+		// errors
+		if resp != nil && r.config.LogRequests {
+			start := ctx.UserData.(time.Time)
+			latency := time.Now().Sub(start)
+
+			log.WithFields(log.Fields{
+				"method":  resp.Request.Method,
+				"status":  resp.StatusCode,
+				"bytes":   resp.ContentLength,
+				"host":    resp.Request.Host,
+				"path":    resp.Request.URL.Path,
+				"latency": latency.String(),
+			}).Infof("[%d] |%s| |%10v| %-5s %s", resp.StatusCode, resp.Request.Host, latency, resp.Request.Method, resp.Request.URL.Path)
+		}
+
+		return resp
+	})
 	proxy.OnRequest().DoFunc(func(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
 		ctx.UserData = time.Now()
 		// step: forward into the handler
 		forwardingHandler(req, ctx.Resp)
 
 		return req, ctx.Resp
-	})
-
-	proxy.OnResponse().DoFunc(func(resp *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
-		if r.config.LogRequests {
-			start := ctx.UserData.(time.Time)
-			latency := time.Now().Sub(start)
-
-			log.WithFields(log.Fields{
-				"method":  resp.Request.Method,
-				"status":  resp.Status,
-				"bytes":   resp.ContentLength,
-				"host":    resp.Request.Host,
-				"path":    resp.Request.URL.Path,
-				"latency": latency.String(),
-			}).Infof("[%d] |%s| |%10v| %-5s %s", resp.Status, resp.Request.Host, latency, resp.Request.Method, resp.Request.URL.Path)
-		}
-
-		return resp
 	})
 
 	return nil
