@@ -255,6 +255,16 @@ You have collection of micro-services which are permitted to speak to one anothe
 
 Receiver side you could setup the keycloak-proxy (--no=redirects=true) and permit this proxy to verify and handle admission for you. Alternatively, the access token can found as a bearer token in the request. 
 
+##### **- Forwarding Signing HTTPS Connect**
+
+Handling HTTPS requires man in the middling the TLS connection. By default if no -tls-ca-cert and -tls-ca-key is provided the proxy will use the default certificate. If you wish to verify the trust, you'll need to generate a CA, for example
+
+```shell
+[jest@starfury keycloak-proxy]$ openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout ca.key -out ca.pem
+
+   
+[jest@starfury keycloak-proxy]$ bin/keycloak-proxy --enable-forwarding --forwarding-username=USERNAME --forwarding-password=PASSWORD --client-id=CLIENT_ID --client-secret=SECRET --discovery-url=https://keycloak.example.com/auth/realms/test --log-requests=true --tls-ca-cert=ca.pem --tls-ca-key=ca.key
+
 #### **- URL Tokenization (in-progress)**
 ---
 
