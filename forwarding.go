@@ -96,7 +96,7 @@ func (r *oauthProxy) forwardProxyHandler() func(*http.Request, *http.Response) {
 			if state.login {
 				log.WithFields(log.Fields{
 					"username": r.config.ForwardingUsername,
-				}).Debugf("requesting access token for user")
+				}).Infof("requesting access token for user")
 
 				// step: login into the service
 				resp, err := client.UserCredsToken(r.config.ForwardingUsername, r.config.ForwardingPassword)
@@ -127,6 +127,7 @@ func (r *oauthProxy) forwardProxyHandler() func(*http.Request, *http.Response) {
 				state.identity = identity
 				state.expiration = identity.ExpiresAt
 				state.wait = true
+				state.login = false
 				state.refresh = resp.RefreshToken
 
 				log.WithFields(log.Fields{
@@ -139,7 +140,7 @@ func (r *oauthProxy) forwardProxyHandler() func(*http.Request, *http.Response) {
 				log.WithFields(log.Fields{
 					"subject": state.identity.ID,
 					"email":   state.identity.Email,
-				}).Debugf("access token is about to expiry")
+				}).Infof("access token is about to expiry")
 
 				// step: if we a have a refresh token, we need to login again
 				if state.refresh != "" {
@@ -147,7 +148,7 @@ func (r *oauthProxy) forwardProxyHandler() func(*http.Request, *http.Response) {
 						"subject": state.identity.ID,
 						"email":   state.identity.Email,
 						"expires": state.expiration.Format(time.RFC822Z),
-					}).Debugf("attempting to refresh the access token")
+					}).Infof("attempting to refresh the access token")
 
 					// step: attempt to refresh the access
 					token, expiration, err := getRefreshedToken(r.client, state.refresh)
@@ -173,7 +174,19 @@ func (r *oauthProxy) forwardProxyHandler() func(*http.Request, *http.Response) {
 					state.wait = true
 					state.login = false
 
+					// step: add some debugging
+					log.WithFields(log.Fields{
+						"subject": state.identity.ID,
+						"email":   state.identity.Email,
+						"expires": state.expiration.Format(time.RFC822Z),
+					}).Infof("successfully refreshed the access token")
+
 				} else {
+					log.WithFields(log.Fields{
+						"subject": state.identity.ID,
+						"email":   state.identity.Email,
+					}).Infof("session does not support refresh token, acquiring new token")
+
 					// step: we don't have a refresh token, we must perform a login again
 					state.wait = false
 					state.login = true
@@ -189,6 +202,7 @@ func (r *oauthProxy) forwardProxyHandler() func(*http.Request, *http.Response) {
 				log.WithFields(log.Fields{
 					"token_expiration": state.expiration.Format(time.RFC822Z),
 					"token_renewel":    waiting.Format(time.RFC822Z),
+					"duration":         duration.String(),
 				}).Debugf("waiting for expiration of access token")
 
 				<-time.After(duration)
