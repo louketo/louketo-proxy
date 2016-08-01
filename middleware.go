@@ -241,7 +241,7 @@ func (r *oauthProxy) authenticationMiddleware() gin.HandlerFunc {
 				"email":      user.email,
 				"expires_in": accessDuration.String(),
 				"client_ip":  clientIP,
-			}).Infof("injecting refreshed access token, expires on: %s", expires.Format(time.RFC1123))
+			}).Infof("injecting refreshed access token, expires on: %s", expires.Format(time.RFC3339))
 
 			// step: drop's a session cookie with the access token
 			duration := expires.Sub(time.Now())

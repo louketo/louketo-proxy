@@ -133,7 +133,7 @@ func (r *oauthProxy) forwardProxyHandler() func(*http.Request, *http.Response) {
 				log.WithFields(log.Fields{
 					"subject": state.identity.ID,
 					"email":   state.identity.Email,
-					"expires": state.expiration.Format(time.RFC822Z),
+					"expires": state.expiration.Format(time.RFC3339),
 				}).Infof("successfully retrieved access token for subject")
 
 			} else {
@@ -147,7 +147,7 @@ func (r *oauthProxy) forwardProxyHandler() func(*http.Request, *http.Response) {
 					log.WithFields(log.Fields{
 						"subject": state.identity.ID,
 						"email":   state.identity.Email,
-						"expires": state.expiration.Format(time.RFC822Z),
+						"expires": state.expiration.Format(time.RFC3339),
 					}).Infof("attempting to refresh the access token")
 
 					// step: attempt to refresh the access
@@ -178,7 +178,7 @@ func (r *oauthProxy) forwardProxyHandler() func(*http.Request, *http.Response) {
 					log.WithFields(log.Fields{
 						"subject": state.identity.ID,
 						"email":   state.identity.Email,
-						"expires": state.expiration.Format(time.RFC822Z),
+						"expires": state.expiration.Format(time.RFC3339),
 					}).Infof("successfully refreshed the access token")
 
 				} else {
@@ -197,13 +197,11 @@ func (r *oauthProxy) forwardProxyHandler() func(*http.Request, *http.Response) {
 			if state.wait {
 				// step: set the expiration of the access token within a random 85% of actual expiration
 				duration := getWithin(state.expiration, 0.80)
-				waiting := time.Now().Add(duration)
 
 				log.WithFields(log.Fields{
-					"token_expiration": state.expiration.Format(time.RFC822Z),
-					"token_renewel":    waiting.Format(time.RFC822Z),
-					"duration":         duration.String(),
-				}).Debugf("waiting for expiration of access token")
+					"token_expiration": state.expiration.Format(time.RFC3339),
+					"renewel_duration": duration.String(),
+				}).Infof("waiting for expiration of access token")
 
 				<-time.After(duration)
 			}
@@ -217,7 +215,6 @@ func (r *oauthProxy) forwardProxyHandler() func(*http.Request, *http.Response) {
 		// step: does the host being signed?
 		if len(r.config.ForwardingDomains) == 0 || containsSubString(hostname, r.config.ForwardingDomains) {
 			// step: sign the outbound request with the access token
-			req.Header.Add("X-Forwarded-Proto", req.URL.Scheme)
 			req.Header.Set("X-Forwarded-Agent", prog)
 			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", state.token.Encode()))
 		}
