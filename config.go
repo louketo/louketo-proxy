@@ -27,7 +27,6 @@ import (
 // newDefaultConfig returns a initialized config
 func newDefaultConfig() *Config {
 	return &Config{
-		Listen:                   "127.0.0.1:3000",
 		TagData:                  make(map[string]string, 0),
 		MatchClaims:              make(map[string]string, 0),
 		Headers:                  make(map[string]string, 0),
