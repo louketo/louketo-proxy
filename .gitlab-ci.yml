@@ -30,22 +30,20 @@ build:
   - make deps
   - make static
   artifacts:
-    expire_in: 1w
+    expire_in: 1d
     paths:
     - bin/
   only:
-    - /^master$/
     - /^v([0-9]{1,3}[.]?){3}.*$/
 
 deploy:
   stage: deploy
   script:
-    - export VERSION=$CI_BUILD_TAG
+    - export VERSION=$CI_BUILD_REF_NAME
     - '[[ "$VERSION" == "master" ]] && VERSION="latest"'
     - docker login -u ${REGISTRY_USER} -p ${REGISTRY_TOKEN} -e ${REGISTRY_EMAIL} ${REGISTRY}
     - docker build -t ${REGISTRY}/${REGISTRY_AUTHOR}/${NAME}:${VERSION} .
     - docker push ${REGISTRY}/${REGISTRY_AUTHOR}/${NAME}:${VERSION}
     - docker rmi ${REGISTRY}/${REGISTRY_AUTHOR}/${NAME}:${VERSION}
   only:
-    - /^master$/
     - /^v([0-9]{1,3}[.]?){3}.*$/
