@@ -24,9 +24,11 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strings"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/coreos/go-oidc/oauth2"
 	"github.com/gin-gonic/gin"
 )
 
@@ -234,6 +236,15 @@ func (r *oauthProxy) loginHandler(cx *gin.Context) {
 	// step: request the access token via
 	token, err := client.UserCredsToken(username, password)
 	if err != nil {
+		if strings.HasPrefix(err.Error(), oauth2.ErrorInvalidGrant) {
+			log.WithFields(log.Fields{
+				"client_ip": cx.ClientIP(),
+				"error":     err.Error(),
+			}).Errorf("invalid user credentials provided")
+
+			cx.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
 		log.WithFields(log.Fields{
 			"client_ip": cx.ClientIP(),
 			"error":     err.Error(),
