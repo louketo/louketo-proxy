@@ -112,6 +112,11 @@ func TestLoginHandler(t *testing.T) {
 			Password:     "test",
 			ExpectedCode: http.StatusOK,
 		},
+		{
+			Username:     "test",
+			Password:     "notmypassword",
+			ExpectedCode: http.StatusUnauthorized,
+		},
 	}
 
 	for i, x := range cs {

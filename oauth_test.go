@@ -76,6 +76,11 @@ Ka0WPQGKjQJhZRtqDAT3sfnrEEUa34+MkXQeKFCu6Yi0dRFic4iqOYU=
 -----END RSA PRIVATE KEY-----
 `
 
+const (
+	validUsername = "test"
+	validPassword = "test"
+)
+
 type fakeDiscoveryResponse struct {
 	AuthorizationEndpoint            string   `json:"authorization_endpoint"`
 	EndSessionEndpoint               string   `json:"end_session_endpoint"`
@@ -227,11 +232,18 @@ func (r *fakeOAuthServer) tokenHandler(cx *gin.Context) {
 			cx.AbortWithStatus(http.StatusBadRequest)
 			return
 		}
-		cx.JSON(http.StatusOK, tokenResponse{
-			IDToken:      token.Encode(),
-			AccessToken:  token.Encode(),
-			RefreshToken: token.Encode(),
-			ExpiresIn:    expiration.Second(),
+		if username == validUsername && password == validPassword {
+			cx.JSON(http.StatusOK, tokenResponse{
+				IDToken:      token.Encode(),
+				AccessToken:  token.Encode(),
+				RefreshToken: token.Encode(),
+				ExpiresIn:    expiration.Second(),
+			})
+			return
+		}
+		cx.JSON(http.StatusUnauthorized, gin.H{
+			"error":             "invalid_grant",
+			"error_description": "Invalid user credentials",
 		})
 	case oauth2.GrantTypeAuthCode:
 		cx.JSON(http.StatusOK, tokenResponse{
