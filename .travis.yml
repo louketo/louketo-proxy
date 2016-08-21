@@ -9,8 +9,7 @@ services:
 - docker
 language: go
 go:
-- 1.6
-- 1.7beta2
+- 1.7
 install:
 - go get github.com/tools/godep
 script:
@@ -26,7 +25,7 @@ after_deploy:
 deploy:
   skip_cleanup: true
   on:
-    go: 1.6
+    go: 1.7
     repo: gambol99/keycloak-proxy
     tags: true
   provider: releases
