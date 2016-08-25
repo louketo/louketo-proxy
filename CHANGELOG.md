@@ -1,4 +1,9 @@
 
+#### **1.2.5**
+
+FIXES:
+ * Fixes the /oauth/login handler to return 401 on failed logins
+
 #### **1.2.4**
 
 FEATURES
