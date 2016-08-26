@@ -1,4 +1,12 @@
 
+#### **1.2.6**
+
+FIXES:
+ * Fixes the revocation url bug
+
+FEATURES:
+ * Adds the ability to control the http-only cookie option, default to false
+
 #### **1.2.5**
 
 FIXES:
