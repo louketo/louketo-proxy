@@ -138,6 +138,8 @@ type Config struct {
 	CookieRefreshName string `json:"cookie-refresh-name" yaml:"cookie-refresh-name"`
 	// SecureCookie enforces the cookie as secure
 	SecureCookie bool `json:"secure-cookie" yaml:"secure-cookie"`
+	// HTTPOnlyCookie enforces the cookie as http only
+	HTTPOnlyCookie bool `json:"http-only-cookie" yaml:"http-only-cookie"`
 
 	// MatchClaims is a series of checks, the claims in the token must match those here
 	MatchClaims map[string]string `json:"match-claims" yaml:"match-claims"`
