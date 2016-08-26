@@ -172,6 +172,10 @@ func getCLIOptions() []cli.Flag {
 			Name:  "secure-cookie",
 			Usage: "enforces the cookie to be secure, default to true",
 		},
+		cli.BoolFlag{
+			Name:  "http-only-cookie",
+			Usage: "enforces the cookie is in http only mode, default to false",
+		},
 		cli.StringSliceFlag{
 			Name:  "cookie-domain",
 			Usage: "a domain the access cookie is available to, defaults host header",
@@ -368,6 +372,9 @@ func parseCLIOptions(cx *cli.Context, config *Config) (err error) {
 	}
 	if cx.IsSet("secure-cookie") {
 		config.SecureCookie = cx.Bool("secure-cookie")
+	}
+	if cx.IsSet("http-only-cookie") {
+		config.HTTPOnlyCookie = cx.Bool("http-only-cookie")
 	}
 	if cx.IsSet("cookie-access-name") {
 		config.CookieAccessName = cx.String("cookie-access-name")

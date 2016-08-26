@@ -33,11 +33,12 @@ func (r *oauthProxy) dropCookie(cx *gin.Context, name, value string, duration ti
 		domain = r.config.CookieDomain
 	}
 	cookie := &http.Cookie{
-		Name:   name,
-		Domain: domain,
-		Path:   "/",
-		Secure: r.config.SecureCookie,
-		Value:  value,
+		Name:     name,
+		Domain:   domain,
+		HttpOnly: r.config.HTTPOnlyCookie,
+		Path:     "/",
+		Secure:   r.config.SecureCookie,
+		Value:    value,
 	}
 	if duration != 0 {
 		cookie.Expires = time.Now().Add(duration)
