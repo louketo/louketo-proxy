@@ -136,7 +136,6 @@ func getCLIOptions() []cli.Flag {
 		cli.StringFlag{
 			Name:   "revocation-url",
 			Usage:  "the url for the revocation endpoint to revoke refresh token",
-			Value:  "/oauth2/revoke",
 			EnvVar: "PROXY_REVOCATION_URL",
 		},
 		cli.StringFlag{
