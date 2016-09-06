@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc/jose"
+	"github.com/go-resty/resty"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -120,7 +121,7 @@ func TestLoginHandler(t *testing.T) {
 	}
 
 	for i, x := range cs {
-		u := u + oauthURL + loginURL
+		uri := u + oauthURL + loginURL
 		values := url.Values{}
 		if x.Username != "" {
 			values.Add("username", x.Username)
@@ -129,7 +130,7 @@ func TestLoginHandler(t *testing.T) {
 			values.Add("password", x.Password)
 		}
 
-		resp, err := http.PostForm(u, values)
+		resp, err := http.PostForm(uri, values)
 		if err != nil {
 			t.Errorf("case %d, unable to make requets, error: %s", i, err)
 			continue
@@ -139,8 +140,47 @@ func TestLoginHandler(t *testing.T) {
 	}
 }
 
+func TestLogoutHandlerBadRequest(t *testing.T) {
+	_, _, u := newTestProxyService(nil)
+
+	res, err := http.Get(u + oauthURL + logoutURL)
+	assert.NoError(t, err)
+	assert.NotNil(t, res)
+	assert.Equal(t, res.StatusCode, http.StatusBadRequest)
+}
+
+func TestLogoutHandlerBadToken(t *testing.T) {
+	u := newTestService()
+	req, err := http.NewRequest("GET", u+oauthURL+logoutURL, nil)
+	assert.NoError(t, err)
+	req.Header.Add("kc-access", "this.is.a.bad.token")
+	res, err := http.DefaultTransport.RoundTrip(req)
+	assert.NoError(t, err)
+	assert.NotNil(t, res)
+	assert.Equal(t, http.StatusBadRequest, res.StatusCode)
+}
+
+func TestLogoutHandlerGood(t *testing.T) {
+	u := newTestService()
+	// step: first we login and get a token
+	token, err := makeTestOauthLogin(u + "/admin")
+	if !assert.NoError(t, err) {
+		t.Errorf("failed to perform oauth login, reason: %s", err)
+		t.Fail()
+	}
+
+	// step: attempt to logout
+	res, err := resty.DefaultClient.R().
+		SetAuthToken(token).
+		Get(u + oauthURL + logoutURL)
+	if !assert.NoError(t, err) {
+		t.Fail()
+	}
+	assert.Equal(t, http.StatusOK, res.StatusCode())
+}
+
 func TestTokenHandler(t *testing.T) {
-	token := newFakeAccessToken()
+	token := newFakeAccessToken(nil, 0)
 	_, _, u := newTestProxyService(nil)
 	url := u + oauthURL + tokenURL
 
