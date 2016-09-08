@@ -28,13 +28,14 @@ import (
 	"strings"
 	"time"
 
+	httplog "log"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/armon/go-proxyproto"
 	"github.com/coreos/go-oidc/oidc"
 	"github.com/elazarl/goproxy"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
-	httplog "log"
 )
 
 type oauthProxy struct {
@@ -273,7 +274,8 @@ func (r *oauthProxy) createForwardingProxy() error {
 //
 // Run starts the proxy service
 //
-func (r *oauthProxy) Run() (err error) {
+func (r *oauthProxy) Run() error {
+	var err error
 	tlsConfig := &tls.Config{}
 
 	// step: are we doing mutual tls?
@@ -302,7 +304,7 @@ func (r *oauthProxy) Run() (err error) {
 		socket := strings.Trim(r.config.Listen, "unix://")
 		// step: delete the socket if it exists
 		if exists := fileExists(socket); exists {
-			if err := os.Remove(socket); err != nil {
+			if err = os.Remove(socket); err != nil {
 				return err
 			}
 		}
@@ -339,7 +341,7 @@ func (r *oauthProxy) Run() (err error) {
 	// step: wrap the listen in a proxy protocol
 	if r.config.EnableProxyProtocol {
 		log.Infof("enabling the proxy protocol on listener: %s", r.config.Listen)
-		listener = &proxyproto.Listener{listener}
+		listener = &proxyproto.Listener{Listener: listener}
 	}
 
 	go func() {

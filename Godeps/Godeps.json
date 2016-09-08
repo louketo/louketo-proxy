@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/gambol99/keycloak-proxy",
-	"GoVersion": "go1.6",
+	"GoVersion": "go1.7",
 	"GodepVersion": "v74",
 	"Deps": [
 		{
@@ -87,6 +87,11 @@
 			"Rev": "52fcc5dbf6e94df33ad313858fb94b713e9d1b4a"
 		},
 		{
+			"ImportPath": "github.com/go-resty/resty",
+			"Comment": "v0.7-5-g39c3db9",
+			"Rev": "39c3db9c7bb4f9718ac143a83a924441521caf73"
+		},
+		{
 			"ImportPath": "github.com/golang/protobuf/proto",
 			"Rev": "0c1f6d65b5a189c2250d10e71a5506f06f9fa0a0"
 		},
@@ -157,7 +162,11 @@
 		},
 		{
 			"ImportPath": "golang.org/x/net/context",
-			"Rev": "195180cfebf7362bd243a52477697895128c8777"
+			"Rev": "bc3663df0ac92f928d419e31e0d2af22e683a5a2"
+		},
+		{
+			"ImportPath": "golang.org/x/net/publicsuffix",
+			"Rev": "bc3663df0ac92f928d419e31e0d2af22e683a5a2"
 		},
 		{
 			"ImportPath": "golang.org/x/sys/unix",

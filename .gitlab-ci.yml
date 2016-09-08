@@ -1,7 +1,7 @@
 variables:
   REGISTRY: quay.io
   NAME: go-keycloak-proxy
-  GOVERSION: 1.6.3
+  GOVERSION: 1.7.0
 
 stages:
   - tests
@@ -34,6 +34,7 @@ build:
     paths:
     - bin/
   only:
+    - master
     - /^v([0-9]{1,3}[.]?){3}.*$/
 
 deploy:
@@ -46,4 +47,5 @@ deploy:
     - docker push ${REGISTRY}/${REGISTRY_AUTHOR}/${NAME}:${VERSION}
     - docker rmi ${REGISTRY}/${REGISTRY_AUTHOR}/${NAME}:${VERSION}
   only:
+    - master
     - /^v([0-9]{1,3}[.]?){3}.*$/

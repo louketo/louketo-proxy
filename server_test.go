@@ -18,12 +18,16 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-oidc/jose"
@@ -45,6 +49,82 @@ const (
 	fakeAdminRole = "role:admin"
 	fakeTestRole  = "role:test"
 )
+
+var (
+	defaultFakeClaims = jose.Claims{
+		"jti":            "4ee75b8e-3ee6-4382-92d4-3390b4b4937b",
+		"nbf":            0,
+		"iat":            "1450372669",
+		"iss":            "https://keycloak.example.com/auth/realms/commons",
+		"aud":            "test",
+		"sub":            "1e11e539-8256-4b3b-bda8-cc0d56cddb48",
+		"typ":            "Bearer",
+		"azp":            "clientid",
+		"session_state":  "98f4c3d2-1b8c-4932-b8c4-92ec0ea7e195",
+		"client_session": "f0105893-369a-46bc-9661-ad8c747b1a69",
+		"resource_access": map[string]interface{}{
+			"openvpn": map[string]interface{}{
+				"roles": []string{
+					"dev-vpn",
+				},
+			},
+		},
+		"email":              "gambol99@gmail.com",
+		"name":               "Rohith Jayawardene",
+		"family_name":        "Jayawardene",
+		"preferred_username": "rjayawardene",
+		"given_name":         "Rohith",
+	}
+
+	defaultFakeRealmClaims = jose.Claims{
+		"jti":            "4ee75b8e-3ee6-4382-92d4-3390b4b4937b",
+		"nbf":            0,
+		"iat":            "1450372669",
+		"iss":            "https://keycloak.example.com/auth/realms/commons",
+		"aud":            "test",
+		"sub":            "1e11e539-8256-4b3b-bda8-cc0d56cddb48",
+		"typ":            "Bearer",
+		"azp":            "clientid",
+		"session_state":  "98f4c3d2-1b8c-4932-b8c4-92ec0ea7e195",
+		"client_session": "f0105893-369a-46bc-9661-ad8c747b1a69",
+		"realm_access": map[string]interface{}{
+			"roles": []string{
+				"dsp-dev-vpn",
+				"vpn-user",
+				"dsp-prod-vpn",
+			},
+		},
+		"resource_access": map[string]interface{}{
+			"openvpn": map[string]interface{}{
+				"roles": []string{
+					"dev-vpn",
+				},
+			},
+		},
+		"email":              "gambol99@gmail.com",
+		"name":               "Rohith Jayawardene",
+		"family_name":        "Jayawardene",
+		"preferred_username": "rjayawardene",
+		"given_name":         "Rohith",
+	}
+)
+
+func newFakeAccessToken(claims *jose.Claims, expire time.Duration) jose.JWT {
+	if claims == nil {
+		claims = &defaultFakeClaims
+	}
+	claims.Add("exp", float64(time.Now().Add(10*time.Hour).Unix()))
+	if expire > 0 {
+		claims.Add("exp", float64(time.Now().Add(expire).Unix()))
+	}
+	testToken, _ := jose.NewJWT(jose.JOSEHeader{"alg": "RS256"}, *claims)
+
+	return testToken
+}
+
+func getFakeRealmAccessToken(t *testing.T) jose.JWT {
+	return newFakeAccessToken(&defaultFakeRealmClaims, 0)
+}
 
 func newFakeKeycloakConfig() *Config {
 	return &Config{
@@ -96,6 +176,12 @@ func newFakeKeycloakConfig() *Config {
 	}
 }
 
+func newTestService() string {
+	_, _, u := newTestProxyService(nil)
+
+	return u
+}
+
 func newTestProxyService(config *Config) (*oauthProxy, *fakeOAuthServer, string) {
 	log.SetOutput(ioutil.Discard)
 
@@ -111,6 +197,7 @@ func newTestProxyService(config *Config) (*oauthProxy, *fakeOAuthServer, string)
 	config.LogRequests = true
 	config.SkipTokenVerification = false
 	config.DiscoveryURL = auth.getLocation()
+	config.RevocationEndpoint = auth.getRevocationURL()
 	config.Verbose = false
 
 	// step: create a proxy
@@ -175,6 +262,43 @@ func newFakeGinContext(method, uri string) *gin.Context {
 		},
 		Writer: newFakeResponse(),
 	}
+}
+
+// makeTestOauthLogin performs a fake oauth login into the service, retrieving the access token
+func makeTestOauthLogin(location string) (string, error) {
+	u, err := url.Parse(location)
+	if err != nil {
+		return "", err
+	}
+	// step: get the redirect
+	var response *http.Response
+	for count := 0; count < 4; count++ {
+		req, err := http.NewRequest("GET", location, nil)
+		if err != nil {
+			return "", err
+		}
+		// step: make the request
+		response, err = http.DefaultTransport.RoundTrip(req)
+		if err != nil {
+			return "", err
+		}
+		if response.StatusCode != http.StatusTemporaryRedirect {
+			return "", errors.New("no redirection found in response")
+		}
+		location = response.Header.Get("Location")
+		if !strings.HasPrefix(location, "http") {
+			location = fmt.Sprintf("%s://%s%s", u.Scheme, u.Host, location)
+		}
+	}
+
+	// step: check the cookie is there
+	for _, c := range response.Cookies() {
+		if c.Name == "kc-access" {
+			return c.Value, nil
+		}
+	}
+
+	return "", errors.New("access cookie not found in response from oauth service")
 }
 
 func newFakeGinContextWithCookies(method, url string, cookies []*http.Cookie) *gin.Context {
