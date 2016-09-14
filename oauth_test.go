@@ -149,6 +149,7 @@ func newFakeOAuthServer() *fakeOAuthServer {
 	r.GET("auth/realms/hod-test/protocol/openid-connect/token", service.tokenHandler)
 	r.POST("auth/realms/hod-test/protocol/openid-connect/token", service.tokenHandler)
 	r.GET("auth/realms/hod-test/protocol/openid-connect/auth", service.authHandler)
+	r.POST("auth/realms/hod-test/protocol/openid-connect/logout", service.logoutHandler)
 
 	location, err := url.Parse(httptest.NewServer(r).URL)
 	if err != nil {
@@ -162,6 +163,10 @@ func newFakeOAuthServer() *fakeOAuthServer {
 
 func (r *fakeOAuthServer) getLocation() string {
 	return fmt.Sprintf("%s://%s/auth/realms/hod-test", r.location.Scheme, r.location.Host)
+}
+
+func (r *fakeOAuthServer) getRevocationURL() string {
+	return fmt.Sprintf("%s://%s/auth/realms/hod-test/protocol/openid-connect/logout", r.location.Scheme, r.location.Host)
 }
 
 func (r *fakeOAuthServer) setUserRealmRoles(roles []string) *fakeOAuthServer {
@@ -213,6 +218,16 @@ func (r *fakeOAuthServer) authHandler(cx *gin.Context) {
 	redirectionURL := fmt.Sprintf("%s?state=%s&code=%s", redirect, state, getRandomString(32))
 
 	cx.Redirect(http.StatusTemporaryRedirect, redirectionURL)
+}
+
+func (r *fakeOAuthServer) logoutHandler(cx *gin.Context) {
+	refreshToken := cx.PostForm("refresh_token")
+	if refreshToken == "" {
+		cx.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	cx.AbortWithStatus(http.StatusNoContent)
 }
 
 func (r *fakeOAuthServer) tokenHandler(cx *gin.Context) {

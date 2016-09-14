@@ -26,7 +26,7 @@ import (
 
 func TestGetSessionToken(t *testing.T) {
 	p, _, _ := newTestProxyService(nil)
-	token := newFakeAccessToken()
+	token := newFakeAccessToken(nil, 0)
 	encoded := token.Encode()
 
 	testCases := []struct {
@@ -70,7 +70,7 @@ func TestGetSessionToken(t *testing.T) {
 
 func TestGetTokenFromBearer(t *testing.T) {
 	p, _, _ := newTestProxyService(nil)
-	ac := newFakeAccessToken()
+	ac := newFakeAccessToken(nil, 0)
 	cs := []struct {
 		Error error
 		Token string
