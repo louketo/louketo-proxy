@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	release = "v1.2.6"
+	release = "v1.2.7"
 	gitsha  = "no gitsha provided"
 	version = release + " (git+sha: " + gitsha + ")"
 )
@@ -129,6 +129,9 @@ type Config struct {
 	EnableURIMetrics bool `json:"enable-uri-metrics" yaml:"enable-uri-metrics"`
 	// LocalhostMetrics indicated the metrics can only be consume via localhost
 	LocalhostMetrics bool `json:"localhost-only-metrics" yaml:"localhost-only-metrics"`
+
+	// EnableAuthorizationHeader indicates we should pass the authorization header
+	EnableAuthorizationHeader bool `json:"enable-authorization-header" yaml:"enable-authorization-header"`
 
 	// CookieDomain is a list of domains the cookie is available to
 	CookieDomain string `json:"cookie-domain" yaml:"cookie-domain"`

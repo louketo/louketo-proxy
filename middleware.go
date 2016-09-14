@@ -427,7 +427,11 @@ func (r *oauthProxy) headersMiddleware(custom []string) gin.HandlerFunc {
 			cx.Request.Header.Add("X-Auth-ExpiresIn", id.expiresAt.String())
 			cx.Request.Header.Add("X-Auth-Token", id.token.Encode())
 			cx.Request.Header.Add("X-Auth-Roles", strings.Join(id.roles, ","))
-			cx.Request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", id.token.Encode()))
+
+			// step: add the authorization header if requested
+			if r.config.EnableAuthorizationHeader {
+				cx.Request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", id.token.Encode()))
+			}
 
 			// step: inject any custom claims
 			for claim, header := range customClaims {

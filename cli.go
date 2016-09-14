@@ -163,6 +163,10 @@ func getCLIOptions() []cli.Flag {
 			Usage: "specifies the keep-alive period for an active network connection",
 			Value: defaults.UpstreamKeepaliveTimeout,
 		},
+		cli.BoolTFlag{
+			Name:  "enable-authorization-header",
+			Usage: "adds the authorization header to the proxy request",
+		},
 		cli.BoolFlag{
 			Name:  "enable-refresh-tokens",
 			Usage: "enables the handling of the refresh tokens",
@@ -422,6 +426,9 @@ func parseCLIOptions(cx *cli.Context, config *Config) (err error) {
 	}
 	if cx.IsSet("enable-forwarding") {
 		config.EnableForwarding = cx.Bool("enable-forwarding")
+	}
+	if cx.IsSet("enable-authorization-header") {
+		config.EnableAuthorizationHeader = cx.Bool("enable-authorization-header")
 	}
 	if cx.IsSet("enable-refresh-tokens") {
 		config.EnableRefreshTokens = cx.Bool("enable-refresh-tokens")

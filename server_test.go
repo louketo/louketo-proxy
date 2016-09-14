@@ -128,16 +128,19 @@ func getFakeRealmAccessToken(t *testing.T) jose.JWT {
 
 func newFakeKeycloakConfig() *Config {
 	return &Config{
-		DiscoveryURL:          "127.0.0.1:8080",
-		ClientID:              fakeClientID,
-		ClientSecret:          fakeSecret,
-		EncryptionKey:         "AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j",
-		SkipTokenVerification: true,
-		Scopes:                []string{},
-		EnableRefreshTokens:   false,
-		SecureCookie:          false,
-		CookieAccessName:      "kc-access",
-		CookieRefreshName:     "kc-state",
+		ClientID:                  fakeClientID,
+		ClientSecret:              fakeSecret,
+		CookieAccessName:          "kc-access",
+		CookieRefreshName:         "kc-state",
+		DiscoveryURL:              "127.0.0.1:8080",
+		EnableAuthorizationHeader: true,
+		EnableRefreshTokens:       false,
+		EncryptionKey:             "AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j",
+		LogRequests:               true,
+		Scopes:                    []string{},
+		SecureCookie:              false,
+		SkipTokenVerification:     false,
+		Verbose:                   false,
 		Resources: []*Resource{
 			{
 				URL:     fakeAdminRoleURL,
@@ -194,11 +197,8 @@ func newTestProxyService(config *Config) (*oauthProxy, *fakeOAuthServer, string)
 	}
 
 	// step: set the config
-	config.LogRequests = true
-	config.SkipTokenVerification = false
 	config.DiscoveryURL = auth.getLocation()
 	config.RevocationEndpoint = auth.getRevocationURL()
-	config.Verbose = false
 
 	// step: create a proxy
 	proxy, err := newProxy(config)
@@ -231,7 +231,10 @@ func newFakeKeycloakProxyWithResources(t *testing.T, resources []*Resource) *oau
 }
 
 func TestNewKeycloakProxy(t *testing.T) {
-	proxy, err := newProxy(newFakeKeycloakConfig())
+	cfg := newFakeKeycloakConfig()
+	cfg.DiscoveryURL = newFakeOAuthServer().getLocation()
+
+	proxy, err := newProxy(cfg)
 	assert.NoError(t, err)
 	assert.NotNil(t, proxy)
 	assert.NotNil(t, proxy.config)
