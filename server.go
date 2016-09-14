@@ -275,7 +275,6 @@ func (r *oauthProxy) createForwardingProxy() error {
 // Run starts the proxy service
 //
 func (r *oauthProxy) Run() error {
-	var err error
 	tlsConfig := &tls.Config{}
 
 	// step: are we doing mutual tls?
@@ -299,6 +298,7 @@ func (r *oauthProxy) Run() error {
 
 	// step: create the listener
 	var listener net.Listener
+	var err error
 	switch strings.HasPrefix(r.config.Listen, "unix://") {
 	case true:
 		socket := strings.Trim(r.config.Listen, "unix://")

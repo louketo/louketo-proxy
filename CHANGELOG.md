@@ -1,4 +1,13 @@
 
+#### **1.2.7**
+
+FIXES:
+ * Added unit tests for the logout handlers
+ * Added unit tests for the authorization header handling
+
+FEATURES:
+ * Allow the user to enable or disable adding the Authorization header
+
 #### **1.2.6**
 
 FIXES:
@@ -22,11 +31,11 @@ FIXES:
  * Fixes the expiration of the access token, if no idle-duration is
  * Fixed the forwarding proxy for SSL
  * Fixed the bug in the containedSubString method
- 
+
 BREAKING CHANGES:
- * Fixed up the config resource definition to use 'uri' not 'url' 
+ * Fixed up the config resource definition to use 'uri' not 'url'
  * Removed the --idle-duration option, was never really implemented well
- 
+
 #### **1.2.3**
 
 FEATURES:
@@ -36,7 +45,7 @@ FEATURES:
 
 TODO:
  * Need a means to updating the client certificate once expired.
- 
+
 CHANGES:
  * Updated the godeps for codegangsta cli to it's renamed version
 
@@ -71,25 +80,25 @@ FIXES:
 FIXES:
  * Added a auto build to quay.io on the travis build for master and tags
  * Fixed the host header to proxy to upstreams outside of the proxy domain (https://github.com/golang/go/issues/7618)
- * Adding a git+sha to the usage 
+ * Adding a git+sha to the usage
  * Defaulting to gin mode release unless verbose is true
  * Removed the gin debug logging for tests and builds
  * Removed the default upstream, as it caught people by surprise and some accidentally forwarded to themselves
  * Changed the state parameter (which is used as a redirect) to base64 the value allowing you to use complex urls
-  
+
 FEATURES:
  * Adding environment variables to some of the command line options
  * Adding the option of a forwarding agent, i.e. you can seat the proxy front of your application,
-   login to keycloak and use the proxy as forwarding agent to sign outbound requests. 
+   login to keycloak and use the proxy as forwarding agent to sign outbound requests.
  * Adding the version information into a header on /oauth/health endpoint
  * Removed the need to specify a client-secret, which means to cope with authz only or public endpoints
- * Added role url tokenizer, /auth/%role%/ will extract the role element and check the token as it 
+ * Added role url tokenizer, /auth/%role%/ will extract the role element and check the token as it
  * Added proxy protocol support for the listening socket (--enable-proxy-protocol=true)
  * Added the ability to listen on a unix socket
 
 BREAKING CHANGES:
  * Changed the X-Auth-Subject, it not is the actual subject from the token (makes more sense).
-   X-Auth-UserID will either be the subject id or the preferred username 
+   X-Auth-UserID will either be the subject id or the preferred username
 
 #### **1.0.6 (May 6th, 2016)**
 
@@ -104,25 +113,25 @@ FEATURES:
  * An additional option --add-claims to inject custom claims from the token into the authentication headers
    i.e. --add-claims=given_name would add X-Auth-Given-Name (assumed the claims exists)
  * Added the --secure-cookie option to control the 'secure' flag on the cookie
- 
+
 BREAKING CHANGES:
  * Changed the claims option from 'claims' to 'match-claims' (command line and config)
- * Changed keepalive config option to the same as the command line 'keepalive' -> 'upstream-keepalives' 
+ * Changed keepalive config option to the same as the command line 'keepalive' -> 'upstream-keepalives'
  * Changed the config option from 'upstream' to 'upstream-url', same as command line
- 
+
 #### **1.0.4 (April 30th, 2016)**
 
 FIXES:
  * Fixes the cookie sessions expiration
 
 FEATURES:
- * Adding a idle duration configuration option which controls the expiration of access token cookie and thus session. 
-   If the session is not used within that period, the session is removed. 
+ * Adding a idle duration configuration option which controls the expiration of access token cookie and thus session.
+   If the session is not used within that period, the session is removed.
  * The upstream endpoint has also be a unix socket
- 
+
 BREAKING CHANGES:
  * Change the client id in json/yaml config file from clientid -> client-id
- 
+
 #### **1.0.2 (April 22th, 2016)**
 
 FIXES:

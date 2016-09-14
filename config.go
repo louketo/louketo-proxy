@@ -27,16 +27,17 @@ import (
 // newDefaultConfig returns a initialized config
 func newDefaultConfig() *Config {
 	return &Config{
-		TagData:                  make(map[string]string, 0),
-		MatchClaims:              make(map[string]string, 0),
-		Headers:                  make(map[string]string, 0),
-		UpstreamTimeout:          time.Duration(10) * time.Second,
-		UpstreamKeepaliveTimeout: time.Duration(10) * time.Second,
-		CookieAccessName:         "kc-access",
-		CookieRefreshName:        "kc-state",
-		SecureCookie:             true,
-		SkipUpstreamTLSVerify:    true,
-		CrossOrigin:              CORS{},
+		TagData:                   make(map[string]string, 0),
+		MatchClaims:               make(map[string]string, 0),
+		Headers:                   make(map[string]string, 0),
+		UpstreamTimeout:           time.Duration(10) * time.Second,
+		UpstreamKeepaliveTimeout:  time.Duration(10) * time.Second,
+		EnableAuthorizationHeader: true,
+		CookieAccessName:          "kc-access",
+		CookieRefreshName:         "kc-state",
+		SecureCookie:              true,
+		SkipUpstreamTLSVerify:     true,
+		CrossOrigin:               CORS{},
 	}
 }
 

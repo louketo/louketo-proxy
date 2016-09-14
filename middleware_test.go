@@ -327,6 +327,57 @@ func TestCustomHeadersHandler(t *testing.T) {
 	}
 }
 
+func TestHeaderMiddlewareAuthorizationHeader(t *testing.T) {
+	cases := []struct {
+		Identity *userContext
+		Expected http.Header
+		Enabled  bool
+	}{
+		{
+			Enabled: true,
+			Identity: &userContext{
+				email: "gambol99@gmail.com",
+			},
+			Expected: http.Header{
+				"X-Auth-Email":  []string{"gambol99@gmail.com"},
+				"Authorization": []string{"Bearer .."},
+			},
+		},
+		{
+			Enabled: false,
+			Identity: &userContext{
+				email: "gambol99@gmail.com",
+			},
+			Expected: http.Header{
+				"X-Auth-Email":  []string{"gambol99@gmail.com"},
+				"Authorization": []string{""},
+			},
+		},
+	}
+	for i, x := range cases {
+		config := newFakeKeycloakConfig()
+		config.EnableAuthorizationHeader = x.Enabled
+
+		// step: create the test proxy
+		p, _, _ := newTestProxyService(config)
+		context := newFakeGinContext("GET", "/test_url")
+		if x.Identity != nil {
+			context.Set(userContextName, x.Identity)
+		}
+
+		// step: create a middleware handler
+		handler := p.headersMiddleware([]string{})
+		handler(context)
+
+		// step: and check we have all the headers
+		for k := range x.Expected {
+			assert.Equal(t, x.Expected.Get(k), context.Request.Header.Get(k),
+				"case %d, expected (%s: %s) got: (%s: %s)",
+				i, k, x.Expected.Get(k), k, context.Request.Header.Get(k))
+		}
+	}
+}
+
 func TestAdmissionHandlerRoles(t *testing.T) {
 	proxy := newFakeKeycloakProxyWithResources(t, []*Resource{
 		{
