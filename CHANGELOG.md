@@ -6,7 +6,7 @@ FIXES:
  * Added unit tests for the authorization header handling
 
 FEATURES:
- * Allow the user to enable or disable adding the Authorization header
+ * Allow the user to enable or disable adding the Authorization header via the --enable-authorization-header
 
 #### **1.2.6**
 
