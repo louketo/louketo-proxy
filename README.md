@@ -28,33 +28,35 @@ NAME:
 
 USAGE:
    keycloak-proxy [options]
-   
+
 VERSION:
-   v1.2.4 (git+sha: 6b14da3-dirty)
-   
+   v1.2.7 (git+sha: fe9654c)
+
 AUTHOR(S):
-   Rohith <gambol99@gmail.com> 
-   
+   Rohith <gambol99@gmail.com>
+
 COMMANDS:
      help, h  Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
    --config value                      the path to the configuration file for the keycloak proxy [$PROXY_CONFIG_FILE]
-   --listen value                      the interface the service should be listening on (default: "127.0.0.1:3000") [$PROXY_LISTEN]
+   --listen value                      the interface the service should be listening on [$PROXY_LISTEN]
    --client-secret value               the client secret used to authenticate to the oauth server (access_type: confidential) [$PROXY_CLIENT_SECRET]
    --client-id value                   the client id used to authenticate to the oauth service [$PROXY_CLIENT_ID]
    --discovery-url value               the discovery url to retrieve the openid configuration [$PROXY_DISCOVERY_URL]
    --scope value                       a variable list of scopes requested when authenticating the user
    --token-validate-only               validate the token and roles only, no required implement oauth
    --redirection-url value             redirection url for the oauth callback url (/oauth is added) [$PROXY_REDIRECTION_URL]
-   --revocation-url value              the url for the revocation endpoint to revoke refresh token (default: "/oauth2/revoke") [$PROXY_REVOCATION_URL]
+   --revocation-url value              the url for the revocation endpoint to revoke refresh token [$PROXY_REVOCATION_URL]
    --store-url value                   url for the storage subsystem, e.g redis://127.0.0.1:6379, file:///etc/tokens.file [$PROXY_STORE_URL]
    --upstream-url value                the url for the upstream endpoint you wish to proxy to [$PROXY_UPSTREAM_URL]
    --upstream-keepalives               enables or disables the keepalive connections for upstream endpoint
    --upstream-timeout value            is the maximum amount of time a dial will wait for a connect to complete (default: 10s)
    --upstream-keepalive-timeout value  specifies the keep-alive period for an active network connection (default: 10s)
+   --enable-authorization-header       adds the authorization header to the proxy request
    --enable-refresh-tokens             enables the handling of the refresh tokens
    --secure-cookie                     enforces the cookie to be secure, default to true
+   --http-only-cookie                  enforces the cookie is in http only mode, default to false
    --cookie-domain value               a domain the access cookie is available to, defaults host header
    --cookie-access-name value          the name of the cookie use to hold the access token (default: "kc-access")
    --cookie-refresh-name value         the name of the cookie used to hold the encrypted refresh token (default: "kc-state")
@@ -85,7 +87,7 @@ GLOBAL OPTIONS:
    --cors-methods value                the method permitted in the access control (Access-Control-Allow-Methods)
    --cors-headers value                a set of headers to add to the CORS access control (Access-Control-Allow-Headers)
    --cors-exposes-headers value        set the expose cors headers access control (Access-Control-Expose-Headers)
-   --cors-max-age value                the max age applied to cors headers (Access-Control-Max-Age) (default: 0)
+   --cors-max-age value                the max age applied to cors headers (Access-Control-Max-Age) (default: 0s)
    --cors-credentials                  the credentials access control header (Access-Control-Allow-Credentials)
    --enable-security-filter            enables the security filter handler
    --skip-token-verification           TESTING ONLY; bypass token verification, only expiration and roles enforced
@@ -206,7 +208,7 @@ bin/keycloak-proxy \
     --discovery-url=https://accounts.google.com/.well-known/openid-configuration \
     --client-id=<CLIENT_ID> \
     --client-secret=<CLIENT_SECRET> \
-    --resource="uri=/" \   
+    --resource="uri=/" \
     --verbose=true
 ```
 
@@ -223,12 +225,12 @@ DEBU[0002] resource access permitted: /favicon.ico       access=permitted bearer
 
 Forward signing provides a mechanism for authentication and authorization between services, using the keycloak issued tokens for granular control. When operating with in the more, the proxy will automatically acquire a access token (handling the refreshing or logins) and tag Authorization headers on outbound request's (TLS via HTTP CONNECT is fully supported). You control which domains are tagged by the --forwarding-domains option. Note, this option use a **contains** comparison on domains. So, if you wanted to match all domains under *.svc.cluster.local can and simply use: --forwarding-domain=svc.cluster.local.
 
-At present the service logs in using oauth client_credentials grant type, so your authentication service, 
-must support direct (username/password) logins. 
+At present the service logs in using oauth client_credentials grant type, so your authentication service,
+must support direct (username/password) logins.
 
 Example setup:
 
-You have collection of micro-services which are permitted to speak to one another; you've already setup the credentials, roles, clients etc in Keycloak, providing granular role controls over issue tokens. 
+You have collection of micro-services which are permitted to speak to one another; you've already setup the credentials, roles, clients etc in Keycloak, providing granular role controls over issue tokens.
 
 ```YAML
 # kubernetes pod example
@@ -237,7 +239,7 @@ You have collection of micro-services which are permitted to speak to one anothe
   args:
   - --enable-forwarding=true
   - --forwarding-username=projecta
-  - --forwarding-password=some_password 
+  - --forwarding-password=some_password
   - --forwarding-domains=projecta.svc.cluster.local
   - --forwarding-domains=projectb.svc.cluster.local
   # Note: if you don't specify any forwarding domains, all domains will be signed; Also the code checks is the
@@ -248,12 +250,12 @@ You have collection of micro-services which are permitted to speak to one anothe
     mountPoint: /var/run/keycloak
 - name: projecta
   image: some_images
-  
-# test the forward proxy  
+
+# test the forward proxy
 [jest@starfury keycloak-proxy]$ curl -k --proxy http://127.0.0.1:3000 https://test.projesta.svc.cluster.local
 ```
 
-Receiver side you could setup the keycloak-proxy (--no=redirects=true) and permit this proxy to verify and handle admission for you. Alternatively, the access token can found as a bearer token in the request. 
+Receiver side you could setup the keycloak-proxy (--no=redirects=true) and permit this proxy to verify and handle admission for you. Alternatively, the access token can found as a bearer token in the request.
 
 ##### **- Forwarding Signing HTTPS Connect**
 
@@ -262,7 +264,7 @@ Handling HTTPS requires man in the middling the TLS connection. By default if no
 ```shell
 [jest@starfury keycloak-proxy]$ openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout ca.key -out ca.pem
 
-   
+
 [jest@starfury keycloak-proxy]$ bin/keycloak-proxy --enable-forwarding --forwarding-username=USERNAME --forwarding-password=PASSWORD --client-id=CLIENT_ID --client-secret=SECRET --discovery-url=https://keycloak.example.com/auth/realms/test --log-requests=true --tls-ca-cert=ca.pem --tls-ca-key=ca.key
 
 #### **- URL Tokenization (in-progress)**
@@ -288,7 +290,7 @@ resources:
 - uri: logs/%role%/
 ```
 
-The above will extract role requirement from the url and apply to admission as per usual. /logs/admin will need a admin role, logs/app1 needs the app1 role, etc.   
+The above will extract role requirement from the url and apply to admission as per usual. /logs/admin will need a admin role, logs/app1 needs the app1 role, etc.
 
 ---
 #### **- Upstream Headers**
@@ -365,7 +367,7 @@ note each of the matches are regex's. Examples,  --match-claims 'aud=sso.*' --cl
 match-claims:
   aud: openvpn
   iss: https://keycloak.example.com/auth/realms/commons
-```  
+```
 
 #### **- Custom Pages**
 
@@ -409,9 +411,9 @@ The proxy support enforcing mutual TLS for the clients by simply adding the --tl
 
 #### **- Refresh Tokens**
 
-Assuming a request for an access token contains a refresh token and the --enable-refresh-token is true, the proxy will automatically refresh the access token for you. The tokens themselves are kept either as an encrypted *(--encryption-key=KEY)* cookie *(cookie name: kc-state).* or a store *(still requires encryption key)*. 
+Assuming a request for an access token contains a refresh token and the --enable-refresh-token is true, the proxy will automatically refresh the access token for you. The tokens themselves are kept either as an encrypted *(--encryption-key=KEY)* cookie *(cookie name: kc-state).* or a store *(still requires encryption key)*.
 
-At present the only store supported are[Redis](https://github.com/antirez/redis) and [Boltdb](https://github.com/boltdb/bolt). To enable a local boltdb store. --store-url boltdb:///PATH or relative path boltdb://PATH. For redis the option is redis://[USER:PASSWORD@]HOST:PORT. In both cases the refresh token is encrypted before placing into the store. 
+At present the only store supported are[Redis](https://github.com/antirez/redis) and [Boltdb](https://github.com/boltdb/bolt). To enable a local boltdb store. --store-url boltdb:///PATH or relative path boltdb://PATH. For redis the option is redis://[USER:PASSWORD@]HOST:PORT. In both cases the refresh token is encrypted before placing into the store.
 
 #### **- Logout Endpoint**
 
@@ -466,3 +468,4 @@ You can control the upstream endpoint via the --upstream-url option. Both http a
 #### **Metrics**
 
 Assuming the --enable-metrics has been set, a prometheus endpoint can be found on /oauth/metrics
+
