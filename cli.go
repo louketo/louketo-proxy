@@ -179,7 +179,7 @@ func getCLIOptions() []cli.Flag {
 			Name:  "http-only-cookie",
 			Usage: "enforces the cookie is in http only mode, default to false",
 		},
-		cli.StringSliceFlag{
+		cli.StringFlag{
 			Name:  "cookie-domain",
 			Usage: "a domain the access cookie is available to, defaults host header",
 		},

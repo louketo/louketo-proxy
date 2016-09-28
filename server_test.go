@@ -269,39 +269,48 @@ func newFakeGinContext(method, uri string) *gin.Context {
 
 // makeTestOauthLogin performs a fake oauth login into the service, retrieving the access token
 func makeTestOauthLogin(location string) (string, error) {
-	u, err := url.Parse(location)
+	resp, err := makeTestCodeFlowLogin(location)
 	if err != nil {
 		return "", err
 	}
-	// step: get the redirect
-	var response *http.Response
-	for count := 0; count < 4; count++ {
-		req, err := http.NewRequest("GET", location, nil)
-		if err != nil {
-			return "", err
-		}
-		// step: make the request
-		response, err = http.DefaultTransport.RoundTrip(req)
-		if err != nil {
-			return "", err
-		}
-		if response.StatusCode != http.StatusTemporaryRedirect {
-			return "", errors.New("no redirection found in response")
-		}
-		location = response.Header.Get("Location")
-		if !strings.HasPrefix(location, "http") {
-			location = fmt.Sprintf("%s://%s%s", u.Scheme, u.Host, location)
-		}
-	}
 
 	// step: check the cookie is there
-	for _, c := range response.Cookies() {
+	for _, c := range resp.Cookies() {
 		if c.Name == "kc-access" {
 			return c.Value, nil
 		}
 	}
 
 	return "", errors.New("access cookie not found in response from oauth service")
+}
+
+func makeTestCodeFlowLogin(location string) (*http.Response, error) {
+	u, err := url.Parse(location)
+	if err != nil {
+		return nil, err
+	}
+	// step: get the redirect
+	var resp *http.Response
+	for count := 0; count < 4; count++ {
+		req, err := http.NewRequest("GET", location, nil)
+		if err != nil {
+			return nil, err
+		}
+		// step: make the request
+		resp, err = http.DefaultTransport.RoundTrip(req)
+		if err != nil {
+			return nil, err
+		}
+		if resp.StatusCode != http.StatusTemporaryRedirect {
+			return nil, errors.New("no redirection found in resp")
+		}
+		location = resp.Header.Get("Location")
+		if !strings.HasPrefix(location, "http") {
+			location = fmt.Sprintf("%s://%s%s", u.Scheme, u.Host, location)
+		}
+	}
+
+	return resp, nil
 }
 
 func newFakeGinContextWithCookies(method, url string, cookies []*http.Cookie) *gin.Context {
