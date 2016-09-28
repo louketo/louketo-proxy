@@ -203,6 +203,24 @@ func TestTokenHandler(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
 
+func TestNoRedirect(t *testing.T) {
+	p, _, svc := newTestProxyService(nil)
+	p.config.NoRedirects = true
+
+	req, _ := http.NewRequest("GET", svc+"/admin", nil)
+	resp, err := http.DefaultTransport.RoundTrip(req)
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+
+	p.config.NoRedirects = false
+	req, _ = http.NewRequest("GET", svc+"/admin", nil)
+	resp, err = http.DefaultTransport.RoundTrip(req)
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusTemporaryRedirect, resp.StatusCode)
+}
+
 func TestAuthorizationURL(t *testing.T) {
 	_, _, u := newTestProxyService(nil)
 	client := &http.Client{
