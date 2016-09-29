@@ -16,10 +16,44 @@ limitations under the License.
 package main
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
+
+func TestCookieDomainHostHeader(t *testing.T) {
+	svc := newTestService()
+	resp, err := makeTestCodeFlowLogin(svc + "/admin")
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	var cookie *http.Cookie
+	for _, c := range resp.Cookies() {
+		if c.Name == "kc-access" {
+			cookie = c
+		}
+	}
+	assert.NotNil(t, cookie)
+	assert.Equal(t, cookie.Domain, "127.0.0.1")
+}
+
+func TestCookieDomain(t *testing.T) {
+	p, _, svc := newTestProxyService(nil)
+	p.config.CookieDomain = "domain.com"
+	resp, err := makeTestCodeFlowLogin(svc + "/admin")
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	var cookie *http.Cookie
+	for _, c := range resp.Cookies() {
+		if c.Name == "kc-access" {
+			cookie = c
+		}
+	}
+	assert.NotNil(t, cookie)
+	assert.Equal(t, cookie.Domain, "domain.com")
+}
 
 func TestDropCookie(t *testing.T) {
 	p, _, _ := newTestProxyService(nil)
