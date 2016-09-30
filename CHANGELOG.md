@@ -1,4 +1,11 @@
 
+#### **1.2.8**
+
+FIXES:
+ * Fixed a bug in the --cookie-domain options
+ * Added unit test for the cookie-domain options
+ * Switched to using set rather than add to the headers
+
 #### **1.2.7**
 
 FIXES:
