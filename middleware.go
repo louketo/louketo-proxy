@@ -414,19 +414,19 @@ func (r *oauthProxy) headersMiddleware(custom []string) gin.HandlerFunc {
 	return func(cx *gin.Context) {
 		// step: add any custom headers to the request
 		for k, v := range r.config.Headers {
-			cx.Request.Header.Add(k, v)
+			cx.Request.Header.Set(k, v)
 		}
 
 		// step: retrieve the user context if any
 		if user, found := cx.Get(userContextName); found {
 			id := user.(*userContext)
-			cx.Request.Header.Add("X-Auth-Userid", id.name)
-			cx.Request.Header.Add("X-Auth-Subject", id.id)
-			cx.Request.Header.Add("X-Auth-Username", id.name)
-			cx.Request.Header.Add("X-Auth-Email", id.email)
-			cx.Request.Header.Add("X-Auth-ExpiresIn", id.expiresAt.String())
-			cx.Request.Header.Add("X-Auth-Token", id.token.Encode())
-			cx.Request.Header.Add("X-Auth-Roles", strings.Join(id.roles, ","))
+			cx.Request.Header.Set("X-Auth-Userid", id.name)
+			cx.Request.Header.Set("X-Auth-Subject", id.id)
+			cx.Request.Header.Set("X-Auth-Username", id.name)
+			cx.Request.Header.Set("X-Auth-Email", id.email)
+			cx.Request.Header.Set("X-Auth-ExpiresIn", id.expiresAt.String())
+			cx.Request.Header.Set("X-Auth-Token", id.token.Encode())
+			cx.Request.Header.Set("X-Auth-Roles", strings.Join(id.roles, ","))
 
 			// step: add the authorization header if requested
 			if r.config.EnableAuthorizationHeader {
@@ -436,7 +436,7 @@ func (r *oauthProxy) headersMiddleware(custom []string) gin.HandlerFunc {
 			// step: inject any custom claims
 			for claim, header := range customClaims {
 				if claim, found := id.claims[claim]; found {
-					cx.Request.Header.Add(header, fmt.Sprintf("%v", claim))
+					cx.Request.Header.Set(header, fmt.Sprintf("%v", claim))
 				}
 			}
 		}
