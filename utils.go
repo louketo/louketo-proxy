@@ -309,7 +309,7 @@ func containsSubString(value string, list []string) bool {
 //
 func tryDialEndpoint(location *url.URL) (net.Conn, error) {
 	switch dialAddress := dialAddress(location); location.Scheme {
-	case "http":
+	case httpSchema:
 		return net.Dial("tcp", dialAddress)
 	default:
 		return tls.Dial("tcp", dialAddress, &tls.Config{
@@ -383,7 +383,7 @@ func dialAddress(location *url.URL) string {
 	items := strings.Split(location.Host, ":")
 	if len(items) != 2 {
 		switch location.Scheme {
-		case "http":
+		case httpSchema:
 			return location.Host + ":80"
 		default:
 			return location.Host + ":443"

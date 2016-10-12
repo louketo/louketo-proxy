@@ -18,6 +18,7 @@ package main
 import (
 	"bytes"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -208,73 +209,64 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 // loginHandler provide's a generic endpoint for clients to perform a user_credentials login to the provider
 //
 func (r *oauthProxy) loginHandler(cx *gin.Context) {
-	// step: parse the client credentials
-	username := cx.Request.PostFormValue("username")
-	password := cx.Request.PostFormValue("password")
-
-	if username == "" || password == "" {
-		log.WithFields(log.Fields{
-			"client_ip": cx.ClientIP(),
-		}).Errorf("request does not have both username and password")
-
-		cx.AbortWithStatus(http.StatusBadRequest)
-		return
-	}
-
-	// step: get the client
-	client, err := r.client.OAuthClient()
-	if err != nil {
-		log.WithFields(log.Fields{
-			"client_ip": cx.ClientIP(),
-			"error":     err.Error(),
-		}).Errorf("unable to create the oauth client for user_credentials request")
-
-		cx.AbortWithStatus(http.StatusInternalServerError)
-		return
-	}
-
-	// step: request the access token via
-	token, err := client.UserCredsToken(username, password)
-	if err != nil {
-		if strings.HasPrefix(err.Error(), oauth2.ErrorInvalidGrant) {
-			log.WithFields(log.Fields{
-				"client_ip": cx.ClientIP(),
-				"error":     err.Error(),
-			}).Errorf("invalid user credentials provided")
-
-			cx.AbortWithStatus(http.StatusUnauthorized)
-			return
+	// step: disable any request no coming from loopback - not we are ignoring any headers here
+	// i.e. X-Forwarded-For and X-Real-IP are being ignored
+	// @NOTE: the current implementation of IsLoopback does not except host addresses with a port
+	errorMsg, code, err := func() (string, int, error) {
+		if r.config.ClientSecret != "" {
+			if !net.ParseIP(strings.Split(cx.Request.RemoteAddr, ":")[0]).IsLoopback() {
+				return "login request from non-loopback client", http.StatusUnauthorized, errors.New("original client address invalid")
+			}
 		}
-		log.WithFields(log.Fields{
-			"client_ip": cx.ClientIP(),
-			"error":     err.Error(),
-		}).Errorf("unable to request the access token via grant_type 'password'")
 
-		cx.AbortWithStatus(http.StatusInternalServerError)
-		return
-	}
+		// step: parse the client credentials
+		username := cx.Request.PostFormValue("username")
+		password := cx.Request.PostFormValue("password")
 
-	// step: parse the token
-	_, identity, err := parseToken(token.AccessToken)
+		if username == "" || password == "" {
+			return "request does not have both username and password", http.StatusBadRequest, errors.New("no credentials")
+		}
+
+		// step: get the client
+		client, err := r.client.OAuthClient()
+		if err != nil {
+			return "unable to create the oauth client for user_credentials request", http.StatusInternalServerError, err
+		}
+
+		token, err := client.UserCredsToken(username, password)
+		if err != nil {
+			if strings.HasPrefix(err.Error(), oauth2.ErrorInvalidGrant) {
+				return "invalid user credentials provided", http.StatusUnauthorized, err
+			}
+			return "unable to request the access token via grant_type 'password'", http.StatusInternalServerError, err
+		}
+
+		// step: parse the token
+		_, identity, err := parseToken(token.AccessToken)
+		if err != nil {
+			return "unable to decode the access token", http.StatusNotImplemented, err
+		}
+
+		r.dropAccessTokenCookie(cx, token.AccessToken, identity.ExpiresAt.Sub(time.Now()))
+
+		cx.JSON(http.StatusOK, tokenResponse{
+			IDToken:      token.IDToken,
+			AccessToken:  token.AccessToken,
+			RefreshToken: token.RefreshToken,
+			ExpiresIn:    token.Expires,
+			Scope:        token.Scope,
+		})
+
+		return "", http.StatusOK, nil
+	}()
 	if err != nil {
 		log.WithFields(log.Fields{
-			"client_ip": cx.ClientIP(),
-			"error":     err.Error(),
-		}).Errorf("unable to decode the access token")
+			"client_ip": cx.Request.RemoteAddr,
+			"error":     err.Error,
+		}).Errorf(errorMsg)
 
-		cx.AbortWithStatus(http.StatusNotImplemented)
-		return
+		cx.AbortWithStatus(code)
 	}
-
-	r.dropAccessTokenCookie(cx, token.AccessToken, identity.ExpiresAt.Sub(time.Now()))
-
-	cx.JSON(http.StatusOK, tokenResponse{
-		IDToken:      token.IDToken,
-		AccessToken:  token.AccessToken,
-		RefreshToken: token.RefreshToken,
-		ExpiresIn:    token.Expires,
-		Scope:        token.Scope,
-	})
 }
 
 //

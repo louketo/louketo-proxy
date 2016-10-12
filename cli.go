@@ -149,6 +149,10 @@ func getCLIOptions() []cli.Flag {
 			Value:  defaults.Upstream,
 			EnvVar: "PROXY_UPSTREAM_URL",
 		},
+		cli.BoolFlag{
+			Name:  "enable-login-handler",
+			Usage: "this enables the login hanlder /oauth/login, by default this is disabled",
+		},
 		cli.BoolTFlag{
 			Name:  "upstream-keepalives",
 			Usage: "enables or disables the keepalive connections for upstream endpoint",
@@ -414,6 +418,9 @@ func parseCLIOptions(cx *cli.Context, config *Config) (err error) {
 	}
 	if cx.IsSet("tls-client-certificate") {
 		config.TLSClientCertificate = cx.String("tls-client-certificate")
+	}
+	if cx.IsSet("enable-login-handler") {
+		config.EnableLoginHandler = cx.Bool("enable-login-handler")
 	}
 	if cx.IsSet("enable-metrics") {
 		config.EnableMetrics = cx.Bool("enable-metrics")

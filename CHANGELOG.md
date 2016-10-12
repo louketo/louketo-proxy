@@ -1,4 +1,10 @@
 
+#### **1.2.9**
+
+BREAKING CHANGES:
+ * The login handler by default has been switched off, you must enable for --enable-login-handler
+ * The login handler now enforces the request can only come from a localhost if a client is defined 
+
 #### **1.2.8**
 
 FIXES:

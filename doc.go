@@ -34,6 +34,7 @@ const (
 	author      = "Rohith"
 	email       = "gambol99@gmail.com"
 	description = "is a proxy using the keycloak service for auth and authorization"
+	httpSchema  = "http"
 
 	headerUpgrade       = "Upgrade"
 	userContextName     = "identity"
@@ -130,6 +131,8 @@ type Config struct {
 	// LocalhostMetrics indicated the metrics can only be consume via localhost
 	LocalhostMetrics bool `json:"localhost-only-metrics" yaml:"localhost-only-metrics"`
 
+	// EnableLoginHandler indicates we want the login handler enabled
+	EnableLoginHandler bool `json:"enable-login-handler" yaml:"enable-login-handler"`
 	// EnableAuthorizationHeader indicates we should pass the authorization header
 	EnableAuthorizationHeader bool `json:"enable-authorization-header" yaml:"enable-authorization-header"`
 
