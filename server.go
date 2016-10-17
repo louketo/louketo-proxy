@@ -177,7 +177,10 @@ func (r *oauthProxy) createReverseProxy() error {
 	oauth.GET(tokenURL, r.tokenHandler)
 	oauth.GET(expiredURL, r.expirationHandler)
 	oauth.GET(logoutURL, r.logoutHandler)
-	oauth.POST(loginURL, r.loginHandler)
+	// step: is the login hanler enabled?
+	if r.config.EnableLoginHandler {
+		oauth.POST(loginURL, r.loginHandler)
+	}
 	// step: enable the metric page?
 	if r.config.EnableMetrics {
 		oauth.GET(metricsURL, r.metricsHandler)
@@ -242,8 +245,7 @@ func (r *oauthProxy) createForwardingProxy() error {
 	}
 
 	proxy.OnResponse().DoFunc(func(resp *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
-		// @NOTES, somewhat annoying but goproxy hands back a nil response on proxy client
-		// errors
+		// @NOTES, somewhat annoying but goproxy hands back a nil response on proxy client errors
 		if resp != nil && r.config.LogRequests {
 			start := ctx.UserData.(time.Time)
 			latency := time.Now().Sub(start)

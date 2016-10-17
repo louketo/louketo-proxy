@@ -85,6 +85,27 @@ func TestExpirationHandler(t *testing.T) {
 	}
 }
 
+func TestLoginHandlerDisabled(t *testing.T) {
+	config := newFakeKeycloakConfig()
+	config.EnableLoginHandler = false
+
+	_, _, url := newTestProxyService(config)
+	resp, err := http.Post(url+"/oauth/login", "", nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+}
+
+func TestLoginHandlerNotDisabled(t *testing.T) {
+	config := newFakeKeycloakConfig()
+	config.EnableLoginHandler = true
+	_, _, url := newTestProxyService(config)
+	resp, err := http.Post(url+"/oauth/login", "", nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+}
+
 func TestLoginHandler(t *testing.T) {
 	_, _, u := newTestProxyService(nil)
 

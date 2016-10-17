@@ -135,6 +135,7 @@ func newFakeKeycloakConfig() *Config {
 		DiscoveryURL:              "127.0.0.1:8080",
 		EnableAuthorizationHeader: true,
 		EnableRefreshTokens:       false,
+		EnableLoginHandler:        true,
 		EncryptionKey:             "AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j",
 		LogRequests:               true,
 		Scopes:                    []string{},
