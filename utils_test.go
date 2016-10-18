@@ -25,9 +25,9 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
-	"time"
 )
 
 func TestCreateOpenIDClient(t *testing.T) {
@@ -367,7 +367,7 @@ func TestMergeMaps(t *testing.T) {
 		},
 	}
 	for i, x := range cases {
-		merged := mergeMaps(x.Source, x.Dest)
+		merged := mergeMaps(x.Dest, x.Source)
 		if !reflect.DeepEqual(x.Expected, merged) {
 			t.Errorf("case %d, expected: %v but got: %v", i, x.Expected, merged)
 		}

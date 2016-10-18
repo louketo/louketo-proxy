@@ -1,9 +1,12 @@
 
 #### **1.2.9**
 
+FIXES:
+ * Fixed the --headers and --tags command line options, had a typo on the mergeMaps method
+
 BREAKING CHANGES:
  * The login handler by default has been switched off, you must enable for --enable-login-handler
- * The login handler now enforces the request can only come from a localhost if a client is defined 
+ * The login handler now enforces the request can only come from a localhost if a client is defined
 
 #### **1.2.8**
 
