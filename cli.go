@@ -496,7 +496,7 @@ func parseCLIOptions(cx *cli.Context, config *Config) (err error) {
 		if err != nil {
 			return err
 		}
-		mergeMaps(config.MatchClaims, tags)
+		mergeMaps(config.TagData, tags)
 	}
 	if cx.IsSet("match-claims") {
 		claims, err := decodeKeyPairs(cx.StringSlice("match-claims"))
@@ -510,7 +510,7 @@ func parseCLIOptions(cx *cli.Context, config *Config) (err error) {
 		if err != nil {
 			return err
 		}
-		mergeMaps(config.MatchClaims, headers)
+		mergeMaps(config.Headers, headers)
 	}
 	if cx.IsSet("resource") {
 		for _, x := range cx.StringSlice("resource") {

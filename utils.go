@@ -435,7 +435,7 @@ func capitalize(s string) string {
 //
 // mergeMaps simples copies the keys from source to destination
 //
-func mergeMaps(source, dest map[string]string) map[string]string {
+func mergeMaps(dest, source map[string]string) map[string]string {
 	for k, v := range source {
 		dest[k] = v
 	}
