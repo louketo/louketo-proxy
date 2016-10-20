@@ -209,16 +209,7 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 // loginHandler provide's a generic endpoint for clients to perform a user_credentials login to the provider
 //
 func (r *oauthProxy) loginHandler(cx *gin.Context) {
-	// step: disable any request no coming from loopback - not we are ignoring any headers here
-	// i.e. X-Forwarded-For and X-Real-IP are being ignored
-	// @NOTE: the current implementation of IsLoopback does not except host addresses with a port
 	errorMsg, code, err := func() (string, int, error) {
-		if r.config.ClientSecret != "" {
-			if !net.ParseIP(strings.Split(cx.Request.RemoteAddr, ":")[0]).IsLoopback() {
-				return "login request from non-loopback client", http.StatusUnauthorized, errors.New("original client address invalid")
-			}
-		}
-
 		// step: parse the client credentials
 		username := cx.Request.PostFormValue("username")
 		password := cx.Request.PostFormValue("password")
