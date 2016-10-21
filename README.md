@@ -400,7 +400,7 @@ Depending on how the application url's are laid out, you might want protect the 
 Or on the command line
 
 ```shell
-  --resource "uri=/some_white_listed_url,white-listed=true"
+  --resource "uri=/some_white_listed_url|white-listed=true"
   --resource "uri=/"  # requires authentication on the rest
   --resource "uri=/admin|roles=admin,superuser|methods=POST,DELETE
 ```
