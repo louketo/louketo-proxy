@@ -261,6 +261,10 @@ func getCLIOptions() []cli.Flag {
 			Name:  "skip-upstream-tls-verify",
 			Usage: "whether to skip the verification of any upstream TLS (defaults to true)",
 		},
+		cli.BoolTFlag{
+			Name:  "skip-openid-provider-tls-verify",
+			Usage: "whether to skip the verification of any TLS communication with the openid provider (defaults to false)",
+		},
 		cli.StringSliceFlag{
 			Name:  "match-claims",
 			Usage: "keypair values for matching access token claims e.g. aud=myapp, iss=http://example.*",
@@ -373,6 +377,9 @@ func parseCLIOptions(cx *cli.Context, config *Config) (err error) {
 	}
 	if cx.IsSet("skip-upstream-tls-verify") {
 		config.SkipUpstreamTLSVerify = cx.Bool("skip-upstream-tls-verify")
+	}
+	if cx.IsSet("skip-openid-provider-tls-verify") {
+		config.SkipOpenIDProviderTLSVerify = cx.Bool("skip-openid-provider-tls-verify")
 	}
 	if cx.IsSet("encryption-key") {
 		config.EncryptionKey = cx.String("encryption-key")
