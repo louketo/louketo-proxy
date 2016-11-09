@@ -115,6 +115,8 @@ type Config struct {
 	RedirectionURL string `json:"redirection-url" yaml:"redirection-url"`
 	// RevocationEndpoint is the token revocation endpoint to revoke refresh tokens
 	RevocationEndpoint string `json:"revocation-url" yaml:"revocation-url"`
+	// SkipOpenIDProviderTLSVerify skips the tls verification for openid provider communication
+	SkipOpenIDProviderTLSVerify bool `json:"skip-openid-provider-tls-verify" yaml:"skip-openid-provider-tls-verify"`
 	// Scopes is a list of scope we should request
 	Scopes []string `json:"scopes" yaml:"scopes"`
 	// Upstream is the upstream endpoint i.e whom were proxying to

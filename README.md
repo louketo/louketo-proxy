@@ -76,6 +76,7 @@ GLOBAL OPTIONS:
    --tls-ca-key value                  the path the ca private key, used by the forward signing proxy
    --tls-client-certificate value      the path to the client certificate, used to outbound connections in reverse and forwarding proxy modes
    --skip-upstream-tls-verify          whether to skip the verification of any upstream TLS (defaults to true)
+   --skip-openid-provider-tls-verify   whether to skip the verification of any TLS communication with the openid provider (defaults to false)
    --match-claims value                keypair values for matching access token claims e.g. aud=myapp, iss=http://example.*
    --add-claims value                  retrieve extra claims from the token and inject into headers, e.g given_name -> X-Auth-Given-Name
    --resource value                    a list of resources 'uri=/admin|methods=GET,PUT|roles=role1,role2'
@@ -468,4 +469,3 @@ You can control the upstream endpoint via the --upstream-url option. Both http a
 #### **Metrics**
 
 Assuming the --enable-metrics has been set, a prometheus endpoint can be found on /oauth/metrics
-

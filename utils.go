@@ -162,10 +162,22 @@ func createOpenIDClient(cfg *Config) (*oidc.Client, oidc.ProviderConfig, error) 
 	if strings.HasSuffix(cfg.DiscoveryURL, "/.well-known/openid-configuration") {
 		cfg.DiscoveryURL = strings.TrimSuffix(cfg.DiscoveryURL, "/.well-known/openid-configuration")
 	}
+	// initalize http client
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: cfg.SkipOpenIDProviderTLSVerify,
+		},
+	}
+	providerHttpClient := &http.Client{
+		Transport: tr,
+		Timeout:   time.Second * 10,
+	}
+
 	// step: attempt to retrieve the provider configuration
 	for i := 0; i < 3; i++ {
 		log.Infof("attempting to retrieve the openid configuration from the discovery url: %s", cfg.DiscoveryURL)
-		providerConfig, err = oidc.FetchProviderConfig(http.DefaultClient, cfg.DiscoveryURL)
+
+		providerConfig, err = oidc.FetchProviderConfig(providerHttpClient, cfg.DiscoveryURL)
 		if err == nil {
 			goto GOT_CONFIG
 		}
@@ -184,9 +196,7 @@ GOT_CONFIG:
 		},
 		RedirectURL: fmt.Sprintf("%s/oauth/callback", cfg.RedirectionURL),
 		Scope:       append(cfg.Scopes, oidc.DefaultScope...),
-		HTTPClient: &http.Client{
-			Timeout: time.Second * 10,
-		},
+		HTTPClient:  providerHttpClient,
 	})
 	if err != nil {
 		return nil, oidc.ProviderConfig{}, err
