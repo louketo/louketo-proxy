@@ -1,6 +1,9 @@
 
 #### **2.0.0**
 
+FEATURES:
+ * Adding the --skip-openid-provider-tls-verify option to bypass the TLS verification for Idp
+
 FIXES:
  * Fixed the --headers and --tags command line options, had a typo on the mergeMaps method
 
