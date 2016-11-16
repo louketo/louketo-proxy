@@ -42,9 +42,7 @@ func newDefaultConfig() *Config {
 	}
 }
 
-//
 // isValid validates if the config is valid
-//
 func (r *Config) isValid() error {
 	if r.Listen == "" {
 		return errors.New("you have not specified the listening interface")
@@ -114,7 +112,7 @@ func (r *Config) isValid() error {
 				}
 			}
 		}
-		// step: valid the resources
+		// check: ensure each of the resource are valid
 		for _, resource := range r.Resources {
 			if err := resource.valid(); err != nil {
 				return err

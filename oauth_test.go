@@ -25,6 +25,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"sync"
+	"testing"
 	"time"
 
 	"github.com/coreos/go-oidc/jose"
@@ -150,6 +151,7 @@ func newFakeOAuthServer() *fakeOAuthServer {
 	r.POST("auth/realms/hod-test/protocol/openid-connect/token", service.tokenHandler)
 	r.GET("auth/realms/hod-test/protocol/openid-connect/auth", service.authHandler)
 	r.POST("auth/realms/hod-test/protocol/openid-connect/logout", service.logoutHandler)
+	r.GET("auth/realms/hod-test/protocol/openid-connect/userinfo", service.userinfoHandler)
 
 	location, err := url.Parse(httptest.NewServer(r).URL)
 	if err != nil {
@@ -221,13 +223,24 @@ func (r *fakeOAuthServer) authHandler(cx *gin.Context) {
 }
 
 func (r *fakeOAuthServer) logoutHandler(cx *gin.Context) {
-	refreshToken := cx.PostForm("refresh_token")
-	if refreshToken == "" {
+	if refreshToken := cx.PostForm("refresh_token"); refreshToken == "" {
 		cx.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 
 	cx.AbortWithStatus(http.StatusNoContent)
+}
+
+func (r *fakeOAuthServer) userinfoHandler(cx *gin.Context) {
+	cx.JSON(http.StatusOK, map[string]string{
+		"sub":                "0d69648e-380f-48c0-90cd-91e55fe68452",
+		"name":               "Rohith Jayawardene",
+		"given_name":         "Rohith",
+		"family_name":        "Jayawardene",
+		"preferred_username": "gambol99@gmail.com",
+		"email":              "gambol99@gmail.com",
+		"picture":            "http://gambol99.com/gambol99/me.jpg",
+	})
 }
 
 func (r *fakeOAuthServer) tokenHandler(cx *gin.Context) {
@@ -270,6 +283,10 @@ func (r *fakeOAuthServer) tokenHandler(cx *gin.Context) {
 	default:
 		cx.AbortWithStatus(http.StatusBadRequest)
 	}
+}
+
+func TestGetUserinfo(t *testing.T) {
+
 }
 
 func getRandomString(n int) string {

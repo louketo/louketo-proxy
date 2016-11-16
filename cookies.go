@@ -23,9 +23,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-//
 // dropCookie drops a cookie into the response
-//
 func (r *oauthProxy) dropCookie(cx *gin.Context, name, value string, duration time.Duration) {
 	// step: default to the host header, else the config domain
 	domain := strings.Split(cx.Request.Host, ":")[0]
@@ -47,38 +45,28 @@ func (r *oauthProxy) dropCookie(cx *gin.Context, name, value string, duration ti
 	http.SetCookie(cx.Writer, cookie)
 }
 
-//
 // dropAccessTokenCookie drops a access token cookie into the response
-//
 func (r *oauthProxy) dropAccessTokenCookie(cx *gin.Context, value string, duration time.Duration) {
 	r.dropCookie(cx, r.config.CookieAccessName, value, duration)
 }
 
-//
 // dropRefreshTokenCookie drops a refresh token cookie into the response
-//
 func (r *oauthProxy) dropRefreshTokenCookie(cx *gin.Context, value string, duration time.Duration) {
 	r.dropCookie(cx, r.config.CookieRefreshName, value, duration)
 }
 
-//
 // clearAllCookies is just a helper function for the below
-//
 func (r *oauthProxy) clearAllCookies(cx *gin.Context) {
 	r.clearAccessTokenCookie(cx)
 	r.clearRefreshTokenCookie(cx)
 }
 
-//
 // clearRefreshSessionCookie clears the session cookie
-//
 func (r *oauthProxy) clearRefreshTokenCookie(cx *gin.Context) {
 	r.dropCookie(cx, r.config.CookieRefreshName, "", time.Duration(-10*time.Hour))
 }
 
-//
 // clearAccessTokenCookie clears the session cookie
-//
 func (r *oauthProxy) clearAccessTokenCookie(cx *gin.Context) {
 	r.dropCookie(cx, r.config.CookieAccessName, "", time.Duration(-10*time.Hour))
 }
