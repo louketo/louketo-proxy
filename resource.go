@@ -26,9 +26,7 @@ func newResource() *Resource {
 	return &Resource{}
 }
 
-//
 // parse decodes a resource definition
-//
 func (r *Resource) parse(resource string) (*Resource, error) {
 	if resource == "" {
 		return nil, errors.New("the resource has no options")
@@ -60,9 +58,7 @@ func (r *Resource) parse(resource string) (*Resource, error) {
 	return r, nil
 }
 
-//
 // valid ensure the resource is valid
-//
 func (r *Resource) valid() error {
 	if r.Methods == nil {
 		r.Methods = make([]string, 0)
@@ -95,7 +91,7 @@ func (r *Resource) valid() error {
 	return nil
 }
 
-// getRoles gets a list of roles
+// getRoles returns a list of roles for this resource
 func (r Resource) getRoles() string {
 	return strings.Join(r.Roles, ",")
 }

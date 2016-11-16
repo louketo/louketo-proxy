@@ -20,41 +20,41 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetSessionToken(t *testing.T) {
+func TestGetIndentity(t *testing.T) {
 	p, _, _ := newTestProxyService(nil)
 	token := newFakeAccessToken(nil, 0)
 	encoded := token.Encode()
 
 	testCases := []struct {
-		Context *gin.Context
+		Request *http.Request
 		Ok      bool
 	}{
 		{
-			Context: &gin.Context{
-				Request: &http.Request{
-					Header: http.Header{
-						"Authorization": []string{fmt.Sprintf("Bearer %s", encoded)},
-					},
+			Request: &http.Request{
+				Header: http.Header{
+					"Authorization": []string{fmt.Sprintf("Bearer %s", encoded)},
 				},
 			},
 			Ok: true,
 		},
 		{
-			Context: &gin.Context{
-				Request: &http.Request{
-					Header: http.Header{},
-				},
+			Request: &http.Request{
+				Header: http.Header{},
+			},
+		},
+		{
+			Request: &http.Request{
+				Header: http.Header{},
 			},
 		},
 		// @TODO need to other checks
 	}
 
 	for i, c := range testCases {
-		user, err := p.getIdentity(c.Context)
+		user, err := p.getIdentity(c.Request)
 		if err != nil && c.Ok {
 			t.Errorf("test case %d should not have errored", i)
 			continue
@@ -68,81 +68,96 @@ func TestGetSessionToken(t *testing.T) {
 	}
 }
 
-func TestGetTokenFromBearer(t *testing.T) {
-	p, _, _ := newTestProxyService(nil)
-	ac := newFakeAccessToken(nil, 0)
+func TestGetTokenInRequest(t *testing.T) {
+	defaultName := newDefaultConfig().CookieAccessName
+	token := newFakeAccessToken(nil, 0)
 	cs := []struct {
-		Error error
-		Token string
+		Token    string
+		IsBearer bool
+		Error    error
 	}{
 		{
 			Token: "",
 			Error: ErrSessionNotFound,
 		},
 		{
-			Token: "Bearer",
-			Error: ErrInvalidSession,
+			Token: token.Encode(),
+			Error: nil,
 		},
 		{
-			Token: fmt.Sprintf("Bearer %s", ac.Encode()),
-			Error: nil,
+			Token:    token.Encode(),
+			IsBearer: true,
+			Error:    nil,
 		},
 	}
 	for i, x := range cs {
-		cx := newFakeGinContext("GET", "/")
+		req := newFakeHTTPRequest(http.MethodGet, "/")
 		if x.Token != "" {
-			cx.Request.Header.Set(authorizationHeader, x.Token)
+			switch x.IsBearer {
+			case true:
+				req.Header.Set(authorizationHeader, "Bearer "+x.Token)
+			default:
+				req.AddCookie(&http.Cookie{
+					Name:   defaultName,
+					Path:   req.URL.Path,
+					Domain: req.Host,
+					Value:  x.Token,
+				})
+			}
 		}
-		_, err := p.getTokenFromBearer(cx)
-		assert.Equal(t, x.Error, err, "case %d, expected error: %v, got: %v", i, x.Error, err)
+		access, bearer, err := getTokenInRequest(req, defaultName)
+		switch x.Error {
+		case nil:
+			assert.NoError(t, err, "case %d should not have thrown an error", i)
+			assert.Equal(t, x.IsBearer, bearer)
+			assert.Equal(t, token.Encode(), access)
+		default:
+			assert.Equal(t, x.Error, err, "case %d, expected error: %s", i, x.Error)
+		}
 	}
 }
 
 func TestGetRefreshTokenFromCookie(t *testing.T) {
 	p, _, _ := newTestProxyService(nil)
 	cases := []struct {
-		Cookies  []*http.Cookie
+		Cookies  *http.Cookie
 		Expected string
 		Ok       bool
 	}{
 		{
-			Cookies: []*http.Cookie{},
+			Cookies: &http.Cookie{},
 		},
 		{
-			Cookies: []*http.Cookie{
-				{
-					Name:   "not_a_session_cookie",
-					Path:   "/",
-					Domain: "127.0.0.1",
-				},
+			Cookies: &http.Cookie{
+				Name:   "not_a_session_cookie",
+				Path:   "/",
+				Domain: "127.0.0.1",
 			},
 		},
 		{
-			Cookies: []*http.Cookie{
-				{
-					Name:   "kc-state",
-					Path:   "/",
-					Domain: "127.0.0.1",
-					Value:  "refresh_token",
-				},
+			Cookies: &http.Cookie{
+				Name:   "kc-state",
+				Path:   "/",
+				Domain: "127.0.0.1",
+				Value:  "refresh_token",
 			},
 			Expected: "refresh_token",
 			Ok:       true,
 		},
 	}
 
-	for i, x := range cases {
-		context := newFakeGinContextWithCookies("GET", "/", x.Cookies)
-
-		token, err := p.getRefreshTokenFromCookie(context)
-		if err != nil && x.Ok {
-			t.Errorf("case %d, should not have thrown an error: %s, headers: %v", i, err, context.Writer.Header())
-			continue
+	for _, x := range cases {
+		req := newFakeHTTPRequest(http.MethodGet, "/")
+		req.AddCookie(x.Cookies)
+		token, err := p.getRefreshTokenFromCookie(req)
+		switch x.Ok {
+		case true:
+			assert.NoError(t, err)
+			assert.NotEmpty(t, token)
+			assert.Equal(t, x.Expected, token)
+		default:
+			assert.Error(t, err)
+			assert.Empty(t, token)
 		}
-		if err == nil && !x.Ok {
-			t.Errorf("case %d, should have thrown an error", i)
-			continue
-		}
-		assert.Equal(t, x.Expected, token, "case %d, expected token: %v, got: %v", x.Expected, token)
 	}
 }

@@ -54,9 +54,7 @@ var (
 	symbolsFilter   = regexp.MustCompilePOSIX("[_$><\\[\\].,\\+-/'%^&*()!\\\\]+")
 )
 
-//
 // readConfigFile reads and parses the configuration file
-//
 func readConfigFile(filename string, config *Config) error {
 	// step: read in the contents of the file
 	content, err := ioutil.ReadFile(filename)
@@ -74,9 +72,7 @@ func readConfigFile(filename string, config *Config) error {
 	return err
 }
 
-//
 // encryptDataBlock encrypts the plaintext string with the key
-//
 func encryptDataBlock(plaintext, key []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -95,9 +91,7 @@ func encryptDataBlock(plaintext, key []byte) ([]byte, error) {
 	return cipherText, nil
 }
 
-//
 // decryptDataBlock decrypts some cipher text
-//
 func decryptDataBlock(cipherText, key []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -120,11 +114,8 @@ func decryptDataBlock(cipherText, key []byte) ([]byte, error) {
 	return cipherText, nil
 }
 
-//
 // encodeText encodes the session state information into a value for a cookie to consume
-//
 func encodeText(plaintext string, key string) (string, error) {
-	// step: encrypt the refresh state
 	cipherText, err := encryptDataBlock([]byte(plaintext), []byte(key))
 	if err != nil {
 		return "", err
@@ -133,9 +124,7 @@ func encodeText(plaintext string, key string) (string, error) {
 	return base64.StdEncoding.EncodeToString(cipherText), nil
 }
 
-//
 // decodeText decodes the session state cookie value
-//
 func decodeText(state, key string) (string, error) {
 	// step: decode the base64 encrypted cookie
 	cipherText, err := base64.StdEncoding.DecodeString(state)

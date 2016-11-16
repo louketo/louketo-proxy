@@ -186,6 +186,11 @@ func newTestService() string {
 	return u
 }
 
+func newTestProxyOnlyService() *oauthProxy {
+	p, _, _ := newTestProxyService(nil)
+	return p
+}
+
 func newTestProxyService(config *Config) (*oauthProxy, *fakeOAuthServer, string) {
 	log.SetOutput(ioutil.Discard)
 
@@ -283,6 +288,18 @@ func makeTestOauthLogin(location string) (string, error) {
 	}
 
 	return "", errors.New("access cookie not found in response from oauth service")
+}
+
+func newFakeHTTPRequest(method, path string) *http.Request {
+	return &http.Request{
+		Method: method,
+		Header: make(map[string][]string, 0),
+		URL: &url.URL{
+			Scheme: "http",
+			Host:   "127.0.0.1",
+			Path:   path,
+		},
+	}
 }
 
 func makeTestCodeFlowLogin(location string) (*http.Response, error) {

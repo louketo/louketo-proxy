@@ -33,9 +33,7 @@ const (
 	cxEnforce = "Enforcing"
 )
 
-//
 // loggingMiddleware is a custom http logger
-//
 func (r *oauthProxy) loggingMiddleware() gin.HandlerFunc {
 	return func(cx *gin.Context) {
 		start := time.Now()
@@ -53,9 +51,7 @@ func (r *oauthProxy) loggingMiddleware() gin.HandlerFunc {
 	}
 }
 
-//
 // metricsMiddleware is responsible for collecting metrics
-//
 func (r *oauthProxy) metricsMiddleware() gin.HandlerFunc {
 	log.Infof("enabled the service metrics middleware, available on %s%s", oauthURL, metricsURL)
 
@@ -78,10 +74,8 @@ func (r *oauthProxy) metricsMiddleware() gin.HandlerFunc {
 	}
 }
 
-//
 // entrypointMiddleware checks to see if the request requires authentication
-//
-func (r oauthProxy) entrypointMiddleware() gin.HandlerFunc {
+func (r *oauthProxy) entrypointMiddleware() gin.HandlerFunc {
 	return func(cx *gin.Context) {
 		if strings.HasPrefix(cx.Request.URL.Path, oauthURL) {
 			return
@@ -104,9 +98,7 @@ func (r oauthProxy) entrypointMiddleware() gin.HandlerFunc {
 	}
 }
 
-//
 // authenticationMiddleware is responsible for verifying the access token
-//
 func (r *oauthProxy) authenticationMiddleware() gin.HandlerFunc {
 	return func(cx *gin.Context) {
 		// step: grab the client ip address - quicker to do once
@@ -122,7 +114,7 @@ func (r *oauthProxy) authenticationMiddleware() gin.HandlerFunc {
 		}
 
 		// step: grab the user identity from the request
-		user, err := r.getIdentity(cx)
+		user, err := r.getIdentity(cx.Request)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err.Error(),
@@ -196,7 +188,7 @@ func (r *oauthProxy) authenticationMiddleware() gin.HandlerFunc {
 			}).Infof("accces token for user: %s has expired, attemping to refresh the token", user.email)
 
 			// step: check if the user has refresh token
-			rToken, err := r.retrieveRefreshToken(cx, user)
+			rToken, err := r.retrieveRefreshToken(cx.Request, user)
 			if err != nil {
 				log.WithFields(log.Fields{
 					"email":     user.email,

@@ -16,30 +16,26 @@ limitations under the License.
 package main
 
 import (
+	"net/http"
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-oidc/jose"
-	"github.com/gin-gonic/gin"
 )
 
-//
 // getIdentity retrieves the user identity from a request, either from a session cookie or a bearer token
-//
-func (r *oauthProxy) getIdentity(cx *gin.Context) (*userContext, error) {
+func (r *oauthProxy) getIdentity(req *http.Request) (*userContext, error) {
 	isBearer := false
 
 	// step: check for a bearer token or cookie with jwt token
-	token, err := r.getAccessTokenFromCookie(cx)
+	access, isBearer, err := getTokenInRequest(req, r.config.CookieAccessName)
 	if err != nil {
-		if err != ErrSessionNotFound {
-			return nil, err
-		}
-		// step: else attempt to grab token from the bearer token]
-		if token, err = r.getTokenFromBearer(cx); err != nil {
-			return nil, err
-		}
-		isBearer = true
+		return nil, err
+	}
+	// step: parse the access token
+	token, err := jose.ParseJWT(access)
+	if err != nil {
+		return nil, err
 	}
 
 	// step: parse the access token and extract the user identity
@@ -61,43 +57,55 @@ func (r *oauthProxy) getIdentity(cx *gin.Context) (*userContext, error) {
 	return user, nil
 }
 
-//
-// getTokenFromBearer attempt to retrieve token from bearer token
-//
-func (r *oauthProxy) getTokenFromBearer(cx *gin.Context) (jose.JWT, error) {
-	auth := cx.Request.Header.Get(authorizationHeader)
-	if auth == "" {
-		return jose.JWT{}, ErrSessionNotFound
-	}
-
-	items := strings.Split(auth, " ")
-	if len(items) != 2 {
-		return jose.JWT{}, ErrInvalidSession
-	}
-
-	return jose.ParseJWT(items[1])
-}
-
-//
-// getAccessTokenFromCookie attempt to grab access token from cookie
-//
-func (r *oauthProxy) getAccessTokenFromCookie(cx *gin.Context) (jose.JWT, error) {
-	cookie := findCookie(r.config.CookieAccessName, cx.Request.Cookies())
-	if cookie == nil {
-		return jose.JWT{}, ErrSessionNotFound
-	}
-
-	return jose.ParseJWT(cookie.Value)
-}
-
-//
 // getRefreshTokenFromCookie returns the refresh token from the cookie if any
-//
-func (r *oauthProxy) getRefreshTokenFromCookie(cx *gin.Context) (string, error) {
-	if cookie := findCookie(r.config.CookieRefreshName, cx.Request.Cookies()); cookie != nil {
-		return cookie.Value, nil
+func (r *oauthProxy) getRefreshTokenFromCookie(req *http.Request) (string, error) {
+	token, err := getTokenInCookie(req, r.config.CookieRefreshName)
+	if err != nil {
+		return "", err
 	}
 
-	return "", ErrSessionNotFound
+	return token, nil
+}
 
+// getTokenInRequest returns the access token from the http request
+func getTokenInRequest(req *http.Request, name string) (string, bool, error) {
+	bearer := true
+	// step: check for a token in the authorization header
+	token, err := getTokenInBearer(req)
+	if err != nil {
+		if err != ErrSessionNotFound {
+			return "", false, err
+		}
+		if token, err = getTokenInCookie(req, name); err != nil {
+			return token, false, err
+		}
+		bearer = false
+	}
+
+	return token, bearer, nil
+}
+
+// getTokenInBearer retrieves a access token from the authorization header
+func getTokenInBearer(req *http.Request) (string, error) {
+	token := req.Header.Get(authorizationHeader)
+	if token == "" {
+		return "", ErrSessionNotFound
+	}
+
+	items := strings.Split(token, " ")
+	if len(items) != 2 {
+		return "", ErrInvalidSession
+	}
+
+	return items[1], nil
+}
+
+// getTokenInCookie retrieves the access token from the request cookies
+func getTokenInCookie(req *http.Request, name string) (string, error) {
+	cookie := findCookie(name, req.Cookies())
+	if cookie == nil {
+		return "", ErrSessionNotFound
+	}
+
+	return cookie.Value, nil
 }

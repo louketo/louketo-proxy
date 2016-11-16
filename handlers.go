@@ -33,9 +33,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-//
 // oauthAuthorizationHandler is responsible for performing the redirection to oauth provider
-//
 func (r *oauthProxy) oauthAuthorizationHandler(cx *gin.Context) {
 	// step: we can skip all of this if were not verifying the token
 	if r.config.SkipTokenVerification {
@@ -72,21 +70,16 @@ func (r *oauthProxy) oauthAuthorizationHandler(cx *gin.Context) {
 	if r.config.hasCustomSignInPage() {
 		// step: inject any custom tags into the context for the template
 		model := make(map[string]string, 0)
-		for k, v := range r.config.TagData {
-			model[k] = v
-		}
 		model["redirect"] = redirectionURL
 
-		cx.HTML(http.StatusOK, path.Base(r.config.SignInPage), model)
+		cx.HTML(http.StatusOK, path.Base(r.config.SignInPage), mergeMaps(model, r.config.TagData))
 		return
 	}
 
 	r.redirectToURL(redirectionURL, cx)
 }
 
-//
 // oauthCallbackHandler is responsible for handling the response from oauth service
-//
 func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 	// step: is token verification switched on?
 	if r.config.SkipTokenVerification {
@@ -176,10 +169,8 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 				}).Warnf("failed to save the refresh token in the store")
 			}
 		default:
-			//
 			// step: attempt to decode the refresh token (not all refresh tokens are jwt tokens;
 			// gooogle for instance.
-			//
 			if _, ident, err := parseToken(response.RefreshToken); err != nil {
 				r.dropRefreshTokenCookie(cx, encrypted, time.Duration(72)*time.Hour)
 			} else {
@@ -271,7 +262,7 @@ func (r *oauthProxy) logoutHandler(cx *gin.Context) {
 	redirectURL := cx.Request.URL.Query().Get("redirect")
 
 	// step: drop the access token
-	user, err := r.getIdentity(cx)
+	user, err := r.getIdentity(cx.Request)
 	if err != nil {
 		cx.AbortWithStatus(http.StatusBadRequest)
 		return
@@ -279,7 +270,7 @@ func (r *oauthProxy) logoutHandler(cx *gin.Context) {
 
 	// step: can either use the id token or the refresh token
 	identityToken := user.token.Encode()
-	if refresh, err := r.retrieveRefreshToken(cx, user); err == nil {
+	if refresh, err := r.retrieveRefreshToken(cx.Request, user); err == nil {
 		identityToken = refresh
 	}
 	r.clearAllCookies(cx)
@@ -313,7 +304,7 @@ func (r *oauthProxy) logoutHandler(cx *gin.Context) {
 		encodedSecret := url.QueryEscape(r.config.ClientSecret)
 
 		// step: construct the url for revocation
-		request, err := http.NewRequest("POST", r.config.RevocationEndpoint,
+		request, err := http.NewRequest(http.MethodPost, r.config.RevocationEndpoint,
 			bytes.NewBufferString(fmt.Sprintf("refresh_token=%s", identityToken)))
 		if err != nil {
 			log.WithFields(log.Fields{
@@ -367,7 +358,7 @@ func (r *oauthProxy) logoutHandler(cx *gin.Context) {
 //
 func (r *oauthProxy) expirationHandler(cx *gin.Context) {
 	// step: get the access token from the request
-	user, err := r.getIdentity(cx)
+	user, err := r.getIdentity(cx.Request)
 	if err != nil {
 		cx.AbortWithError(http.StatusUnauthorized, err)
 		return
@@ -386,7 +377,7 @@ func (r *oauthProxy) expirationHandler(cx *gin.Context) {
 //
 func (r *oauthProxy) tokenHandler(cx *gin.Context) {
 	// step: extract the access token from the request
-	user, err := r.getIdentity(cx)
+	user, err := r.getIdentity(cx.Request)
 	if err != nil {
 		cx.AbortWithError(http.StatusBadRequest, fmt.Errorf("unable to retrieve session, error: %s", err))
 		return
@@ -397,17 +388,13 @@ func (r *oauthProxy) tokenHandler(cx *gin.Context) {
 	cx.String(http.StatusOK, fmt.Sprintf("%s", user.token.Payload))
 }
 
-//
 // healthHandler is a health check handler for the service
-//
 func (r *oauthProxy) healthHandler(cx *gin.Context) {
 	cx.Writer.Header().Set(versionHeader, version)
 	cx.String(http.StatusOK, "OK\n")
 }
 
-//
 // metricsHandler forwards the request into the prometheus handler
-//
 func (r *oauthProxy) metricsHandler(cx *gin.Context) {
 	if r.config.LocalhostMetrics {
 		if !net.ParseIP(cx.ClientIP()).IsLoopback() {
@@ -419,10 +406,8 @@ func (r *oauthProxy) metricsHandler(cx *gin.Context) {
 	r.prometheusHandler.ServeHTTP(cx.Writer, cx.Request)
 }
 
-//
 // retrieveRefreshToken retrieves the refresh token from store or cookie
-//
-func (r *oauthProxy) retrieveRefreshToken(cx *gin.Context, user *userContext) (string, error) {
+func (r *oauthProxy) retrieveRefreshToken(req *http.Request, user *userContext) (string, error) {
 	var token string
 	var err error
 
@@ -431,12 +416,10 @@ func (r *oauthProxy) retrieveRefreshToken(cx *gin.Context, user *userContext) (s
 	case true:
 		token, err = r.GetRefreshToken(user.token)
 	default:
-		token, err = r.getRefreshTokenFromCookie(cx)
+		token, err = r.getRefreshTokenFromCookie(req)
 	}
-
-	// step: decode the cookie
 	if err != nil {
-		return token, err
+		return "", err
 	}
 
 	return decodeText(token, r.config.EncryptionKey)
