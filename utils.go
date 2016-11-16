@@ -162,32 +162,37 @@ func createOpenIDClient(cfg *Config) (*oidc.Client, oidc.ProviderConfig, error) 
 	if strings.HasSuffix(cfg.DiscoveryURL, "/.well-known/openid-configuration") {
 		cfg.DiscoveryURL = strings.TrimSuffix(cfg.DiscoveryURL, "/.well-known/openid-configuration")
 	}
-	// initalize http client
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: cfg.SkipOpenIDProviderTLSVerify,
+	// step: create a idp http client
+	providerHTTPClient := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: cfg.SkipOpenIDProviderTLSVerify,
+			},
 		},
-	}
-	providerHttpClient := &http.Client{
-		Transport: tr,
-		Timeout:   time.Second * 10,
+		Timeout: time.Second * 10,
 	}
 
 	// step: attempt to retrieve the provider configuration
-	for i := 0; i < 3; i++ {
-		log.Infof("attempting to retrieve the openid configuration from the discovery url: %s", cfg.DiscoveryURL)
-
-		providerConfig, err = oidc.FetchProviderConfig(providerHttpClient, cfg.DiscoveryURL)
-		if err == nil {
-			goto GOT_CONFIG
+	completeCh := make(chan bool)
+	go func() {
+		for {
+			log.Infof("attempting to retrieve the openid configuration from the discovery url: %s", cfg.DiscoveryURL)
+			if providerConfig, err = oidc.FetchProviderConfig(providerHTTPClient, cfg.DiscoveryURL); err == nil {
+				break // break and complete
+			}
+			log.Warnf("failed to get provider configuration from discovery url: %s, %s", cfg.DiscoveryURL, err)
+			time.Sleep(time.Second * 3)
 		}
-		log.Warnf("failed to get provider configuration from discovery url: %s, %s", cfg.DiscoveryURL, err)
-
-		time.Sleep(time.Second * 3)
+		completeCh <- true
+	}()
+	// step: wait for timeout or successful retrieval
+	select {
+	case <-time.After(30 * time.Second):
+		return nil, oidc.ProviderConfig{}, errors.New("failed to retrieve the provider configuration from discovery url")
+	case <-completeCh:
+		log.Infof("successfully retrieved the openid configuration from the discovery url: %s", cfg.DiscoveryURL)
 	}
-	return nil, oidc.ProviderConfig{}, errors.New("failed to retrieve the provider configuration from discovery url")
 
-GOT_CONFIG:
 	client, err := oidc.NewClient(oidc.ClientConfig{
 		ProviderConfig: providerConfig,
 		Credentials: oidc.ClientCredentials{
@@ -196,13 +201,13 @@ GOT_CONFIG:
 		},
 		RedirectURL: fmt.Sprintf("%s/oauth/callback", cfg.RedirectionURL),
 		Scope:       append(cfg.Scopes, oidc.DefaultScope...),
-		HTTPClient:  providerHttpClient,
+		HTTPClient:  providerHTTPClient,
 	})
 	if err != nil {
 		return nil, oidc.ProviderConfig{}, err
 	}
 
-	// step: start the provider sync
+	// step: start the provider sync for key rotation
 	client.SyncProviderConfig(cfg.DiscoveryURL)
 
 	return client, providerConfig, nil
