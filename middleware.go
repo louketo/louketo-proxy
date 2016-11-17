@@ -77,6 +77,7 @@ func (r *oauthProxy) metricsMiddleware() gin.HandlerFunc {
 // entrypointMiddleware checks to see if the request requires authentication
 func (r *oauthProxy) entrypointMiddleware() gin.HandlerFunc {
 	return func(cx *gin.Context) {
+		// step: we can skip the
 		if strings.HasPrefix(cx.Request.URL.Path, oauthURL) {
 			return
 		}
@@ -255,10 +256,8 @@ func (r *oauthProxy) authenticationMiddleware() gin.HandlerFunc {
 					}
 				}(user.token, rToken)
 			}
-
 			// step: update the with the new access token
 			user.token = token
-
 			// step: inject the user into the context
 			cx.Set(userContextName, user)
 		}

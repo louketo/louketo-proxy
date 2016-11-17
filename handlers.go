@@ -23,6 +23,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"net/url"
 	"path"
 	"strings"
@@ -392,6 +393,43 @@ func (r *oauthProxy) tokenHandler(cx *gin.Context) {
 func (r *oauthProxy) healthHandler(cx *gin.Context) {
 	cx.Writer.Header().Set(versionHeader, version)
 	cx.String(http.StatusOK, "OK\n")
+}
+
+// debugHandler is responsible for providing the pprof
+func (r *oauthProxy) debugHandler(cx *gin.Context) {
+	name := cx.Param("name")
+	switch cx.Request.Method {
+	case http.MethodGet:
+		switch name {
+		case "heap":
+			fallthrough
+		case "goroutine":
+			fallthrough
+		case "block":
+			fallthrough
+		case "threadcreate":
+			pprof.Handler(name).ServeHTTP(cx.Writer, cx.Request)
+		case "cmdline":
+			pprof.Cmdline(cx.Writer, cx.Request)
+		case "profile":
+			pprof.Profile(cx.Writer, cx.Request)
+		case "trace":
+			pprof.Trace(cx.Writer, cx.Request)
+		case "symbol":
+			pprof.Symbol(cx.Writer, cx.Request)
+		default:
+			cx.AbortWithStatus(http.StatusNotFound)
+		}
+	case http.MethodPost:
+		switch name {
+		case "symbol":
+			pprof.Symbol(cx.Writer, cx.Request)
+		default:
+			cx.AbortWithStatus(http.StatusNotFound)
+		}
+	}
+
+	cx.Abort()
 }
 
 // metricsHandler forwards the request into the prometheus handler
