@@ -313,11 +313,15 @@ func getCLIOptions() []cli.Flag {
 			Name:  "cors-max-age",
 			Usage: "the max age applied to cors headers (Access-Control-Max-Age)",
 		},
-		cli.BoolFlag{
+		cli.BoolTFlag{
 			Name:  "cors-credentials",
 			Usage: "the credentials access control header (Access-Control-Allow-Credentials)",
 		},
-		cli.BoolFlag{
+		cli.BoolTFlag{
+			Name:  "enable-profiling",
+			Usage: "switching on the golang profiling via pprof on /debug/pprof, /debug/pprof/heap etc",
+		},
+		cli.BoolTFlag{
 			Name:  "enable-security-filter",
 			Usage: "enables the security filter handler",
 		},
@@ -333,7 +337,7 @@ func getCLIOptions() []cli.Flag {
 			Name:  "log-requests",
 			Usage: "switch on logging of all incoming requests (defaults true)",
 		},
-		cli.BoolFlag{
+		cli.BoolTFlag{
 			Name:  "verbose",
 			Usage: "switch on debug / verbose logging",
 		},
@@ -428,6 +432,9 @@ func parseCLIOptions(cx *cli.Context, config *Config) (err error) {
 	}
 	if cx.IsSet("enable-login-handler") {
 		config.EnableLoginHandler = cx.Bool("enable-login-handler")
+	}
+	if cx.IsSet("enable-profiling") {
+		config.EnableProfiling = cx.Bool("enable-profiling")
 	}
 	if cx.IsSet("enable-metrics") {
 		config.EnableMetrics = cx.Bool("enable-metrics")

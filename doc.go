@@ -126,6 +126,8 @@ type Config struct {
 	// Headers permits adding customs headers across the board
 	Headers map[string]string `json:"headers" yaml:"headers"`
 
+	// EnableProfiling indicates if profiles is switched on
+	EnableProfiling bool `json:"enable-profiling" yaml:"enable-profiling"`
 	// EnableMetrics indicates if the metrics is enabled
 	EnableMetrics bool `json:"enable-metrics" yaml:"enable-metrics"`
 	// EnableURIMetrics indicates we want to keep metrics on uri request times
