@@ -347,33 +347,8 @@ Handling HTTPS requires man in the middling the TLS connection. By default if no
 
 [jest@starfury keycloak-proxy]$ bin/keycloak-proxy --enable-forwarding --forwarding-username=USERNAME --forwarding-password=PASSWORD --client-id=CLIENT_ID --client-secret=SECRET --discovery-url=https://keycloak.example.com/auth/realms/test --log-requests=true --tls-ca-cert=ca.pem --tls-ca-key=ca.key
 
-#### **- URL Tokenization (in-progress)**
----
-
-You can tokenize the url for an authenticated resource, extracting roles from the url itself. Say for example you have an applications where the uri comes in a namespace form, e.g.
-/logs/<namespace> i.e. logs/admin/, logs/app1, logs/app2 etc. you could use
-
-```YAML
-resources:
-- uri: logs/admin
-  roles: [ 'admin' ]
-- uri: logs/app1
-  roles: [ 'app1' ]
-- uri: logs/app2
-  roles: [ 'app2' ]
-```
-
-But it could become annoying, creating roles for namespaces, updating there, then updating config here. An easier way would be map a url token to a role name. i.e.
-
-```YAML
-resources:
-- uri: logs/%role%/
-```
-
-The above will extract role requirement from the url and apply to admission as per usual. /logs/admin will need a admin role, logs/app1 needs the app1 role, etc.
-
----
 #### **- Upstream Headers**
+---
 
 On protected resources the upstream endpoint will receive a number of headers added by the proxy, along with an custom claims.
 
