@@ -23,44 +23,48 @@
 		},
 		{
 			"ImportPath": "github.com/coreos/go-oidc/http",
-			"Rev": "e6174c764e906bd60c76fdfc33faf5e0bdc875d6"
+			"Rev": "dedb650fb29c39c2f21aa88c1e4cec66da8754d1"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-oidc/jose",
-			"Rev": "e6174c764e906bd60c76fdfc33faf5e0bdc875d6"
+			"Rev": "dedb650fb29c39c2f21aa88c1e4cec66da8754d1"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-oidc/key",
-			"Rev": "e6174c764e906bd60c76fdfc33faf5e0bdc875d6"
+			"Rev": "dedb650fb29c39c2f21aa88c1e4cec66da8754d1"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-oidc/oauth2",
-			"Rev": "e6174c764e906bd60c76fdfc33faf5e0bdc875d6"
+			"Rev": "dedb650fb29c39c2f21aa88c1e4cec66da8754d1"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-oidc/oidc",
-			"Rev": "e6174c764e906bd60c76fdfc33faf5e0bdc875d6"
+			"Rev": "dedb650fb29c39c2f21aa88c1e4cec66da8754d1"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-systemd/journal",
-			"Comment": "v5",
-			"Rev": "7b2428fec40033549c68f54e26e89e7ca9a9ce31"
+			"Comment": "v14-2-gefa0506",
+			"Rev": "efa0506b99d3d9cfade280f5c7a1c1980d8c6c48"
 		},
 		{
 			"ImportPath": "github.com/coreos/pkg/capnslog",
-			"Rev": "1914e367e85eaf0c25d495b48e060dfe6190f8d0"
+			"Comment": "v3-2-g447b7ec",
+			"Rev": "447b7ec906e523386d9c53be15b55a8ae86ea944"
 		},
 		{
 			"ImportPath": "github.com/coreos/pkg/health",
-			"Rev": "1914e367e85eaf0c25d495b48e060dfe6190f8d0"
+			"Comment": "v3-2-g447b7ec",
+			"Rev": "447b7ec906e523386d9c53be15b55a8ae86ea944"
 		},
 		{
 			"ImportPath": "github.com/coreos/pkg/httputil",
-			"Rev": "1914e367e85eaf0c25d495b48e060dfe6190f8d0"
+			"Comment": "v3-2-g447b7ec",
+			"Rev": "447b7ec906e523386d9c53be15b55a8ae86ea944"
 		},
 		{
 			"ImportPath": "github.com/coreos/pkg/timeutil",
-			"Rev": "1914e367e85eaf0c25d495b48e060dfe6190f8d0"
+			"Comment": "v3-2-g447b7ec",
+			"Rev": "447b7ec906e523386d9c53be15b55a8ae86ea944"
 		},
 		{
 			"ImportPath": "github.com/davecgh/go-spew/spew",
