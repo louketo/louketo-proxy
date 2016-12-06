@@ -14,23 +14,18 @@ install:
 - go get github.com/tools/godep
 script:
 - make test
-- if ([[ ${TRAVIS_BRANCH} == "master" ]] && [[ ${TRAVIS_PULL_REQUEST} != "true" ]]) || [[ -n ${TRAVIS_TAG} ]]; then
-     docker login -u ${REGISTRY_USERNAME} -p ${REGISTRY_TOKEN} -e ${AUTHOR_EMAIL} ${REGISTRY};
-     VERSION="latest" make docker-release;
+- if ([[ ${TRAVIS_BRANCH} == "master" ]] && [[ ${TRAVIS_EVENT_TYPE} == "push" ]]) || [[ -n ${TRAVIS_TAG} ]]; then
+    NAME=GOOS=windows GOARCH=amd64 godep go build -o bin/keycloak-proxy-windows-amd64.exe;
+    NAME=GOOS=windows GOARCH=386 godep go build -o bin/keycloak-proxy-windows-i386.exe;
+    NAME=GOOS=linux GOARCH=amd64 godep go build -o bin/keycloak-proxy-linux-amd64;
+    NAME=GOOS=linux GOARCH=386 godep go build -o bin/keycloak-proxy-linux-i386;
+    docker login -u ${REGISTRY_USERNAME} -p ${REGISTRY_TOKEN} -e ${AUTHOR_EMAIL} ${REGISTRY};
+    VERSION=${TRAVIS_TAG:-latest} make docker-release;
   fi
-before_deploy:
-- NAME=GOOS=windows GOARCH=amd64 godep go build -o bin/keycloak-proxy-windows-amd64.exe
-- NAME=GOOS=windows GOARCH=386 godep go build -o bin/keycloak-proxy-windows-i386.exe
-- NAME=GOOS=linux GOARCH=amd64 godep go build -o bin/keycloak-proxy-linux-amd64
-- NAME=GOOS=linux GOARCH=386 godep go build -o bin/keycloak-proxy-linux-i386
-after_deploy:
-- docker login -u ${REGISTRY_USERNAME} -p ${REGISTRY_TOKEN} -e ${AUTHOR_EMAIL} ${REGISTRY}
-- VERSION=$TRAVIS_TAG make docker-release
 deploy:
   provider: releases
   skip_cleanup: true
   on:
-    go: 1.7
     repo: gambol99/keycloak-proxy
     tags: true
   api_key:
