@@ -434,19 +434,21 @@ func (r *oauthProxy) headersMiddleware(custom []string) gin.HandlerFunc {
 
 		cx.Request.Header.Add("X-Forwarded-For", cx.Request.RemoteAddr)
 		cx.Request.Header.Set("X-Forwarded-Host", cx.Request.Host)
+		cx.Request.Header.Set("X-Forwarded-Proto", cx.Request.Header.Get("X-Forwarded-Proto"))
 	}
 }
 
-//
 // securityMiddleware performs numerous security checks on the request
-//
 func (r *oauthProxy) securityMiddleware() gin.HandlerFunc {
+	log.Info("enabling the security filter middleware")
 	// step: create the security options
 	secure := secure.New(secure.Options{
-		AllowedHosts:       r.config.Hostnames,
-		BrowserXssFilter:   true,
-		ContentTypeNosniff: true,
-		FrameDeny:          true,
+		AllowedHosts:          r.config.Hostnames,
+		BrowserXssFilter:      r.config.EnableBrowserXSSFilter,
+		ContentSecurityPolicy: r.config.ContentSecurityPolicy,
+		ContentTypeNosniff:    r.config.EnableContentNoSniff,
+		FrameDeny:             r.config.EnableFrameDeny,
+		SSLRedirect:           r.config.EnableHTTPSRedirect,
 	})
 
 	return func(cx *gin.Context) {

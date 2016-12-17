@@ -64,9 +64,7 @@ func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 }
 
-//
 // newProxy create's a new proxy from configuration
-//
 func newProxy(config *Config) (*oauthProxy, error) {
 	var err error
 	// step: set the logger
@@ -131,9 +129,7 @@ func newProxy(config *Config) (*oauthProxy, error) {
 	return service, nil
 }
 
-//
 // createReverseProxy creates a reverse proxy
-//
 func (r *oauthProxy) createReverseProxy() error {
 	log.Infof("enabled reverse proxy mode, upstream url: %s", r.config.Upstream)
 
@@ -162,12 +158,10 @@ func (r *oauthProxy) createReverseProxy() error {
 	if r.config.LogRequests {
 		engine.Use(r.loggingMiddleware())
 	}
-
 	// step: enabling the metrics?
 	if r.config.EnableMetrics {
 		engine.Use(r.metricsMiddleware())
 	}
-
 	// step: enabling the security filter?
 	if r.config.EnableSecurityFilter {
 		engine.Use(r.securityMiddleware())
@@ -212,9 +206,7 @@ func (r *oauthProxy) createReverseProxy() error {
 	return nil
 }
 
-//
 // createForwardingProxy creates a forwarding proxy
-//
 func (r *oauthProxy) createForwardingProxy() error {
 	log.Infof("enabling forward signing mode, listening on %s", r.config.Listen)
 
@@ -284,77 +276,24 @@ func (r *oauthProxy) createForwardingProxy() error {
 	return nil
 }
 
-//
 // Run starts the proxy service
-//
 func (r *oauthProxy) Run() error {
-	tlsConfig := &tls.Config{}
-
-	// step: are we doing mutual tls?
-	if r.config.TLSCaCertificate != "" {
-		log.Infof("enabling mutual tls, reading in the signing ca: %s", r.config.TLSCaCertificate)
-		caCert, err := ioutil.ReadFile(r.config.TLSCaCertificate)
-		if err != nil {
-			return err
-		}
-
-		caCertPool := x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM(caCert)
-		tlsConfig.ClientCAs = caCertPool
-		tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
+	// step: create the service listener
+	listener, err := createHTTPListener(listenerConfig{
+		listen:        r.config.Listen,
+		certificate:   r.config.TLSCertificate,
+		privateKey:    r.config.TLSPrivateKey,
+		ca:            r.config.TLSCaCertificate,
+		clientCert:    r.config.TLSClientCertificate,
+		proxyProtocol: r.config.EnableProxyProtocol,
+	})
+	if err != nil {
+		return err
 	}
-
+	// step: create the http server
 	server := &http.Server{
 		Addr:    r.config.Listen,
 		Handler: r.router,
-	}
-
-	// step: create the listener
-	var listener net.Listener
-	var err error
-	switch strings.HasPrefix(r.config.Listen, "unix://") {
-	case true:
-		socket := strings.Trim(r.config.Listen, "unix://")
-		// step: delete the socket if it exists
-		if exists := fileExists(socket); exists {
-			if err = os.Remove(socket); err != nil {
-				return err
-			}
-		}
-
-		log.Infof("listening on unix socket: %s", r.config.Listen)
-		if listener, err = net.Listen("unix", socket); err != nil {
-			return err
-		}
-
-	default:
-		listener, err = net.Listen("tcp", r.config.Listen)
-		if err != nil {
-			return err
-		}
-	}
-
-	// step: configure tls
-	if r.config.TLSCertificate != "" && r.config.TLSPrivateKey != "" {
-		server.TLSConfig = tlsConfig
-		if tlsConfig.NextProtos == nil {
-			tlsConfig.NextProtos = []string{"http/1.1"}
-		}
-		if len(tlsConfig.Certificates) == 0 || r.config.TLSCertificate != "" || r.config.TLSPrivateKey != "" {
-			tlsConfig.Certificates = make([]tls.Certificate, 1)
-			if tlsConfig.Certificates[0], err = tls.LoadX509KeyPair(r.config.TLSCertificate, r.config.TLSPrivateKey); err != nil {
-				return err
-			}
-		}
-		log.Infof("tls enabled, certificate: %s, key: %s", r.config.TLSCertificate, r.config.TLSPrivateKey)
-
-		listener = tls.NewListener(listener, tlsConfig)
-	}
-
-	// step: wrap the listen in a proxy protocol
-	if r.config.EnableProxyProtocol {
-		log.Infof("enabling the proxy protocol on listener: %s", r.config.Listen)
-		listener = &proxyproto.Listener{Listener: listener}
 	}
 
 	go func() {
@@ -362,16 +301,103 @@ func (r *oauthProxy) Run() error {
 		if err = server.Serve(listener); err != nil {
 			log.WithFields(log.Fields{
 				"error": err.Error(),
-			}).Fatalf("failed to start the service")
+			}).Fatalf("failed to start the http service")
 		}
 	}()
+
+	// step: are we running http service as well?
+	if r.config.ListenHTTP != "" {
+		log.Infof("keycloak proxy service starting on %s", r.config.ListenHTTP)
+		httpListener, err := createHTTPListener(listenerConfig{
+			listen:        r.config.ListenHTTP,
+			proxyProtocol: r.config.EnableProxyProtocol,
+		})
+		if err != nil {
+			return err
+		}
+		httpsvc := &http.Server{
+			Addr:    r.config.ListenHTTP,
+			Handler: r.router,
+		}
+		go func() {
+			if err := httpsvc.Serve(httpListener); err != nil {
+				log.WithFields(log.Fields{
+					"error": err.Error(),
+				}).Fatalf("failed to start the http redirect service")
+			}
+		}()
+	}
 
 	return nil
 }
 
-//
+// listenerConfig encapsulate listener options
+type listenerConfig struct {
+	listen        string // the interface to bind the listener to
+	certificate   string // the path to the certificate if any
+	privateKey    string // the path to the private key if any
+	ca            string // the path to a certificate authority
+	clientCert    string // the path to a client certificate to use for mutual tls
+	proxyProtocol bool   // whether to enable proxy protocol on the listen
+}
+
+// createHTTPListener is responsible for creating a listening socket
+func createHTTPListener(config listenerConfig) (net.Listener, error) {
+	var listener net.Listener
+	var err error
+
+	// step: are we create a unix socket or tcp listener?
+	if strings.HasPrefix(config.listen, "unix://") {
+		socket := strings.Trim(config.listen, "unix://")
+		// step: delete the socket if it exists
+		if exists := fileExists(socket); exists {
+			if err = os.Remove(socket); err != nil {
+				return nil, err
+			}
+		}
+		log.Infof("listening on unix socket: %s", config.listen)
+		if listener, err = net.Listen("unix", socket); err != nil {
+			return nil, err
+		}
+	} else {
+		if listener, err = net.Listen("tcp", config.listen); err != nil {
+			return nil, err
+		}
+	}
+
+	// step: does the socket require TLS?
+	if config.certificate != "" && config.privateKey != "" {
+		log.Infof("tls enabled, certificate: %s, key: %s", config.certificate, config.privateKey)
+		tlsConfig := &tls.Config{}
+		tlsConfig.Certificates = make([]tls.Certificate, 1)
+		if tlsConfig.Certificates[0], err = tls.LoadX509KeyPair(config.certificate, config.privateKey); err != nil {
+			return nil, err
+		}
+		listener = tls.NewListener(listener, tlsConfig)
+
+		// step: are we doing mutual tls?
+		if config.clientCert != "" {
+			caCert, err := ioutil.ReadFile(config.clientCert)
+			if err != nil {
+				return nil, err
+			}
+			caCertPool := x509.NewCertPool()
+			caCertPool.AppendCertsFromPEM(caCert)
+			tlsConfig.ClientCAs = caCertPool
+			tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
+		}
+	}
+
+	// step: does it require proxy protocol?
+	if config.proxyProtocol {
+		log.Infof("enabling the proxy protocol on listener: %s", config.listen)
+		listener = &proxyproto.Listener{Listener: listener}
+	}
+
+	return listener, nil
+}
+
 // createUpstreamProxy create a reverse http proxy from the upstream
-//
 func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) error {
 	// step: create the default dialer
 	dialer := (&net.Dialer{
