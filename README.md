@@ -31,9 +31,9 @@ USAGE:
    keycloak-proxy [options]
 
 VERSION:
-   v1.2.8 (git+sha: d98a7fe-dirty)
+   v1.2.8 (git+sha: 0fd9a64-dirty)
 
-AUTHOR(S):
+AUTHOR:
    Rohith <gambol99@gmail.com>
 
 COMMANDS:
@@ -42,21 +42,19 @@ COMMANDS:
 GLOBAL OPTIONS:
    --config value                      the path to the configuration file for the keycloak proxy [$PROXY_CONFIG_FILE]
    --listen value                      the interface the service should be listening on [$PROXY_LISTEN]
+   --listen-http value                 the interface you want the http-only service to use on [$PROXY_HTTP_LISTEN]
+   --discovery-url value               the discovery url to retrieve the openid configuration [$PROXY_DISCOVERY_URL]
    --client-secret value               the client secret used to authenticate to the oauth server (access_type: confidential) [$PROXY_CLIENT_SECRET]
    --client-id value                   the client id used to authenticate to the oauth service [$PROXY_CLIENT_ID]
-   --discovery-url value               the discovery url to retrieve the openid configuration [$PROXY_DISCOVERY_URL]
-   --scope value                       a variable list of scopes requested when authenticating the user
+   --scopes value                      a variable list of scopes requested when authenticating the user
    --token-validate-only               validate the token and roles only, no required implement oauth
    --redirection-url value             redirection url for the oauth callback url (/oauth is added) [$PROXY_REDIRECTION_URL]
    --revocation-url value              the url for the revocation endpoint to revoke refresh token [$PROXY_REVOCATION_URL]
    --store-url value                   url for the storage subsystem, e.g redis://127.0.0.1:6379, file:///etc/tokens.file [$PROXY_STORE_URL]
    --upstream-url value                the url for the upstream endpoint you wish to proxy to [$PROXY_UPSTREAM_URL]
-   --enable-login-handler              this enables the login hanlder /oauth/login, by default this is disabled
    --upstream-keepalives               enables or disables the keepalive connections for upstream endpoint
    --upstream-timeout value            is the maximum amount of time a dial will wait for a connect to complete (default: 10s)
    --upstream-keepalive-timeout value  specifies the keep-alive period for an active network connection (default: 10s)
-   --enable-authorization-header       adds the authorization header to the proxy request
-   --enable-refresh-tokens             enables the handling of the refresh tokens
    --secure-cookie                     enforces the cookie to be secure, default to true
    --http-only-cookie                  enforces the cookie is in http only mode, default to false
    --cookie-domain value               a domain the access cookie is available to, defaults host header
@@ -65,10 +63,15 @@ GLOBAL OPTIONS:
    --encryption-key value              the encryption key used to encrpytion the session state
    --no-redirects                      do not have back redirects when no authentication is present, 401 them
    --hostname value                    a list of hostnames the service will respond to, defaults to all
+   --enable-login-handler              this enables the login hanlder /oauth/login, by default this is disabled
+   --enable-authorization-header       adds the authorization header to the proxy request
+   --enable-refresh-tokens             enables the handling of the refresh tokens
    --enable-metrics                    enable the prometheus metrics collector on /oauth/metrics
    --localhost-only-metrics            enforces the metrics page can only been requested from 127.0.0.1
    --enable-proxy-protocol             whether to enable proxy protocol
    --enable-forwarding                 enables the forwarding proxy mode, signing outbound request
+   --enable-profiling                  switching on the golang profiling via pprof on /debug/pprof, /debug/pprof/heap etc
+   --enable-security-filter            enables the security filter handler
    --forwarding-username value         the username to use when logging into the openid provider
    --forwarding-password value         the password to use when logging into the openid provider
    --forwarding-domains value          a list of domains which should be signed; everything else is relayed unsigned
@@ -83,17 +86,17 @@ GLOBAL OPTIONS:
    --add-claims value                  retrieve extra claims from the token and inject into headers, e.g given_name -> X-Auth-Given-Name
    --resource value                    a list of resources 'uri=/admin|methods=GET,PUT|roles=role1,role2'
    --headers value                     Add custom headers to the upstream request, key=value
-   --signin-page value                 a custom template displayed for signin
+   --sign-in-page value                a custom template displayed for signin
    --forbidden-page value              a custom template used for access forbidden
-   --tag value                         keypair's passed to the templates at render,e.g title='My Page'
+   --tag value                         keypairs passed to the templates at render,e.g title=My Page
    --cors-origins value                list of origins to add to the CORE origins control (Access-Control-Allow-Origin)
    --cors-methods value                the method permitted in the access control (Access-Control-Allow-Methods)
    --cors-headers value                a set of headers to add to the CORS access control (Access-Control-Allow-Headers)
    --cors-exposes-headers value        set the expose cors headers access control (Access-Control-Expose-Headers)
    --cors-max-age value                the max age applied to cors headers (Access-Control-Max-Age) (default: 0s)
    --cors-credentials                  the credentials access control header (Access-Control-Allow-Credentials)
-   --enable-profiling                  switching on the golang profiling via pprof on /debug/pprof, /debug/pprof/heap etc
-   --enable-security-filter            enables the security filter handler
+   --filter-browser-xss                enable the adds the X-XSS-Protection header with mode=block
+   --filter-content-nosniff            adds the X-Content-Type-Options header with the value nosniff
    --skip-token-verification           TESTING ONLY; bypass token verification, only expiration and roles enforced
    --json-logging                      switch on json logging rather than text (defaults true)
    --log-requests                      switch on logging of all incoming requests (defaults true)
@@ -245,6 +248,8 @@ You have collection of micro-services which are permitted to speak to one anothe
   - --forwarding-password=some_password
   - --forwarding-domains=projecta.svc.cluster.local
   - --forwarding-domains=projectb.svc.cluster.local
+  - --tls-ca-certificate=/etc/secrets/ca.pem
+  - --tls-ca-key=/etc/secrets/ca-key.pem
   # Note: if you don't specify any forwarding domains, all domains will be signed; Also the code checks is the
   # domain 'contains' the value (it's not a regex) so if you wanted to sign all requests to svc.cluster.local, just use
   # svc.cluster.local
@@ -266,9 +271,25 @@ Handling HTTPS requires man in the middling the TLS connection. By default if no
 
 ```shell
 [jest@starfury keycloak-proxy]$ openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout ca.key -out ca.pem
+[jest@starfury keycloak-proxy]$ bin/keycloak-proxy \
+  --enable-forwarding \
+  --forwarding-username=USERNAME \
+  --forwarding-password=PASSWORD \
+  --client-id=CLIENT_ID \
+  --client-secret=SECRET \
+  --discovery-url=https://keycloak.example.com/auth/realms/test \
+  --tls-ca-cert=ca.pem \
+  --tls-ca-key=ca-key.pem
 
+#### **- HTTPS Redirect**
+---
 
-[jest@starfury keycloak-proxy]$ bin/keycloak-proxy --enable-forwarding --forwarding-username=USERNAME --forwarding-password=PASSWORD --client-id=CLIENT_ID --client-secret=SECRET --discovery-url=https://keycloak.example.com/auth/realms/test --log-requests=true --tls-ca-cert=ca.pem --tls-ca-key=ca.key
+The proxy supports http listener, though the only real requirement for this would be perform http -> https redirect. You can enable the optoin via
+
+```shell
+--listen-http=127.0.0.1:80
+--enable-https-redirection
+```
 
 #### **- Upstream Headers**
 ---
@@ -295,9 +316,9 @@ cx.Request.Header.Set("X-Forwarded-Agent-Version", version)
 cx.Request.Header.Set("X-Forwarded-Host", cx.Request.Host)
 ```
 
-#### **- Custom Claims**
+#### **- Custom Claim Headers**
 
-You can inject additional claims from the access token into the authentication token via the --add-claims option. For example, a token from Keycloak provider might include the following claims.
+You can inject additional claims from the access token into the authorization headers via the --add-claims option. For example, a token from Keycloak provider might include the following claims.
 
 ```YAML
 "resource_access": {},
@@ -345,6 +366,13 @@ note each of the matches are regex's. Examples,  --match-claims 'aud=sso.*' --cl
 match-claims:
   aud: openvpn
   iss: https://keycloak.example.com/auth/realms/commons
+```
+
+or via the CLI
+
+```shell
+--match-claims=auth=openvpn
+--match-claims=iss=http://keycloak.example.com/realms/commons
 ```
 
 #### **- Custom Pages**
