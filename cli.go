@@ -202,7 +202,11 @@ func getCLIOptions() []cli.Flag {
 			Name:  "hostname",
 			Usage: "a list of hostnames the service will respond to, defaults to all",
 		},
-		cli.BoolFlag{
+		cli.BoolTFlag{
+			Name:  "enable-https-redirection",
+			Usage: "enable the http to https redirection on the http service",
+		},
+		cli.BoolTFlag{
 			Name:  "enable-login-handler",
 			Usage: "this enables the login hanlder /oauth/login, by default this is disabled",
 		},
@@ -217,10 +221,6 @@ func getCLIOptions() []cli.Flag {
 		cli.BoolTFlag{
 			Name:  "enable-metrics",
 			Usage: "enable the prometheus metrics collector on /oauth/metrics",
-		},
-		cli.BoolTFlag{
-			Name:  "localhost-only-metrics",
-			Usage: "enforces the metrics page can only been requested from 127.0.0.1",
 		},
 		cli.BoolFlag{
 			Name:  "enable-proxy-protocol",
@@ -237,6 +237,10 @@ func getCLIOptions() []cli.Flag {
 		cli.BoolTFlag{
 			Name:  "enable-security-filter",
 			Usage: "enables the security filter handler",
+		},
+		cli.BoolTFlag{
+			Name:  "localhost-only-metrics",
+			Usage: "enforces the metrics page can only been requested from 127.0.0.1",
 		},
 		cli.StringFlag{
 			Name:  "forwarding-username",

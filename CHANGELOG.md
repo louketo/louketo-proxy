@@ -1,14 +1,20 @@
 
-#### **2.0.0**
+#### **2.0.0 (unreleased or in master)**
 
 FEATURES:
- * Adding the --skip-openid-provider-tls-verify option to bypass the TLS verification for Idp
+ * Adding the --skip-openid-provider-tls-verify option to bypass the TLS verification for Idp [#PR147](https://github.com/gambol99/keycloak-proxy/pull/147)
+ * Added a http service to permit http -> https redirects --enable-https-redirect [#PR126](https://github.com/gambol99/keycloak-proxy/pull/162)
+ * Added a pprof debug handler to support profiling the proxy, via --enable-profiling [#PR156](https://github.com/gambol99/keycloak-proxy/pull/156)
 
 FIXES:
- * Fixed the --headers and --tags command line options, had a typo on the mergeMaps method
+ * Fixed the --headers and --tags command line options, had a typo on the mergeMaps method [#PR142](https://github.com/gambol99/keycloak-proxy/pull/142)
+ * Cleaned up how the cli command line options are processed [#PR164](https://github.com/gambol99/keycloak-proxy/pull/164)
+ * Cleaned up the option checking for forwarding proxy tls setting [#PR163](https://github.com/gambol99/keycloak-proxy/pull/163)
+ * Using timeout rather than muliple attempts for discovery url [#PR153](https://github.com/gambol99/keycloak-proxy/pull/153)
+ * Updated the go-oidc library with various fixes [#PR159](https://github.com/gambol99/keycloak-proxy/pull/159)
 
 BREAKING CHANGES:
- * The login handler by default has been switched off, you must enable for --enable-login-handler
+ * The login handler by default has been switched off, you must enable for --enable-login-handler [#PR]()
  * Changed the CORS format in the configuration file
  * Changed the command line options scope -> scopes
  * Changed the command line options log-json-format -> json-format
