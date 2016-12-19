@@ -176,7 +176,6 @@ func newFakeKeycloakConfig() *Config {
 				Roles:       []string{},
 			},
 		},
-		CrossOrigin: CORS{},
 	}
 }
 

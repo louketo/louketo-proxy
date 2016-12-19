@@ -85,8 +85,8 @@ type Resource struct {
 	Roles []string `json:"roles" yaml:"roles"`
 }
 
-// CORS access controls
-type CORS struct {
+// Cors access controls
+type Cors struct {
 	// Origins is a list of origins permitted
 	Origins []string `json:"origins" yaml:"origins"`
 	// Methods is a set of access control methods
@@ -105,6 +105,8 @@ type CORS struct {
 type Config struct {
 	// Listen is the binding interface
 	Listen string `json:"listen" yaml:"listen"`
+	// ListenHTTP is the interface to bind the http only service on
+	ListenHTTP string `json:"listen-http" yaml:"listen-http" usage:""`
 	// DiscoveryURL is the url for the keycloak server
 	DiscoveryURL string `json:"discovery-url" yaml:"discovery-url"`
 	// ClientID is the client id
@@ -126,19 +128,34 @@ type Config struct {
 	// Headers permits adding customs headers across the board
 	Headers map[string]string `json:"headers" yaml:"headers"`
 
+	// EnableForwarding enables the forwarding proxy
+	EnableForwarding bool `json:"enable-forwarding" yaml:"enable-forwarding"`
+	// EnableSecurityFilter enabled the security handler
+	EnableSecurityFilter bool `json:"enable-security-filter" yaml:"enable-security-filter"`
+	// EnableRefreshTokens indicate's you wish to ignore using refresh tokens and re-auth on expiration of access token
+	EnableRefreshTokens bool `json:"enable-refresh-tokens" yaml:"enable-refresh-tokens"`
+	// EnableLoginHandler indicates we want the login handler enabled
+	EnableLoginHandler bool `json:"enable-login-handler" yaml:"enable-login-handler"`
+	// EnableAuthorizationHeader indicates we should pass the authorization header
+	EnableAuthorizationHeader bool `json:"enable-authorization-header" yaml:"enable-authorization-header"`
+	// EnableHTTPSRedirect indicate we should redirection http -> https
+	EnableHTTPSRedirect bool `json:"enable-https-redirection" yaml:"enable-https-redirection"`
 	// EnableProfiling indicates if profiles is switched on
 	EnableProfiling bool `json:"enable-profiling" yaml:"enable-profiling"`
 	// EnableMetrics indicates if the metrics is enabled
 	EnableMetrics bool `json:"enable-metrics" yaml:"enable-metrics"`
 	// EnableURIMetrics indicates we want to keep metrics on uri request times
 	EnableURIMetrics bool `json:"enable-uri-metrics" yaml:"enable-uri-metrics"`
+	// EnableBrowserXSSFilter indicates you want the filter on
+	EnableBrowserXSSFilter bool `json:"filter-browser-xss" yaml:"filter-browser-xss"`
+	// EnableContentNoSniff indicates you want the filter on
+	EnableContentNoSniff bool `json:"filter-content-nosniff" yaml:"filter-content-nosniff"`
+	// EnableFrameDeny indicates the filter is on
+	EnableFrameDeny bool `json:"filter-frame-deny" yaml:"filter-frame-deny"`
+	// ContentSecurityPolicy allows the Content-Security-Policy header value to be set with a custom value
+	ContentSecurityPolicy string `json:"content-security-policy" yaml:"content-security-policy"`
 	// LocalhostMetrics indicated the metrics can only be consume via localhost
-	LocalhostMetrics bool `json:"localhost-only-metrics" yaml:"localhost-only-metrics"`
-
-	// EnableLoginHandler indicates we want the login handler enabled
-	EnableLoginHandler bool `json:"enable-login-handler" yaml:"enable-login-handler"`
-	// EnableAuthorizationHeader indicates we should pass the authorization header
-	EnableAuthorizationHeader bool `json:"enable-authorization-header" yaml:"enable-authorization-header"`
+	LocalhostMetrics bool `json:"localhost-metrics" yaml:"localhost-metrics"`
 
 	// CookieDomain is a list of domains the cookie is available to
 	CookieDomain string `json:"cookie-domain" yaml:"cookie-domain"`
@@ -169,8 +186,18 @@ type Config struct {
 	// SkipUpstreamTLSVerify skips the verification of any upstream tls
 	SkipUpstreamTLSVerify bool `json:"skip-upstream-tls-verify" yaml:"skip-upstream-tls-verify"`
 
-	// CrossOrigin permits adding headers to the /oauth handlers
-	CrossOrigin CORS `json:"cors" yaml:"cors"`
+	// CorsOrigins is a list of origins permitted
+	CorsOrigins []string `json:"cors-origins" yaml:"cors-origins"`
+	// CorsMethods is a set of access control methods
+	CorsMethods []string `json:"cors-methods" yaml:"cors-methods"`
+	// CorsHeaders is a set of cors headers
+	CorsHeaders []string `json:"cors-headers" yaml:"cors-headers"`
+	// CorsExposedHeaders are the exposed header fields
+	CorsExposedHeaders []string `json:"cors-exposed-headers" yaml:"cors-exposed-headers"`
+	// CorsCredentials set the creds flag
+	CorsCredentials bool `json:"cors-credentials" yaml:"cors-credentials"`
+	// CorsMaxAge is the age for CORS
+	CorsMaxAge time.Duration `json:"cors-max-age" yaml:"cors-max-age"`
 
 	// Hostname is a list of hostname's the service should response to
 	Hostnames []string `json:"hostnames" yaml:"hostnames"`
@@ -180,14 +207,10 @@ type Config struct {
 	// EncryptionKey is the encryption key used to encrypt the refresh token
 	EncryptionKey string `json:"encryption-key" yaml:"encryption-key"`
 
-	// EnableSecurityFilter enabled the security handler
-	EnableSecurityFilter bool `json:"enable-security-filter" yaml:"enable-security-filter"`
-	// EnableRefreshTokens indicate's you wish to ignore using refresh tokens and re-auth on expiration of access token
-	EnableRefreshTokens bool `json:"enable-refresh-tokens" yaml:"enable-refresh-tokens"`
 	// LogRequests indicates if we should log all the requests
 	LogRequests bool `json:"log-requests" yaml:"log-requests"`
 	// LogFormat is the logging format
-	LogJSONFormat bool `json:"log-json-format" yaml:"log-json-format"`
+	LogJSONFormat bool `json:"json-format" yaml:"json-format"`
 	// NoRedirects informs we should hand back a 401 not a redirect
 	NoRedirects bool `json:"no-redirects" yaml:"no-redirects"`
 	// SkipTokenVerification tells the service to skipp verifying the access token - for testing purposes
@@ -210,8 +233,6 @@ type Config struct {
 	// TagData is passed to the templates
 	TagData map[string]string `json:"tag-data" yaml:"tag-data"`
 
-	// EnableForwarding enables the forwarding proxy
-	EnableForwarding bool `json:"enable-forwarding" yaml:"enable-forwarding"`
 	// ForwardingUsername is the username to login to the oauth service
 	ForwardingUsername string `json:"forwarding-username" yaml:"forwarding-username"`
 	// ForwardingPassword is the password to use for the above
@@ -233,16 +254,12 @@ type storage interface {
 	Close() error
 }
 
-//
 // reverseProxy is a wrapper
-//
 type reverseProxy interface {
 	ServeHTTP(rw http.ResponseWriter, req *http.Request)
 }
 
-//
 // userContext represents a user
-//
 type userContext struct {
 	// the id of the user
 	id string

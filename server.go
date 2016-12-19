@@ -153,13 +153,11 @@ func (r *oauthProxy) createReverseProxy() error {
 	// step: create the gin router
 	engine := gin.New()
 	engine.Use(gin.Recovery())
-
 	// step: is profiling enabled?
 	if r.config.EnableProfiling {
 		log.Warn("Enabling the debug profiling on /debug/pprof")
 		engine.Any("/debug/pprof/:name", r.debugHandler)
 	}
-
 	// step: are we logging the traffic?
 	if r.config.LogRequests {
 		engine.Use(r.loggingMiddleware())
@@ -175,8 +173,15 @@ func (r *oauthProxy) createReverseProxy() error {
 		engine.Use(r.securityMiddleware())
 	}
 
-	// step: add the routing
-	oauth := engine.Group(oauthURL).Use(r.corsMiddleware(r.config.CrossOrigin))
+	// step: add the routing and cors middleware
+	oauth := engine.Group(oauthURL).Use(r.corsMiddleware(Cors{
+		Origins:        r.config.CorsOrigins,
+		Methods:        r.config.CorsMethods,
+		Headers:        r.config.CorsHeaders,
+		ExposedHeaders: r.config.CorsExposedHeaders,
+		Credentials:    r.config.CorsCredentials,
+		MaxAge:         r.config.CorsMaxAge,
+	}))
 	oauth.GET(authorizationURL, r.oauthAuthorizationHandler)
 	oauth.GET(callbackURL, r.oauthCallbackHandler)
 	oauth.GET(healthURL, r.healthHandler)
