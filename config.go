@@ -79,6 +79,12 @@ func (r *Config) isValid() error {
 		if r.ForwardingPassword == "" {
 			return errors.New("no forwarding password")
 		}
+		if r.TLSCertificate != "" {
+			return errors.New("you don't need to specify a tls-certificate, use tls-ca-certificate instead")
+		}
+		if r.TLSPrivateKey != "" {
+			return errors.New("you don't need to specify the tls-private-key, use tls-ca-key instead")
+		}
 	} else {
 		if r.Upstream == "" {
 			return errors.New("you have not specified an upstream endpoint to proxy to")
