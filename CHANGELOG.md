@@ -9,6 +9,9 @@ FIXES:
 
 BREAKING CHANGES:
  * The login handler by default has been switched off, you must enable for --enable-login-handler
+ * Changed the CORS format in the configuration file
+ * Changed the command line options scope -> scopes
+ * Changed the command line options log-json-format -> json-format
 
 #### **1.2.8**
 

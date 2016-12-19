@@ -38,7 +38,6 @@ func newDefaultConfig() *Config {
 		SecureCookie:                true,
 		SkipUpstreamTLSVerify:       true,
 		SkipOpenIDProviderTLSVerify: false,
-		CrossOrigin:                 CORS{},
 	}
 }
 

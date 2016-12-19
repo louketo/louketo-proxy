@@ -216,11 +216,11 @@ func TestCrossSiteHandler(t *testing.T) {
 	p, _, _ := newTestProxyService(nil)
 
 	cases := []struct {
-		Cors    CORS
+		Cors    Cors
 		Headers map[string]string
 	}{
 		{
-			Cors: CORS{
+			Cors: Cors{
 				Origins: []string{"*"},
 			},
 			Headers: map[string]string{
@@ -228,7 +228,7 @@ func TestCrossSiteHandler(t *testing.T) {
 			},
 		},
 		{
-			Cors: CORS{
+			Cors: Cors{
 				Origins: []string{"*", "https://examples.com"},
 				Methods: []string{"GET"},
 			},

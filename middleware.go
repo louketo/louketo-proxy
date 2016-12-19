@@ -369,7 +369,7 @@ func (r *oauthProxy) admissionMiddleware() gin.HandlerFunc {
 //
 // corsMiddleware injects the CORS headers, if set, for request made to /oauth
 //
-func (r *oauthProxy) corsMiddleware(c CORS) gin.HandlerFunc {
+func (r *oauthProxy) corsMiddleware(c Cors) gin.HandlerFunc {
 	return func(cx *gin.Context) {
 		if len(c.Origins) > 0 {
 			cx.Writer.Header().Set("Access-Control-Allow-Origin", strings.Join(c.Origins, ","))
