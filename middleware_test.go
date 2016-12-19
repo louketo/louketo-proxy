@@ -159,20 +159,19 @@ func TestEntrypointWhiteListing(t *testing.T) {
 
 func TestEntrypointHandler(t *testing.T) {
 	proxy, _, _ := newTestProxyService(nil)
-
 	handler := proxy.entrypointMiddleware()
 
 	tests := []struct {
 		Context *gin.Context
 		Secure  bool
 	}{
-		{Context: newFakeGinContext("GET", fakeAdminRoleURL), Secure: true},
-		{Context: newFakeGinContext("GET", fakeAdminRoleURL+"/sso"), Secure: true},
-		{Context: newFakeGinContext("GET", fakeAdminRoleURL+"/../sso"), Secure: true},
-		{Context: newFakeGinContext("GET", "/not_secure")},
-		{Context: newFakeGinContext("GET", fakeTestWhitelistedURL)},
-		{Context: newFakeGinContext("GET", oauthURL)},
-		{Context: newFakeGinContext("GET", fakeTestListenOrdered), Secure: true},
+		{Context: newFakeGinContext(http.MethodGet, fakeAdminRoleURL), Secure: true},
+		{Context: newFakeGinContext(http.MethodGet, fakeAdminRoleURL+"/sso"), Secure: true},
+		{Context: newFakeGinContext(http.MethodGet, fakeAdminRoleURL+"/../sso"), Secure: true},
+		{Context: newFakeGinContext(http.MethodGet, "/not_secure")},
+		{Context: newFakeGinContext(http.MethodGet, fakeTestWhitelistedURL)},
+		{Context: newFakeGinContext(http.MethodGet, oauthURL)},
+		{Context: newFakeGinContext(http.MethodGet, fakeTestListenOrdered), Secure: true},
 	}
 
 	for i, c := range tests {

@@ -133,6 +133,8 @@ func newFakeKeycloakConfig() *Config {
 		CookieAccessName:          "kc-access",
 		CookieRefreshName:         "kc-state",
 		DiscoveryURL:              "127.0.0.1:8080",
+		Listen:                    "127.0.0.1:443",
+		ListenHTTP:                "127.0.0.1:80",
 		EnableAuthorizationHeader: true,
 		EnableRefreshTokens:       false,
 		EnableLoginHandler:        true,

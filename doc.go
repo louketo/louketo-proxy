@@ -106,7 +106,7 @@ type Config struct {
 	// Listen is the binding interface
 	Listen string `json:"listen" yaml:"listen"`
 	// ListenHTTP is the interface to bind the http only service on
-	ListenHTTP string `json:"listen-http" yaml:"listen-http" usage:""`
+	ListenHTTP string `json:"listen-http" yaml:"listen-http"`
 	// DiscoveryURL is the url for the keycloak server
 	DiscoveryURL string `json:"discovery-url" yaml:"discovery-url"`
 	// ClientID is the client id
