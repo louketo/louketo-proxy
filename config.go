@@ -102,6 +102,23 @@ func (r *Config) isValid() error {
 			if strings.HasSuffix(r.RedirectionURL, "/") {
 				r.RedirectionURL = strings.TrimSuffix(r.RedirectionURL, "/")
 			}
+			if !r.EnableSecurityFilter {
+				if r.EnableHTTPSRedirect {
+					return errors.New("the security filter must be switch on for this feature: http-redirect")
+				}
+				if r.EnableBrowserXSSFilter {
+					return errors.New("the security filter must be switch on for this feature: brower-xss-filter")
+				}
+				if r.EnableFrameDeny {
+					return errors.New("the security filter must be switch on for this feature: frame-deny-filter")
+				}
+				if r.ContentSecurityPolicy != "" {
+					return errors.New("the security filter must be switch on for this feature: content-security-policy")
+				}
+				if len(r.Hostnames) > 0 {
+					return errors.New("the security filter must be switch on for this feature: hostnames")
+				}
+			}
 			if r.EnableRefreshTokens && r.EncryptionKey == "" {
 				return errors.New("you have not specified a encryption key for encoding the session state")
 			}
