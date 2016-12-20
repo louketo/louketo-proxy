@@ -73,7 +73,7 @@ func (r *oauthProxy) oauthAuthorizationHandler(cx *gin.Context) {
 		model := make(map[string]string, 0)
 		model["redirect"] = redirectionURL
 
-		cx.HTML(http.StatusOK, path.Base(r.config.SignInPage), mergeMaps(model, r.config.TagData))
+		cx.HTML(http.StatusOK, path.Base(r.config.SignInPage), mergeMaps(model, r.config.Tags))
 		return
 	}
 

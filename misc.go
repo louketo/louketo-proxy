@@ -30,7 +30,7 @@ import (
 //
 func (r *oauthProxy) accessForbidden(cx *gin.Context) {
 	if r.config.hasCustomForbiddenPage() {
-		cx.HTML(http.StatusForbidden, path.Base(r.config.ForbiddenPage), r.config.TagData)
+		cx.HTML(http.StatusForbidden, path.Base(r.config.ForbiddenPage), r.config.Tags)
 		cx.Abort()
 		return
 	}
