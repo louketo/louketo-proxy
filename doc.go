@@ -231,8 +231,8 @@ type Config struct {
 	SignInPage string `json:"sign-in-page" yaml:"sign-in-page" usage:"path to custom template displayed for signin"`
 	// ForbiddenPage is a access forbidden page
 	ForbiddenPage string `json:"forbidden-page" yaml:"forbidden-page" usage:"path to custom template used for access forbidden"`
-	// TagData is passed to the templates
-	TagData map[string]string `json:"tag-data" yaml:"tag-data" usage:"keypair's passed to the templates at render,e.g title=Page"`
+	// Tags is passed to the templates
+	Tags map[string]string `json:"tags" yaml:"tags" usage:"keypairs passed to the templates at render,e.g title=Page"`
 
 	// ForwardingUsername is the username to login to the oauth service
 	ForwardingUsername string `json:"forwarding-username" yaml:"forwarding-username" usage:"username to use when logging into the openid provider"`

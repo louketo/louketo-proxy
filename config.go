@@ -27,7 +27,7 @@ import (
 // newDefaultConfig returns a initialized config
 func newDefaultConfig() *Config {
 	return &Config{
-		TagData:                     make(map[string]string, 0),
+		Tags:                        make(map[string]string, 0),
 		MatchClaims:                 make(map[string]string, 0),
 		Headers:                     make(map[string]string, 0),
 		UpstreamTimeout:             time.Duration(10) * time.Second,

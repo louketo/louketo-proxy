@@ -180,7 +180,7 @@ func parseCLIOptions(cx *cli.Context, config *Config) (err error) {
 		if err != nil {
 			return err
 		}
-		mergeMaps(config.TagData, tags)
+		mergeMaps(config.Tags, tags)
 	}
 	if cx.IsSet("match-claims") {
 		claims, err := decodeKeyPairs(cx.StringSlice("match-claims"))

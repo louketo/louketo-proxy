@@ -11,12 +11,10 @@ client-secret: <CLIENT_SECRET>
 listen: 127.0.0.1:3000
 # whether to request offline access and use a refresh token
 enable-refresh-tokens: true
-# the max amount of time a session can stay alive without being used
-idle-duration: 24h
 # log all incoming requests
 log-requests: true
 # log in json format
-log-json-format: true
+json-format: true
 # do not redirec the request, simple 307 it
 no-redirects: false
 # the location of a certificate you wish the proxy to use for TLS support
@@ -30,9 +28,9 @@ redirection-url: http://127.0.0.3000
 # the encryption key used to encode the session state
 encryption-key: vGcLt8ZUdPX5fXhtLZaPHZkGWHZrT6T8xKHWf5RPfqAocuiQ6nUbNHyc3oF2toO2tr
 # the name of the access cookie, defaults to kc-access
-access-cookie-name:
+cookie-access-name:
 # the name of the refresh cookie, default to kc-state
-refresh-cookie-name:
+cookie-refresh-name:
 # the upstream endpoint which we should proxy request
 upstream-url: http://127.0.0.1:80
 # upstream-keepalives specified wheather you want keepalive on the upstream endpoint
@@ -58,7 +56,7 @@ add-claims:
 - name
 # a collection of resource i.e. urls that you wish to protect
 resources:
-  - url: /admin/test
+  - uri: /admin/test
     # the methods on this url that should be protected, if missing, we assuming all
     methods:
       - GET
@@ -66,10 +64,10 @@ resources:
     roles:
       - openvpn:vpn-user
       - openvpn:prod-vpn
-  - url: /admin/white_listed
+  - uri: /admin/white_listed
     # permits a url prefix through, bypassing the admission controls
     white-listed: true
-  - url: /admin
+  - uri: /admin
     methods:
       - GET
     roles:
@@ -90,4 +88,3 @@ cors:
   credentials: true|false
   # the max age (Access-Control-Max-Age)
   max-age: 1h
-

@@ -18,6 +18,8 @@ BREAKING CHANGES:
  * Changed the CORS format in the configuration file
  * Changed the command line options scope -> scopes
  * Changed the command line options log-json-format -> json-format
+ * Changed the command line options resource -> resources
+ * Changed the command line options tags -> tags 
 
 #### **1.2.8**
 
