@@ -169,9 +169,15 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 					"error": err.Error(),
 				}).Warnf("failed to save the refresh token in the store")
 			}
+			// step: get expiration of the refresh token if we can
+			_, ident, err := parseToken(response.RefreshToken)
+			if err != nil {
+				r.dropAccessTokenCookie(cx, session.Encode(), time.Duration(72)*time.Hour)
+			} else {
+				r.dropAccessTokenCookie(cx, session.Encode(), ident.ExpiresAt.Sub(time.Now()))
+			}
 		default:
-			// step: attempt to decode the refresh token (not all refresh tokens are jwt tokens;
-			// gooogle for instance.
+			// step: attempt to decode the refresh token (not all refresh tokens are jwt tokens; google for instance.
 			if _, ident, err := parseToken(response.RefreshToken); err != nil {
 				r.dropRefreshTokenCookie(cx, encrypted, time.Duration(72)*time.Hour)
 			} else {

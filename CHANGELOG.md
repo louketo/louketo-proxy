@@ -1,5 +1,5 @@
 
-#### **2.0.0 (unreleased or in master)**
+#### **2.0.0**
 
 FEATURES:
  * Adding the --skip-openid-provider-tls-verify option to bypass the TLS verification for Idp [#PR147](https://github.com/gambol99/keycloak-proxy/pull/147)
@@ -19,7 +19,7 @@ BREAKING CHANGES:
  * Changed the command line options scope -> scopes
  * Changed the command line options log-json-format -> json-format
  * Changed the command line options resource -> resources
- * Changed the command line options tags -> tags 
+ * Changed the command line options tags -> tags
 
 #### **1.2.8**
 
