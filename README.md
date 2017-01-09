@@ -441,12 +441,11 @@ You are permitted to add CORS following headers into the /oauth uri namespace
 Either from the config file:
 
 ```YAML
-cors:
-  origins:
-  - '*'
-  methods:
-  - GET
-  - POST
+cors-origins:
+- '*'
+cors-methods:
+- GET
+- POST
 ```
 
 or via the command line arguments

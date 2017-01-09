@@ -1,4 +1,9 @@
 
+#### **2.0.2**
+
+FEATURES:
+ * adding the --enable-cors-global to switch on CORs header injects into every response
+
 #### **2.0.1**
 
 BUGS:
