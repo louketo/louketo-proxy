@@ -1,4 +1,9 @@
 
+#### **2.0.1**
+
+BUGS:
+ * fixing the cli option for --resources. Need to start writing tests for the cli options
+
 #### **2.0.0**
 
 FEATURES:
