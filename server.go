@@ -166,16 +166,24 @@ func (r *oauthProxy) createReverseProxy() error {
 	if r.config.EnableSecurityFilter {
 		engine.Use(r.securityMiddleware())
 	}
-
-	// step: add the routing and cors middleware
-	oauth := engine.Group(oauthURL).Use(r.corsMiddleware(Cors{
+	cors := Cors{
 		Origins:        r.config.CorsOrigins,
 		Methods:        r.config.CorsMethods,
 		Headers:        r.config.CorsHeaders,
 		ExposedHeaders: r.config.CorsExposedHeaders,
 		Credentials:    r.config.CorsCredentials,
 		MaxAge:         r.config.CorsMaxAge,
-	}))
+	}
+	// step: enabling globaling?
+	if r.config.EnableCorsGlobal {
+		log.Info("enabling CORs header injection globally")
+		engine.Use(r.corsMiddleware(cors))
+	}
+	// step: add the routing and cors middleware
+	oauth := engine.Group(oauthURL)
+	if !r.config.EnableCorsGlobal {
+		oauth.Use(r.corsMiddleware(cors))
+	}
 	oauth.GET(authorizationURL, r.oauthAuthorizationHandler)
 	oauth.GET(callbackURL, r.oauthCallbackHandler)
 	oauth.GET(healthURL, r.healthHandler)

@@ -131,6 +131,8 @@ type Config struct {
 	// Headers permits adding customs headers across the board
 	Headers map[string]string `json:"headers" yaml:"headers" usage:"custom headers to the upstream request, key=value"`
 
+	// EnableCorsGlobal enables the CORs header in all response headers
+	EnableCorsGlobal bool `json:"enable-cors-global" yaml:"enable-cors-global" usage:"inject the CORs headers into all responses" env:"ENABLE_CORS_GLOBAL"`
 	// EnableForwarding enables the forwarding proxy
 	EnableForwarding bool `json:"enable-forwarding" yaml:"enable-forwarding" usage:"enables the forwarding proxy mode, signing outbound request"`
 	// EnableSecurityFilter enabled the security handler

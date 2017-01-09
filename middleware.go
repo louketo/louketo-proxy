@@ -366,25 +366,23 @@ func (r *oauthProxy) admissionMiddleware() gin.HandlerFunc {
 	}
 }
 
-//
 // corsMiddleware injects the CORS headers, if set, for request made to /oauth
-//
 func (r *oauthProxy) corsMiddleware(c Cors) gin.HandlerFunc {
 	return func(cx *gin.Context) {
 		if len(c.Origins) > 0 {
 			cx.Writer.Header().Set("Access-Control-Allow-Origin", strings.Join(c.Origins, ","))
+		}
+		if c.Credentials {
+			cx.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		}
+		if len(c.ExposedHeaders) > 0 {
+			cx.Writer.Header().Set("Access-Control-Expose-Headers", strings.Join(c.ExposedHeaders, ","))
 		}
 		if len(c.Methods) > 0 {
 			cx.Writer.Header().Set("Access-Control-Allow-Methods", strings.Join(c.Methods, ","))
 		}
 		if len(c.Headers) > 0 {
 			cx.Writer.Header().Set("Access-Control-Allow-Headers", strings.Join(c.Headers, ","))
-		}
-		if len(c.ExposedHeaders) > 0 {
-			cx.Writer.Header().Set("Access-Control-Expose-Headers", strings.Join(c.ExposedHeaders, ","))
-		}
-		if c.Credentials {
-			cx.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 		}
 		if c.MaxAge > 0 {
 			cx.Writer.Header().Set("Access-Control-Max-Age", fmt.Sprintf("%d", int(c.MaxAge.Seconds())))

@@ -215,10 +215,14 @@ func TestCrossSiteHandler(t *testing.T) {
 	p, _, _ := newTestProxyService(nil)
 
 	cases := []struct {
+		Method  string
+		URI     string
 		Cors    Cors
 		Headers map[string]string
 	}{
 		{
+			Method: http.MethodGet,
+			URI:    "/oauth/test",
 			Cors: Cors{
 				Origins: []string{"*"},
 			},
@@ -227,13 +231,25 @@ func TestCrossSiteHandler(t *testing.T) {
 			},
 		},
 		{
+			Method: http.MethodGet,
+			URI:    "/oauth/test",
 			Cors: Cors{
 				Origins: []string{"*", "https://examples.com"},
-				Methods: []string{"GET"},
+			},
+			Headers: map[string]string{
+				"Access-Control-Allow-Origin": "*,https://examples.com",
+			},
+		},
+		{
+			Method: http.MethodGet,
+			URI:    "/foo",
+			Cors: Cors{
+				Origins: []string{"*", "https://examples.com"},
+				Methods: []string{"GET", "POST"},
 			},
 			Headers: map[string]string{
 				"Access-Control-Allow-Origin":  "*,https://examples.com",
-				"Access-Control-Allow-Methods": "GET",
+				"Access-Control-Allow-Methods": "GET,POST",
 			},
 		},
 	}
@@ -241,7 +257,7 @@ func TestCrossSiteHandler(t *testing.T) {
 	for i, c := range cases {
 		handler := p.corsMiddleware(c.Cors)
 		// call the handler and check the responses
-		context := newFakeGinContext("GET", "/oauth/test")
+		context := newFakeGinContext(c.Method, c.URI)
 		handler(context)
 		// step: check the headers
 		for k, v := range c.Headers {
