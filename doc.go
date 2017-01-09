@@ -115,7 +115,7 @@ type Config struct {
 	// ClientID is the client id
 	ClientID string `json:"client-id" yaml:"client-id" usage:"client id used to authenticate to the oauth service" env:"CLIENT_ID"`
 	// ClientSecret is the secret for AS
-	ClientSecret string `json:"client-secret" yaml:"client-secret" usage:"client secret used to authenticate to the oauth service" env:"CLIENT_SECERT"`
+	ClientSecret string `json:"client-secret" yaml:"client-secret" usage:"client secret used to authenticate to the oauth service" env:"CLIENT_SECRET"`
 	// RedirectionURL the redirection url
 	RedirectionURL string `json:"redirection-url" yaml:"redirection-url" usage:"redirection url for the oauth callback url" env:"REDIRECTION_URL"`
 	// RevocationEndpoint is the token revocation endpoint to revoke refresh tokens
