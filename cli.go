@@ -196,8 +196,8 @@ func parseCLIOptions(cx *cli.Context, config *Config) (err error) {
 		}
 		mergeMaps(config.Headers, headers)
 	}
-	if cx.IsSet("resource") {
-		for _, x := range cx.StringSlice("resource") {
+	if cx.IsSet("resources") {
+		for _, x := range cx.StringSlice("resources") {
 			resource, err := newResource().parse(x)
 			if err != nil {
 				return fmt.Errorf("invalid resource %s, %s", x, err)
