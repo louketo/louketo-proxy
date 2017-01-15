@@ -2,6 +2,7 @@
 [![GoDoc](http://godoc.org/github.com/gambol99/keycloak-proxy?status.png)](http://godoc.org/github.com/gambol99/keycloak-proxy)
 [![Docker Repository on Quay](https://quay.io/repository/gambol99/keycloak-proxy/status "Docker Repository on Quay")](https://quay.io/repository/gambol99/keycloak-proxy)
 [![GitHub version](https://badge.fury.io/gh/gambol99%2Fkeycloak-proxy.svg)](https://badge.fury.io/gh/gambol99%2Fkeycloak-proxy)
+[![Go Report Card](https://goreportcard.com/badge/github.com/gambol99/keycloak-proxy)](https://goreportcard.com/report/github.com/gambol99/keycloak-proxy)
 
 ### **Keycloak Proxy**
 ----
@@ -31,7 +32,7 @@ USAGE:
    keycloak-proxy [options]
 
 VERSION:
-   v1.2.8 (git+sha: 139bf86)
+   v2.0.2 (git+sha: 260d2c8-dirty)
 
 AUTHOR:
    Rohith <gambol99@gmail.com>
@@ -45,7 +46,7 @@ GLOBAL OPTIONS:
    --listen-http value                 interface we should be listening [$PROXY_LISTEN_HTTP]
    --discovery-url value               discovery url to retrieve the openid configuration [$PROXY_DISCOVERY_URL]
    --client-id value                   client id used to authenticate to the oauth service [$PROXY_CLIENT_ID]
-   --client-secret value               client secret used to authenticate to the oauth service [$PROXY_CLIENT_SECERT]
+   --client-secret value               client secret used to authenticate to the oauth service [$PROXY_CLIENT_SECRET]
    --redirection-url value             redirection url for the oauth callback url [$PROXY_REDIRECTION_URL]
    --revocation-url value              url for the revocation endpoint to revoke refresh token [$PROXY_REVOCATION_URL]
    --skip-openid-provider-tls-verify   skip the verification of any TLS communication with the openid provider (default: false)
@@ -53,6 +54,7 @@ GLOBAL OPTIONS:
    --upstream-url value                url for the upstream endpoint you wish to proxy [$PROXY_UPSTREAM_URL]
    --resources value                   list of resources 'uri=/admin|methods=GET,PUT|roles=role1,role2'
    --headers value                     custom headers to the upstream request, key=value
+   --enable-cors-global                inject the CORs headers into all responses (default: false) [$PROXY_ENABLE_CORS_GLOBAL]
    --enable-forwarding                 enables the forwarding proxy mode, signing outbound request (default: false)
    --enable-security-filter            enables the security filter handler (default: false)
    --enable-refresh-tokens             nables the handling of the refresh tokens (default: false) [$PROXY_ENABLE_SECURITY_FILTER]
@@ -207,8 +209,7 @@ bin/keycloak-proxy \
     --resources="uri=/backend|roles=test1"
 ```
 
-#### **- Google OAuth**
----
+#### **Google OAuth**
 Although the role extensions do require a Keycloak IDP or at the very least a IDP that produces a token which contains roles, there's nothing stopping you from using it against any OpenID providers, such as Google. Go to the Google Developers Console and create a new application *(via "Enable and Manage APIs -> Credentials)*. Once you've created the application, take the client id, secret and make sure you've added the callback url to the application scope *(using the default this would be http://127.0.0.1:3000/oauth/callback)*
 
 ``` shell
@@ -229,12 +230,11 @@ DEBU[0002] resource access permitted: /favicon.ico       access=permitted bearer
 2016-02-06 13:59:01.856716 I | http: proxy error: dial tcp 127.0.0.1:8081: getsockopt: connection refused
 ```
 
-#### **- Forward Signing Proxy (Experimental)**
+#### **Forward Signing Proxy (Experimental)**
 
-Forward signing provides a mechanism for authentication and authorization between services, using the keycloak issued tokens for granular control. When operating with in the more, the proxy will automatically acquire a access token (handling the refreshing or logins) and tag Authorization headers on outbound request's (TLS via HTTP CONNECT is fully supported). You control which domains are tagged by the --forwarding-domains option. Note, this option use a **contains** comparison on domains. So, if you wanted to match all domains under *.svc.cluster.local can and simply use: --forwarding-domain=svc.cluster.local.
+Forward signing provides a mechanism for authentication and authorization between services using tokens issued from the IDp. When operating with in the mode the proxy will automatically acquire an access token (handling the refreshing or logins on your behalf) and tag outbound requests with a Authorization header. You can control which domains are tagged with the --forwarding-domains option. Note, this option use a **contains** comparison on domains. So, if you wanted to match all domains under *.svc.cluster.local can and simply use: --forwarding-domain=svc.cluster.local.
 
-At present the service logs in using oauth client_credentials grant type, so your authentication service,
-must support direct (username/password) logins.
+At present the service performs a login using oauth client_credentials grant type, so your IDp service must support direct (username/password) logins.
 
 Example setup:
 
@@ -267,7 +267,7 @@ You have collection of micro-services which are permitted to speak to one anothe
 
 Receiver side you could setup the keycloak-proxy (--no=redirects=true) and permit this proxy to verify and handle admission for you. Alternatively, the access token can found as a bearer token in the request.
 
-##### **- Forwarding Signing HTTPS Connect**
+#### **Forwarding Signing HTTPS Connect**
 
 Handling HTTPS requires man in the middling the TLS connection. By default if no -tls-ca-cert and -tls-ca-key is provided the proxy will use the default certificate. If you wish to verify the trust, you'll need to generate a CA, for example
 
@@ -282,19 +282,19 @@ Handling HTTPS requires man in the middling the TLS connection. By default if no
   --discovery-url=https://keycloak.example.com/auth/realms/test \
   --tls-ca-cert=ca.pem \
   --tls-ca-key=ca-key.pem
+```
 
-#### **- HTTPS Redirect**
----
+#### **HTTPS Redirect**
 
 The proxy supports http listener, though the only real requirement for this would be perform http -> https redirect. You can enable the optoin via
 
 ```shell
 --listen-http=127.0.0.1:80
+--enable-security-filter=true  # is required for the https redirect
 --enable-https-redirection
 ```
 
-#### **- Upstream Headers**
----
+#### **Upstream Headers**
 
 On protected resources the upstream endpoint will receive a number of headers added by the proxy, along with an custom claims.
 
@@ -318,7 +318,7 @@ cx.Request.Header.Set("X-Forwarded-Agent-Version", version)
 cx.Request.Header.Set("X-Forwarded-Host", cx.Request.Host)
 ```
 
-#### **- Custom Claim Headers**
+#### **Custom Claim Headers**
 
 You can inject additional claims from the access token into the authorization headers via the --add-claims option. For example, a token from Keycloak provider might include the following claims.
 
@@ -348,18 +348,17 @@ X-Auth-Given-Name: Rohith
 X-Auth-Name: Rohith Jayawardene
 ```
 
-#### **- Encryption Key**
+#### **Encryption Key**
 
-In order to remain stateless and not have to rely on a central cache to persist the 'refresh_tokens', the refresh token is encrypted and added as a cookie using *crypto/aes*.
-Naturally the key must be the same if your running behind a load balancer etc. The key length should either 16 or 32 bytes depending or whether you want AES-128 or AES-256.
+In order to remain stateless and not have to rely on a central cache to persist the 'refresh_tokens', the refresh token is encrypted and added as a cookie using *crypto/aes*. Naturally the key must be the same if your running behind a load balancer etc. The key length should either 16 or 32 bytes depending or whether you want AES-128 or AES-256.
 
-#### **- ClientID & Secret**
+#### **ClientID & Secret**
 
 Note, the client secret is optional and only required for setups where the oauth provider is using access_type = confidential; if the provider is 'public' simple add the client id.
 Alternatively, you might not need the proxy to perform the oauth authentication flow and instead simply verify the identity token (and potential role permissions), in which case, again
 just drop the client secret and use the client id and discovery-url.
 
-#### **- Claim Matching**
+#### **Claim Matching**
 
 The proxy supports adding a variable list of claim matches against the presented tokens for additional access control. So for example you can match the 'iss' or 'aud' to the token or custom attributes;
 note each of the matches are regex's. Examples,  --match-claims 'aud=sso.*' --claim iss=https://.*' or via the configuration file. Note, each of matches are regex's
@@ -377,7 +376,7 @@ or via the CLI
 --match-claims=iss=http://keycloak.example.com/realms/commons
 ```
 
-#### **- Custom Pages**
+#### **Custom Pages**
 
 By default the proxy will immediately redirect you for authentication and hand back 403 for access denied. Most users will probably want to present the user with a more friendly sign-in and access denied page. You can pass the command line options (or via config file) paths to the files i.e. --signin-page=PATH. The sign-in page will have a 'redirect' variable passed into the scope and holding the oauth redirection url. If you wish pass additional variables into the templates, perhaps title, sitename etc, you can use the --tags key=pair i.e. --tags title="This is my site"; the variable would be accessible from {{ .title }}
 
@@ -389,7 +388,7 @@ By default the proxy will immediately redirect you for authentication and hand b
 </html>
 ```
 
-#### **- White-listed URL's**
+#### **White-listed URL's**
 
 Depending on how the application url's are laid out, you might want protect the root / url but have exceptions on a list of paths, i.e. /health etc. Although you should probably fix this by fixing up the paths, you can add excepts to the protected resources. (Note: it's an array, so the order is important)
 
@@ -413,23 +412,23 @@ Or on the command line
   --resources "uri=/admin|roles=admin,superuser|methods=POST,DELETE
 ```
 
-#### **- Mutual TLS**
+#### **Mutual TLS**
 
 The proxy support enforcing mutual TLS for the clients by simply adding the --tls-ca-certificate command line option or config file option. All clients connecting must present a certificate which was signed by the CA being used.
 
-#### **- Refresh Tokens**
+#### **Refresh Tokens**
 
 Assuming a request for an access token contains a refresh token and the --enable-refresh-token is true, the proxy will automatically refresh the access token for you. The tokens themselves are kept either as an encrypted *(--encryption-key=KEY)* cookie *(cookie name: kc-state).* or a store *(still requires encryption key)*.
 
 At present the only store supported are[Redis](https://github.com/antirez/redis) and [Boltdb](https://github.com/boltdb/bolt). To enable a local boltdb store. --store-url boltdb:///PATH or relative path boltdb://PATH. For redis the option is redis://[USER:PASSWORD@]HOST:PORT. In both cases the refresh token is encrypted before placing into the store.
 
-#### **- Logout Endpoint**
+#### **Logout Endpoint**
 
 A /oauth/logout?redirect=url is provided as a helper to logout the users, aside from dropping a sessions cookies, we also attempt to revoke session access via revocation url (config revocation-url or --revocation-url) with the provider. For keycloak the url for this would be https://keycloak.example.com/auth/realms/REALM_NAME/protocol/openid-connect/logout, for google /oauth/revoke
 
-#### **- Cross Origin Resource Sharing (CORS)**
+#### **Cross Origin Resource Sharing (CORS)**
 
-You are permitted to add CORS following headers into the /oauth uri namespace
+You can add CORS header via the --cors-[method] command line or configuration options. By default this will inject CORS header into all response from the /oauth/* and any authentication required redirects, though you can enable these globally for all responses via the --enable-cors-global option.
 
  * Access-Control-Allow-Origin
  * Access-Control-Allow-Methods
@@ -457,11 +456,11 @@ or via the command line arguments
 --cors-exposes-headers [--cors-exposes-headers option]  set the expose cors headers access control (Access-Control-Expose-Headers)
 ```
 
-#### **- Upstream URL**
+#### **Upstream URL**
 
 You can control the upstream endpoint via the --upstream-url option. Both http and https is supported with TLS verification and keepalive support configured via the --skip-upstream-tls-verify / --upstream-keepalives option. Note, the proxy can also upstream via a unix socket, --upstream-url unix://path/to/the/file.sock
 
-#### **- Endpoints**
+#### **Endpoints**
 
 * **/oauth/authorize** is authentication endpoint which will generate the openid redirect to the provider
 * **/oauth/callback** is provider openid callback endpoint
@@ -474,4 +473,4 @@ You can control the upstream endpoint via the --upstream-url option. Both http a
 
 #### **Metrics**
 
-Assuming the --enable-metrics has been set, a prometheus endpoint can be found on /oauth/metrics
+Assuming the --enable-metrics has been set, a Prometheus endpoint can be found on /oauth/metrics; at present the only metric being exposed is a counter per http code.
