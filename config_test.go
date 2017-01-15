@@ -21,7 +21,7 @@ import (
 
 func TestNewDefaultConfig(t *testing.T) {
 	if config := newDefaultConfig(); config == nil {
-		t.Error("we should have recieved a config")
+		t.Error("we should have received a config")
 	}
 }
 

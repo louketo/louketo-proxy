@@ -80,7 +80,7 @@ func TestExpirationHandler(t *testing.T) {
 		// step: if closure so we need to get the handler each time
 		proxy.expirationHandler(cx)
 		// step: check the content result
-		assert.Equal(t, c.HTTPCode, cx.Writer.Status(), "test case %d should have recieved: %d, but got %d", i,
+		assert.Equal(t, c.HTTPCode, cx.Writer.Status(), "test case %d should have received: %d, but got %d", i,
 			c.HTTPCode, cx.Writer.Status())
 	}
 }
@@ -326,7 +326,7 @@ func TestCallbackURL(t *testing.T) {
 			continue
 		}
 		callbackURL := resp.Header.Get("Location")
-		if !assert.NotEmpty(t, callbackURL, "case %d, should have recieved a callback url", i) {
+		if !assert.NotEmpty(t, callbackURL, "case %d, should have received a callback url", i) {
 			continue
 		}
 		// step: call the callback url

@@ -47,7 +47,7 @@ func (r *Resource) parse(resource string) (*Resource, error) {
 		case "white-listed":
 			value, err := strconv.ParseBool(kp[1])
 			if err != nil {
-				return nil, errors.New("the value of whitelisted must be true|TRUE|T or it's false equivilant")
+				return nil, errors.New("the value of whitelisted must be true|TRUE|T or it's false equivalent")
 			}
 			r.WhiteListed = value
 		default:

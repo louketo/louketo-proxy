@@ -42,7 +42,7 @@ func TestGetUserRoles(t *testing.T) {
 		t.Error("we should have received a true resposne")
 	}
 	if user.getRoles() == "nothing" {
-		t.Error("we should have recieved a false response")
+		t.Error("we should have received a false response")
 	}
 }
 
