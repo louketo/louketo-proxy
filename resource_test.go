@@ -121,7 +121,7 @@ func TestResourceString(t *testing.T) {
 		Roles: []string{"1", "2", "3"},
 	}
 	if s := resource.String(); s == "" {
-		t.Error("we should have recieved a string")
+		t.Error("we should have received a string")
 	}
 }
 

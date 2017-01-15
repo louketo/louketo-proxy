@@ -55,7 +55,7 @@ func TestRedirectURL(t *testing.T) {
 	p, _, _ := newTestProxyService(nil)
 
 	if p.redirectToURL("http://127.0.0.1", context); context.Writer.Status() != http.StatusTemporaryRedirect {
-		t.Error("we should have recieved a redirect")
+		t.Error("we should have received a redirect")
 	}
 
 	if !context.IsAborted() {
@@ -69,11 +69,11 @@ func TestAccessForbidden(t *testing.T) {
 
 	p.config.SkipTokenVerification = false
 	if p.accessForbidden(context); context.Writer.Status() != http.StatusForbidden {
-		t.Error("we should have recieved a forbidden access")
+		t.Error("we should have received a forbidden access")
 	}
 
 	p.config.SkipTokenVerification = true
 	if p.accessForbidden(context); context.Writer.Status() != http.StatusForbidden {
-		t.Error("we should have recieved a forbidden access")
+		t.Error("we should have received a forbidden access")
 	}
 }

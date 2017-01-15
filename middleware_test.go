@@ -487,7 +487,7 @@ func TestAdmissionHandlerRoles(t *testing.T) {
 
 		handler(c.Context)
 		status := c.Context.Writer.Status()
-		assert.Equal(t, c.HTTPCode, status, "test case %d should have recieved code: %d, got %d", i, c.HTTPCode, status)
+		assert.Equal(t, c.HTTPCode, status, "test case %d should have received code: %d, got %d", i, c.HTTPCode, status)
 	}
 }
 
@@ -598,6 +598,6 @@ func TestAdmissionHandlerClaims(t *testing.T) {
 		handler(c.Context)
 		c.Context.Writer.WriteHeaderNow()
 		status := c.Context.Writer.Status()
-		assert.Equal(t, c.HTTPCode, status, "test case %d should have recieved code: %d, got %d", i, c.HTTPCode, status)
+		assert.Equal(t, c.HTTPCode, status, "test case %d should have received code: %d, got %d", i, c.HTTPCode, status)
 	}
 }
