@@ -8,6 +8,7 @@ cover.out
 tests/db.bolt
 test.sock
 tests/redis.conf
+tests/*.csr
 
 *.iml
 config.yml
