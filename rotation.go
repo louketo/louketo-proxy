@@ -19,7 +19,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"path"
-	"strings"
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
@@ -77,22 +76,16 @@ func (c *certificationRotation) watch() error {
 					if !containedIn(event.Name, filewatchPaths) {
 						continue
 					}
-					// step: we have to reload the certificate
-					log.WithFields(log.Fields{
-						"filename": event.Name,
-						"event":    strings.ToLower(event.Op.String()),
-					}).Debugf("the certificate file has thrown a file event")
-
 					// step: reload the certificate
 					certificate, err := tls.LoadX509KeyPair(c.certificateFile, c.privateKeyFile)
 					if err != nil {
 						log.WithFields(log.Fields{
 							"filename": event.Name,
 							"error":    err.Error(),
-						}).Error("unable to load the new certificate")
+						}).Error("unable to load the updated certificate")
 					}
 					// step: load the new certificate
-					c.loadCertificate(certificate)
+					c.storeCertificate(certificate)
 					// step: print a debug message for us
 					log.Infof("replacing the server certifacte with updated version")
 				}
@@ -107,8 +100,8 @@ func (c *certificationRotation) watch() error {
 	return nil
 }
 
-// loadCertificate provides entrypoint to update the certificate
-func (c *certificationRotation) loadCertificate(certifacte tls.Certificate) error {
+// storeCertificate provides entrypoint to update the certificate
+func (c *certificationRotation) storeCertificate(certifacte tls.Certificate) error {
 	c.Lock()
 	defer c.Unlock()
 	c.certificate = certifacte
