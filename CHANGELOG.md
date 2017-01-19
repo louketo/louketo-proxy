@@ -2,7 +2,8 @@
 #### **2.0.2**
 
 FEATURES:
- * adding the --enable-cors-global to switch on CORs header injects into every response [#PR174](https://github.com/gambol99/keycloak-proxy/pull/174)
+ * Adding the --enable-cors-global to switch on CORs header injects into every response [#PR174](https://github.com/gambol99/keycloak-proxy/pull/174)
+ * Adding the ability to reload the certificates when the change [#PR178](https://github.com/gambol99/keycloak-proxy/pull/178)
 
 BUGS:
  * Fixed the time.Duration flags in the reflection code [#PR173](https://github.com/gambol99/keycloak-proxy/pull/173)

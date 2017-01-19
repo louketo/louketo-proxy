@@ -376,10 +376,18 @@ func createHTTPListener(config listenerConfig) (net.Listener, error) {
 	// step: does the socket require TLS?
 	if config.certificate != "" && config.privateKey != "" {
 		log.Infof("tls enabled, certificate: %s, key: %s", config.certificate, config.privateKey)
-		tlsConfig := &tls.Config{}
-		tlsConfig.Certificates = make([]tls.Certificate, 1)
-		if tlsConfig.Certificates[0], err = tls.LoadX509KeyPair(config.certificate, config.privateKey); err != nil {
+		// step: creating a certificate rotation
+		rotate, err := newCertificateRotator(config.certificate, config.privateKey)
+		if err != nil {
 			return nil, err
+		}
+		// step: start watching the files for changes
+		if err := rotate.watch(); err != nil {
+			return nil, err
+		}
+		tlsConfig := &tls.Config{
+			PreferServerCipherSuites: true,
+			GetCertificate:           rotate.GetCertificate,
 		}
 		listener = tls.NewListener(listener, tlsConfig)
 
