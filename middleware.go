@@ -171,18 +171,6 @@ func (r *oauthProxy) authenticationMiddleware() gin.HandlerFunc {
 				return
 			}
 
-			// step: are they using a bearer token
-			if user.isBearer() {
-				log.WithFields(log.Fields{
-					"email":      user.name,
-					"expired_on": user.expiresAt.String(),
-					"client_ip":  clientIP,
-				}).Errorf("session has expired and client is using bearer token")
-
-				r.redirectToAuthorization(cx)
-				return
-			}
-
 			log.WithFields(log.Fields{
 				"email":     user.email,
 				"client_ip": clientIP,
@@ -266,9 +254,7 @@ func (r *oauthProxy) authenticationMiddleware() gin.HandlerFunc {
 	}
 }
 
-//
 // admissionMiddleware is responsible checking the access token against the protected resource
-//
 func (r *oauthProxy) admissionMiddleware() gin.HandlerFunc {
 	// step: compile the regex's for the claims
 	claimMatches := make(map[string]*regexp.Regexp, 0)
@@ -409,6 +395,7 @@ func (r *oauthProxy) headersMiddleware(custom []string) gin.HandlerFunc {
 		// step: retrieve the user context if any
 		if user, found := cx.Get(userContextName); found {
 			id := user.(*userContext)
+
 			cx.Request.Header.Set("X-Auth-Userid", id.name)
 			cx.Request.Header.Set("X-Auth-Subject", id.id)
 			cx.Request.Header.Set("X-Auth-Username", id.name)

@@ -190,10 +190,7 @@ func (r *oauthProxy) createReverseProxy() error {
 	oauth.GET(tokenURL, r.tokenHandler)
 	oauth.GET(expiredURL, r.expirationHandler)
 	oauth.GET(logoutURL, r.logoutHandler)
-	// step: is the login hanler enabled?
-	if r.config.EnableLoginHandler {
-		oauth.POST(loginURL, r.loginHandler)
-	}
+	oauth.POST(loginURL, r.loginHandler)
 	// step: enable the metric page?
 	if r.config.EnableMetrics {
 		oauth.GET(metricsURL, r.metricsHandler)

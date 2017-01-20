@@ -9,7 +9,6 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin/binding"
-	"github.com/mattn/go-colorable"
 )
 
 const ENV_GIN_MODE = "GIN_MODE"
@@ -21,13 +20,22 @@ const (
 )
 const (
 	debugCode   = iota
-	releaseCode = iota
-	testCode    = iota
+	releaseCode 
+	testCode  
 )
 
-var DefaultWriter io.Writer = colorable.NewColorableStdout()
-var ginMode int = debugCode
-var modeName string = DebugMode
+// DefaultWriter is the default io.Writer used the Gin for debug output and
+// middleware output like Logger() or Recovery().
+// Note that both Logger and Recovery provides custom ways to configure their
+// output io.Writer.
+// To support coloring in Windows use:
+// 		import "github.com/mattn/go-colorable"
+// 		gin.DefaultWriter = colorable.NewColorableStdout()
+var DefaultWriter io.Writer = os.Stdout
+var DefaultErrorWriter io.Writer = os.Stderr
+
+var ginMode = debugCode
+var modeName = DebugMode
 
 func init() {
 	mode := os.Getenv(ENV_GIN_MODE)

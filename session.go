@@ -25,7 +25,7 @@ import (
 
 // getIdentity retrieves the user identity from a request, either from a session cookie or a bearer token
 func (r *oauthProxy) getIdentity(req *http.Request) (*userContext, error) {
-	isBearer := false
+	var isBearer bool
 
 	// step: check for a bearer token or cookie with jwt token
 	access, isBearer, err := getTokenInRequest(req, r.config.CookieAccessName)

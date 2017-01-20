@@ -171,6 +171,10 @@ func (r *fakeOAuthServer) getRevocationURL() string {
 	return fmt.Sprintf("%s://%s/auth/realms/hod-test/protocol/openid-connect/logout", r.location.Scheme, r.location.Host)
 }
 
+func (r *fakeOAuthServer) signToken(claims jose.Claims) (*jose.JWT, error) {
+	return jose.NewSignedJWT(claims, r.signer)
+}
+
 func (r *fakeOAuthServer) setUserRealmRoles(roles []string) *fakeOAuthServer {
 	r.claims["realm_access"] = map[string]interface{}{
 		"roles": roles,
@@ -287,6 +291,38 @@ func (r *fakeOAuthServer) tokenHandler(cx *gin.Context) {
 
 func TestGetUserinfo(t *testing.T) {
 
+}
+
+func TestTokenExpired(t *testing.T) {
+	px, idp, _ := newTestProxyService(nil)
+	token := newTestToken(idp.getLocation())
+	cs := []struct {
+		Expire time.Duration
+		OK     bool
+	}{
+		{
+			Expire: time.Duration(1 * time.Hour),
+			OK:     true,
+		},
+		{
+			Expire: time.Duration(-5 * time.Hour),
+		},
+	}
+	for i, x := range cs {
+		token.setExpiration(time.Now().Add(x.Expire))
+		signed, err := idp.signToken(token.claims)
+		if err != nil {
+			t.Errorf("case %d unable to sign the token, error: %s", i, err)
+			continue
+		}
+		err = verifyToken(px.client, *signed)
+		if x.OK && err != nil {
+			t.Errorf("case %d, expected: %t got error: %s", i, x.OK, err)
+		}
+		if !x.OK && err == nil {
+			t.Errorf("case %d, expected: %t got no error", i, x.OK)
+		}
+	}
 }
 
 func getRandomString(n int) string {
