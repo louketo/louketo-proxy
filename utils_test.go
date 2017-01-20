@@ -30,9 +30,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCreateOpenIDClient(t *testing.T) {
+func TestNewOpenIDClient(t *testing.T) {
 	_, auth, _ := newTestProxyService(nil)
-	client, _, err := createOpenIDClient(&Config{
+	client, _, _, err := newOpenIDClient(&Config{
 		DiscoveryURL: auth.location.String() + "/auth/realms/hod-test",
 	})
 	assert.NoError(t, err)
@@ -70,6 +70,28 @@ func TestDecodeKeyPairs(t *testing.T) {
 		if !reflect.DeepEqual(kp, c.KeyPairs) {
 			t.Errorf("test case %d are not equal %v <-> %v", i, kp, c.KeyPairs)
 		}
+	}
+}
+
+func TestDefaultTo(t *testing.T) {
+	cs := []struct {
+		Value    string
+		Default  string
+		Expected string
+	}{
+		{
+			Value:    "",
+			Default:  "hello",
+			Expected: "hello",
+		},
+		{
+			Value:    "world",
+			Default:  "hello",
+			Expected: "world",
+		},
+	}
+	for _, c := range cs {
+		assert.Equal(t, c.Expected, defaultTo(c.Value, c.Default))
 	}
 }
 

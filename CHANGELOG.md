@@ -1,9 +1,16 @@
 
-#### **2.0.2**
+#### **2.0.2 (Unreleased)**
 
 FEATURES:
  * Adding the --enable-cors-global to switch on CORs header injects into every response [#PR174](https://github.com/gambol99/keycloak-proxy/pull/174)
  * Adding the ability to reload the certificates when the change [#PR178](https://github.com/gambol99/keycloak-proxy/pull/178)
+ * Removing the requirement of a redirection-url, if none is specified it will use Host header or the X-Forwarded-Host if present [#PR183](https://github.com/gambol99/keycloak-proxy/pull/183)
+
+CHANGES:
+ * Updated the gin dependency to latest version and removed dependency in tests for gin [#PR181](https://github.com/gambol99/keycloak-proxy/pull/181)
+ * Updated to go-proxy to the latest version [#PR180](https://github.com/gambol99/keycloak-proxy/pull/180)
+ * Fixed up some spelling mistakes [#PR177](https://github.com/gambol99/keycloak-proxy/pull/177)
+ * Changed the CLI to use reflection of the config struct [#PR176](https://github.com/gambol99/keycloak-proxy/pull/176)
 
 BUGS:
  * Fixed the time.Duration flags in the reflection code [#PR173](https://github.com/gambol99/keycloak-proxy/pull/173)

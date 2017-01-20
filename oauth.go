@@ -25,6 +25,21 @@ import (
 	"github.com/coreos/go-oidc/oidc"
 )
 
+// getOAuthClient returns a oauth2 client from the openid client
+func (r *oauthProxy) getOAuthClient(redirectionURL string) (*oauth2.Client, error) {
+	return oauth2.NewClient(r.idpClient, oauth2.Config{
+		Credentials: oauth2.ClientCredentials{
+			ID:     r.config.ClientID,
+			Secret: r.config.ClientSecret,
+		},
+		RedirectURL: redirectionURL,
+		AuthURL:     r.idp.AuthEndpoint.String(),
+		TokenURL:    r.idp.TokenEndpoint.String(),
+		Scope:       append(r.config.Scopes, oidc.DefaultScope...),
+		AuthMethod:  oauth2.AuthMethodClientSecretBasic,
+	})
+}
+
 // verifyToken verify that the token in the user context is valid
 func verifyToken(client *oidc.Client, token jose.JWT) error {
 	// step: verify the token is whom they say they are
@@ -41,7 +56,12 @@ func verifyToken(client *oidc.Client, token jose.JWT) error {
 
 // getRefreshedToken attempts to refresh the access token, returning the parsed token and the time it expires or a error
 func getRefreshedToken(client *oidc.Client, t string) (jose.JWT, time.Time, error) {
-	response, err := getToken(client, oauth2.GrantTypeRefreshToken, t)
+	// step: retrieve the client
+	cl, err := client.OAuthClient()
+	if err != nil {
+		return jose.JWT{}, time.Time{}, err
+	}
+	response, err := getToken(cl, oauth2.GrantTypeRefreshToken, t)
 	if err != nil {
 		if strings.Contains(err.Error(), "token expired") {
 			return jose.JWT{}, time.Time{}, ErrRefreshTokenExpired
@@ -59,23 +79,19 @@ func getRefreshedToken(client *oidc.Client, t string) (jose.JWT, time.Time, erro
 }
 
 // exchangeAuthenticationCode exchanges the authentication code with the oauth server for a access token
-func exchangeAuthenticationCode(client *oidc.Client, code string) (oauth2.TokenResponse, error) {
+func exchangeAuthenticationCode(client *oauth2.Client, code string) (oauth2.TokenResponse, error) {
 	return getToken(client, oauth2.GrantTypeAuthCode, code)
 }
 
 // getUserinfo is responsible for getting the userinfo from the iDP
-func getUserinfo(client *oidc.Client, provider *oidc.ProviderConfig) (interface{}, error) {
-	c, err := client.OAuthClient()
-	if err != nil {
-		return nil, err
-	}
+func getUserinfo(client *oauth2.Client, provider *oidc.ProviderConfig) (interface{}, error) {
 	// step: creating the http request
 	req, err := http.NewRequest(http.MethodGet, provider.UserInfoEndpoint.String(), nil)
 	if err != nil {
 		return nil, err
 	}
 	// step: make the resposne
-	resp, err := c.HttpClient().Do(req)
+	resp, err := client.HttpClient().Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -88,15 +104,9 @@ func getUserinfo(client *oidc.Client, provider *oidc.ProviderConfig) (interface{
 }
 
 // getToken retrieves a code from the provider, extracts and verified the token
-func getToken(client *oidc.Client, grantType, code string) (oauth2.TokenResponse, error) {
-	// step: retrieve the client
-	c, err := client.OAuthClient()
-	if err != nil {
-		return oauth2.TokenResponse{}, err
-	}
-
+func getToken(client *oauth2.Client, grantType, code string) (oauth2.TokenResponse, error) {
 	// step: request a token from the authentication server
-	return c.RequestToken(grantType, code)
+	return client.RequestToken(grantType, code)
 }
 
 // parseToken retrieve the user identity from the token

@@ -46,7 +46,9 @@ type oauthProxy struct {
 	// the opened client
 	client *oidc.Client
 	// the openid provider configuration
-	provider oidc.ProviderConfig
+	idp oidc.ProviderConfig
+	// the provider http client
+	idpClient *http.Client
 	// the proxy client
 	upstream reverseProxy
 	// the upstream endpoint url
@@ -84,26 +86,26 @@ func newProxy(config *Config) (*oauthProxy, error) {
 
 	log.Infof("starting %s, author: %s, version: %s, ", prog, author, version)
 
-	service := &oauthProxy{
+	svc := &oauthProxy{
 		config:            config,
 		prometheusHandler: prometheus.Handler(),
 	}
 
 	// step: parse the upstream endpoint
-	if service.endpoint, err = url.Parse(config.Upstream); err != nil {
+	if svc.endpoint, err = url.Parse(config.Upstream); err != nil {
 		return nil, err
 	}
 
 	// step: initialize the store if any
 	if config.StoreURL != "" {
-		if service.store, err = createStorage(config.StoreURL); err != nil {
+		if svc.store, err = createStorage(config.StoreURL); err != nil {
 			return nil, err
 		}
 	}
 
 	// step: initialize the openid client
 	if !config.SkipTokenVerification {
-		if service.client, service.provider, err = createOpenIDClient(config); err != nil {
+		if svc.client, svc.idp, svc.idpClient, err = newOpenIDClient(config); err != nil {
 			return nil, err
 		}
 	} else {
@@ -117,16 +119,16 @@ func newProxy(config *Config) (*oauthProxy, error) {
 	// step: are we running in forwarding more?
 	switch config.EnableForwarding {
 	case true:
-		if err := service.createForwardingProxy(); err != nil {
+		if err := svc.createForwardingProxy(); err != nil {
 			return nil, err
 		}
 	default:
-		if err := service.createReverseProxy(); err != nil {
+		if err := svc.createReverseProxy(); err != nil {
 			return nil, err
 		}
 	}
 
-	return service, nil
+	return svc, nil
 }
 
 // createReverseProxy creates a reverse proxy
@@ -139,6 +141,9 @@ func (r *oauthProxy) createReverseProxy() error {
 	}
 	for name, value := range r.config.MatchClaims {
 		log.Infof("the token must container the claim: %s, required: %s", name, value)
+	}
+	if r.config.RedirectionURL == "" {
+		log.Warnf("no redirection url has been set, will use host headers")
 	}
 
 	// step: initialize the reverse http proxy
