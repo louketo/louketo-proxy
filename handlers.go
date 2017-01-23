@@ -203,11 +203,14 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 	r.redirectToURL(state, cx)
 }
 
-//
 // loginHandler provide's a generic endpoint for clients to perform a user_credentials login to the provider
-//
 func (r *oauthProxy) loginHandler(cx *gin.Context) {
 	errorMsg, code, err := func() (string, int, error) {
+		// step: check if the handler is disable
+		if !r.config.EnableLoginHandler {
+			return "attempt to login when login handler is disabled", http.StatusNotImplemented, errors.New("login handler disabled")
+		}
+
 		// step: parse the client credentials
 		username := cx.Request.PostFormValue("username")
 		password := cx.Request.PostFormValue("password")

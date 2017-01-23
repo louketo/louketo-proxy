@@ -18,6 +18,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -76,6 +77,24 @@ var (
 		"given_name":         "Rohith",
 	}
 
+	defaultTestTokenClaims = jose.Claims{
+		"jti":                "4ee75b8e-3ee6-4382-92d4-3390b4b4937b",
+		"nbf":                0,
+		"iat":                "1450372669",
+		"iss":                "test",
+		"aud":                "test",
+		"sub":                "1e11e539-8256-4b3b-bda8-cc0d56cddb48",
+		"typ":                "Bearer",
+		"azp":                "clientid",
+		"session_state":      "98f4c3d2-1b8c-4932-b8c4-92ec0ea7e195",
+		"client_session":     "f0105893-369a-46bc-9661-ad8c747b1a69",
+		"email":              "gambol99@gmail.com",
+		"name":               "Rohith Jayawardene",
+		"family_name":        "Jayawardene",
+		"preferred_username": "rjayawardene",
+		"given_name":         "Rohith",
+	}
+
 	defaultFakeRealmClaims = jose.Claims{
 		"jti":            "4ee75b8e-3ee6-4382-92d4-3390b4b4937b",
 		"nbf":            0,
@@ -108,6 +127,48 @@ var (
 		"given_name":         "Rohith",
 	}
 )
+
+type testJWTToken struct {
+	claims jose.Claims
+}
+
+func newTestToken(issuer string) *testJWTToken {
+	claims := defaultTestTokenClaims
+	claims.Add("exp", float64(time.Now().Add(1*time.Hour).Unix()))
+	claims.Add("iat", float64(time.Now().Unix()))
+	claims.Add("iss", issuer)
+
+	return &testJWTToken{claims: claims}
+}
+
+func (t *testJWTToken) mergeClaims(claims jose.Claims) {
+	for k, v := range claims {
+		t.claims.Add(k, v)
+	}
+}
+
+func (t *testJWTToken) getToken() jose.JWT {
+	tk, _ := jose.NewJWT(jose.JOSEHeader{"alg": "RS256"}, t.claims)
+	return tk
+}
+
+func (t *testJWTToken) setExpiration(tm time.Time) {
+	t.claims.Add("exp", float64(tm.Unix()))
+}
+
+func (t *testJWTToken) setRealmsRoles(roles []string) {
+	t.claims.Add("realm_access", map[string]interface{}{
+		"roles": roles,
+	})
+}
+
+func (t *testJWTToken) setClientRoles(client string, roles []string) {
+	t.claims.Add("resource_access", map[string]interface{}{
+		"openvpn": map[string]interface{}{
+			"roles": roles,
+		},
+	})
+}
 
 func newFakeAccessToken(claims *jose.Claims, expire time.Duration) jose.JWT {
 	if claims == nil {
@@ -187,6 +248,12 @@ func newTestService() string {
 	return u
 }
 
+func newTestServiceWithConfig(cfg *Config) string {
+	_, _, u := newTestProxyService(cfg)
+
+	return u
+}
+
 func newTestProxyOnlyService() *oauthProxy {
 	p, _, _ := newTestProxyService(nil)
 	return p
@@ -194,15 +261,12 @@ func newTestProxyOnlyService() *oauthProxy {
 
 func newTestProxyService(config *Config) (*oauthProxy, *fakeOAuthServer, string) {
 	log.SetOutput(ioutil.Discard)
-
 	// step: create a fake oauth server
 	auth := newFakeOAuthServer()
-
 	// step: use the default config if required
 	if config == nil {
 		config = newFakeKeycloakConfig()
 	}
-
 	// step: set the config
 	config.DiscoveryURL = auth.getLocation()
 	config.RevocationEndpoint = auth.getRevocationURL()
@@ -214,7 +278,7 @@ func newTestProxyService(config *Config) (*oauthProxy, *fakeOAuthServer, string)
 	}
 
 	// step: create an fake upstream endpoint
-	proxy.upstream = new(fakeReverseProxy)
+	proxy.upstream = new(testReverseProxy)
 	service := httptest.NewServer(proxy.router)
 	config.RedirectionURL = service.URL
 
@@ -227,14 +291,12 @@ func newTestProxyService(config *Config) (*oauthProxy, *fakeOAuthServer, string)
 	return proxy, auth, service.URL
 }
 
-func newFakeKeycloakProxyWithResources(t *testing.T, resources []*Resource) *oauthProxy {
-	p, _, _ := newTestProxyService(nil)
-	p.config.Resources = resources
-	p.endpoint = &url.URL{
-		Host: "127.0.0.1",
-	}
+func newTestServiceWithWithResources(t *testing.T, resources []*Resource) (*oauthProxy, string) {
+	config := newFakeKeycloakConfig()
+	config.Resources = resources
+	px, _, url := newTestProxyService(config)
 
-	return p
+	return px, url
 }
 
 func TestNewKeycloakProxy(t *testing.T) {
@@ -341,20 +403,33 @@ func newFakeGinContextWithCookies(method, url string, cookies []*http.Cookie) *g
 	return cx
 }
 
-func newFakeJWTToken(t *testing.T, claims jose.Claims) *jose.JWT {
-	token, err := jose.NewJWT(
-		jose.JOSEHeader{"alg": "RS256"}, claims,
-	)
-	if err != nil {
-		t.Fatalf("failed to create the jwt token, error: %s", err)
-	}
-
-	return &token
+// testUpstreamResponse is the response from fake upstream
+type testUpstreamResponse struct {
+	URI     string
+	Method  string
+	Address string
+	Headers http.Header
 }
 
-type fakeReverseProxy struct{}
+const testProxyAccepted = "Proxy-Accepted"
 
-func (r fakeReverseProxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {}
+type testReverseProxy struct{}
+
+func (r testReverseProxy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	resp := testUpstreamResponse{
+		URI:     req.RequestURI,
+		Method:  req.Method,
+		Address: req.RemoteAddr,
+		Headers: req.Header,
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set(testProxyAccepted, "true")
+	w.Header().Set("Content-Type", "application/json")
+	// step: encode the response
+	encoded, _ := json.Marshal(&resp)
+
+	w.Write(encoded)
+}
 
 type fakeResponse struct {
 	size    int
