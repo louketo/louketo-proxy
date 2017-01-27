@@ -11,6 +11,7 @@ CHANGES:
  * Updated to go-proxy to the latest version [#PR180](https://github.com/gambol99/keycloak-proxy/pull/180)
  * Fixed up some spelling mistakes [#PR177](https://github.com/gambol99/keycloak-proxy/pull/177)
  * Changed the CLI to use reflection of the config struct [#PR176](https://github.com/gambol99/keycloak-proxy/pull/176)
+ * Updated the docker base image to alpine:3.5 [#PR184](https://github.com/gambol99/keycloak-proxy/pull/184)
 
 BUGS:
  * Fixed the time.Duration flags in the reflection code [#PR173](https://github.com/gambol99/keycloak-proxy/pull/173)
