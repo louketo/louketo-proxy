@@ -178,6 +178,8 @@ discovery-url: https://keycloak.example.com/auth/realms/<REALM_NAME>
 client-id: <CLIENT_ID>
 client-secret: <CLIENT_SECRET> # require for access_type: confidential
 listen: 127.0.0.1:3000
+# Note the redirection-url is optional, it will default to the X-Forwarded-Proto / X-Forwarded-Host
+# or the URL scheme and host not found
 redirection-url: http://127.0.0.1:3000
 encryption_key: AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j
 upstream-url: http://127.0.0.1:80
@@ -230,7 +232,7 @@ DEBU[0002] resource access permitted: /favicon.ico       access=permitted bearer
 2016-02-06 13:59:01.856716 I | http: proxy error: dial tcp 127.0.0.1:8081: getsockopt: connection refused
 ```
 
-#### **Forward Signing Proxy (Experimental)**
+#### **Forward Signing Proxy**
 
 Forward signing provides a mechanism for authentication and authorization between services using tokens issued from the IDp. When operating with in the mode the proxy will automatically acquire an access token (handling the refreshing or logins on your behalf) and tag outbound requests with a Authorization header. You can control which domains are tagged with the --forwarding-domains option. Note, this option use a **contains** comparison on domains. So, if you wanted to match all domains under *.svc.cluster.local can and simply use: --forwarding-domain=svc.cluster.local.
 
@@ -286,7 +288,7 @@ Handling HTTPS requires man in the middling the TLS connection. By default if no
 
 #### **HTTPS Redirect**
 
-The proxy supports http listener, though the only real requirement for this would be perform http -> https redirect. You can enable the optoin via
+The proxy supports http listener, though the only real requirement for this would be perform http -> https redirect. You can enable the option via
 
 ```shell
 --listen-http=127.0.0.1:80
@@ -360,8 +362,7 @@ just drop the client secret and use the client id and discovery-url.
 
 #### **Claim Matching**
 
-The proxy supports adding a variable list of claim matches against the presented tokens for additional access control. So for example you can match the 'iss' or 'aud' to the token or custom attributes;
-note each of the matches are regex's. Examples,  --match-claims 'aud=sso.*' --claim iss=https://.*' or via the configuration file. Note, each of matches are regex's
+The proxy supports adding a variable list of claim matches against the presented tokens for additional access control. So for example you can match the 'iss' or 'aud' to the token or custom attributes; note each of the matches are regex's. Examples,  --match-claims 'aud=sso.*' --claim iss=https://.*' or via the configuration file. Note, each of matches are regex's
 
 ```YAML
 match-claims:
@@ -414,7 +415,11 @@ Or on the command line
 
 #### **Mutual TLS**
 
-The proxy support enforcing mutual TLS for the clients by simply adding the --tls-ca-certificate command line option or config file option. All clients connecting must present a certificate which was signed by the CA being used.
+The proxy support enforcing mutual TLS for the clients by simply adding the --tls-ca-certificate command line option or configuration file option. All clients connecting must present a certificate which was signed by the CA being used.
+
+#### **Certificate Rotation**
+
+The proxy will automatically rotate the server certificate's if the files change on disk. Note, no downtown will occur as the change is made inline. Client whom connected prior to the certificate rotation will be unaffected continue as normal with all new connections presented with the new certificate.
 
 #### **Refresh Tokens**
 

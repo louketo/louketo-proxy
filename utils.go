@@ -141,18 +141,19 @@ func decodeText(state, key string) (string, error) {
 	return string(encoded), nil
 }
 
-// createOpenIDClient initializes the openID configuration, note: the redirection url is deliberately left blank
+// newOpenIDClient initializes the openID configuration, note: the redirection url is deliberately left blank
 // in order to retrieve it from the host header on request
-func createOpenIDClient(cfg *Config) (*oidc.Client, oidc.ProviderConfig, error) {
+func newOpenIDClient(cfg *Config) (*oidc.Client, oidc.ProviderConfig, *http.Client, error) {
 	var err error
-	var providerConfig oidc.ProviderConfig
+	var config oidc.ProviderConfig
 
 	// step: fix up the url if required, the underlining lib will add the .well-known/openid-configuration to the discovery url for us.
 	if strings.HasSuffix(cfg.DiscoveryURL, "/.well-known/openid-configuration") {
 		cfg.DiscoveryURL = strings.TrimSuffix(cfg.DiscoveryURL, "/.well-known/openid-configuration")
 	}
+
 	// step: create a idp http client
-	providerHTTPClient := &http.Client{
+	hc := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: cfg.SkipOpenIDProviderTLSVerify,
@@ -165,8 +166,8 @@ func createOpenIDClient(cfg *Config) (*oidc.Client, oidc.ProviderConfig, error) 
 	completeCh := make(chan bool)
 	go func() {
 		for {
-			log.Infof("attempting to retrieve the openid configuration from the discovery url: %s", cfg.DiscoveryURL)
-			if providerConfig, err = oidc.FetchProviderConfig(providerHTTPClient, cfg.DiscoveryURL); err == nil {
+			log.Infof("attempting to retrieve openid configuration from discovery url: %s", cfg.DiscoveryURL)
+			if config, err = oidc.FetchProviderConfig(hc, cfg.DiscoveryURL); err == nil {
 				break // break and complete
 			}
 			log.Warnf("failed to get provider configuration from discovery url: %s, %s", cfg.DiscoveryURL, err)
@@ -177,34 +178,32 @@ func createOpenIDClient(cfg *Config) (*oidc.Client, oidc.ProviderConfig, error) 
 	// step: wait for timeout or successful retrieval
 	select {
 	case <-time.After(30 * time.Second):
-		return nil, oidc.ProviderConfig{}, errors.New("failed to retrieve the provider configuration from discovery url")
+		return nil, config, nil, errors.New("failed to retrieve the provider configuration from discovery url")
 	case <-completeCh:
 		log.Infof("successfully retrieved the openid configuration from the discovery url: %s", cfg.DiscoveryURL)
 	}
 
 	client, err := oidc.NewClient(oidc.ClientConfig{
-		ProviderConfig: providerConfig,
+		ProviderConfig: config,
 		Credentials: oidc.ClientCredentials{
 			ID:     cfg.ClientID,
 			Secret: cfg.ClientSecret,
 		},
 		RedirectURL: fmt.Sprintf("%s/oauth/callback", cfg.RedirectionURL),
 		Scope:       append(cfg.Scopes, oidc.DefaultScope...),
-		HTTPClient:  providerHTTPClient,
+		HTTPClient:  hc,
 	})
 	if err != nil {
-		return nil, oidc.ProviderConfig{}, err
+		return nil, config, hc, err
 	}
 
 	// step: start the provider sync for key rotation
 	client.SyncProviderConfig(cfg.DiscoveryURL)
 
-	return client, providerConfig, nil
+	return client, config, hc, nil
 }
 
-//
 // decodeKeyPairs converts a list of strings (key=pair) to a map
-//
 func decodeKeyPairs(list []string) (map[string]string, error) {
 	kp := make(map[string]string, 0)
 
@@ -224,6 +223,15 @@ func decodeKeyPairs(list []string) (map[string]string, error) {
 //
 func isValidHTTPMethod(method string) bool {
 	return httpMethodRegex.MatchString(method)
+}
+
+// defaultTo returns the value of the default
+func defaultTo(v, d string) string {
+	if v != "" {
+		return v
+	}
+
+	return d
 }
 
 //

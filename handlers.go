@@ -34,6 +34,28 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// getRedirectionURL returns the redirectionURL for the oauth flow
+func (r *oauthProxy) getRedirectionURL(cx *gin.Context) string {
+	var redirect string
+	switch r.config.RedirectionURL {
+	case "":
+		// need to determine the scheme, cx.Request.URL.Scheme doesn't have it, best way is to default
+		// and then check for TLS
+		scheme := "http"
+		if cx.Request.TLS != nil {
+			scheme = "https"
+		}
+		// @QUESTION: should I use the X-Forwarded-<header>?? ..
+		redirect = fmt.Sprintf("%s://%s",
+			defaultTo(cx.Request.Header.Get("X-Forwarded-Proto"), scheme),
+			defaultTo(cx.Request.Header.Get("X-Forwarded-Host"), cx.Request.Host))
+	default:
+		redirect = r.config.RedirectionURL
+	}
+
+	return fmt.Sprintf("%s/oauth/callback", redirect)
+}
+
 // oauthAuthorizationHandler is responsible for performing the redirection to oauth provider
 func (r *oauthProxy) oauthAuthorizationHandler(cx *gin.Context) {
 	// step: we can skip all of this if were not verifying the token
@@ -41,8 +63,8 @@ func (r *oauthProxy) oauthAuthorizationHandler(cx *gin.Context) {
 		cx.AbortWithStatus(http.StatusNotAcceptable)
 		return
 	}
-
-	client, err := r.client.OAuthClient()
+	// step: create a oauth client
+	client, err := r.getOAuthClient(r.getRedirectionURL(cx))
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err.Error(),
@@ -53,31 +75,30 @@ func (r *oauthProxy) oauthAuthorizationHandler(cx *gin.Context) {
 	}
 
 	// step: set the access type of the session
-	accessType := ""
+	var accessType string
 	if containedIn("offline", r.config.Scopes) {
 		accessType = "offline"
 	}
 
-	// step: generate the authorization url
-	redirectionURL := client.AuthCodeURL(cx.Query("state"), accessType, "")
+	authURL := client.AuthCodeURL(cx.Query("state"), accessType, "")
 
 	log.WithFields(log.Fields{
-		"client_ip":       cx.ClientIP(),
-		"access_type":     accessType,
-		"redirection-url": redirectionURL,
+		"client_ip":   cx.ClientIP(),
+		"access_type": accessType,
+		"auth-url":    authURL,
 	}).Debugf("incoming authorization request from client address: %s", cx.ClientIP())
 
 	// step: if we have a custom sign in page, lets display that
 	if r.config.hasCustomSignInPage() {
 		// step: inject any custom tags into the context for the template
 		model := make(map[string]string, 0)
-		model["redirect"] = redirectionURL
+		model["redirect"] = authURL
 
 		cx.HTML(http.StatusOK, path.Base(r.config.SignInPage), mergeMaps(model, r.config.Tags))
 		return
 	}
 
-	r.redirectToURL(redirectionURL, cx)
+	r.redirectToURL(authURL, cx)
 }
 
 // oauthCallbackHandler is responsible for handling the response from oauth service
@@ -87,7 +108,6 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 		cx.AbortWithStatus(http.StatusNotAcceptable)
 		return
 	}
-
 	// step: ensure we have a authorization code to exchange
 	code := cx.Request.URL.Query().Get("code")
 	if code == "" {
@@ -95,8 +115,17 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 		return
 	}
 
+	// step: create a oauth client
+	client, err := r.getOAuthClient(r.getRedirectionURL(cx))
+	if err != nil {
+		log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to create a oauth2 client")
+
+		cx.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+
 	// step: exchange the authorization for a access token
-	response, err := exchangeAuthenticationCode(r.client, code)
+	response, err := exchangeAuthenticationCode(client, code)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err.Error(),
