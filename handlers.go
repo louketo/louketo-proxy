@@ -127,9 +127,7 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 	// step: exchange the authorization for a access token
 	response, err := exchangeAuthenticationCode(client, code)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Errorf("unable to exchange code for access token")
+		log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to exchange code for access token")
 
 		r.accessForbidden(cx)
 		return
@@ -138,9 +136,7 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 	// step: parse decode the identity token
 	session, identity, err := parseToken(response.IDToken)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Errorf("unable to parse id token for identity")
+		log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to parse id token for identity")
 
 		r.accessForbidden(cx)
 		return
@@ -148,9 +144,7 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 
 	// step: verify the token is valid
 	if err = verifyToken(r.client, session); err != nil {
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Errorf("unable to verify the id token")
+		log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to verify the id token")
 
 		r.accessForbidden(cx)
 		return
@@ -159,9 +153,7 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 	// step: attempt to decode the access token else we default to the id token
 	accessToken, id, err := parseToken(response.AccessToken)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Errorf("unable to parse the access token, using id token only")
+		log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to parse the access token, using id token only")
 	} else {
 		session = accessToken
 		identity = id
@@ -182,9 +174,7 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 		// step: encrypt the refresh token
 		encrypted, err := encodeText(response.RefreshToken, r.config.EncryptionKey)
 		if err != nil {
-			log.WithFields(log.Fields{
-				"error": err.Error(),
-			}).Errorf("failed to encrypt the refresh token")
+			log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to encrypt the refresh token")
 
 			cx.AbortWithStatus(http.StatusInternalServerError)
 			return
@@ -194,9 +184,7 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 		switch r.useStore() {
 		case true:
 			if err := r.StoreRefreshToken(session, encrypted); err != nil {
-				log.WithFields(log.Fields{
-					"error": err.Error(),
-				}).Warnf("failed to save the refresh token in the store")
+				log.WithFields(log.Fields{"error": err.Error()}).Warnf("failed to save the refresh token in the store")
 			}
 			// step: get expiration of the refresh token if we can
 			_, ident, err := parseToken(response.RefreshToken)

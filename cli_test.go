@@ -22,14 +22,14 @@ import (
 )
 
 func TestGetCLIOptions(t *testing.T) {
-	if flags := getCLIOptions(); flags == nil {
+	if flags := getCommandLineOptions(); flags == nil {
 		t.Error("we should have received some flags options")
 	}
 }
 
 func TestReadOptions(t *testing.T) {
 	c := cli.NewApp()
-	c.Flags = getCLIOptions()
+	c.Flags = getCommandLineOptions()
 	c.Action = func(cx *cli.Context) error {
 		parseCLIOptions(cx, &Config{})
 		return nil

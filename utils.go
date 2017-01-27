@@ -218,9 +218,7 @@ func decodeKeyPairs(list []string) (map[string]string, error) {
 	return kp, nil
 }
 
-//
 // isValidHTTPMethod ensure this is a valid http method type
-//
 func isValidHTTPMethod(method string) bool {
 	return httpMethodRegex.MatchString(method)
 }
@@ -234,9 +232,7 @@ func defaultTo(v, d string) string {
 	return d
 }
 
-//
 // cloneTLSConfig clones the tls configuration
-//
 func cloneTLSConfig(cfg *tls.Config) *tls.Config {
 	if cfg == nil {
 		return &tls.Config{}
@@ -264,9 +260,7 @@ func cloneTLSConfig(cfg *tls.Config) *tls.Config {
 	}
 }
 
-//
 // fileExists check if a file exists
-//
 func fileExists(filename string) bool {
 	if _, err := os.Stat(filename); err != nil {
 		if os.IsNotExist(err) {
@@ -277,9 +271,7 @@ func fileExists(filename string) bool {
 	return true
 }
 
-//
 // hasRoles checks the scopes are the same
-//
 func hasRoles(required, issued []string) bool {
 	for _, role := range required {
 		if !containedIn(role, issued) {
@@ -290,9 +282,7 @@ func hasRoles(required, issued []string) bool {
 	return true
 }
 
-//
 // containedIn checks if a value in a list of a strings
-//
 func containedIn(value string, list []string) bool {
 	for _, x := range list {
 		if x == value {
@@ -303,9 +293,7 @@ func containedIn(value string, list []string) bool {
 	return false
 }
 
-//
 // containsSubString checks if substring exists
-//
 func containsSubString(value string, list []string) bool {
 	for _, x := range list {
 		if strings.Contains(value, x) {
@@ -316,9 +304,7 @@ func containsSubString(value string, list []string) bool {
 	return false
 }
 
-//
 // tryDialEndpoint dials the upstream endpoint via plain
-//
 func tryDialEndpoint(location *url.URL) (net.Conn, error) {
 	switch dialAddress := dialAddress(location); location.Scheme {
 	case httpSchema:
@@ -331,9 +317,7 @@ func tryDialEndpoint(location *url.URL) (net.Conn, error) {
 	}
 }
 
-//
 // isUpgradedConnection checks to see if the request is requesting
-//
 func isUpgradedConnection(req *http.Request) bool {
 	if req.Header.Get(headerUpgrade) != "" {
 		return true
@@ -342,9 +326,7 @@ func isUpgradedConnection(req *http.Request) bool {
 	return false
 }
 
-//
 // transferBytes transfers bytes between the sink and source
-//
 func transferBytes(src io.Reader, dest io.Writer, wg *sync.WaitGroup) (int64, error) {
 	defer wg.Done()
 	copied, err := io.Copy(dest, src)
@@ -355,9 +337,7 @@ func transferBytes(src io.Reader, dest io.Writer, wg *sync.WaitGroup) (int64, er
 	return copied, nil
 }
 
-//
 // tryUpdateConnection attempt to upgrade the connection to a http pdy stream
-//
 func tryUpdateConnection(cx *gin.Context, endpoint *url.URL) error {
 	// step: dial the endpoint
 	tlsConn, err := tryDialEndpoint(endpoint)
@@ -388,9 +368,7 @@ func tryUpdateConnection(cx *gin.Context, endpoint *url.URL) error {
 	return nil
 }
 
-//
 // dialAddress extracts the dial address from the url
-//
 func dialAddress(location *url.URL) string {
 	items := strings.Split(location.Host, ":")
 	if len(items) != 2 {
@@ -405,9 +383,7 @@ func dialAddress(location *url.URL) string {
 	return location.Host
 }
 
-//
 // findCookie looks for a cookie in a list of cookies
-//
 func findCookie(name string, cookies []*http.Cookie) *http.Cookie {
 	for _, cookie := range cookies {
 		if cookie.Name == name {
@@ -418,9 +394,7 @@ func findCookie(name string, cookies []*http.Cookie) *http.Cookie {
 	return nil
 }
 
-//
 // toHeader is a helper method to play nice in the headers
-//
 func toHeader(v string) string {
 	var list []string
 
@@ -432,9 +406,7 @@ func toHeader(v string) string {
 	return strings.Join(list, "-")
 }
 
-//
 // capitalize capitalizes the first letter of a word
-//
 func capitalize(s string) string {
 	if s == "" {
 		return ""
@@ -444,9 +416,7 @@ func capitalize(s string) string {
 	return string(unicode.ToUpper(r)) + s[n:]
 }
 
-//
 // mergeMaps simples copies the keys from source to destination
-//
 func mergeMaps(dest, source map[string]string) map[string]string {
 	for k, v := range source {
 		dest[k] = v
@@ -455,9 +425,7 @@ func mergeMaps(dest, source map[string]string) map[string]string {
 	return dest
 }
 
-//
 // loadCA loads the certificate authority
-//
 func loadCA(cert, key string) (*tls.Certificate, error) {
 	caCert, err := ioutil.ReadFile(cert)
 	if err != nil {
@@ -479,26 +447,20 @@ func loadCA(cert, key string) (*tls.Certificate, error) {
 	return &ca, err
 }
 
-//
 // getWithin calculates a duration of x percent of the time period, i.e. something
 // expires in 1 hours, get me a duration within 80%
-//
 func getWithin(expires time.Time, in float64) time.Duration {
 	seconds := int(float64(expires.Sub(time.Now()).Seconds()) * in)
 	return time.Duration(seconds) * time.Second
 }
 
-//
 // getHashKey returns a hash of the encodes jwt token
-//
 func getHashKey(token *jose.JWT) string {
 	hash := md5.Sum([]byte(token.Encode()))
 	return hex.EncodeToString(hash[:])
 }
 
-//
 // printError display the command line usage and error
-//
 func printError(message string, args ...interface{}) *cli.ExitError {
 	return cli.NewExitError(fmt.Sprintf("[error] "+message, args...), 1)
 }

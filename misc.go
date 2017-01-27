@@ -25,9 +25,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-//
 // accessForbidden redirects the user to the forbidden page
-//
 func (r *oauthProxy) accessForbidden(cx *gin.Context) {
 	if r.config.hasCustomForbiddenPage() {
 		cx.HTML(http.StatusForbidden, path.Base(r.config.ForbiddenPage), r.config.Tags)
@@ -38,17 +36,13 @@ func (r *oauthProxy) accessForbidden(cx *gin.Context) {
 	cx.AbortWithStatus(http.StatusForbidden)
 }
 
-//
 // redirectToURL redirects the user and aborts the context
-//
 func (r *oauthProxy) redirectToURL(url string, cx *gin.Context) {
 	cx.Redirect(http.StatusTemporaryRedirect, url)
 	cx.Abort()
 }
 
-//
 // redirectToAuthorization redirects the user to authorization handler
-//
 func (r *oauthProxy) redirectToAuthorization(cx *gin.Context) {
 	if r.config.NoRedirects {
 		cx.AbortWithStatus(http.StatusUnauthorized)

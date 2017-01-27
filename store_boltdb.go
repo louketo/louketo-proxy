@@ -34,9 +34,7 @@ var (
 	ErrNoBoltdbBucket = errors.New("the boltdb bucket does not exists")
 )
 
-//
 // A local file store used to hold the refresh tokens
-//
 type boltdbStore struct {
 	client *bolt.DB
 }
