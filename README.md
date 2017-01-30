@@ -362,7 +362,7 @@ just drop the client secret and use the client id and discovery-url.
 
 #### **Claim Matching**
 
-The proxy supports adding a variable list of claim matches against the presented tokens for additional access control. So for example you can match the 'iss' or 'aud' to the token or custom attributes; note each of the matches are regex's. Examples,  --match-claims 'aud=sso.*' --claim iss=https://.*' or via the configuration file. Note, each of matches are regex's
+The proxy supports adding a variable list of claim matches against the presented tokens for additional access control. So for example you can match the 'iss' or 'aud' to the token or custom attributes; note each of the matches are regex's. Examples,  --match-claims 'aud=sso.*' --claim iss=https://.*' or via the configuration file. Note, each of matches are regex's.
 
 ```YAML
 match-claims:
@@ -375,6 +375,14 @@ or via the CLI
 ```shell
 --match-claims=auth=openvpn
 --match-claims=iss=http://keycloak.example.com/realms/commons
+```
+
+Another example would be limiting the email domain permitted; say you have some  google apps domain with username@example.com and want to limit only to those users.
+
+
+```YAML
+match-claims:
+  email: ^.*@example.com$
 ```
 
 #### **Custom Pages**
