@@ -166,8 +166,7 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 	}).Infof("issuing a new access token for user, email: %s", identity.Email)
 
 	// step: drop's a session cookie with the access token
-	duration := identity.ExpiresAt.Sub(time.Now())
-	r.dropAccessTokenCookie(cx, session.Encode(), duration)
+	r.dropAccessTokenCookie(cx, session.Encode(), r.config.AccessTokenDuration)
 
 	// step: does the response has a refresh token and we are NOT ignore refresh tokens?
 	if r.config.EnableRefreshTokens && response.RefreshToken != "" {
@@ -185,13 +184,6 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 		case true:
 			if err := r.StoreRefreshToken(session, encrypted); err != nil {
 				log.WithFields(log.Fields{"error": err.Error()}).Warnf("failed to save the refresh token in the store")
-			}
-			// step: get expiration of the refresh token if we can
-			_, ident, err := parseToken(response.RefreshToken)
-			if err != nil {
-				r.dropAccessTokenCookie(cx, session.Encode(), time.Duration(72)*time.Hour)
-			} else {
-				r.dropAccessTokenCookie(cx, session.Encode(), ident.ExpiresAt.Sub(time.Now()))
 			}
 		default:
 			// step: attempt to decode the refresh token (not all refresh tokens are jwt tokens; google for instance.

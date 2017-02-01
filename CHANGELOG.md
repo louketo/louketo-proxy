@@ -12,10 +12,12 @@ CHANGES:
  * Fixed up some spelling mistakes [#PR177](https://github.com/gambol99/keycloak-proxy/pull/177)
  * Changed the CLI to use reflection of the config struct [#PR176](https://github.com/gambol99/keycloak-proxy/pull/176)
  * Updated the docker base image to alpine:3.5 [#PR184](https://github.com/gambol99/keycloak-proxy/pull/184)
+ * Added a new options to control the access token duration [#PR188](https://github.com/gambol99/keycloak-proxy/pull/188)
 
 BUGS:
  * Fixed the time.Duration flags in the reflection code [#PR173](https://github.com/gambol99/keycloak-proxy/pull/173)
  * Fixed the environment variable type [#PR176](https://github.com/gambol99/keycloak-proxy/pull/176)
+ * Fixed the refresh tokens, the access token cookie was timing out too quickly ([#PR188](https://github.com/gambol99/keycloak-proxy/pull/188)
 
 #### **2.0.1**
 

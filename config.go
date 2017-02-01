@@ -27,6 +27,7 @@ import (
 // newDefaultConfig returns a initialized config
 func newDefaultConfig() *Config {
 	return &Config{
+		AccessTokenDuration:         time.Duration(720) * time.Hour,
 		Tags:                        make(map[string]string, 0),
 		MatchClaims:                 make(map[string]string, 0),
 		Headers:                     make(map[string]string, 0),
