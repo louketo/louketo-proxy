@@ -33,7 +33,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/armon/go-proxyproto"
 	"github.com/coreos/go-oidc/oidc"
-	"github.com/elazarl/goproxy"
+	"github.com/gambol99/goproxy"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -238,7 +238,6 @@ func (r *oauthProxy) createForwardingProxy() error {
 
 	// step: setup the tls configuration
 	if r.config.TLSCaCertificate != "" && r.config.TLSCaPrivateKey != "" {
-		// step: read in the ca
 		ca, err := loadCA(r.config.TLSCaCertificate, r.config.TLSCaPrivateKey)
 		if err != nil {
 			return fmt.Errorf("unable to load certificate authority, error: %s", err)

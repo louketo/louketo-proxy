@@ -77,7 +77,7 @@ func (r *oauthProxy) metricsMiddleware() gin.HandlerFunc {
 // entrypointMiddleware checks to see if the request requires authentication
 func (r *oauthProxy) entrypointMiddleware() gin.HandlerFunc {
 	return func(cx *gin.Context) {
-		// step: we can skip the
+		// step: we can skip if under oauth prefix
 		if strings.HasPrefix(cx.Request.URL.Path, oauthURL) {
 			return
 		}
@@ -128,7 +128,7 @@ func (r *oauthProxy) authenticationMiddleware() gin.HandlerFunc {
 		// step: inject the user into the context
 		cx.Set(userContextName, user)
 
-		// step: verify the access token
+		// step: skipif we are running skip-token-verification
 		if r.config.SkipTokenVerification {
 			log.Warnf("skip token verification enabled, skipping verification process - FOR TESTING ONLY")
 
@@ -145,7 +145,6 @@ func (r *oauthProxy) authenticationMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// step: verify the access token
 		if err := verifyToken(r.client, user.token); err != nil {
 			// step: if the error post verification is anything other than a token expired error
 			// we immediately throw an access forbidden - as there is something messed up in the token
@@ -174,78 +173,68 @@ func (r *oauthProxy) authenticationMiddleware() gin.HandlerFunc {
 			log.WithFields(log.Fields{
 				"email":     user.email,
 				"client_ip": clientIP,
-			}).Infof("accces token for user: %s has expired, attemping to refresh the token", user.email)
+			}).Infof("accces token for user has expired, attemping to refresh the token")
 
 			// step: check if the user has refresh token
-			rToken, err := r.retrieveRefreshToken(cx.Request, user)
+			refresh, err := r.retrieveRefreshToken(cx.Request, user)
 			if err != nil {
 				log.WithFields(log.Fields{
 					"email":     user.email,
 					"error":     err.Error(),
 					"client_ip": clientIP,
-				}).Errorf("unable to find a refresh token for the client: %s", user.email)
+				}).Errorf("unable to find a refresh token for user")
 
 				r.redirectToAuthorization(cx)
 				return
 			}
 
-			log.WithFields(log.Fields{
-				"email":     user.email,
-				"client_ip": clientIP,
-			}).Info("attempting to refresh access token for user")
-
-			token, expires, err := getRefreshedToken(r.client, rToken)
+			// attempt to refresh the access token
+			token, _, err := getRefreshedToken(r.client, refresh)
 			if err != nil {
-				// step: has the refresh token expired?
 				switch err {
 				case ErrRefreshTokenExpired:
 					log.WithFields(log.Fields{
 						"email":     user.email,
 						"client_ip": clientIP,
-					}).Warningf("refresh token has expired for user")
+					}).Warningf("refresh token has expired, cannot retrieve access token")
 
 					r.clearAllCookies(cx)
 				default:
-					log.WithFields(log.Fields{
-						"error": err.Error(),
-					}).Errorf("failed to refresh the access token")
+					log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to refresh the access token")
 				}
 
 				r.redirectToAuthorization(cx)
 				return
 			}
 
-			// step: inject the refreshed access token
-			accessDuration := expires.Sub(time.Now())
+			// get the expiration of the new access token
+			expiresIn := r.getAccessCookieExpiration(token, refresh)
 
 			log.WithFields(log.Fields{
-				"email":      user.email,
-				"expires_in": accessDuration.String(),
-				"client_ip":  clientIP,
-			}).Infof("injecting refreshed access token, expires on: %s", expires.Format(time.RFC3339))
+				"client_ip":   clientIP,
+				"cookie_name": r.config.CookieAccessName,
+				"email":       user.email,
+				"expires_in":  expiresIn.String(),
+			}).Infof("injecting the refreshed access token cookie")
 
-			// step: drop's a session cookie with the access token
-			duration := expires.Sub(time.Now())
-			if r.useStore() {
-				duration = duration * 10
-			}
-
-			r.dropAccessTokenCookie(cx, token.Encode(), duration)
+			// step: inject the refreshed access token
+			r.dropAccessTokenCookie(cx, token.Encode(), expiresIn)
 
 			if r.useStore() {
-				go func(t jose.JWT, rt string) {
-					// step: store the new refresh token
-					if err := r.StoreRefreshToken(t, rt); err != nil {
-						log.WithFields(log.Fields{
-							"error": err.Error(),
-						}).Errorf("failed to store refresh token")
-
+				go func(old, new jose.JWT, state string) {
+					if err := r.DeleteRefreshToken(old); err != nil {
+						log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to remove old token")
+					}
+					if err := r.StoreRefreshToken(new, state); err != nil {
+						log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to store refresh token")
 						return
 					}
-				}(user.token, rToken)
+				}(user.token, token, refresh)
 			}
+
 			// step: update the with the new access token
 			user.token = token
+
 			// step: inject the user into the context
 			cx.Set(userContextName, user)
 		}
@@ -438,9 +427,7 @@ func (r *oauthProxy) securityMiddleware() gin.HandlerFunc {
 
 	return func(cx *gin.Context) {
 		if err := secure.Process(cx.Writer, cx.Request); err != nil {
-			log.WithFields(log.Fields{
-				"error": err.Error(),
-			}).Errorf("failed security middleware")
+			log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed security middleware")
 
 			cx.Abort()
 		}

@@ -160,6 +160,8 @@ type Config struct {
 	// LocalhostMetrics indicated the metrics can only be consume via localhost
 	LocalhostMetrics bool `json:"localhost-metrics" yaml:"localhost-metrics" usage:"enforces the metrics page can only been requested from 127.0.0.1"`
 
+	// AccessTokenDuration is default duration applied to the access token cookie
+	AccessTokenDuration time.Duration `json:"access-token-duration" yaml:"access-token-duration" usage:"fallback cookie duration for the access token when using refresh tokens"`
 	// CookieDomain is a list of domains the cookie is available to
 	CookieDomain string `json:"cookie-domain" yaml:"cookie-domain" usage:"domain the access cookie is available to, defaults host header"`
 	// CookieAccessName is the name of the access cookie holding the access token

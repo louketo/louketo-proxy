@@ -26,9 +26,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-//
 // reverseProxyMiddleware is responsible for handles reverse proxy request to the upstream endpoint
-//
 func (r *oauthProxy) reverseProxyMiddleware() gin.HandlerFunc {
 	return func(cx *gin.Context) {
 		if cx.IsAborted() {
@@ -46,10 +44,9 @@ func (r *oauthProxy) reverseProxyMiddleware() gin.HandlerFunc {
 			cx.Abort()
 			return
 		}
-		/*
-			By default goproxy only provides a forwarding proxy, thus all requests have to be absolute
-			and we must update the host headers
-		*/
+
+		// By default goproxy only provides a forwarding proxy, thus all requests have to be absolute
+		// and we must update the host headers
 		cx.Request.URL.Host = r.endpoint.Host
 		cx.Request.URL.Scheme = r.endpoint.Scheme
 		cx.Request.Host = r.endpoint.Host
@@ -58,9 +55,7 @@ func (r *oauthProxy) reverseProxyMiddleware() gin.HandlerFunc {
 	}
 }
 
-//
 // forwardProxyHandler is responsible for signing outbound requests
-//
 func (r *oauthProxy) forwardProxyHandler() func(*http.Request, *http.Response) {
 	// step: create oauth client
 	client, err := r.client.OAuthClient()
