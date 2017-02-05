@@ -20,8 +20,10 @@ import (
 	"fmt"
 	"net/http"
 	"path"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/coreos/go-oidc/jose"
 	"github.com/gin-gonic/gin"
 )
 
@@ -61,4 +63,17 @@ func (r *oauthProxy) redirectToAuthorization(cx *gin.Context) {
 	}
 
 	r.redirectToURL(oauthURL+authorizationURL+authQuery, cx)
+}
+
+// getAccessCookieExpiration calucates the expiration of the access token cookie
+func (r *oauthProxy) getAccessCookieExpiration(token jose.JWT, refresh string) time.Duration {
+	// notes: by default the duration of the access token will be the configuration option, if
+	// however we can decode the refresh token, we will set the duration to the duraction of the
+	// refresh token
+	duration := r.config.AccessTokenDuration
+	if _, ident, err := parseToken(refresh); err == nil {
+		duration = ident.ExpiresAt.Sub(time.Now())
+	}
+
+	return duration
 }

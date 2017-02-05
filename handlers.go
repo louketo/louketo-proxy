@@ -125,7 +125,7 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 	}
 
 	// step: exchange the authorization for a access token
-	response, err := exchangeAuthenticationCode(client, code)
+	resp, err := exchangeAuthenticationCode(client, code)
 	if err != nil {
 		log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to exchange code for access token")
 
@@ -134,7 +134,7 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 	}
 
 	// step: parse decode the identity token
-	session, identity, err := parseToken(response.IDToken)
+	token, identity, err := parseToken(resp.IDToken)
 	if err != nil {
 		log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to parse id token for identity")
 
@@ -143,7 +143,7 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 	}
 
 	// step: verify the token is valid
-	if err = verifyToken(r.client, session); err != nil {
+	if err = verifyToken(r.client, token); err != nil {
 		log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to verify the id token")
 
 		r.accessForbidden(cx)
@@ -151,11 +151,11 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 	}
 
 	// step: attempt to decode the access token else we default to the id token
-	accessToken, id, err := parseToken(response.AccessToken)
+	access, id, err := parseToken(resp.AccessToken)
 	if err != nil {
 		log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to parse the access token, using id token only")
 	} else {
-		session = accessToken
+		token = access
 		identity = id
 	}
 
@@ -163,15 +163,12 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 		"email":    identity.Email,
 		"expires":  identity.ExpiresAt.Format(time.RFC3339),
 		"duration": identity.ExpiresAt.Sub(time.Now()).String(),
-	}).Infof("issuing a new access token for user, email: %s", identity.Email)
-
-	// step: drop's a session cookie with the access token
-	r.dropAccessTokenCookie(cx, session.Encode(), r.config.AccessTokenDuration)
+	}).Infof("issuing access token for user, email: %s", identity.Email)
 
 	// step: does the response has a refresh token and we are NOT ignore refresh tokens?
-	if r.config.EnableRefreshTokens && response.RefreshToken != "" {
+	if r.config.EnableRefreshTokens && resp.RefreshToken != "" {
 		// step: encrypt the refresh token
-		encrypted, err := encodeText(response.RefreshToken, r.config.EncryptionKey)
+		encrypted, err := encodeText(resp.RefreshToken, r.config.EncryptionKey)
 		if err != nil {
 			log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to encrypt the refresh token")
 
@@ -179,20 +176,25 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 			return
 		}
 
-		// step: create and inject the state session
+		// drop in the access token - cookie expiration = access token
+		r.dropAccessTokenCookie(cx, token.Encode(), r.getAccessCookieExpiration(token, resp.RefreshToken))
+
 		switch r.useStore() {
 		case true:
-			if err := r.StoreRefreshToken(session, encrypted); err != nil {
+			if err := r.StoreRefreshToken(token, encrypted); err != nil {
 				log.WithFields(log.Fields{"error": err.Error()}).Warnf("failed to save the refresh token in the store")
 			}
 		default:
-			// step: attempt to decode the refresh token (not all refresh tokens are jwt tokens; google for instance.
-			if _, ident, err := parseToken(response.RefreshToken); err != nil {
-				r.dropRefreshTokenCookie(cx, encrypted, time.Duration(72)*time.Hour)
+			// notes: not all idp refresh tokens are readable, google for example, so we attempt to decode into
+			// a jwt and if possible extract the expiration, else we default to 10 days
+			if _, ident, err := parseToken(resp.RefreshToken); err != nil {
+				r.dropRefreshTokenCookie(cx, encrypted, time.Duration(240)*time.Hour)
 			} else {
 				r.dropRefreshTokenCookie(cx, encrypted, ident.ExpiresAt.Sub(time.Now()))
 			}
 		}
+	} else {
+		r.dropAccessTokenCookie(cx, token.Encode(), identity.ExpiresAt.Sub(time.Now()))
 	}
 
 	// step: decode the state variable
@@ -223,7 +225,6 @@ func (r *oauthProxy) loginHandler(cx *gin.Context) {
 		// step: parse the client credentials
 		username := cx.Request.PostFormValue("username")
 		password := cx.Request.PostFormValue("password")
-
 		if username == "" || password == "" {
 			return "request does not have both username and password", http.StatusBadRequest, errors.New("no credentials")
 		}
@@ -277,7 +278,7 @@ func (r *oauthProxy) loginHandler(cx *gin.Context) {
 //  - optionally, the user can be redirected by to a url
 //
 func (r *oauthProxy) logoutHandler(cx *gin.Context) {
-	// the user can specify a url to redirect the back to
+	// the user can specify a url to redirect the back
 	redirectURL := cx.Request.URL.Query().Get("redirect")
 
 	// step: drop the access token

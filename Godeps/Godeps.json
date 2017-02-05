@@ -71,9 +71,9 @@
 			"Rev": "5215b55f46b2b919f50a1df0eaa5886afe4e3b3d"
 		},
 		{
-			"ImportPath": "github.com/elazarl/goproxy",
+			"ImportPath": "github.com/gambol99/goproxy",
 			"Comment": "v1.0-96-g6016d23",
-			"Rev": "6016d2397298b0750eeb06f4d24e03cfd7e45c77"
+			"Rev": "16403edea88bc5b716703dca58a5e94ad8b11879"
 		},
 		{
 			"ImportPath": "github.com/fsnotify/fsnotify",
