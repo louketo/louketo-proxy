@@ -1,5 +1,5 @@
 
-#### **2.0.2 (Unreleased)**
+#### **2.0.2**
 
 FEATURES:
  * Adding the --enable-cors-global to switch on CORs header injects into every response [#PR174](https://github.com/gambol99/keycloak-proxy/pull/174)
