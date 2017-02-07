@@ -89,7 +89,7 @@ GLOBAL OPTIONS:
    --cors-max-age value                max age applied to cors headers (Access-Control-Max-Age) (default: 0s)
    --hostnames value                   list of hostnames the service will respond to
    --store-url value                   url for the storage subsystem, e.g redis://127.0.0.1:6379, file:///etc/tokens.file
-   --encryption-key value              encryption key used to encrpytion the session state [$ENCRYPTION_KEY]
+   --encryption-key value              encryption key used to encrpytion the session state
    --log-requests                      enable http logging of the requests (default: false)
    --json-format                       switch on json logging rather than text (default: false)
    --no-redirects                      do not have back redirects when no authentication is present, 401 them (default: false)
