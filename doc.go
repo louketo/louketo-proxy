@@ -210,7 +210,7 @@ type Config struct {
 	// Store is a url for a store resource, used to hold the refresh tokens
 	StoreURL string `json:"store-url" yaml:"store-url" usage:"url for the storage subsystem, e.g redis://127.0.0.1:6379, file:///etc/tokens.file"`
 	// EncryptionKey is the encryption key used to encrypt the refresh token
-	EncryptionKey string `json:"encryption-key" yaml:"encryption-key" usage:"encryption key used to encryption the session state"`
+	EncryptionKey string `json:"encryption-key" yaml:"encryption-key" usage:"encryption key used to encryption the session state" env:"ENCRYPTION_KEY"`
 
 	// LogRequests indicates if we should log all the requests
 	LogRequests bool `json:"log-requests" yaml:"log-requests" usage:"enable http logging of the requests"`
