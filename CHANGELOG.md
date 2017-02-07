@@ -1,4 +1,9 @@
 
+#### **2.0.3**
+
+FEATURES
+ * Adding the PROXY_ENCRYPTION_KEY environment varable [#PR191](https://github.com/gambol99/keycloak-proxy/pull/191)
+
 #### **2.0.2**
 
 FEATURES:
