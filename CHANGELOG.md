@@ -1,7 +1,12 @@
 
+#### **2.0.4**
+
+FEATURES:
+ * Grabbing the revocation-url from the idp config if user override is not specified [#PR193](https://github.com/gambol99/keycloak-proxy/pull/193)
+
 #### **2.0.3**
 
-FEATURES
+FEATURES:
  * Adding the PROXY_ENCRYPTION_KEY environment varable [#PR191](https://github.com/gambol99/keycloak-proxy/pull/191)
 
 #### **2.0.2**

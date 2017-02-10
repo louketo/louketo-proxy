@@ -437,7 +437,7 @@ At present the only store supported are[Redis](https://github.com/antirez/redis)
 
 #### **Logout Endpoint**
 
-A /oauth/logout?redirect=url is provided as a helper to logout the users, aside from dropping a sessions cookies, we also attempt to revoke session access via revocation url (config revocation-url or --revocation-url) with the provider. For keycloak the url for this would be https://keycloak.example.com/auth/realms/REALM_NAME/protocol/openid-connect/logout, for google /oauth/revoke
+A /oauth/logout?redirect=url is provided as a helper to logout the users. Aside from dropping any sessions cookies, we also attempt to revoke access via revocation url (config revocation-url or --revocation-url) with the provider. For Keycloak the url for this would be https://keycloak.example.com/auth/realms/REALM_NAME/protocol/openid-connect/logout, for google /oauth/revoke. If the url is not specified we will attempt to grab the url from the OpenID discovery response.
 
 #### **Cross Origin Resource Sharing (CORS)**
 

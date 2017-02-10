@@ -306,13 +306,14 @@ func (r *oauthProxy) logoutHandler(cx *gin.Context) {
 		}()
 	}
 
+	// step: get the revocation endpoint from either the idp and or the user config
+	revocationURL := defaultTo(r.config.RevocationEndpoint, r.idp.EndSessionEndpoint.String())
+
 	// step: do we have a revocation endpoint?
-	if r.config.RevocationEndpoint != "" {
+	if revocationURL != "" {
 		client, err := r.client.OAuthClient()
 		if err != nil {
-			log.WithFields(log.Fields{
-				"error": err.Error(),
-			}).Errorf("unable to retrieve the openid client")
+			log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to retrieve the openid client")
 
 			cx.AbortWithStatus(http.StatusInternalServerError)
 			return
@@ -324,12 +325,10 @@ func (r *oauthProxy) logoutHandler(cx *gin.Context) {
 		encodedSecret := url.QueryEscape(r.config.ClientSecret)
 
 		// step: construct the url for revocation
-		request, err := http.NewRequest(http.MethodPost, r.config.RevocationEndpoint,
+		request, err := http.NewRequest(http.MethodPost, revocationURL,
 			bytes.NewBufferString(fmt.Sprintf("refresh_token=%s", identityToken)))
 		if err != nil {
-			log.WithFields(log.Fields{
-				"error": err.Error(),
-			}).Errorf("unable to construct the revocation request")
+			log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to construct the revocation request")
 
 			cx.AbortWithStatus(http.StatusInternalServerError)
 			return
@@ -342,9 +341,7 @@ func (r *oauthProxy) logoutHandler(cx *gin.Context) {
 		// step: attempt to make the
 		response, err := client.HttpClient().Do(request)
 		if err != nil {
-			log.WithFields(log.Fields{
-				"error": err.Error(),
-			}).Errorf("unable to post to revocation endpoint")
+			log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to post to revocation endpoint")
 
 			return
 		}
