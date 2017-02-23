@@ -1,7 +1,7 @@
 {
 	"ImportPath": "github.com/gambol99/keycloak-proxy",
 	"GoVersion": "go1.7",
-	"GodepVersion": "v75",
+	"GodepVersion": "v79",
 	"Deps": [
 		{
 			"ImportPath": "github.com/Sirupsen/logrus",
@@ -72,8 +72,8 @@
 		},
 		{
 			"ImportPath": "github.com/gambol99/goproxy",
-			"Comment": "v1.0-96-g6016d23",
-			"Rev": "16403edea88bc5b716703dca58a5e94ad8b11879"
+			"Comment": "v1.0-87-gc3b6ff1",
+			"Rev": "c3b6ff1178d68ec9e93f7c996f41a3df89931d9f"
 		},
 		{
 			"ImportPath": "github.com/fsnotify/fsnotify",
