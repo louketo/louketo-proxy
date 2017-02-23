@@ -19,6 +19,7 @@ type ProxyHttpServer struct {
 	// setting Verbose to true will log information on each request sent to the proxy
 	Verbose         bool
 	Logger          *log.Logger
+	isReverseProxy  bool
 	NonproxyHandler http.Handler
 	reqHandlers     []ReqHandler
 	respHandlers    []RespHandler
@@ -75,7 +76,7 @@ func removeProxyHeaders(ctx *ProxyCtx, r *http.Request) {
 	// and would wrap the response body with the relevant reader.
 	r.Header.Del("Accept-Encoding")
 	// curl can add that, see
-	// https://jdebp.eu./FGA/web-proxy-connection-header.html
+	// http://homepage.ntlworld.com/jonathan.deboynepollard/FGA/web-proxy-connection-header.html
 	r.Header.Del("Proxy-Connection")
 	r.Header.Del("Proxy-Authenticate")
 	r.Header.Del("Proxy-Authorization")
@@ -98,20 +99,30 @@ func (proxy *ProxyHttpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 
 		var err error
 		ctx.Logf("Got request %v %v %v %v", r.URL.Path, r.Host, r.Method, r.URL.String())
-		if !r.URL.IsAbs() {
+
+		if (proxy.isReverseProxy && r.URL.IsAbs()) || (!proxy.isReverseProxy && !r.URL.IsAbs()) {
 			proxy.NonproxyHandler.ServeHTTP(w, r)
 			return
 		}
 		r, resp := proxy.filterRequest(r, ctx)
 
 		if resp == nil {
+			if proxy.isReverseProxy && (r.URL.Scheme == "" || r.URL.Host == "") {
+				panic("ReverseProxy did not rewrite request's Scheme or Host")
+			}
+
+			if isWebSocketRequest(r) {
+				ctx.Logf("Request looks like websocket upgrade.")
+				proxy.serveWebsocket(ctx, w, r)
+			}
+
 			removeProxyHeaders(ctx, r)
 			resp, err = ctx.RoundTrip(r)
 			if err != nil {
 				ctx.Error = err
 				resp = proxy.filterResponse(nil, ctx)
 				if resp == nil {
-					ctx.Logf("error read response %v %v:", r.URL.Host, err.Error())
+					ctx.Logf("Error read response %v %v:", r.URL.Host, err.Error())
 					http.Error(w, err.Error(), 500)
 					return
 				}
@@ -120,7 +131,7 @@ func (proxy *ProxyHttpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		}
 		origBody := resp.Body
 		resp = proxy.filterResponse(resp, ctx)
-		defer origBody.Close()
+
 		ctx.Logf("Copying response to client %v [%d]", resp.Status, resp.StatusCode)
 		// http.ResponseWriter will take care of filling the correct response length
 		// Setting it now, might impose wrong value, contradicting the actual new
@@ -149,11 +160,26 @@ func NewProxyHttpServer() *ProxyHttpServer {
 		respHandlers:  []RespHandler{},
 		httpsHandlers: []HttpsHandler{},
 		NonproxyHandler: http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			http.Error(w, "This is a proxy server. Does not respond to non-proxy requests.", 500)
+			http.Error(w, "This is a forward proxy server. Does not respond to non-proxy requests.", 500)
 		}),
-		Tr: &http.Transport{TLSClientConfig: tlsClientSkipVerify,
-			Proxy: http.ProxyFromEnvironment},
+		Tr: &http.Transport{
+			TLSClientConfig: tlsClientSkipVerify,
+			Proxy:           http.ProxyFromEnvironment,
+		},
 	}
+
 	proxy.ConnectDial = dialerFromEnv(&proxy)
+
 	return &proxy
+}
+
+func NewReverseProxyHttpServer() *ProxyHttpServer {
+	reverseProxy := NewProxyHttpServer()
+
+	reverseProxy.isReverseProxy = true
+	reverseProxy.NonproxyHandler = http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		http.Error(w, "This is a reverse proxy server. Does not respond to proxy requests.", 500)
+	})
+
+	return reverseProxy
 }
