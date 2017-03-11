@@ -16,6 +16,10 @@ limitations under the License.
 package main
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
@@ -32,22 +36,20 @@ func (r *oauthProxy) getOAuthClient(redirectionURL string) (*oauth2.Client, erro
 			ID:     r.config.ClientID,
 			Secret: r.config.ClientSecret,
 		},
-		RedirectURL: redirectionURL,
-		AuthURL:     r.idp.AuthEndpoint.String(),
-		TokenURL:    r.idp.TokenEndpoint.String(),
-		Scope:       append(r.config.Scopes, oidc.DefaultScope...),
 		AuthMethod:  oauth2.AuthMethodClientSecretBasic,
+		AuthURL:     r.idp.AuthEndpoint.String(),
+		RedirectURL: redirectionURL,
+		Scope:       append(r.config.Scopes, oidc.DefaultScope...),
+		TokenURL:    r.idp.TokenEndpoint.String(),
 	})
 }
 
 // verifyToken verify that the token in the user context is valid
 func verifyToken(client *oidc.Client, token jose.JWT) error {
-	// step: verify the token is whom they say they are
 	if err := client.VerifyJWT(token); err != nil {
 		if strings.Contains(err.Error(), "token is expired") {
 			return ErrAccessTokenExpired
 		}
-
 		return err
 	}
 
@@ -56,7 +58,6 @@ func verifyToken(client *oidc.Client, token jose.JWT) error {
 
 // getRefreshedToken attempts to refresh the access token, returning the parsed token and the time it expires or a error
 func getRefreshedToken(client *oidc.Client, t string) (jose.JWT, time.Time, error) {
-	// step: retrieve the client
 	cl, err := client.OAuthClient()
 	if err != nil {
 		return jose.JWT{}, time.Time{}, err
@@ -69,7 +70,6 @@ func getRefreshedToken(client *oidc.Client, t string) (jose.JWT, time.Time, erro
 		return jose.JWT{}, time.Time{}, err
 	}
 
-	// step: parse the access token
 	token, identity, err := parseToken(response.AccessToken)
 	if err != nil {
 		return jose.JWT{}, time.Time{}, err
@@ -83,47 +83,49 @@ func exchangeAuthenticationCode(client *oauth2.Client, code string) (oauth2.Toke
 	return getToken(client, oauth2.GrantTypeAuthCode, code)
 }
 
-// getUserinfo is responsible for getting the userinfo from the iDP
-func getUserinfo(client *oauth2.Client, provider *oidc.ProviderConfig) (interface{}, error) {
-	// step: creating the http request
-	req, err := http.NewRequest(http.MethodGet, provider.UserInfoEndpoint.String(), nil)
+// getUserinfo is responsible for getting the userinfo from the IDPD
+func getUserinfo(client *oauth2.Client, endpoint string, token string) (jose.Claims, error) {
+	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, err
 	}
-	// step: make the resposne
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+	// step: make the request
 	resp, err := client.HttpClient().Do(req)
 	if err != nil {
 		return nil, err
 	}
-	// step: check the status code returned
 	if resp.StatusCode != http.StatusOK {
-		return nil, newAPIError("token not validate by userinfo endpoint", resp.StatusCode)
+		return nil, errors.New("token not validate by userinfo endpoint")
+	}
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	var claims jose.Claims
+	if err := json.Unmarshal([]byte(content), &claims); err != nil {
+		return nil, newAPIError("unable to decode response", resp.StatusCode)
 	}
 
-	return nil, nil
+	return claims, nil
 }
 
 // getToken retrieves a code from the provider, extracts and verified the token
 func getToken(client *oauth2.Client, grantType, code string) (oauth2.TokenResponse, error) {
-	// step: request a token from the authentication server
 	return client.RequestToken(grantType, code)
 }
 
 // parseToken retrieve the user identity from the token
 func parseToken(t string) (jose.JWT, *oidc.Identity, error) {
-	// step: parse and return the token
 	token, err := jose.ParseJWT(t)
 	if err != nil {
 		return jose.JWT{}, nil, err
 	}
-
-	// step: parse the claims
 	claims, err := token.Claims()
 	if err != nil {
 		return jose.JWT{}, nil, err
 	}
-
-	// step: get the identity
 	identity, err := oidc.IdentityFromClaims(claims)
 	if err != nil {
 		return jose.JWT{}, nil, err

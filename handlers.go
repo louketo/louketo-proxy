@@ -31,24 +31,24 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-oidc/oauth2"
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo"
 )
 
 // getRedirectionURL returns the redirectionURL for the oauth flow
-func (r *oauthProxy) getRedirectionURL(cx *gin.Context) string {
+func (r *oauthProxy) getRedirectionURL(cx echo.Context) string {
 	var redirect string
 	switch r.config.RedirectionURL {
 	case "":
 		// need to determine the scheme, cx.Request.URL.Scheme doesn't have it, best way is to default
 		// and then check for TLS
 		scheme := "http"
-		if cx.Request.TLS != nil {
+		if !cx.IsTLS() {
 			scheme = "https"
 		}
 		// @QUESTION: should I use the X-Forwarded-<header>?? ..
 		redirect = fmt.Sprintf("%s://%s",
-			defaultTo(cx.Request.Header.Get("X-Forwarded-Proto"), scheme),
-			defaultTo(cx.Request.Header.Get("X-Forwarded-Host"), cx.Request.Host))
+			defaultTo(cx.Request().Header.Get("X-Forwarded-Proto"), scheme),
+			defaultTo(cx.Request().Header.Get("X-Forwarded-Host"), cx.Request().Host))
 	default:
 		redirect = r.config.RedirectionURL
 	}
@@ -56,22 +56,59 @@ func (r *oauthProxy) getRedirectionURL(cx *gin.Context) string {
 	return fmt.Sprintf("%s/oauth/callback", redirect)
 }
 
-// oauthAuthorizationHandler is responsible for performing the redirection to oauth provider
-func (r *oauthProxy) oauthAuthorizationHandler(cx *gin.Context) {
-	// step: we can skip all of this if were not verifying the token
-	if r.config.SkipTokenVerification {
-		cx.AbortWithStatus(http.StatusNotAcceptable)
-		return
+// oauthHandler is required due to the fact the echo router does not run middleware if no handler
+// is found for a group https://github.com/labstack/echo/issues/856
+func (r *oauthProxy) oauthHandler(cx echo.Context) error {
+	handler := fmt.Sprintf("/%s", strings.TrimLeft(cx.Param("name"), "/"))
+	r.revokeProxy(cx)
+	switch cx.Request().Method {
+	case http.MethodGet:
+		switch handler {
+		case authorizationURL:
+			return r.oauthAuthorizationHandler(cx)
+		case callbackURL:
+			return r.oauthCallbackHandler(cx)
+		case expiredURL:
+			return r.expirationHandler(cx)
+		case healthURL:
+			return r.healthHandler(cx)
+		case logoutURL:
+			return r.logoutHandler(cx)
+		case tokenURL:
+			return r.tokenHandler(cx)
+		case metricsURL:
+			if r.config.EnableMetrics {
+				return r.metricsHandler(cx)
+			}
+		default:
+			return cx.NoContent(http.StatusNotFound)
+		}
+	case http.MethodPost:
+		switch handler {
+		case loginURL:
+			return r.loginHandler(cx)
+		default:
+			return cx.NoContent(http.StatusNotFound)
+		}
+	default:
+		return cx.NoContent(http.StatusMethodNotAllowed)
 	}
-	// step: create a oauth client
+
+	return nil
+}
+
+// oauthAuthorizationHandler is responsible for performing the redirection to oauth provider
+func (r *oauthProxy) oauthAuthorizationHandler(cx echo.Context) error {
+	if r.config.SkipTokenVerification {
+		return cx.NoContent(http.StatusNotAcceptable)
+	}
 	client, err := r.getOAuthClient(r.getRedirectionURL(cx))
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err.Error(),
 		}).Errorf("failed to retrieve the oauth client for authorization")
 
-		cx.AbortWithStatus(http.StatusInternalServerError)
-		return
+		return cx.NoContent(http.StatusInternalServerError)
 	}
 
 	// step: set the access type of the session
@@ -80,39 +117,34 @@ func (r *oauthProxy) oauthAuthorizationHandler(cx *gin.Context) {
 		accessType = "offline"
 	}
 
-	authURL := client.AuthCodeURL(cx.Query("state"), accessType, "")
-
+	authURL := client.AuthCodeURL(cx.QueryParam("state"), accessType, "")
 	log.WithFields(log.Fields{
-		"client_ip":   cx.ClientIP(),
 		"access_type": accessType,
 		"auth-url":    authURL,
-	}).Debugf("incoming authorization request from client address: %s", cx.ClientIP())
+		"client_ip":   cx.RealIP(),
+	}).Debugf("incoming authorization request from client address: %s", cx.RealIP())
 
 	// step: if we have a custom sign in page, lets display that
 	if r.config.hasCustomSignInPage() {
-		// step: inject any custom tags into the context for the template
 		model := make(map[string]string, 0)
 		model["redirect"] = authURL
 
-		cx.HTML(http.StatusOK, path.Base(r.config.SignInPage), mergeMaps(model, r.config.Tags))
-		return
+		return cx.Render(http.StatusOK, path.Base(r.config.SignInPage), mergeMaps(model, r.config.Tags))
 	}
 
-	r.redirectToURL(authURL, cx)
+	return r.redirectToURL(authURL, cx)
 }
 
 // oauthCallbackHandler is responsible for handling the response from oauth service
-func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
+func (r *oauthProxy) oauthCallbackHandler(cx echo.Context) error {
 	// step: is token verification switched on?
 	if r.config.SkipTokenVerification {
-		cx.AbortWithStatus(http.StatusNotAcceptable)
-		return
+		return cx.NoContent(http.StatusNotAcceptable)
 	}
 	// step: ensure we have a authorization code to exchange
-	code := cx.Request.URL.Query().Get("code")
+	code := cx.QueryParam("code")
 	if code == "" {
-		cx.AbortWithStatus(http.StatusBadRequest)
-		return
+		return cx.NoContent(http.StatusBadRequest)
 	}
 
 	// step: create a oauth client
@@ -120,8 +152,7 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 	if err != nil {
 		log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to create a oauth2 client")
 
-		cx.AbortWithStatus(http.StatusInternalServerError)
-		return
+		return cx.NoContent(http.StatusInternalServerError)
 	}
 
 	// step: exchange the authorization for a access token
@@ -129,8 +160,7 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 	if err != nil {
 		log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to exchange code for access token")
 
-		r.accessForbidden(cx)
-		return
+		return r.accessForbidden(cx)
 	}
 
 	// step: parse decode the identity token
@@ -138,16 +168,14 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 	if err != nil {
 		log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to parse id token for identity")
 
-		r.accessForbidden(cx)
-		return
+		return r.accessForbidden(cx)
 	}
 
 	// step: verify the token is valid
 	if err = verifyToken(r.client, token); err != nil {
 		log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to verify the id token")
 
-		r.accessForbidden(cx)
-		return
+		return r.accessForbidden(cx)
 	}
 
 	// step: attempt to decode the access token else we default to the id token
@@ -172,12 +200,12 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 		if err != nil {
 			log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to encrypt the refresh token")
 
-			cx.AbortWithStatus(http.StatusInternalServerError)
-			return
+			return cx.NoContent(http.StatusInternalServerError)
 		}
 
 		// drop in the access token - cookie expiration = access token
-		r.dropAccessTokenCookie(cx, token.Encode(), r.getAccessCookieExpiration(token, resp.RefreshToken))
+		r.dropAccessTokenCookie(cx.Request(), cx.Response().Writer, token.Encode(),
+			r.getAccessCookieExpiration(token, resp.RefreshToken))
 
 		switch r.useStore() {
 		case true:
@@ -188,22 +216,22 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 			// notes: not all idp refresh tokens are readable, google for example, so we attempt to decode into
 			// a jwt and if possible extract the expiration, else we default to 10 days
 			if _, ident, err := parseToken(resp.RefreshToken); err != nil {
-				r.dropRefreshTokenCookie(cx, encrypted, time.Duration(240)*time.Hour)
+				r.dropRefreshTokenCookie(cx.Request(), cx.Response().Writer, encrypted, time.Duration(240)*time.Hour)
 			} else {
-				r.dropRefreshTokenCookie(cx, encrypted, ident.ExpiresAt.Sub(time.Now()))
+				r.dropRefreshTokenCookie(cx.Request(), cx.Response().Writer, encrypted, ident.ExpiresAt.Sub(time.Now()))
 			}
 		}
 	} else {
-		r.dropAccessTokenCookie(cx, token.Encode(), identity.ExpiresAt.Sub(time.Now()))
+		r.dropAccessTokenCookie(cx.Request(), cx.Response().Writer, token.Encode(), identity.ExpiresAt.Sub(time.Now()))
 	}
 
 	// step: decode the state variable
 	state := "/"
-	if cx.Request.URL.Query().Get("state") != "" {
-		decoded, err := base64.StdEncoding.DecodeString(cx.Request.URL.Query().Get("state"))
+	if cx.QueryParam("state") != "" {
+		decoded, err := base64.StdEncoding.DecodeString(cx.QueryParam("state"))
 		if err != nil {
 			log.WithFields(log.Fields{
-				"state": cx.Request.URL.Query().Get("state"),
+				"state": cx.QueryParam("state"),
 				"error": err.Error(),
 			}).Warnf("unable to decode the state parameter")
 		} else {
@@ -211,11 +239,11 @@ func (r *oauthProxy) oauthCallbackHandler(cx *gin.Context) {
 		}
 	}
 
-	r.redirectToURL(state, cx)
+	return r.redirectToURL(state, cx)
 }
 
 // loginHandler provide's a generic endpoint for clients to perform a user_credentials login to the provider
-func (r *oauthProxy) loginHandler(cx *gin.Context) {
+func (r *oauthProxy) loginHandler(cx echo.Context) error {
 	errorMsg, code, err := func() (string, int, error) {
 		// step: check if the handler is disable
 		if !r.config.EnableLoginHandler {
@@ -223,8 +251,8 @@ func (r *oauthProxy) loginHandler(cx *gin.Context) {
 		}
 
 		// step: parse the client credentials
-		username := cx.Request.PostFormValue("username")
-		password := cx.Request.PostFormValue("password")
+		username := cx.Request().PostFormValue("username")
+		password := cx.Request().PostFormValue("password")
 		if username == "" || password == "" {
 			return "request does not have both username and password", http.StatusBadRequest, errors.New("no credentials")
 		}
@@ -249,7 +277,7 @@ func (r *oauthProxy) loginHandler(cx *gin.Context) {
 			return "unable to decode the access token", http.StatusNotImplemented, err
 		}
 
-		r.dropAccessTokenCookie(cx, token.AccessToken, identity.ExpiresAt.Sub(time.Now()))
+		r.dropAccessTokenCookie(cx.Request(), cx.Response().Writer, token.AccessToken, identity.ExpiresAt.Sub(time.Now()))
 
 		cx.JSON(http.StatusOK, tokenResponse{
 			IDToken:      token.IDToken,
@@ -263,12 +291,19 @@ func (r *oauthProxy) loginHandler(cx *gin.Context) {
 	}()
 	if err != nil {
 		log.WithFields(log.Fields{
-			"client_ip": cx.Request.RemoteAddr,
+			"client_ip": cx.RealIP(),
 			"error":     err.Error,
 		}).Errorf(errorMsg)
 
-		cx.AbortWithStatus(code)
+		return cx.NoContent(code)
 	}
+
+	return nil
+}
+
+// emptyHandler is responsible for doing nothing
+func emptyHandler(cx echo.Context) error {
+	return nil
 }
 
 //
@@ -277,25 +312,24 @@ func (r *oauthProxy) loginHandler(cx *gin.Context) {
 //  - if the user has a refresh token, the token is invalidated by the provider
 //  - optionally, the user can be redirected by to a url
 //
-func (r *oauthProxy) logoutHandler(cx *gin.Context) {
+func (r *oauthProxy) logoutHandler(cx echo.Context) error {
 	// the user can specify a url to redirect the back
-	redirectURL := cx.Request.URL.Query().Get("redirect")
+	redirectURL := cx.QueryParam("redirect")
 
 	// step: drop the access token
-	user, err := r.getIdentity(cx.Request)
+	user, err := r.getIdentity(cx.Request())
 	if err != nil {
-		cx.AbortWithStatus(http.StatusBadRequest)
-		return
+		return cx.NoContent(http.StatusBadRequest)
 	}
 
 	// step: can either use the id token or the refresh token
 	identityToken := user.token.Encode()
-	if refresh, err := r.retrieveRefreshToken(cx.Request, user); err == nil {
+	if refresh, err := r.retrieveRefreshToken(cx.Request(), user); err == nil {
 		identityToken = refresh
 	}
-	r.clearAllCookies(cx)
+	r.clearAllCookies(cx.Request(), cx.Response().Writer)
 
-	// step: check if the user has a state session and if so, revoke it
+	// step: check if the user has a state session and if so revoke it
 	if r.useStore() {
 		go func() {
 			if err := r.DeleteRefreshToken(user.token); err != nil {
@@ -315,8 +349,7 @@ func (r *oauthProxy) logoutHandler(cx *gin.Context) {
 		if err != nil {
 			log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to retrieve the openid client")
 
-			cx.AbortWithStatus(http.StatusInternalServerError)
-			return
+			return cx.NoContent(http.StatusInternalServerError)
 		}
 
 		// step: add the authentication headers
@@ -329,9 +362,7 @@ func (r *oauthProxy) logoutHandler(cx *gin.Context) {
 			bytes.NewBufferString(fmt.Sprintf("refresh_token=%s", identityToken)))
 		if err != nil {
 			log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to construct the revocation request")
-
-			cx.AbortWithStatus(http.StatusInternalServerError)
-			return
+			return cx.NoContent(http.StatusInternalServerError)
 		}
 
 		// step: add the authentication headers and content-type
@@ -342,8 +373,7 @@ func (r *oauthProxy) logoutHandler(cx *gin.Context) {
 		response, err := client.HttpClient().Do(request)
 		if err != nil {
 			log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to post to revocation endpoint")
-
-			return
+			return nil
 		}
 
 		// step: add a log for debugging
@@ -363,58 +393,47 @@ func (r *oauthProxy) logoutHandler(cx *gin.Context) {
 
 	// step: should we redirect the user
 	if redirectURL != "" {
-		r.redirectToURL(redirectURL, cx)
-		return
+		return r.redirectToURL(redirectURL, cx)
 	}
 
-	cx.AbortWithStatus(http.StatusOK)
+	return cx.NoContent(http.StatusOK)
 }
 
-//
 // expirationHandler checks if the token has expired
-//
-func (r *oauthProxy) expirationHandler(cx *gin.Context) {
-	// step: get the access token from the request
-	user, err := r.getIdentity(cx.Request)
+func (r *oauthProxy) expirationHandler(cx echo.Context) error {
+	user, err := r.getIdentity(cx.Request())
 	if err != nil {
-		cx.AbortWithError(http.StatusUnauthorized, err)
-		return
+		return cx.NoContent(http.StatusUnauthorized)
 	}
-	// step: check the access is not expired
 	if user.isExpired() {
-		cx.AbortWithError(http.StatusUnauthorized, err)
-		return
+		return cx.NoContent(http.StatusUnauthorized)
 	}
 
-	cx.AbortWithStatus(http.StatusOK)
+	return cx.NoContent(http.StatusOK)
 }
 
-//
 // tokenHandler display access token to screen
-//
-func (r *oauthProxy) tokenHandler(cx *gin.Context) {
-	// step: extract the access token from the request
-	user, err := r.getIdentity(cx.Request)
+func (r *oauthProxy) tokenHandler(cx echo.Context) error {
+	user, err := r.getIdentity(cx.Request())
 	if err != nil {
-		cx.AbortWithError(http.StatusBadRequest, fmt.Errorf("unable to retrieve session, error: %s", err))
-		return
+		return cx.String(http.StatusBadRequest, fmt.Sprintf("unable to retrieve session, error: %s", err))
 	}
+	cx.Response().Writer.Header().Set("Content-Type", "application/json")
 
-	// step: write the json content
-	cx.Writer.Header().Set("Content-Type", "application/json")
-	cx.String(http.StatusOK, fmt.Sprintf("%s", user.token.Payload))
+	return cx.String(http.StatusOK, fmt.Sprintf("%s", user.token.Payload))
 }
 
 // healthHandler is a health check handler for the service
-func (r *oauthProxy) healthHandler(cx *gin.Context) {
-	cx.Writer.Header().Set(versionHeader, version)
-	cx.String(http.StatusOK, "OK\n")
+func (r *oauthProxy) healthHandler(cx echo.Context) error {
+	cx.Response().Writer.Header().Set(versionHeader, version)
+
+	return cx.String(http.StatusOK, "OK\n")
 }
 
 // debugHandler is responsible for providing the pprof
-func (r *oauthProxy) debugHandler(cx *gin.Context) {
+func (r *oauthProxy) debugHandler(cx echo.Context) error {
 	name := cx.Param("name")
-	switch cx.Request.Method {
+	switch cx.Request().Method {
 	case http.MethodGet:
 		switch name {
 		case "heap":
@@ -424,40 +443,40 @@ func (r *oauthProxy) debugHandler(cx *gin.Context) {
 		case "block":
 			fallthrough
 		case "threadcreate":
-			pprof.Handler(name).ServeHTTP(cx.Writer, cx.Request)
+			pprof.Handler(name).ServeHTTP(cx.Response().Writer, cx.Request())
 		case "cmdline":
-			pprof.Cmdline(cx.Writer, cx.Request)
+			pprof.Cmdline(cx.Response().Writer, cx.Request())
 		case "profile":
-			pprof.Profile(cx.Writer, cx.Request)
+			pprof.Profile(cx.Response().Writer, cx.Request())
 		case "trace":
-			pprof.Trace(cx.Writer, cx.Request)
+			pprof.Trace(cx.Response().Writer, cx.Request())
 		case "symbol":
-			pprof.Symbol(cx.Writer, cx.Request)
+			pprof.Symbol(cx.Response().Writer, cx.Request())
 		default:
-			cx.AbortWithStatus(http.StatusNotFound)
+			cx.NoContent(http.StatusNotFound)
 		}
 	case http.MethodPost:
 		switch name {
 		case "symbol":
-			pprof.Symbol(cx.Writer, cx.Request)
+			pprof.Symbol(cx.Response().Writer, cx.Request())
 		default:
-			cx.AbortWithStatus(http.StatusNotFound)
+			cx.NoContent(http.StatusNotFound)
 		}
 	}
 
-	cx.Abort()
+	return nil
 }
 
 // metricsHandler forwards the request into the prometheus handler
-func (r *oauthProxy) metricsHandler(cx *gin.Context) {
+func (r *oauthProxy) metricsHandler(cx echo.Context) error {
 	if r.config.LocalhostMetrics {
-		if !net.ParseIP(cx.ClientIP()).IsLoopback() {
-			r.accessForbidden(cx)
-			return
+		if !net.ParseIP(cx.RealIP()).IsLoopback() {
+			return r.accessForbidden(cx)
 		}
 	}
+	r.prometheusHandler.ServeHTTP(cx.Response().Writer, cx.Request())
 
-	r.prometheusHandler.ServeHTTP(cx.Writer, cx.Request)
+	return nil
 }
 
 // retrieveRefreshToken retrieves the refresh token from store or cookie
@@ -465,7 +484,6 @@ func (r *oauthProxy) retrieveRefreshToken(req *http.Request, user *userContext) 
 	var token string
 	var err error
 
-	// step: get the refresh token from the store or cookie
 	switch r.useStore() {
 	case true:
 		token, err = r.GetRefreshToken(user.token)

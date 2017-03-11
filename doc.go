@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	release = "v2.0.4"
+	release = "v2.1.0"
 	gitsha  = "no gitsha provided"
 	version = release + " (git+sha: " + gitsha + ")"
 )
@@ -38,6 +38,7 @@ const (
 
 	headerUpgrade       = "Upgrade"
 	userContextName     = "identity"
+	revokeContextName   = "revoke"
 	authorizationHeader = "Authorization"
 	versionHeader       = "X-Auth-Proxy-Version"
 	envPrefix           = "PROXY_"
@@ -45,12 +46,12 @@ const (
 	oauthURL         = "/oauth"
 	authorizationURL = "/authorize"
 	callbackURL      = "/callback"
-	healthURL        = "/health"
-	tokenURL         = "/token"
 	expiredURL       = "/expired"
-	logoutURL        = "/logout"
+	healthURL        = "/health"
 	loginURL         = "/login"
+	logoutURL        = "/logout"
 	metricsURL       = "/metrics"
+	tokenURL         = "/token"
 
 	claimPreferredName  = "preferred_username"
 	claimAudience       = "aud"
@@ -86,22 +87,6 @@ type Resource struct {
 	Roles []string `json:"roles" yaml:"roles"`
 }
 
-// Cors access controls
-type Cors struct {
-	// Origins is a list of origins permitted
-	Origins []string `json:"origins" yaml:"origins"`
-	// Methods is a set of access control methods
-	Methods []string `json:"methods" yaml:"methods"`
-	// Headers is a set of cors headers
-	Headers []string `json:"headers" yaml:"headers"`
-	// ExposedHeaders are the exposed header fields
-	ExposedHeaders []string `json:"exposed-headers" yaml:"exposed-headers"`
-	// Credentials set the creds flag
-	Credentials bool `json:"credentials" yaml:"credentials"`
-	// MaxAge is the age for CORS
-	MaxAge time.Duration `json:"max-age" yaml:"max-age"`
-}
-
 // Config is the configuration for the proxy
 type Config struct {
 	// ConfigFile is the binding interface
@@ -131,8 +116,10 @@ type Config struct {
 	// Headers permits adding customs headers across the board
 	Headers map[string]string `json:"headers" yaml:"headers" usage:"custom headers to the upstream request, key=value"`
 
-	// EnableCorsGlobal enables the CORs header in all response headers
-	EnableCorsGlobal bool `json:"enable-cors-global" yaml:"enable-cors-global" usage:"inject the CORs headers into all responses" env:"ENABLE_CORS_GLOBAL"`
+	// EnableLogging indicates if we should log all the requests
+	EnableLogging bool `json:"enable-logging" yaml:"enable-logging" usage:"enable http logging of the requests"`
+	// EnableJSONLogging is the logging format
+	EnableJSONLogging bool `json:"enable-json-logging" yaml:"enable-json-logging" usage:"switch on json logging rather than text"`
 	// EnableForwarding enables the forwarding proxy
 	EnableForwarding bool `json:"enable-forwarding" yaml:"enable-forwarding" usage:"enables the forwarding proxy mode, signing outbound request"`
 	// EnableSecurityFilter enabled the security handler
@@ -212,10 +199,6 @@ type Config struct {
 	// EncryptionKey is the encryption key used to encrypt the refresh token
 	EncryptionKey string `json:"encryption-key" yaml:"encryption-key" usage:"encryption key used to encryption the session state" env:"ENCRYPTION_KEY"`
 
-	// LogRequests indicates if we should log all the requests
-	LogRequests bool `json:"log-requests" yaml:"log-requests" usage:"enable http logging of the requests"`
-	// LogFormat is the logging format
-	LogJSONFormat bool `json:"json-format" yaml:"json-format" usage:"switch on json logging rather than text"`
 	// NoRedirects informs we should hand back a 401 not a redirect
 	NoRedirects bool `json:"no-redirects" yaml:"no-redirects" usage:"do not have back redirects when no authentication is present, 401 them"`
 	// SkipTokenVerification tells the service to skipp verifying the access token - for testing purposes
@@ -246,7 +229,7 @@ type Config struct {
 	ForwardingDomains []string `json:"forwarding-domains" yaml:"forwarding-domains" usage:"list of domains which should be signed; everything else is relayed unsigned"`
 }
 
-// store is used to hold the offline refresh token, assuming you don't want to use
+// storage is used to hold the offline refresh token, assuming you don't want to use
 // the default practice of a encrypted cookie
 type storage interface {
 	// Add the token to the store
