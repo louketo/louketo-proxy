@@ -154,6 +154,9 @@ func (r *oauthProxy) createReverseProxy() error {
 	// step: create the gin router
 	engine := gin.New()
 	engine.Use(gin.Recovery())
+	// step: custom filtering
+	engine.Use(r.filterMiddleware())
+
 	// step: is profiling enabled?
 	if r.config.EnableProfiling {
 		log.Warn("Enabling the debug profiling on /debug/pprof")

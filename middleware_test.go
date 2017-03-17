@@ -93,6 +93,54 @@ func TestRolePermissionsMiddleware(t *testing.T) {
 			Redirects: true,
 			Expects:   http.StatusOK,
 		},
+		{ // check for escaping
+			URI:       "//admin%2Ftest",
+			Redirects: true,
+			Expects:   http.StatusTemporaryRedirect,
+		},
+		{ // check for escaping
+			URI:       "/admin%2Ftest",
+			Redirects: true,
+			Expects:   http.StatusTemporaryRedirect,
+		},
+		{ // check for prefix slashs
+			URI:       "//admin/test",
+			Redirects: true,
+			Expects:   http.StatusTemporaryRedirect,
+		},
+		{ // check for prefix slashs
+			URI:       "/admin//test",
+			Redirects: true,
+			Expects:   http.StatusTemporaryRedirect,
+		},
+		{ // check for prefix slashs
+			URI:       "/admin//test",
+			Redirects: false,
+			HasToken:  true,
+			Expects:   http.StatusForbidden,
+		},
+		{ // check for dodgy url
+			URI:       "//admin/../admin/test",
+			Redirects: true,
+			Expects:   http.StatusTemporaryRedirect,
+		},
+		{ // check for dodgy url
+			URI:       "/help/../admin/test",
+			Redirects: true,
+			Expects:   http.StatusTemporaryRedirect,
+		},
+		{ // check for it works
+			URI:      "//admin/test",
+			HasToken: true,
+			Roles:    []string{fakeAdminRole},
+			Expects:  http.StatusOK,
+		},
+		{ // check for it works
+			URI:      "//admin//test",
+			HasToken: true,
+			Roles:    []string{fakeAdminRole},
+			Expects:  http.StatusOK,
+		},
 		{ // check with a token
 			URI:       "/",
 			Redirects: false,

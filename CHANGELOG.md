@@ -1,6 +1,9 @@
 
 #### **2.0.4**
 
+FIXES:
+ * Fixes a bug in authentication, which permitted double slashed url entry [#PR200](https://github.com/gambol99/keycloak-proxy/pull/200)
+
 FEATURES:
  * Grabbing the revocation-url from the idp config if user override is not specified [#PR193](https://github.com/gambol99/keycloak-proxy/pull/193)
 
