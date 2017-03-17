@@ -16,6 +16,7 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"regexp"
 	"strings"
@@ -32,6 +33,22 @@ const (
 	// cxEnforce is the tag name for a request requiring
 	cxEnforce = "Enforcing"
 )
+
+// filterMiddleware is custom filtering for incoming requests
+func (r *oauthProxy) filterMiddleware() gin.HandlerFunc {
+	return func(cx *gin.Context) {
+		var p rune
+		var b bytes.Buffer
+		for _, c := range cx.Request.URL.Path {
+			if c == '/' && p == '/' {
+				continue
+			}
+			p = c
+			b.WriteRune(c)
+		}
+		cx.Request.URL.Path = b.String()
+	}
+}
 
 // loggingMiddleware is a custom http logger
 func (r *oauthProxy) loggingMiddleware() gin.HandlerFunc {
