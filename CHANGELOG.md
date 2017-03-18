@@ -1,4 +1,9 @@
 
+#### **2.0.5 (unreleased)**
+
+FIXES:
+ * We normalize all urls before the protection middleware is applied [#PR202](https://github.com/gambol99/keycloak-proxy/pull/202)
+
 #### **2.0.4**
 
 FIXES:

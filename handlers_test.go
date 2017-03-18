@@ -262,8 +262,8 @@ func TestAuthorizationURL(t *testing.T) {
 			ExpectedCode: http.StatusTemporaryRedirect,
 		},
 		{
-			URL:          "/admin/../",
-			ExpectedURL:  "/oauth/authorize?state=L2FkbWluLy4uLw==",
+			URL:          "/help/../admin",
+			ExpectedURL:  "/oauth/authorize?state=L2FkbWlu",
 			ExpectedCode: http.StatusTemporaryRedirect,
 		},
 		{

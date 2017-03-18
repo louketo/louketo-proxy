@@ -155,7 +155,7 @@ func (r *oauthProxy) createReverseProxy() error {
 	engine := gin.New()
 	engine.Use(gin.Recovery())
 	// step: custom filtering
-	engine.Use(r.filterMiddleware())
+	engine.Use(r.filterMiddleware(), r.reverseProxyMiddleware())
 
 	// step: is profiling enabled?
 	if r.config.EnableProfiling {
@@ -205,8 +205,10 @@ func (r *oauthProxy) createReverseProxy() error {
 	}
 
 	// step: add the middleware
-	engine.Use(r.entrypointMiddleware(), r.authenticationMiddleware(), r.admissionMiddleware(),
-		r.headersMiddleware(r.config.AddClaims), r.reverseProxyMiddleware())
+	engine.Use(r.entrypointMiddleware(),
+		r.authenticationMiddleware(),
+		r.admissionMiddleware(),
+		r.headersMiddleware(r.config.AddClaims))
 
 	// step: set the handler
 	r.router = engine
@@ -473,9 +475,7 @@ func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) error {
 	return nil
 }
 
-//
 // createTemplates loads the custom template
-//
 func (r *oauthProxy) createTemplates() error {
 	var list []string
 
