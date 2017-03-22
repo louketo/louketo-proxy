@@ -1,8 +1,17 @@
 {
 	"ImportPath": "github.com/gambol99/keycloak-proxy",
-	"GoVersion": "go1.7",
+	"GoVersion": "go1.8",
 	"GodepVersion": "v79",
 	"Deps": [
+		{
+			"ImportPath": "github.com/PuerkitoBio/purell",
+			"Comment": "v1.1.0",
+			"Rev": "0bcb03f4b4d0a9428594752bd2a3b9aa0a9d4bd4"
+		},
+		{
+			"ImportPath": "github.com/PuerkitoBio/urlesc",
+			"Rev": "5bd2802263f21d8788851d5305584c82a5c75d7e"
+		},
 		{
 			"ImportPath": "github.com/Sirupsen/logrus",
 			"Comment": "v0.10.0-14-g081307d",
@@ -42,16 +51,6 @@
 			"Rev": "dedb650fb29c39c2f21aa88c1e4cec66da8754d1"
 		},
 		{
-			"ImportPath": "github.com/coreos/go-systemd/journal",
-			"Comment": "v14-2-gefa0506",
-			"Rev": "efa0506b99d3d9cfade280f5c7a1c1980d8c6c48"
-		},
-		{
-			"ImportPath": "github.com/coreos/pkg/capnslog",
-			"Comment": "v3-2-g447b7ec",
-			"Rev": "447b7ec906e523386d9c53be15b55a8ae86ea944"
-		},
-		{
 			"ImportPath": "github.com/coreos/pkg/health",
 			"Comment": "v3-2-g447b7ec",
 			"Rev": "447b7ec906e523386d9c53be15b55a8ae86ea944"
@@ -71,14 +70,14 @@
 			"Rev": "5215b55f46b2b919f50a1df0eaa5886afe4e3b3d"
 		},
 		{
-			"ImportPath": "github.com/gambol99/goproxy",
-			"Comment": "v1.0-87-gc3b6ff1",
-			"Rev": "c3b6ff1178d68ec9e93f7c996f41a3df89931d9f"
-		},
-		{
 			"ImportPath": "github.com/fsnotify/fsnotify",
 			"Comment": "v1.4.2-2-gfd9ec7d",
 			"Rev": "fd9ec7deca8bf46ecd2a795baaacf2b3a9be1197"
+		},
+		{
+			"ImportPath": "github.com/gambol99/goproxy",
+			"Comment": "v1.0-87-gc3b6ff1",
+			"Rev": "c3b6ff1178d68ec9e93f7c996f41a3df89931d9f"
 		},
 		{
 			"ImportPath": "github.com/gin-gonic/gin",
@@ -111,10 +110,6 @@
 		{
 			"ImportPath": "github.com/manucorporat/sse",
 			"Rev": "ee05b128a739a0fb76c7ebd3ae4810c1de808d6d"
-		},
-		{
-			"ImportPath": "github.com/mattn/go-colorable",
-			"Rev": "9cbef7c35391cca05f15f8181dc0b18bc9736dbb"
 		},
 		{
 			"ImportPath": "github.com/mattn/go-isatty",
@@ -174,6 +169,10 @@
 			"Rev": "bc3663df0ac92f928d419e31e0d2af22e683a5a2"
 		},
 		{
+			"ImportPath": "golang.org/x/net/idna",
+			"Rev": "bc3663df0ac92f928d419e31e0d2af22e683a5a2"
+		},
+		{
 			"ImportPath": "golang.org/x/net/publicsuffix",
 			"Rev": "bc3663df0ac92f928d419e31e0d2af22e683a5a2"
 		},
@@ -182,9 +181,16 @@
 			"Rev": "833a04a10549a95dc34458c195cbad61bbb6cb4d"
 		},
 		{
-			"ImportPath": "gopkg.in/bluesuncorp/validator.v5",
-			"Comment": "v5.12",
-			"Rev": "d5acf1dac43705f8bfbb71d878e290e2bed3950b"
+			"ImportPath": "golang.org/x/text/transform",
+			"Rev": "f28f36722d5ef2f9655ad3de1f248e3e52ad5ebd"
+		},
+		{
+			"ImportPath": "golang.org/x/text/unicode/norm",
+			"Rev": "f28f36722d5ef2f9655ad3de1f248e3e52ad5ebd"
+		},
+		{
+			"ImportPath": "golang.org/x/text/width",
+			"Rev": "f28f36722d5ef2f9655ad3de1f248e3e52ad5ebd"
 		},
 		{
 			"ImportPath": "gopkg.in/bsm/ratelimit.v1",

@@ -16,12 +16,12 @@ limitations under the License.
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/PuerkitoBio/purell"
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-oidc/jose"
 	"github.com/gin-gonic/gin"
@@ -34,19 +34,19 @@ const (
 	cxEnforce = "Enforcing"
 )
 
+const normalizeFlags purell.NormalizationFlags = purell.FlagRemoveDotSegments | purell.FlagRemoveDuplicateSlashes
+
 // filterMiddleware is custom filtering for incoming requests
 func (r *oauthProxy) filterMiddleware() gin.HandlerFunc {
 	return func(cx *gin.Context) {
-		var p rune
-		var b bytes.Buffer
-		for _, c := range cx.Request.URL.Path {
-			if c == '/' && p == '/' {
-				continue
-			}
-			p = c
-			b.WriteRune(c)
-		}
-		cx.Request.URL.Path = b.String()
+		// step: keep a copy of the original
+		orig := cx.Request.URL.Path
+		// step: normalize the url
+		purell.NormalizeURL(cx.Request.URL, normalizeFlags)
+		// step: continue the flow
+		cx.Next()
+		// step: place back the original
+		cx.Request.URL.Path = orig
 	}
 }
 

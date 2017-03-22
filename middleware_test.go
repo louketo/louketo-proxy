@@ -26,220 +26,21 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestRolePermissionsMiddleware(t *testing.T) {
-	cfg := newFakeKeycloakConfig()
-	cfg.SkipTokenVerification = false
-	cfg.Resources = []*Resource{
-		{
-			URL:     fakeAdminRoleURL,
-			Methods: []string{"ANY"},
-			Roles:   []string{fakeAdminRole},
-		},
-		{
-			URL:     fakeTestRoleURL,
-			Methods: []string{"GET"},
-			Roles:   []string{fakeTestRole},
-		},
-		{
-			URL:     fakeTestAdminRolesURL,
-			Methods: []string{"GET"},
-			Roles:   []string{fakeAdminRole, fakeTestRole},
-		},
-		{
-			URL:         fakeTestWhitelistedURL,
-			WhiteListed: true,
-			Methods:     []string{},
-			Roles:       []string{},
-		},
-		{
-			URL:     "/",
-			Methods: []string{"ANY"},
-			Roles:   []string{fakeTestRole},
-		},
-	}
-	px, idp, svc := newTestProxyService(cfg)
+type fakeRequest struct {
+	URI       string
+	Method    string
+	Redirects bool
+	HasToken  bool
+	NotSigned bool
+	Expires   time.Duration
+	Roles     []string
+	Expects   int
+}
 
-	// test cases
-	cs := []struct {
-		URI       string
-		Method    string
-		Redirects bool
-		HasToken  bool
-		NotSigned bool
-		Expires   time.Duration
-		Roles     []string
-		Expects   int
-	}{
-		{
-			URI:     "/",
-			Expects: http.StatusUnauthorized,
-		},
-		{ // check whitelisted is passed
-			URI:     fakeTestWhitelistedURL,
-			Expects: http.StatusOK,
-		},
-		{ // check for redirect
-			URI:       "/",
-			Redirects: true,
-			Expects:   http.StatusTemporaryRedirect,
-		},
-		{
-			URI:       "/oauth/callback",
-			Redirects: true,
-			Expects:   http.StatusBadRequest,
-		},
-		{
-			URI:       "/oauth/health",
-			Redirects: true,
-			Expects:   http.StatusOK,
-		},
-		{ // check for escaping
-			URI:       "//admin%2Ftest",
-			Redirects: true,
-			Expects:   http.StatusTemporaryRedirect,
-		},
-		{ // check for escaping
-			URI:       "/admin%2Ftest",
-			Redirects: true,
-			Expects:   http.StatusTemporaryRedirect,
-		},
-		{ // check for prefix slashs
-			URI:       "//admin/test",
-			Redirects: true,
-			Expects:   http.StatusTemporaryRedirect,
-		},
-		{ // check for prefix slashs
-			URI:       "/admin//test",
-			Redirects: true,
-			Expects:   http.StatusTemporaryRedirect,
-		},
-		{ // check for prefix slashs
-			URI:       "/admin//test",
-			Redirects: false,
-			HasToken:  true,
-			Expects:   http.StatusForbidden,
-		},
-		{ // check for dodgy url
-			URI:       "//admin/../admin/test",
-			Redirects: true,
-			Expects:   http.StatusTemporaryRedirect,
-		},
-		{ // check for dodgy url
-			URI:       "/help/../admin/test",
-			Redirects: true,
-			Expects:   http.StatusTemporaryRedirect,
-		},
-		{ // check for it works
-			URI:      "//admin/test",
-			HasToken: true,
-			Roles:    []string{fakeAdminRole},
-			Expects:  http.StatusOK,
-		},
-		{ // check for it works
-			URI:      "//admin//test",
-			HasToken: true,
-			Roles:    []string{fakeAdminRole},
-			Expects:  http.StatusOK,
-		},
-		{ // check with a token
-			URI:       "/",
-			Redirects: false,
-			HasToken:  true,
-			Expects:   http.StatusForbidden,
-		},
-		{ // check with a token and wrong roles
-			URI:       "/",
-			Redirects: false,
-			HasToken:  true,
-			Roles:     []string{"one", "two"},
-			Expects:   http.StatusForbidden,
-		},
-		{ // token, wrong roles
-			URI:       fakeTestRoleURL,
-			Redirects: false,
-			HasToken:  true,
-			Roles:     []string{"bad_role"},
-			Expects:   http.StatusForbidden,
-		},
-		{ // token, wrong roles, no 'get' method
-			URI:       fakeTestRoleURL,
-			Method:    http.MethodPost,
-			Redirects: false,
-			HasToken:  true,
-			Roles:     []string{"bad_role"},
-			Expects:   http.StatusOK,
-		},
-		{ // check with correct token
-			URI:       "/",
-			Redirects: false,
-			HasToken:  true,
-			Roles:     []string{fakeTestRole},
-			Expects:   http.StatusOK,
-		},
-		{ // check with correct token, not signed
-			URI:       "/",
-			Redirects: false,
-			HasToken:  true,
-			NotSigned: true,
-			Roles:     []string{fakeTestRole},
-			Expects:   http.StatusForbidden,
-		},
-		{ // check with correct token, signed
-			URI:       fakeAdminRoleURL,
-			Method:    http.MethodPost,
-			Redirects: false,
-			HasToken:  true,
-			Roles:     []string{fakeTestRole},
-			Expects:   http.StatusForbidden,
-		},
-		{ // check with correct token, signed, wrong roles
-			URI:       fakeAdminRoleURL,
-			Redirects: false,
-			HasToken:  true,
-			Roles:     []string{fakeTestRole},
-			Expects:   http.StatusForbidden,
-		},
-		{ // check with correct token, signed, wrong roles
-			URI:       fakeAdminRoleURL,
-			Redirects: false,
-			HasToken:  true,
-			Roles:     []string{fakeTestRole, fakeAdminRole},
-			Expects:   http.StatusOK,
-		},
-		{ // strange url
-			URI:       fakeAdminRoleURL + "/.." + fakeAdminRoleURL,
-			Redirects: false,
-			Expects:   http.StatusUnauthorized,
-		},
-		{ // strange url, token
-			URI:       fakeAdminRoleURL + "/.." + fakeAdminRoleURL,
-			Redirects: false,
-			HasToken:  true,
-			Roles:     []string{"hehe"},
-			Expects:   http.StatusForbidden,
-		},
-		{ // strange url, token
-			URI:       "/test/../admin",
-			Redirects: false,
-			HasToken:  true,
-			Expects:   http.StatusForbidden,
-		},
-		{ // strange url, token, role
-			URI:       "/test/../admin",
-			Redirects: false,
-			HasToken:  true,
-			Roles:     []string{fakeAdminRole},
-			Expects:   http.StatusForbidden,
-		},
-		{ // strange url, token, wrong roles
-			URI:       "/test/.." + fakeTestAdminRolesURL,
-			Redirects: false,
-			HasToken:  true,
-			Roles:     []string{fakeAdminRole},
-			Expects:   http.StatusForbidden,
-		},
-	}
-	for i, c := range cs {
+func makeFakesRequests(t *testing.T, reqs []fakeRequest, cfg *Config) {
+	cfg.SkipTokenVerification = false
+	px, idp, svc := newTestProxyService(cfg)
+	for i, c := range reqs {
 		px.config.NoRedirects = !c.Redirects
 		// step: make the client
 		hc := resty.New().SetRedirectPolicy(resty.NoRedirectPolicy())
@@ -274,6 +75,284 @@ func TestRolePermissionsMiddleware(t *testing.T) {
 		assert.Equal(t, c.Expects, resp.StatusCode(), "case %d, uri: %s,  expected: %d, got: %d",
 			i, c.URI, c.Expects, resp.StatusCode())
 	}
+}
+
+func TestOauthRequests(t *testing.T) {
+	cfg := newFakeKeycloakConfig()
+	requests := []fakeRequest{
+		{
+			URI:       "/oauth/authorize",
+			Redirects: true,
+			Expects:   http.StatusTemporaryRedirect,
+		},
+		{
+			URI:       "/oauth/callback",
+			Redirects: true,
+			Expects:   http.StatusBadRequest,
+		},
+		{
+			URI:       "/oauth/health",
+			Redirects: true,
+			Expects:   http.StatusOK,
+		},
+	}
+	makeFakesRequests(t, requests, cfg)
+}
+
+func TestStrangeAdminRequests(t *testing.T) {
+	cfg := newFakeKeycloakConfig()
+	cfg.Resources = []*Resource{
+		{
+			URL:     "/admin",
+			Methods: []string{"ANY"},
+			Roles:   []string{fakeAdminRole},
+		},
+	}
+	requests := []fakeRequest{
+		{ // check for escaping
+			URI:       "//admin%2Ftest",
+			Redirects: true,
+			Expects:   http.StatusTemporaryRedirect,
+		},
+		{ // check for escaping
+			URI:       "/admin%2Ftest",
+			Redirects: true,
+			Expects:   http.StatusTemporaryRedirect,
+		},
+		{ // check for prefix slashs
+			URI:       "//admin/test",
+			Redirects: true,
+			Expects:   http.StatusTemporaryRedirect,
+		},
+		{ // check for prefix slashs
+			URI:       "/admin//test",
+			Redirects: true,
+			Expects:   http.StatusTemporaryRedirect,
+		},
+		{ // check for prefix slashs
+			URI:       "/admin//test",
+			Redirects: false,
+			HasToken:  true,
+			Expects:   http.StatusForbidden,
+		},
+		{ // check for dodgy url
+			URI:       "//admin/../admin/test",
+			Redirects: true,
+			Expects:   http.StatusTemporaryRedirect,
+		},
+		{ // check for it works
+			URI:      "//admin/test",
+			HasToken: true,
+			Roles:    []string{fakeAdminRole},
+			Expects:  http.StatusOK,
+		},
+		{ // check for it works
+			URI:      "//admin//test",
+			HasToken: true,
+			Roles:    []string{fakeAdminRole},
+			Expects:  http.StatusOK,
+		},
+		{
+			URI:       "/help/../admin/test/21",
+			Redirects: false,
+			Expects:   http.StatusUnauthorized,
+		},
+	}
+	makeFakesRequests(t, requests, cfg)
+}
+
+func TestWhiteListedRequests(t *testing.T) {
+	cfg := newFakeKeycloakConfig()
+	cfg.Resources = []*Resource{
+		{
+			URL:         "/whitelist",
+			WhiteListed: true,
+			Methods:     []string{"GET"},
+			Roles:       []string{},
+		},
+		{
+			URL:     "/",
+			Methods: []string{"ANY"},
+			Roles:   []string{fakeTestRole},
+		},
+		{
+			URL:         "/whitelisted",
+			WhiteListed: true,
+			Methods:     []string{"ANY"},
+			Roles:       []string{fakeTestRole},
+		},
+	}
+	requests := []fakeRequest{
+		{ // check whitelisted is passed
+			URI:     "/whitelist",
+			Expects: http.StatusOK,
+		},
+		{ // check whitelisted is passed
+			URI:     "/whitelist/test",
+			Expects: http.StatusOK,
+		},
+		{
+			URI:     "/",
+			Expects: http.StatusUnauthorized,
+		},
+	}
+	makeFakesRequests(t, requests, cfg)
+}
+
+func TestRolePermissionsMiddleware(t *testing.T) {
+	cfg := newFakeKeycloakConfig()
+	cfg.Resources = []*Resource{
+		{
+			URL:     "/admin",
+			Methods: []string{"ANY"},
+			Roles:   []string{fakeAdminRole},
+		},
+		{
+			URL:     "/test",
+			Methods: []string{"GET"},
+			Roles:   []string{fakeTestRole},
+		},
+		{
+			URL:     "/test_admin_role",
+			Methods: []string{"GET"},
+			Roles:   []string{fakeAdminRole, fakeTestRole},
+		},
+		{
+			URL:         "/whitelist",
+			WhiteListed: true,
+			Methods:     []string{"GET"},
+			Roles:       []string{},
+		},
+		{
+			URL:     "/",
+			Methods: []string{"ANY"},
+			Roles:   []string{fakeTestRole},
+		},
+	}
+	// test cases
+	requests := []fakeRequest{
+		{
+			URI:     "/",
+			Expects: http.StatusUnauthorized,
+		},
+		{ // check for redirect
+			URI:       "/",
+			Redirects: true,
+			Expects:   http.StatusTemporaryRedirect,
+		},
+		{ // check with a token
+			URI:       "/",
+			Redirects: false,
+			HasToken:  true,
+			Expects:   http.StatusForbidden,
+		},
+		{ // check with a token and wrong roles
+			URI:       "/",
+			Redirects: false,
+			HasToken:  true,
+			Roles:     []string{"one", "two"},
+			Expects:   http.StatusForbidden,
+		},
+		{ // token, wrong roles
+			URI:       "/test",
+			Redirects: false,
+			HasToken:  true,
+			Roles:     []string{"bad_role"},
+			Expects:   http.StatusForbidden,
+		},
+		{ // token, wrong roles, no 'get' method
+			URI:       "/test",
+			Method:    http.MethodPost,
+			Redirects: false,
+			HasToken:  true,
+			Roles:     []string{"bad_role"},
+			Expects:   http.StatusOK,
+		},
+		{ // check with correct token
+			URI:       "/test",
+			Redirects: false,
+			HasToken:  true,
+			Roles:     []string{fakeTestRole},
+			Expects:   http.StatusOK,
+		},
+		{ // check with correct token
+			URI:       "/",
+			Redirects: false,
+			HasToken:  true,
+			Roles:     []string{fakeTestRole},
+			Expects:   http.StatusOK,
+		},
+		{ // check with correct token, not signed
+			URI:       "/",
+			Redirects: false,
+			HasToken:  true,
+			NotSigned: true,
+			Roles:     []string{fakeTestRole},
+			Expects:   http.StatusForbidden,
+		},
+		{ // check with correct token, signed
+			URI:       "/admin/page",
+			Method:    http.MethodPost,
+			Redirects: false,
+			HasToken:  true,
+			Roles:     []string{fakeTestRole},
+			Expects:   http.StatusForbidden,
+		},
+		{ // check with correct token, signed, wrong roles
+			URI:       "/admin/page",
+			Redirects: false,
+			HasToken:  true,
+			Roles:     []string{fakeTestRole},
+			Expects:   http.StatusForbidden,
+		},
+		{ // check with correct token, signed, wrong roles
+			URI:       "/admin/page",
+			Redirects: false,
+			HasToken:  true,
+			Roles:     []string{fakeTestRole, fakeAdminRole},
+			Expects:   http.StatusOK,
+		},
+		{ // strange url
+			URI:       "/admin/..//admin/page",
+			Redirects: false,
+			Expects:   http.StatusUnauthorized,
+		},
+		{ // strange url, token
+			URI:       "/admin/../admin",
+			Redirects: false,
+			HasToken:  true,
+			Roles:     []string{"hehe"},
+			Expects:   http.StatusForbidden,
+		},
+		{ // strange url, token
+			URI:       "/test/../admin",
+			Redirects: false,
+			HasToken:  true,
+			Expects:   http.StatusForbidden,
+		},
+		{ // strange url, token, role
+			URI:       "/test/../admin",
+			Redirects: false,
+			HasToken:  true,
+			Roles:     []string{fakeAdminRole},
+			Expects:   http.StatusOK,
+		},
+		{ // strange url, token, wrong roles
+			URI:       "/test/../admin",
+			Redirects: false,
+			HasToken:  true,
+			Roles:     []string{fakeAdminRole},
+			Expects:   http.StatusOK,
+		},
+		{ // strange url, token, wrong roles
+			URI:       "/test/../admin",
+			Redirects: false,
+			HasToken:  true,
+			Roles:     []string{fakeTestRole},
+			Expects:   http.StatusForbidden,
+		},
+	}
+	makeFakesRequests(t, requests, cfg)
 }
 
 func TestCrossSiteHandler(t *testing.T) {

@@ -29,6 +29,9 @@ import (
 // reverseProxyMiddleware is responsible for handles reverse proxy request to the upstream endpoint
 func (r *oauthProxy) reverseProxyMiddleware() gin.HandlerFunc {
 	return func(cx *gin.Context) {
+		// step: continue the flow
+		cx.Next()
+		// step: check its cool to continue
 		if cx.IsAborted() {
 			return
 		}
