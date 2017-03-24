@@ -113,6 +113,10 @@ GLOBAL OPTIONS:
 
 Assuming you have make + go, simply run make (or 'make static' for static linking). You can also build via docker container: make docker-build
 
+#### **Docker image**
+Docker image is available at [https://quay.io/repository/gambol99/keycloak-proxy](https://quay.io/repository/gambol99/keycloak-proxy)
+
+
 #### **Configuration**
 
 Configuration can come from a yaml/json file and or the command line options (note, command options have a higher priority and will override or merge any options referenced in a config file)
