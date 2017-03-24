@@ -96,6 +96,7 @@ func (r *oauthProxy) entrypointMiddleware() gin.HandlerFunc {
 	return func(cx *gin.Context) {
 		// step: we can skip if under oauth prefix
 		if strings.HasPrefix(cx.Request.URL.Path, oauthURL) {
+			cx.Abort()
 			return
 		}
 

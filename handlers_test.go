@@ -248,10 +248,6 @@ func TestAuthorizationURL(t *testing.T) {
 		ExpectedCode int
 	}{
 		{
-			URL:          "/",
-			ExpectedCode: http.StatusOK,
-		},
-		{
 			URL:          "/admin",
 			ExpectedURL:  "/oauth/authorize?state=L2FkbWlu",
 			ExpectedCode: http.StatusTemporaryRedirect,
@@ -271,11 +267,20 @@ func TestAuthorizationURL(t *testing.T) {
 			ExpectedURL:  "/oauth/authorize?state=L2FkbWluP3Rlc3Q9eWVzJnRlc3QxPXRlc3Q=",
 			ExpectedCode: http.StatusTemporaryRedirect,
 		},
+		{
+			URL:          "/oauth/test",
+			ExpectedCode: http.StatusNotFound,
+		},
+		{
+			URL:          "/oauth/callback/..//test",
+			ExpectedCode: http.StatusNotFound,
+		},
 	}
 	for i, x := range cs {
 		resp, _ := client.Get(u + x.URL)
 		assert.Equal(t, x.ExpectedCode, resp.StatusCode, "case %d, expect: %v, got: %s", i, x.ExpectedCode, resp.StatusCode)
 		assert.Equal(t, x.ExpectedURL, resp.Header.Get("Location"), "case %d, expect: %v, got: %s", i, x.ExpectedURL, resp.Header.Get("Location"))
+		assert.Empty(t, resp.Header.Get(testProxyAccepted))
 	}
 }
 
