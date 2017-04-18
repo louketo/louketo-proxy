@@ -175,18 +175,19 @@ func (r *oauthProxy) createReverseProxy() error {
 	if err := r.createTemplates(); err != nil {
 		return err
 	}
-
 	// step: provision in the protected resources
-	for _, resource := range r.config.Resources {
-		log.Infof("protecting resource: %s", resource)
-		switch resource.WhiteListed {
+	for _, x := range r.config.Resources {
+		if x.URL[len(x.URL)-1:] == "/" {
+			log.Warnf("the resource url: %s is not a prefix, you probably want %s* or %s* to protect the xs", x.URL, x.URL, strings.TrimRight(x.URL, "/"))
+		}
+	}
+	for _, x := range r.config.Resources {
+		log.Infof("protecting resource: %s", x)
+		switch x.WhiteListed {
 		case false:
-			engine.Match(resource.Methods, resource.URL, emptyHandler,
-				r.authenticationMiddleware(resource),
-				r.admissionMiddleware(resource),
-				r.headersMiddleware(r.config.AddClaims))
+			engine.Match(x.Methods, x.URL, emptyHandler, r.authenticationMiddleware(x), r.admissionMiddleware(x), r.headersMiddleware(r.config.AddClaims))
 		default:
-			engine.Match(resource.Methods, resource.URL, emptyHandler)
+			engine.Match(x.Methods, x.URL, emptyHandler)
 		}
 	}
 	for name, value := range r.config.MatchClaims {
