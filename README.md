@@ -24,7 +24,7 @@
 Keycloak-proxy is a proxy service which at the risk of stating the obvious integrates with the [Keycloak](https://github.com/keycloak/keycloak) authentication service. Although technically the service has no dependency on Keycloak itself and would quite happily work with any OpenID provider. The service supports both access tokens in browser cookie or bearer tokens.
 
 ```shell
-[jest@starfury keycloak-proxy]$ bin/keycloak-proxy help
+[jest@starfury keycloak-proxy]$ bin/keycloak-proxy --help
 NAME:
    keycloak-proxy - is a proxy using the keycloak service for auth and authorization
 
@@ -32,7 +32,7 @@ USAGE:
    keycloak-proxy [options]
 
 VERSION:
-   v2.0.2 (git+sha: 260d2c8-dirty)
+   v2.1.0 (git+sha: f74c713)
 
 AUTHOR:
    Rohith <gambol99@gmail.com>
@@ -47,14 +47,15 @@ GLOBAL OPTIONS:
    --discovery-url value               discovery url to retrieve the openid configuration [$PROXY_DISCOVERY_URL]
    --client-id value                   client id used to authenticate to the oauth service [$PROXY_CLIENT_ID]
    --client-secret value               client secret used to authenticate to the oauth service [$PROXY_CLIENT_SECRET]
-   --redirection-url value             redirection url for the oauth callback url [$PROXY_REDIRECTION_URL]
+   --redirection-url value             redirection url for the oauth callback url, defaults to host header is absent [$PROXY_REDIRECTION_URL]
    --revocation-url value              url for the revocation endpoint to revoke refresh token [$PROXY_REVOCATION_URL]
    --skip-openid-provider-tls-verify   skip the verification of any TLS communication with the openid provider (default: false)
    --scopes value                      list of scopes requested when authenticating the user
    --upstream-url value                url for the upstream endpoint you wish to proxy [$PROXY_UPSTREAM_URL]
    --resources value                   list of resources 'uri=/admin|methods=GET,PUT|roles=role1,role2'
    --headers value                     custom headers to the upstream request, key=value
-   --enable-cors-global                inject the CORs headers into all responses (default: false) [$PROXY_ENABLE_CORS_GLOBAL]
+   --enable-logging                    enable http logging of the requests (default: false)
+   --enable-json-logging               switch on json logging rather than text (default: false)
    --enable-forwarding                 enables the forwarding proxy mode, signing outbound request (default: false)
    --enable-security-filter            enables the security filter handler (default: false)
    --enable-refresh-tokens             nables the handling of the refresh tokens (default: false) [$PROXY_ENABLE_SECURITY_FILTER]
@@ -68,6 +69,7 @@ GLOBAL OPTIONS:
    --filter-frame-deny                 enable to the frame deny header (default: false)
    --content-security-policy value     specify the content security policy
    --localhost-metrics                 enforces the metrics page can only been requested from 127.0.0.1 (default: false)
+   --access-token-duration value       fallback cookie duration for the access token when using refresh tokens (default: 720h0m0s)
    --cookie-domain value               domain the access cookie is available to, defaults host header
    --cookie-access-name value          name of the cookie use to hold the access token (default: "kc-access")
    --cookie-refresh-name value         name of the cookie used to hold the encrypted refresh token (default: "kc-state")
@@ -89,9 +91,7 @@ GLOBAL OPTIONS:
    --cors-max-age value                max age applied to cors headers (Access-Control-Max-Age) (default: 0s)
    --hostnames value                   list of hostnames the service will respond to
    --store-url value                   url for the storage subsystem, e.g redis://127.0.0.1:6379, file:///etc/tokens.file
-   --encryption-key value              encryption key used to encrpytion the session state
-   --log-requests                      enable http logging of the requests (default: false)
-   --json-format                       switch on json logging rather than text (default: false)
+   --encryption-key value              encryption key used to encryption the session state [$PROXY_ENCRYPTION_KEY]
    --no-redirects                      do not have back redirects when no authentication is present, 401 them (default: false)
    --skip-token-verification           TESTING ONLY; bypass token verification, only expiration and roles enforced (default: false)
    --upstream-keepalives               enables or disables the keepalive connections for upstream endpoint (default: false)
@@ -122,7 +122,7 @@ Docker image is available at [https://quay.io/repository/gambol99/keycloak-proxy
 Configuration can come from a yaml/json file and or the command line options (note, command options have a higher priority and will override or merge any options referenced in a config file)
 
 ```YAML
-# is the url for retrieve the openid configuration - normally the <server>/auth/realm/<realm_name>
+# is the url for retrieve the OpenID configuration - normally the <server>/auth/realm/<realm_name>
 discovery-url: https://keycloak.example.com/auth/realms/<REALM_NAME>
 # the client id for the 'client' application
 client-id: <CLIENT_ID>
@@ -158,7 +158,7 @@ resources:
   - openvpn:vpn-user
   - openvpn:prod-vpn
   - test
-- uri: /admin
+- uri: /admin/*
   methods:
   - GET
   roles:
@@ -188,13 +188,13 @@ redirection-url: http://127.0.0.1:3000
 encryption_key: AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j
 upstream-url: http://127.0.0.1:80
 resources:
-- uri: /admin
+- uri: /admin*
   methods:
   - GET
   roles:
   - client:test1
   - client:test2
-- uri: /backend
+- uri: /backend*
   roles:
   - client:test1
 ```
@@ -211,11 +211,22 @@ bin/keycloak-proxy \
     --enable-refresh-token=true \
     --encryption-key=AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j \
     --upstream-url=http://127.0.0.1:80 \
-    --resources="uri=/admin|methods=GET|roles=test1,test2" \
-    --resources="uri=/backend|roles=test1"
+    --resources="uri=/admin*|methods=GET|roles=test1,test2" \
+    --resources="uri=/backend*|roles=test1"
 ```
 
+#### **HTTP Routing**
+
+By default all requests will be proxyed on to the upstream, if you wish to ensure all requests are authentication you can use
+
+```shell
+--resource=uri=/* # note, by default unless specified the methods is assumed to be 'any|ANY'
+```
+
+Note the HTTP routing rules following the guidelines from [echo](https://echo.labstack.com/guide/routing). Its also worth nothing the ordering of the resource do not matter, the router will handle that for you.
+
 #### **Google OAuth**
+
 Although the role extensions do require a Keycloak IDP or at the very least a IDP that produces a token which contains roles, there's nothing stopping you from using it against any OpenID providers, such as Google. Go to the Google Developers Console and create a new application *(via "Enable and Manage APIs -> Credentials)*. Once you've created the application, take the client id, secret and make sure you've added the callback url to the application scope *(using the default this would be http://127.0.0.1:3000/oauth/callback)*
 
 ``` shell
@@ -223,7 +234,7 @@ bin/keycloak-proxy \
     --discovery-url=https://accounts.google.com/.well-known/openid-configuration \
     --client-id=<CLIENT_ID> \
     --client-secret=<CLIENT_SECRET> \
-    --resources="uri=/" \
+    --resources="uri=/*" \
     --verbose=true
 ```
 
@@ -403,13 +414,13 @@ By default the proxy will immediately redirect you for authentication and hand b
 
 #### **White-listed URL's**
 
-Depending on how the application url's are laid out, you might want protect the root / url but have exceptions on a list of paths, i.e. /health etc. Although you should probably fix this by fixing up the paths, you can add excepts to the protected resources. (Note: it's an array, so the order is important)
+Depending on how the application url's are laid out, you might want protect the root / url but have exceptions on a list of paths, i.e. /health etc. Although you should probably fix this by fixing up the paths, you can add excepts to the protected resources.
 
 ```YAML
   resources:
   - url: /some_white_listed_url
     white-listed: true
-  - url: /
+  - url: /*
     methods:
       - GET
     roles:
@@ -421,7 +432,7 @@ Or on the command line
 
 ```shell
   --resources "uri=/some_white_listed_url|white-listed=true"
-  --resources "uri=/"  # requires authentication on the rest
+  --resources "uri=/*"  # requires authentication on the rest
   --resources "uri=/admin|roles=admin,superuser|methods=POST,DELETE
 ```
 
@@ -445,7 +456,7 @@ A /oauth/logout?redirect=url is provided as a helper to logout the users. Aside 
 
 #### **Cross Origin Resource Sharing (CORS)**
 
-You can add CORS header via the --cors-[method] command line or configuration options. By default this will inject CORS header into all response from the /oauth/* and any authentication required redirects, though you can enable these globally for all responses via the --enable-cors-global option.
+You can add CORS header via the --cors-[method] command line or configuration options.
 
  * Access-Control-Allow-Origin
  * Access-Control-Allow-Methods
@@ -479,8 +490,8 @@ You can control the upstream endpoint via the --upstream-url option. Both http a
 
 #### **Endpoints**
 
-* **/oauth/authorize** is authentication endpoint which will generate the openid redirect to the provider
-* **/oauth/callback** is provider openid callback endpoint
+* **/oauth/authorize** is authentication endpoint which will generate the OpenID redirect to the provider
+* **/oauth/callback** is provider OpenID callback endpoint
 * **/oauth/expired** is a helper endpoint to check if a access token has expired, 200 for ok and, 401 for no token and 401 for expired
 * **/oauth/health** is the health checking endpoint for the proxy, you can also grab version from headers
 * **/oauth/login** provides a relay endpoint to login via grant_type=password i.e. POST /oauth/login form values are username=USERNAME&password=PASSWORD (must be enabled)

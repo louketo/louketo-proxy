@@ -169,9 +169,7 @@ func parseCLIOptions(cx *cli.Context, config *Config) (err error) {
 			case reflect.String:
 				reflect.ValueOf(config).Elem().FieldByName(field.Name).SetString(cx.String(name))
 			case reflect.Slice:
-				for _, x := range cx.StringSlice(name) {
-					reflect.Append(reflect.ValueOf(config).Elem().FieldByName(field.Name), reflect.ValueOf(x))
-				}
+				reflect.ValueOf(config).Elem().FieldByName(field.Name).Set(reflect.ValueOf(cx.StringSlice(name)))
 			case reflect.Int64:
 				switch field.Type.String() {
 				case "time.Duration":

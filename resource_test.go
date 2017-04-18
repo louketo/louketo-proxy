@@ -21,63 +21,61 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestDecodeResource(t *testing.T) {
-	testCases := []struct {
+func TestDecodeResourceBad(t *testing.T) {
+	cs := []struct {
 		Option   string
-		Ok       bool
+		Resource *Resource
+	}{
+		{Option: "unknown=bad"},
+		{Option: "uri=/|unknown=bad"},
+		{Option: "uri"},
+		{Option: "uri=/|white-listed=ERROR"},
+	}
+	for i, c := range cs {
+		if _, err := newResource().parse(c.Option); err == nil {
+			t.Errorf("case %d should have errored", i)
+		}
+	}
+}
+
+func TestResourceParseOk(t *testing.T) {
+	cs := []struct {
+		Option   string
 		Resource *Resource
 	}{
 		{
-			Option: "uri=/admin",
-			Ok:     true,
-			Resource: &Resource{
-				URL: "/admin",
-			},
+			Option:   "uri=/admin",
+			Resource: &Resource{URL: "/admin", Methods: allHTTPMethods},
 		},
 		{
-			Option: "uri=/",
-			Ok:     true,
-			Resource: &Resource{
-				URL: "/",
-			},
+			Option:   "uri=/",
+			Resource: &Resource{URL: "/", Methods: allHTTPMethods},
 		},
 		{
-			Option: "uri=/admin/sso|roles=test,test1",
-			Ok:     true,
-			Resource: &Resource{
-				URL:   "/admin/sso",
-				Roles: []string{"test", "test1"},
-			},
+			Option:   "uri=/admin/sso|roles=test,test1",
+			Resource: &Resource{URL: "/admin/sso", Roles: []string{"test", "test1"}, Methods: allHTTPMethods},
 		},
 		{
-			Option: "uri=/admin/sso|roles=test,test1|methods=GET,POST",
-			Ok:     true,
-			Resource: &Resource{
-				URL:     "/admin/sso",
-				Roles:   []string{"test", "test1"},
-				Methods: []string{"GET", "POST"},
-			},
+			Option:   "uri=/admin/sso|roles=test,test1|methods=GET,POST",
+			Resource: &Resource{URL: "/admin/sso", Roles: []string{"test", "test1"}, Methods: []string{"GET", "POST"}},
 		},
 		{
-			Option: "uri=/allow_me|white-listed=true",
-			Ok:     true,
-			Resource: &Resource{
-				URL:         "/allow_me",
-				WhiteListed: true,
-			},
+			Option:   "uri=/allow_me|white-listed=true",
+			Resource: &Resource{URL: "/allow_me", WhiteListed: true, Methods: allHTTPMethods},
 		},
 		{
-			Option: "",
+			Option:   "uri=/*|methods=any",
+			Resource: &Resource{URL: "/*", Methods: allHTTPMethods},
+		},
+		{
+			Option:   "uri=/*|methods=any",
+			Resource: &Resource{URL: "/*", Methods: allHTTPMethods},
 		},
 	}
-
-	for i, c := range testCases {
-		rc, err := newResource().parse(c.Option)
-		if c.Ok && err != nil {
-			t.Errorf("test case %d should not have failed, error: %s", i, err)
-			continue
-		}
-		assert.Equal(t, rc, c.Resource)
+	for i, x := range cs {
+		r, err := newResource().parse(x.Option)
+		assert.NoError(t, err, "case %d should not have errored with: %s", i, err)
+		assert.Equal(t, r, x.Resource, "case %d, expected: %#v, got: %#v", i, x.Resource, r)
 	}
 }
 
@@ -111,7 +109,7 @@ func TestIsValid(t *testing.T) {
 	for i, c := range testCases {
 		err := c.Resource.valid()
 		if err != nil && c.Ok {
-			t.Errorf("case %d should not have failed", i)
+			t.Errorf("case %d should not have failed, error: %s", i, err)
 		}
 	}
 }

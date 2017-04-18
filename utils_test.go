@@ -273,7 +273,7 @@ func TestIdValidHTTPMethod(t *testing.T) {
 	}{
 		{Method: "GET", Ok: true},
 		{Method: "GETT"},
-		{Method: "CONNECT"},
+		{Method: "CONNECT", Ok: false},
 		{Method: "PUT", Ok: true},
 		{Method: "PATCH", Ok: true},
 	}

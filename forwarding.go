@@ -23,38 +23,48 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-oidc/jose"
 	"github.com/coreos/go-oidc/oidc"
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo"
 )
 
-// reverseProxyMiddleware is responsible for handles reverse proxy request to the upstream endpoint
-func (r *oauthProxy) reverseProxyMiddleware() gin.HandlerFunc {
-	return func(cx *gin.Context) {
-		// step: continue the flow
-		cx.Next()
-		// step: check its cool to continue
-		if cx.IsAborted() {
-			return
-		}
-
-		// step: is this connection upgrading?
-		if isUpgradedConnection(cx.Request) {
-			log.Debugf("upgrading the connnection to %s", cx.Request.Header.Get(headerUpgrade))
-			if err := tryUpdateConnection(cx, r.endpoint); err != nil {
-				log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to upgrade the connection")
-				cx.AbortWithStatus(http.StatusInternalServerError)
-				return
+// proxyMiddleware is responsible for handles reverse proxy request to the upstream endpoint
+func (r *oauthProxy) proxyMiddleware() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(cx echo.Context) error {
+			// step: permit the flow
+			next(cx)
+			// step: refuse to proxy
+			if found := cx.Get(revokeContextName); found != nil {
+				return nil
 			}
-			cx.Abort()
-			return
+
+			// step: is this connection upgrading?
+			if isUpgradedConnection(cx.Request()) {
+				log.Debugf("upgrading the connnection to %s", cx.Request().Header.Get(headerUpgrade))
+				if err := tryUpdateConnection(cx.Request(), cx.Response().Writer, r.endpoint); err != nil {
+					log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to upgrade the connection")
+					cx.NoContent(http.StatusInternalServerError)
+					return nil
+				}
+				return nil
+			}
+			// step: add any custom headers to the request
+			for k, v := range r.config.Headers {
+				cx.Request().Header.Set(k, v)
+			}
+
+			// By default goproxy only provides a forwarding proxy, thus all requests have to be absolute
+			// and we must update the host headers
+			cx.Request().URL.Host = r.endpoint.Host
+			cx.Request().URL.Scheme = r.endpoint.Scheme
+			cx.Request().Host = r.endpoint.Host
+
+			cx.Request().Header.Add("X-Forwarded-For", cx.RealIP())
+			cx.Request().Header.Set("X-Forwarded-Host", cx.Request().URL.Host)
+			cx.Request().Header.Set("X-Forwarded-Proto", cx.Request().Header.Get("X-Forwarded-Proto"))
+
+			r.upstream.ServeHTTP(cx.Response().Writer, cx.Request())
+			return nil
 		}
-
-		// By default goproxy only provides a forwarding proxy, thus all requests have to be absolute
-		// and we must update the host headers
-		cx.Request.URL.Host = r.endpoint.Host
-		cx.Request.URL.Scheme = r.endpoint.Scheme
-		cx.Request.Host = r.endpoint.Host
-
-		r.upstream.ServeHTTP(cx.Writer, cx.Request)
 	}
 }
 
@@ -194,7 +204,7 @@ func (r *oauthProxy) forwardProxyHandler() func(*http.Request, *http.Response) {
 			// step: wait for an expiration to come close
 			if state.wait {
 				// step: set the expiration of the access token within a random 85% of actual expiration
-				duration := getWithin(state.expiration, 0.80)
+				duration := getWithin(state.expiration, 0.85)
 
 				log.WithFields(log.Fields{
 					"token_expiration": state.expiration.Format(time.RFC3339),
