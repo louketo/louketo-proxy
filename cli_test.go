@@ -18,8 +18,14 @@ package main
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/urfave/cli"
 )
+
+func TestNewOauthProxyApp(t *testing.T) {
+	a := newOauthProxyApp()
+	assert.NotNil(t, a)
+}
 
 func TestGetCLIOptions(t *testing.T) {
 	if flags := getCommandLineOptions(); flags == nil {

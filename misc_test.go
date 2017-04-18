@@ -18,34 +18,32 @@ package main
 import (
 	"net/http"
 	"testing"
-
-	"github.com/go-resty/resty"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestRedirectToAuthorizationUnauthorized(t *testing.T) {
-	p, _, svc := newTestProxyService(nil)
-	p.config.SkipTokenVerification = false
-	p.config.NoRedirects = true
-
-	resp, err := resty.DefaultClient.R().Get(svc + "/admin")
-	assert.NoError(t, err)
-	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode())
+	requests := []fakeRequest{
+		{URI: "/admin", ExpectedCode: http.StatusUnauthorized},
+	}
+	newFakeProxy(nil).RunTests(t, requests)
 }
 
 func TestRedirectToAuthorization(t *testing.T) {
-	p, _, svc := newTestProxyService(nil)
-	p.config.SkipTokenVerification = false
-	p.config.NoRedirects = false
-
-	resp, _ := resty.New().SetRedirectPolicy(resty.NoRedirectPolicy()).R().Get(svc + "/admin")
-	assert.Equal(t, http.StatusTemporaryRedirect, resp.StatusCode())
+	requests := []fakeRequest{
+		{
+			URI:              "/admin",
+			Redirects:        true,
+			ExpectedLocation: "/oauth/authorize?state=L2FkbWlu",
+			ExpectedCode:     http.StatusTemporaryRedirect,
+		},
+	}
+	newFakeProxy(nil).RunTests(t, requests)
 }
 
 func TestRedirectToAuthorizationSkipToken(t *testing.T) {
-	p, _, svc := newTestProxyService(nil)
-	p.config.SkipTokenVerification = true
-
-	resp, _ := resty.New().SetRedirectPolicy(resty.NoRedirectPolicy()).R().Get(svc + "/admin")
-	assert.Equal(t, http.StatusForbidden, resp.StatusCode())
+	requests := []fakeRequest{
+		{URI: "/admin", ExpectedCode: http.StatusUnauthorized},
+	}
+	c := newFakeKeycloakConfig()
+	c.SkipTokenVerification = true
+	newFakeProxy(c).RunTests(t, requests)
 }

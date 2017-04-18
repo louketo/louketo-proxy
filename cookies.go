@@ -19,14 +19,12 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
-	"github.com/gin-gonic/gin"
 )
 
 // dropCookie drops a cookie into the response
-func (r *oauthProxy) dropCookie(cx *gin.Context, name, value string, duration time.Duration) {
+func (r *oauthProxy) dropCookie(w http.ResponseWriter, host, name, value string, duration time.Duration) {
 	// step: default to the host header, else the config domain
-	domain := strings.Split(cx.Request.Host, ":")[0]
+	domain := strings.Split(host, ":")[0]
 	if r.config.CookieDomain != "" {
 		domain = r.config.CookieDomain
 	}
@@ -42,31 +40,31 @@ func (r *oauthProxy) dropCookie(cx *gin.Context, name, value string, duration ti
 		cookie.Expires = time.Now().Add(duration)
 	}
 
-	http.SetCookie(cx.Writer, cookie)
+	http.SetCookie(w, cookie)
 }
 
 // dropAccessTokenCookie drops a access token cookie into the response
-func (r *oauthProxy) dropAccessTokenCookie(cx *gin.Context, value string, duration time.Duration) {
-	r.dropCookie(cx, r.config.CookieAccessName, value, duration)
+func (r *oauthProxy) dropAccessTokenCookie(req *http.Request, w http.ResponseWriter, value string, duration time.Duration) {
+	r.dropCookie(w, req.Host, r.config.CookieAccessName, value, duration)
 }
 
 // dropRefreshTokenCookie drops a refresh token cookie into the response
-func (r *oauthProxy) dropRefreshTokenCookie(cx *gin.Context, value string, duration time.Duration) {
-	r.dropCookie(cx, r.config.CookieRefreshName, value, duration)
+func (r *oauthProxy) dropRefreshTokenCookie(req *http.Request, w http.ResponseWriter, value string, duration time.Duration) {
+	r.dropCookie(w, req.Host, r.config.CookieRefreshName, value, duration)
 }
 
 // clearAllCookies is just a helper function for the below
-func (r *oauthProxy) clearAllCookies(cx *gin.Context) {
-	r.clearAccessTokenCookie(cx)
-	r.clearRefreshTokenCookie(cx)
+func (r *oauthProxy) clearAllCookies(req *http.Request, w http.ResponseWriter) {
+	r.clearAccessTokenCookie(req, w)
+	r.clearRefreshTokenCookie(req, w)
 }
 
 // clearRefreshSessionCookie clears the session cookie
-func (r *oauthProxy) clearRefreshTokenCookie(cx *gin.Context) {
-	r.dropCookie(cx, r.config.CookieRefreshName, "", time.Duration(-10*time.Hour))
+func (r *oauthProxy) clearRefreshTokenCookie(req *http.Request, w http.ResponseWriter) {
+	r.dropCookie(w, req.Host, r.config.CookieRefreshName, "", time.Duration(-10*time.Hour))
 }
 
 // clearAccessTokenCookie clears the session cookie
-func (r *oauthProxy) clearAccessTokenCookie(cx *gin.Context) {
-	r.dropCookie(cx, r.config.CookieAccessName, "", time.Duration(-10*time.Hour))
+func (r *oauthProxy) clearAccessTokenCookie(req *http.Request, w http.ResponseWriter) {
+	r.dropCookie(w, req.Host, r.config.CookieAccessName, "", time.Duration(-10*time.Hour))
 }

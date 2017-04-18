@@ -1,3 +1,24 @@
+#### **2.1.0**
+
+FIXES:
+* fixed the parsing of slices for command line arguments (i.e. --cors-origins etc)
+* fixed any accidental proxying on the /oauth or /debug URI
+* removed all references to the underlining web framework in tests
+
+FEATURES
+* changed the routing engine from gin to echo
+* we now normalize all inbound URI before applying the protection middleware
+* the order of the resources are no longer important, the framework will handle the routing
+* improved the overall spec of the proxy by removing URL inspection and prefix checking
+* removed the CORS implementation and using the default echo middles, which is more compliant
+
+BREAKING CHANGES:
+* the proxy no longer uses prefixes for resources, if you wish to use wildcard urls you need
+  to specify it, i.e. --resource=/ becomes --resource=/* or =admin/ becomes =admin/* or /admin*;
+  a full set of routing details can bt found at https://echo.labstack.com/guide/routing
+* removed the --enable-cors-global option, CORS is now handled the default echo middleware
+* changed option from log-requests -> enable-logging
+* changed option from json-format -> enable-json-logging
 
 #### **2.0.5 (unreleased)**
 

@@ -44,9 +44,22 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-oidc/jose"
 	"github.com/coreos/go-oidc/oidc"
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo"
 	"github.com/urfave/cli"
 	"gopkg.in/yaml.v2"
+)
+
+var (
+	allHTTPMethods = []string{
+		echo.DELETE,
+		echo.GET,
+		echo.HEAD,
+		echo.OPTIONS,
+		echo.PATCH,
+		echo.POST,
+		echo.PUT,
+		echo.TRACE,
+	}
 )
 
 var (
@@ -220,7 +233,13 @@ func decodeKeyPairs(list []string) (map[string]string, error) {
 
 // isValidHTTPMethod ensure this is a valid http method type
 func isValidHTTPMethod(method string) bool {
-	return httpMethodRegex.MatchString(method)
+	for _, x := range allHTTPMethods {
+		if method == x {
+			return true
+		}
+	}
+
+	return false
 }
 
 // defaultTo returns the value of the default
@@ -338,7 +357,7 @@ func transferBytes(src io.Reader, dest io.Writer, wg *sync.WaitGroup) (int64, er
 }
 
 // tryUpdateConnection attempt to upgrade the connection to a http pdy stream
-func tryUpdateConnection(cx *gin.Context, endpoint *url.URL) error {
+func tryUpdateConnection(req *http.Request, writer http.ResponseWriter, endpoint *url.URL) error {
 	// step: dial the endpoint
 	tlsConn, err := tryDialEndpoint(endpoint)
 	if err != nil {
@@ -347,14 +366,14 @@ func tryUpdateConnection(cx *gin.Context, endpoint *url.URL) error {
 	defer tlsConn.Close()
 
 	// step: we need to hijack the underlining client connection
-	clientConn, _, err := cx.Writer.(http.Hijacker).Hijack()
+	clientConn, _, err := writer.(http.Hijacker).Hijack()
 	if err != nil {
 		return err
 	}
 	defer clientConn.Close()
 
 	// step: write the request to upstream
-	if err = cx.Request.Write(tlsConn); err != nil {
+	if err = req.Write(tlsConn); err != nil {
 		return err
 	}
 
@@ -449,8 +468,13 @@ func loadCA(cert, key string) (*tls.Certificate, error) {
 
 // getWithin calculates a duration of x percent of the time period, i.e. something
 // expires in 1 hours, get me a duration within 80%
-func getWithin(expires time.Time, in float64) time.Duration {
-	seconds := int(float64(expires.Sub(time.Now()).Seconds()) * in)
+func getWithin(expires time.Time, within float64) time.Duration {
+	left := expires.UTC().Sub(time.Now().UTC()).Seconds()
+	if left <= 0 {
+		return time.Duration(0)
+	}
+	seconds := int(float64(left * within))
+
 	return time.Duration(seconds) * time.Second
 }
 

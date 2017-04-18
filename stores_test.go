@@ -32,9 +32,8 @@ func TestCreateStorageBoltDB(t *testing.T) {
 	store, err := createStorage("boltdb:////tmp/bolt")
 	assert.NotNil(t, store)
 	assert.NoError(t, err)
-
-	if err == nil {
-		os.Remove("/tmp/bold")
+	if store != nil {
+		os.Remove("/tmp/bolt")
 	}
 }
 

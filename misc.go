@@ -24,45 +24,58 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-oidc/jose"
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo"
 )
 
+// revokeProxy is responsible to stopping the middleware from proxying the request
+func (r *oauthProxy) revokeProxy(cx echo.Context) {
+	cx.Set(revokeContextName, true)
+}
+
 // accessForbidden redirects the user to the forbidden page
-func (r *oauthProxy) accessForbidden(cx *gin.Context) {
+func (r *oauthProxy) accessForbidden(cx echo.Context) error {
+	r.revokeProxy(cx)
+
 	if r.config.hasCustomForbiddenPage() {
-		cx.HTML(http.StatusForbidden, path.Base(r.config.ForbiddenPage), r.config.Tags)
-		cx.Abort()
-		return
+		tplName := path.Base(r.config.ForbiddenPage)
+		err := cx.Render(http.StatusForbidden, tplName, r.config.Tags)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error":    err,
+				"template": tplName,
+			}).Error("unable to render the template")
+		}
+
+		return err
 	}
 
-	cx.AbortWithStatus(http.StatusForbidden)
+	return cx.NoContent(http.StatusForbidden)
 }
 
 // redirectToURL redirects the user and aborts the context
-func (r *oauthProxy) redirectToURL(url string, cx *gin.Context) {
-	cx.Redirect(http.StatusTemporaryRedirect, url)
-	cx.Abort()
+func (r *oauthProxy) redirectToURL(url string, cx echo.Context) error {
+	r.revokeProxy(cx)
+
+	return cx.Redirect(http.StatusTemporaryRedirect, url)
 }
 
 // redirectToAuthorization redirects the user to authorization handler
-func (r *oauthProxy) redirectToAuthorization(cx *gin.Context) {
-	if r.config.NoRedirects {
-		cx.AbortWithStatus(http.StatusUnauthorized)
-		return
-	}
+func (r *oauthProxy) redirectToAuthorization(cx echo.Context) error {
+	r.revokeProxy(cx)
 
+	if r.config.NoRedirects {
+		return cx.NoContent(http.StatusUnauthorized)
+	}
 	// step: add a state referrer to the authorization page
-	authQuery := fmt.Sprintf("?state=%s", base64.StdEncoding.EncodeToString([]byte(cx.Request.URL.RequestURI())))
+	authQuery := fmt.Sprintf("?state=%s", base64.StdEncoding.EncodeToString([]byte(cx.Request().URL.RequestURI())))
 
 	// step: if verification is switched off, we can't authorization
 	if r.config.SkipTokenVerification {
 		log.Errorf("refusing to redirection to authorization endpoint, skip token verification switched on")
-
-		cx.AbortWithStatus(http.StatusForbidden)
-		return
+		return cx.NoContent(http.StatusForbidden)
 	}
 
-	r.redirectToURL(oauthURL+authorizationURL+authQuery, cx)
+	return r.redirectToURL(oauthURL+authorizationURL+authQuery, cx)
 }
 
 // getAccessCookieExpiration calucates the expiration of the access token cookie

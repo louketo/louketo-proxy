@@ -19,6 +19,8 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"html/template"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -34,14 +36,15 @@ import (
 	"github.com/armon/go-proxyproto"
 	"github.com/coreos/go-oidc/oidc"
 	"github.com/gambol99/goproxy"
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo"
+	"github.com/labstack/echo/middleware"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 type oauthProxy struct {
 	// the proxy configuration
 	config *Config
-	// the gin service
+	// the http service
 	router http.Handler
 	// the opened client
 	client *oidc.Client
@@ -53,6 +56,8 @@ type oauthProxy struct {
 	upstream reverseProxy
 	// the upstream endpoint url
 	endpoint *url.URL
+	// the templates for the custom pages
+	templates *template.Template
 	// the store interface
 	store storage
 	// the prometheus handler
@@ -69,18 +74,13 @@ func init() {
 // newProxy create's a new proxy from configuration
 func newProxy(config *Config) (*oauthProxy, error) {
 	var err error
-	// step: set the logger
+	// step: set the logging
 	httplog.SetOutput(ioutil.Discard)
-
-	// step: set the logging level
-	if config.LogJSONFormat {
+	if config.EnableJSONLogging {
 		log.SetFormatter(&log.JSONFormatter{})
 	}
-	// step: set the logging level
-	gin.SetMode(gin.ReleaseMode)
 	if config.Verbose {
 		log.SetLevel(log.DebugLevel)
-		gin.SetMode(gin.DebugMode)
 		httplog.SetOutput(os.Stderr)
 	}
 
@@ -113,7 +113,7 @@ func newProxy(config *Config) (*oauthProxy, error) {
 	}
 
 	if config.ClientID == "" && config.ClientSecret == "" {
-		log.Warnf("Note: client credentials are not set, depending on provider (confidential|public) you might be unable to auth")
+		log.Warnf("client credentials are not set, depending on provider (confidential|public) you might be unable to auth")
 	}
 
 	// step: are we running in forwarding more?
@@ -134,10 +134,60 @@ func newProxy(config *Config) (*oauthProxy, error) {
 // createReverseProxy creates a reverse proxy
 func (r *oauthProxy) createReverseProxy() error {
 	log.Infof("enabled reverse proxy mode, upstream url: %s", r.config.Upstream)
+	if err := r.createUpstreamProxy(r.endpoint); err != nil {
+		return err
+	}
 
-	// step: display the protected resources
+	// step: create the router
+	engine := echo.New()
+	engine.Pre(r.filterMiddleware())
+	engine.Use(middleware.Recover())
+
+	if r.config.EnableProfiling {
+		log.Warn("enabling the debug profiling on /debug/pprof")
+		engine.Any("/debug/pprof/:name", r.debugHandler, r.proxyRevokeMiddleware())
+	}
+	if r.config.EnableLogging {
+		engine.Use(r.loggingMiddleware())
+	}
+	if r.config.EnableMetrics {
+		engine.Use(r.metricsMiddleware())
+	}
+	if r.config.EnableSecurityFilter {
+		engine.Use(r.securityMiddleware())
+	}
+	if len(r.config.CorsOrigins) > 0 {
+		engine.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+			AllowOrigins:     r.config.CorsOrigins,
+			AllowMethods:     r.config.CorsMethods,
+			AllowHeaders:     r.config.CorsHeaders,
+			AllowCredentials: r.config.CorsCredentials,
+			ExposeHeaders:    r.config.CorsExposedHeaders,
+			MaxAge:           int(r.config.CorsMaxAge.Seconds())}))
+	}
+
+	// step: add the routing for aouth
+	engine.Group(oauthURL, r.proxyRevokeMiddleware())
+	engine.Any(oauthURL+"/:name", r.oauthHandler)
+	r.router = engine
+
+	// step: load the templates if any
+	if err := r.createTemplates(); err != nil {
+		return err
+	}
+
+	// step: provision in the protected resources
 	for _, resource := range r.config.Resources {
-		log.Infof("protecting resources under uri: %s", resource)
+		log.Infof("protecting resource: %s", resource)
+		switch resource.WhiteListed {
+		case false:
+			engine.Match(resource.Methods, resource.URL, emptyHandler,
+				r.authenticationMiddleware(resource),
+				r.admissionMiddleware(resource),
+				r.headersMiddleware(r.config.AddClaims))
+		default:
+			engine.Match(resource.Methods, resource.URL, emptyHandler)
+		}
 	}
 	for name, value := range r.config.MatchClaims {
 		log.Infof("the token must container the claim: %s, required: %s", name, value)
@@ -145,78 +195,7 @@ func (r *oauthProxy) createReverseProxy() error {
 	if r.config.RedirectionURL == "" {
 		log.Warnf("no redirection url has been set, will use host headers")
 	}
-
-	// step: initialize the reverse http proxy
-	if err := r.createUpstreamProxy(r.endpoint); err != nil {
-		return err
-	}
-
-	// step: create the gin router
-	engine := gin.New()
-	engine.Use(gin.Recovery())
-	// step: custom filtering
-	engine.Use(r.filterMiddleware(), r.reverseProxyMiddleware())
-
-	// step: is profiling enabled?
-	if r.config.EnableProfiling {
-		log.Warn("Enabling the debug profiling on /debug/pprof")
-		engine.Any("/debug/pprof/:name", r.debugHandler)
-	}
-	// step: are we logging the traffic?
-	if r.config.LogRequests {
-		engine.Use(r.loggingMiddleware())
-	}
-	// step: enabling the metrics?
-	if r.config.EnableMetrics {
-		engine.Use(r.metricsMiddleware())
-	}
-	// step: enabling the security filter?
-	if r.config.EnableSecurityFilter {
-		engine.Use(r.securityMiddleware())
-	}
-	cors := Cors{
-		Origins:        r.config.CorsOrigins,
-		Methods:        r.config.CorsMethods,
-		Headers:        r.config.CorsHeaders,
-		ExposedHeaders: r.config.CorsExposedHeaders,
-		Credentials:    r.config.CorsCredentials,
-		MaxAge:         r.config.CorsMaxAge,
-	}
-	// step: enabling globaling?
-	if r.config.EnableCorsGlobal {
-		log.Info("enabling CORs header injection globally")
-		engine.Use(r.corsMiddleware(cors))
-	}
-	// step: add the routing and cors middleware
-	oauth := engine.Group(oauthURL)
-	if !r.config.EnableCorsGlobal {
-		oauth.Use(r.corsMiddleware(cors))
-	}
-	oauth.GET(authorizationURL, r.oauthAuthorizationHandler)
-	oauth.GET(callbackURL, r.oauthCallbackHandler)
-	oauth.GET(healthURL, r.healthHandler)
-	oauth.GET(tokenURL, r.tokenHandler)
-	oauth.GET(expiredURL, r.expirationHandler)
-	oauth.GET(logoutURL, r.logoutHandler)
-	oauth.POST(loginURL, r.loginHandler)
-	// step: enable the metric page?
-	if r.config.EnableMetrics {
-		oauth.GET(metricsURL, r.metricsHandler)
-	}
-
-	// step: add the middleware
-	engine.Use(r.entrypointMiddleware(),
-		r.authenticationMiddleware(),
-		r.admissionMiddleware(),
-		r.headersMiddleware(r.config.AddClaims))
-
-	// step: set the handler
-	r.router = engine
-
-	// step: load the templates
-	if err := r.createTemplates(); err != nil {
-		return err
-	}
+	engine.Use(r.proxyMiddleware())
 
 	return nil
 }
@@ -228,13 +207,9 @@ func (r *oauthProxy) createForwardingProxy() error {
 	if r.config.SkipUpstreamTLSVerify {
 		log.Warnf("TLS verification switched off. In forward signing mode it's recommended you verify! (--skip-upstream-tls-verify=false)")
 	}
-
-	// step: initialize the reverse http proxy
 	if err := r.createUpstreamProxy(nil); err != nil {
 		return err
 	}
-
-	// step: setup and initialize the handler
 	forwardingHandler := r.forwardProxyHandler()
 
 	// step: set the http handler
@@ -247,6 +222,7 @@ func (r *oauthProxy) createForwardingProxy() error {
 		if err != nil {
 			return fmt.Errorf("unable to load certificate authority, error: %s", err)
 		}
+
 		// step: implement the goproxy connect method
 		proxy.OnRequest().HandleConnectFunc(
 			func(host string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string) {
@@ -263,7 +239,7 @@ func (r *oauthProxy) createForwardingProxy() error {
 
 	proxy.OnResponse().DoFunc(func(resp *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
 		// @NOTES, somewhat annoying but goproxy hands back a nil response on proxy client errors
-		if resp != nil && r.config.LogRequests {
+		if resp != nil && r.config.EnableLogging {
 			start := ctx.UserData.(time.Time)
 			latency := time.Now().Sub(start)
 
@@ -283,7 +259,6 @@ func (r *oauthProxy) createForwardingProxy() error {
 		ctx.UserData = time.Now()
 		// step: forward into the handler
 		forwardingHandler(req, ctx.Resp)
-
 		return req, ctx.Resp
 	})
 
@@ -292,7 +267,6 @@ func (r *oauthProxy) createForwardingProxy() error {
 
 // Run starts the proxy service
 func (r *oauthProxy) Run() error {
-	// step: create the service listener
 	listener, err := createHTTPListener(listenerConfig{
 		listen:        r.config.Listen,
 		certificate:   r.config.TLSCertificate,
@@ -331,7 +305,7 @@ func (r *oauthProxy) Run() error {
 		}
 		httpsvc := &http.Server{
 			Addr:    r.config.ListenHTTP,
-			Handler: r.router,
+			Handler: http.Handler(r.router),
 		}
 		go func() {
 			if err := httpsvc.Serve(httpListener); err != nil {
@@ -363,7 +337,6 @@ func createHTTPListener(config listenerConfig) (net.Listener, error) {
 	// step: are we create a unix socket or tcp listener?
 	if strings.HasPrefix(config.listen, "unix://") {
 		socket := strings.Trim(config.listen, "unix://")
-		// step: delete the socket if it exists
 		if exists := fileExists(socket); exists {
 			if err = os.Remove(socket); err != nil {
 				return nil, err
@@ -421,7 +394,6 @@ func createHTTPListener(config listenerConfig) (net.Listener, error) {
 
 // createUpstreamProxy create a reverse http proxy from the upstream
 func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) error {
-	// step: create the default dialer
 	dialer := (&net.Dialer{
 		KeepAlive: r.config.UpstreamKeepaliveTimeout,
 		Timeout:   r.config.UpstreamTimeout,
@@ -454,8 +426,6 @@ func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) error {
 		}
 		pool := x509.NewCertPool()
 		pool.AppendCertsFromPEM(cert)
-
-		// step: update the upstream tls to use the client certificate
 		tlsConfig.ClientCAs = pool
 		tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
 	}
@@ -491,8 +461,14 @@ func (r *oauthProxy) createTemplates() error {
 
 	if len(list) > 0 {
 		log.Infof("loading the custom templates: %s", strings.Join(list, ","))
-		r.router.(*gin.Engine).LoadHTMLFiles(list...)
+		r.templates = template.Must(template.ParseFiles(list...))
+		r.router.(*echo.Echo).Renderer = r
 	}
 
 	return nil
+}
+
+// Render implements the echo Render interface
+func (r *oauthProxy) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
+	return r.templates.ExecuteTemplate(w, name, data)
 }

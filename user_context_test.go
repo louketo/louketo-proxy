@@ -72,21 +72,25 @@ func TestIsCookie(t *testing.T) {
 }
 
 func TestGetUserContext(t *testing.T) {
-	roles := []string{"openvpn:dev-vpn"}
-
-	context, err := extractIdentity(newFakeAccessToken(nil, 0))
+	realmRoles := []string{"realm:realm"}
+	clientRoles := []string{"client:client"}
+	token := newTestToken("test")
+	token.addRealmRoles(realmRoles)
+	token.addClientRoles("client", []string{"client"})
+	context, err := extractIdentity(token.getToken())
 	assert.NoError(t, err)
 	assert.NotNil(t, context)
 	assert.Equal(t, "1e11e539-8256-4b3b-bda8-cc0d56cddb48", context.id)
 	assert.Equal(t, "gambol99@gmail.com", context.email)
 	assert.Equal(t, "rjayawardene", context.preferredName)
-	assert.Equal(t, roles, context.roles)
+	assert.Equal(t, append(realmRoles, clientRoles...), context.roles)
 }
 
 func TestGetUserRealmRoleContext(t *testing.T) {
 	roles := []string{"dsp-dev-vpn", "vpn-user", "dsp-prod-vpn", "openvpn:dev-vpn"}
-
-	context, err := extractIdentity(getFakeRealmAccessToken(t))
+	token := newTestToken("test")
+	token.addRealmRoles(roles)
+	context, err := extractIdentity(token.getToken())
 	assert.NoError(t, err)
 	assert.NotNil(t, context)
 	assert.Equal(t, "1e11e539-8256-4b3b-bda8-cc0d56cddb48", context.id)
@@ -96,7 +100,8 @@ func TestGetUserRealmRoleContext(t *testing.T) {
 }
 
 func TestUserContextString(t *testing.T) {
-	context, err := extractIdentity(newFakeAccessToken(nil, 0))
+	token := newTestToken("test")
+	context, err := extractIdentity(token.getToken())
 	assert.NoError(t, err)
 	assert.NotNil(t, context)
 	assert.NotEmpty(t, context.String())

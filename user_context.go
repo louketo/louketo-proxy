@@ -26,12 +26,10 @@ import (
 
 // extractIdentity parse the jwt token and extracts the various elements is order to construct
 func extractIdentity(token jose.JWT) (*userContext, error) {
-	// step: decode the claims from the tokens
 	claims, err := token.Claims()
 	if err != nil {
 		return nil, err
 	}
-	// step: extract the identity
 	identity, err := oidc.IdentityFromClaims(claims)
 	if err != nil {
 		return nil, err
@@ -39,10 +37,8 @@ func extractIdentity(token jose.JWT) (*userContext, error) {
 	// step: ensure we have and can extract the preferred name of the user, if not, we set to the ID
 	preferredName, found, err := claims.StringClaim(claimPreferredName)
 	if err != nil || !found {
-		// choice: set the preferredName to the Email if claim not found
 		preferredName = identity.Email
 	}
-	// step: retrieve the audience from access token
 	audience, found, err := claims.StringClaim(claimAudience)
 	if err != nil || !found {
 		return nil, ErrNoTokenAudience
@@ -57,7 +53,7 @@ func extractIdentity(token jose.JWT) (*userContext, error) {
 		}
 	}
 
-	// step: extract the roles from the access token
+	// step: extract the client roles from the access token
 	if accesses, found := claims[claimResourceAccess].(map[string]interface{}); found {
 		for roleName, roleList := range accesses {
 			scopes := roleList.(map[string]interface{})
@@ -83,7 +79,7 @@ func extractIdentity(token jose.JWT) (*userContext, error) {
 }
 
 // isAudience checks the audience
-func (r userContext) isAudience(aud string) bool {
+func (r *userContext) isAudience(aud string) bool {
 	if r.audience == aud {
 		return true
 	}
@@ -92,26 +88,26 @@ func (r userContext) isAudience(aud string) bool {
 }
 
 // getRoles returns a list of roles
-func (r userContext) getRoles() string {
+func (r *userContext) getRoles() string {
 	return strings.Join(r.roles, ",")
 }
 
 // isExpired checks if the token has expired
-func (r userContext) isExpired() bool {
+func (r *userContext) isExpired() bool {
 	return r.expiresAt.Before(time.Now())
 }
 
-// isBearerToken checks if the token
-func (r userContext) isBearer() bool {
+// isBearer checks if the token
+func (r *userContext) isBearer() bool {
 	return r.bearerToken
 }
 
 // isCookie checks if it's by a cookie
-func (r userContext) isCookie() bool {
+func (r *userContext) isCookie() bool {
 	return !r.isBearer()
 }
 
 // String returns a string representation of the user context
-func (r userContext) String() string {
+func (r *userContext) String() string {
 	return fmt.Sprintf("user: %s, expires: %s, roles: %s", r.preferredName, r.expiresAt.String(), strings.Join(r.roles, ","))
 }

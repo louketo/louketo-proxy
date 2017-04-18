@@ -23,7 +23,9 @@ import (
 )
 
 func newResource() *Resource {
-	return &Resource{}
+	return &Resource{
+		Methods: allHTTPMethods,
+	}
 }
 
 // parse decodes a resource definition
@@ -31,7 +33,7 @@ func (r *Resource) parse(resource string) (*Resource, error) {
 	if resource == "" {
 		return nil, errors.New("the resource has no options")
 	}
-
+	// parse the syntax
 	for _, x := range strings.Split(resource, "|") {
 		kp := strings.Split(x, "=")
 		if len(kp) != 2 {
@@ -42,6 +44,11 @@ func (r *Resource) parse(resource string) (*Resource, error) {
 			r.URL = kp[1]
 		case "methods":
 			r.Methods = strings.Split(kp[1], ",")
+			if len(r.Methods) == 1 {
+				if r.Methods[0] == "any" || r.Methods[0] == "ANY" {
+					r.Methods = allHTTPMethods
+				}
+			}
 		case "roles":
 			r.Roles = strings.Split(kp[1], ",")
 		case "white-listed":
@@ -66,21 +73,16 @@ func (r *Resource) valid() error {
 	if r.Roles == nil {
 		r.Roles = make([]string, 0)
 	}
-
 	if strings.HasPrefix(r.URL, oauthURL) {
 		return errors.New("this is used by the oauth handlers")
 	}
-
-	// step: check we have a url
 	if r.URL == "" {
 		return errors.New("resource does not have url")
 	}
-
 	// step: add any of no methods
 	if len(r.Methods) <= 0 {
-		r.Methods = append(r.Methods, "ANY")
+		r.Methods = allHTTPMethods
 	}
-
 	// step: check the method is valid
 	for _, m := range r.Methods {
 		if !isValidHTTPMethod(m) {

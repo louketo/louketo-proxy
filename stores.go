@@ -44,23 +44,17 @@ func createStorage(location string) (storage, error) {
 	return store, err
 }
 
-//
 // useStore checks if we are using a store to hold the refresh tokens
-//
 func (r *oauthProxy) useStore() bool {
 	return r.store != nil
 }
 
-//
 // StoreRefreshToken the token to the store
-//
 func (r *oauthProxy) StoreRefreshToken(token jose.JWT, value string) error {
 	return r.store.Set(getHashKey(&token), value)
 }
 
-//
 // Get retrieves a token from the store, the key we are using here is the access token
-//
 func (r *oauthProxy) GetRefreshToken(token jose.JWT) (string, error) {
 	// step: the key is the access token
 	v, err := r.store.Get(getHashKey(&token))
@@ -74,9 +68,7 @@ func (r *oauthProxy) GetRefreshToken(token jose.JWT) (string, error) {
 	return v, nil
 }
 
-//
 // DeleteRefreshToken removes a key from the store
-//
 func (r *oauthProxy) DeleteRefreshToken(token jose.JWT) error {
 	if err := r.store.Delete(getHashKey(&token)); err != nil {
 		log.WithFields(log.Fields{
@@ -89,9 +81,7 @@ func (r *oauthProxy) DeleteRefreshToken(token jose.JWT) error {
 	return nil
 }
 
-//
 // Close is used to close off any resources
-//
 func (r *oauthProxy) CloseStore() error {
 	if r.store != nil {
 		return r.store.Close()

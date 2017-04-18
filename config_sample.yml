@@ -11,9 +11,9 @@ listen: 127.0.0.1:3000
 # whether to request offline access and use a refresh token
 enable-refresh-tokens: true
 # log all incoming requests
-log-requests: true
+enable-logging: true
 # log in json format
-json-format: true
+enable-json-logging: true
 # do not redirec the request, simple 307 it
 no-redirects: false
 # the location of a certificate you wish the proxy to use for TLS support
@@ -40,7 +40,7 @@ skip-upstream-tls-verify: true|false
 scopes: []
 # enables a more extra secuirty features
 enable-security-filter: true
-# headers permits you to inject custom headers into all request
+# headers permits you to inject custom headers into all requests
 headers:
   myheader_name: my_header_value
 # a map of claims that MUST exist in the token presented and the value is it MUST match
@@ -61,20 +61,17 @@ resources:
       - GET
     # a list of roles the user must have in order to accces urls under the above
     roles:
-      - openvpn:vpn-user
-      - openvpn:prod-vpn
+      - openvpn:vpn-test
   - uri: /admin/white_listed
     # permits a url prefix through, bypassing the admission controls
     white-listed: true
-  - uri: /admin
+  - uri: /admin/*
     methods:
       - GET
     roles:
       - openvpn:vpn-user
       - openvpn:prod-vpn
 
-# indicates you want cors headers injects for ALL responses
-enable-cors-global: false
 # an array of origins (Access-Control-Allow-Origin)
 cors-origins: []
 # an array of headers to apply (Access-Control-Allow-Headers)

@@ -16,13 +16,10 @@ limitations under the License.
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -32,159 +29,193 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-oidc/jose"
-	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
 
 const (
-	fakeClientID = "test"
-	fakeSecret   = fakeClientID
-
-	fakeAdminRoleURL       = "/admin"
-	fakeTestRoleURL        = "/test_role"
+	fakeAdminRole          = "role:admin"
+	fakeAdminRoleURL       = "/admin*"
+	fakeAuthAllURL         = "/auth_all/*"
+	fakeClientID           = "test"
+	fakeSecret             = "test"
 	fakeTestAdminRolesURL  = "/test_admin_roles"
-	fakeAuthAllURL         = "/auth_all"
-	fakeTestWhitelistedURL = fakeAuthAllURL + "/white_listed"
-	fakeTestListenOrdered  = fakeAuthAllURL + "/bad_order"
-
-	fakeAdminRole = "role:admin"
-	fakeTestRole  = "role:test"
+	fakeTestRole           = "role:test"
+	fakeTestRoleURL        = "/test_role"
+	fakeTestWhitelistedURL = "/auth_all/white_listed*"
+	testProxyAccepted      = "Proxy-Accepted"
+	validUsername          = "test"
+	validPassword          = "test"
 )
 
 var (
-	defaultFakeClaims = jose.Claims{
-		"jti":            "4ee75b8e-3ee6-4382-92d4-3390b4b4937b",
-		"nbf":            0,
-		"iat":            "1450372669",
-		"iss":            "https://keycloak.example.com/auth/realms/commons",
-		"aud":            "test",
-		"sub":            "1e11e539-8256-4b3b-bda8-cc0d56cddb48",
-		"typ":            "Bearer",
-		"azp":            "clientid",
-		"session_state":  "98f4c3d2-1b8c-4932-b8c4-92ec0ea7e195",
-		"client_session": "f0105893-369a-46bc-9661-ad8c747b1a69",
-		"resource_access": map[string]interface{}{
-			"openvpn": map[string]interface{}{
-				"roles": []string{
-					"dev-vpn",
-				},
-			},
-		},
-		"email":              "gambol99@gmail.com",
-		"name":               "Rohith Jayawardene",
-		"family_name":        "Jayawardene",
-		"preferred_username": "rjayawardene",
-		"given_name":         "Rohith",
-	}
-
 	defaultTestTokenClaims = jose.Claims{
-		"jti":                "4ee75b8e-3ee6-4382-92d4-3390b4b4937b",
-		"nbf":                0,
-		"iat":                "1450372669",
-		"iss":                "test",
 		"aud":                "test",
-		"sub":                "1e11e539-8256-4b3b-bda8-cc0d56cddb48",
-		"typ":                "Bearer",
 		"azp":                "clientid",
-		"session_state":      "98f4c3d2-1b8c-4932-b8c4-92ec0ea7e195",
 		"client_session":     "f0105893-369a-46bc-9661-ad8c747b1a69",
 		"email":              "gambol99@gmail.com",
-		"name":               "Rohith Jayawardene",
 		"family_name":        "Jayawardene",
-		"preferred_username": "rjayawardene",
 		"given_name":         "Rohith",
-	}
-
-	defaultFakeRealmClaims = jose.Claims{
-		"jti":            "4ee75b8e-3ee6-4382-92d4-3390b4b4937b",
-		"nbf":            0,
-		"iat":            "1450372669",
-		"iss":            "https://keycloak.example.com/auth/realms/commons",
-		"aud":            "test",
-		"sub":            "1e11e539-8256-4b3b-bda8-cc0d56cddb48",
-		"typ":            "Bearer",
-		"azp":            "clientid",
-		"session_state":  "98f4c3d2-1b8c-4932-b8c4-92ec0ea7e195",
-		"client_session": "f0105893-369a-46bc-9661-ad8c747b1a69",
-		"realm_access": map[string]interface{}{
-			"roles": []string{
-				"dsp-dev-vpn",
-				"vpn-user",
-				"dsp-prod-vpn",
-			},
-		},
-		"resource_access": map[string]interface{}{
-			"openvpn": map[string]interface{}{
-				"roles": []string{
-					"dev-vpn",
-				},
-			},
-		},
-		"email":              "gambol99@gmail.com",
+		"iat":                "1450372669",
+		"iss":                "test",
+		"jti":                "4ee75b8e-3ee6-4382-92d4-3390b4b4937b",
 		"name":               "Rohith Jayawardene",
-		"family_name":        "Jayawardene",
+		"nbf":                0,
 		"preferred_username": "rjayawardene",
-		"given_name":         "Rohith",
+		"session_state":      "98f4c3d2-1b8c-4932-b8c4-92ec0ea7e195",
+		"sub":                "1e11e539-8256-4b3b-bda8-cc0d56cddb48",
+		"typ":                "Bearer",
 	}
 )
 
-type testJWTToken struct {
-	claims jose.Claims
+func TestNewKeycloakProxy(t *testing.T) {
+	cfg := newFakeKeycloakConfig()
+	cfg.DiscoveryURL = newFakeAuthServer().getLocation()
+	cfg.Listen = "127.0.0.1:0"
+	cfg.ListenHTTP = ""
+
+	proxy, err := newProxy(cfg)
+	assert.NoError(t, err)
+	assert.NotNil(t, proxy)
+	assert.NotNil(t, proxy.config)
+	assert.NotNil(t, proxy.router)
+	assert.NotNil(t, proxy.endpoint)
+	assert.NoError(t, proxy.Run())
 }
 
-func newTestToken(issuer string) *testJWTToken {
-	claims := defaultTestTokenClaims
-	claims.Add("exp", float64(time.Now().Add(1*time.Hour).Unix()))
-	claims.Add("iat", float64(time.Now().Unix()))
-	claims.Add("iss", issuer)
-
-	return &testJWTToken{claims: claims}
-}
-
-func (t *testJWTToken) mergeClaims(claims jose.Claims) {
-	for k, v := range claims {
-		t.claims.Add(k, v)
-	}
-}
-
-func (t *testJWTToken) getToken() jose.JWT {
-	tk, _ := jose.NewJWT(jose.JOSEHeader{"alg": "RS256"}, t.claims)
-	return tk
-}
-
-func (t *testJWTToken) setExpiration(tm time.Time) {
-	t.claims.Add("exp", float64(tm.Unix()))
-}
-
-func (t *testJWTToken) setRealmsRoles(roles []string) {
-	t.claims.Add("realm_access", map[string]interface{}{
-		"roles": roles,
-	})
-}
-
-func (t *testJWTToken) setClientRoles(client string, roles []string) {
-	t.claims.Add("resource_access", map[string]interface{}{
-		"openvpn": map[string]interface{}{
-			"roles": roles,
+func TestReverseProxyHeaders(t *testing.T) {
+	p := newFakeProxy(nil)
+	token := newTestToken(p.idp.getLocation())
+	token.addRealmRoles([]string{fakeAdminRole})
+	signed, _ := p.idp.signToken(token.claims)
+	requests := []fakeRequest{
+		{
+			URI:           fakeAuthAllURL,
+			RawToken:      signed.Encode(),
+			ExpectedProxy: true,
+			ExpectedProxyHeaders: map[string]string{
+				"X-Auth-Email":    "gambol99@gmail.com",
+				"X-Auth-Roles":    "role:admin",
+				"X-Auth-Subject":  token.claims["sub"].(string),
+				"X-Auth-Token":    signed.Encode(),
+				"X-Auth-Userid":   "rjayawardene",
+				"X-Auth-Username": "rjayawardene",
+				"X-Forwarded-For": "127.0.0.1",
+			},
+			ExpectedCode: http.StatusOK,
 		},
-	})
+	}
+	p.RunTests(t, requests)
 }
 
-func newFakeAccessToken(claims *jose.Claims, expire time.Duration) jose.JWT {
-	if claims == nil {
-		claims = &defaultFakeClaims
+func TestForwardingProxy(t *testing.T) {
+	cfg := newFakeKeycloakConfig()
+	cfg.EnableForwarding = true
+	cfg.ForwardingDomains = []string{}
+	cfg.ForwardingUsername = "test"
+	cfg.ForwardingPassword = "test"
+	s := httptest.NewServer(&fakeUpstreamService{})
+	requests := []fakeRequest{
+		{
+			URL:                     s.URL + "/test",
+			ProxyRequest:            true,
+			ExpectedProxy:           true,
+			ExpectedCode:            http.StatusOK,
+			ExpectedContentContains: "Bearer ey",
+		},
 	}
-	claims.Add("exp", float64(time.Now().Add(10*time.Hour).Unix()))
-	if expire > 0 {
-		claims.Add("exp", float64(time.Now().Add(expire).Unix()))
-	}
-	testToken, _ := jose.NewJWT(jose.JOSEHeader{"alg": "RS256"}, *claims)
-
-	return testToken
+	p := newFakeProxy(cfg)
+	<-time.After(time.Duration(100) * time.Millisecond)
+	p.RunTests(t, requests)
 }
 
-func getFakeRealmAccessToken(t *testing.T) jose.JWT {
-	return newFakeAccessToken(&defaultFakeRealmClaims, 0)
+func TestForbiddenTemplate(t *testing.T) {
+	cfg := newFakeKeycloakConfig()
+	cfg.ForbiddenPage = "templates/forbidden.html.tmpl"
+	cfg.Resources = []*Resource{
+		{
+			URL:     "/*",
+			Methods: allHTTPMethods,
+			Roles:   []string{fakeAdminRole},
+		},
+	}
+	requests := []fakeRequest{
+		{
+			URI:                     "/",
+			Redirects:               false,
+			HasToken:                true,
+			ExpectedCode:            http.StatusForbidden,
+			ExpectedContentContains: "403 Permission Denied",
+		},
+	}
+	newFakeProxy(cfg).RunTests(t, requests)
+}
+
+func TestAuthorizationTemplate(t *testing.T) {
+	cfg := newFakeKeycloakConfig()
+	cfg.SignInPage = "templates/sign_in.html.tmpl"
+	cfg.Resources = []*Resource{
+		{
+			URL:     "/*",
+			Methods: allHTTPMethods,
+			Roles:   []string{fakeAdminRole},
+		},
+	}
+	requests := []fakeRequest{
+		{
+			URI:                     oauthURL + authorizationURL,
+			Redirects:               true,
+			ExpectedCode:            http.StatusOK,
+			ExpectedContentContains: "Sign In",
+		},
+	}
+	newFakeProxy(cfg).RunTests(t, requests)
+}
+
+func newTestService() string {
+	_, _, u := newTestProxyService(nil)
+	return u
+}
+
+func newTestProxyService(config *Config) (*oauthProxy, *fakeAuthServer, string) {
+	log.SetOutput(ioutil.Discard)
+	auth := newFakeAuthServer()
+	if config == nil {
+		config = newFakeKeycloakConfig()
+	}
+	config.DiscoveryURL = auth.getLocation()
+	config.RevocationEndpoint = auth.getRevocationURL()
+	config.Verbose = false
+	config.EnableLogging = false
+
+	proxy, err := newProxy(config)
+	if err != nil {
+		panic("failed to create proxy service, error: " + err.Error())
+	}
+
+	// step: create an fake upstream endpoint
+	proxy.upstream = new(fakeUpstreamService)
+	service := httptest.NewServer(proxy.router)
+	config.RedirectionURL = service.URL
+
+	// step: we need to update the client config
+	if proxy.client, proxy.idp, proxy.idpClient, err = newOpenIDClient(config); err != nil {
+		panic("failed to recreate the openid client, error: " + err.Error())
+	}
+
+	return proxy, auth, service.URL
+}
+
+func newFakeHTTPRequest(method, path string) *http.Request {
+	return &http.Request{
+		Method: method,
+		Header: make(map[string][]string, 0),
+		Host:   "127.0.0.1",
+		URL: &url.URL{
+			Scheme: "http",
+			Host:   "127.0.0.1",
+			Path:   path,
+		},
+	}
 }
 
 func newFakeKeycloakConfig() *Config {
@@ -193,18 +224,13 @@ func newFakeKeycloakConfig() *Config {
 		ClientSecret:              fakeSecret,
 		CookieAccessName:          "kc-access",
 		CookieRefreshName:         "kc-state",
-		DiscoveryURL:              "127.0.0.1:8080",
-		Listen:                    "127.0.0.1:443",
-		ListenHTTP:                "127.0.0.1:80",
+		DiscoveryURL:              "127.0.0.1:0",
+		Listen:                    "127.0.0.1:0",
+		ListenHTTP:                "127.0.0.1:0",
 		EnableAuthorizationHeader: true,
-		EnableRefreshTokens:       false,
 		EnableLoginHandler:        true,
 		EncryptionKey:             "AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j",
-		LogRequests:               true,
 		Scopes:                    []string{},
-		SecureCookie:              false,
-		SkipTokenVerification:     false,
-		Verbose:                   false,
 		Resources: []*Resource{
 			{
 				URL:     fakeAdminRoleURL,
@@ -222,145 +248,16 @@ func newFakeKeycloakConfig() *Config {
 				Roles:   []string{fakeAdminRole, fakeTestRole},
 			},
 			{
-				URL:         fakeTestWhitelistedURL,
-				WhiteListed: true,
-				Methods:     []string{},
-				Roles:       []string{},
-			},
-			{
 				URL:     fakeAuthAllURL,
-				Methods: []string{"ANY"},
+				Methods: allHTTPMethods,
 				Roles:   []string{},
 			},
 			{
 				URL:         fakeTestWhitelistedURL,
 				WhiteListed: true,
-				Methods:     []string{},
+				Methods:     allHTTPMethods,
 				Roles:       []string{},
 			},
-		},
-	}
-}
-
-func newTestService() string {
-	_, _, u := newTestProxyService(nil)
-
-	return u
-}
-
-func newTestServiceWithConfig(cfg *Config) string {
-	_, _, u := newTestProxyService(cfg)
-
-	return u
-}
-
-func newTestProxyOnlyService() *oauthProxy {
-	p, _, _ := newTestProxyService(nil)
-	return p
-}
-
-func newTestProxyService(config *Config) (*oauthProxy, *fakeOAuthServer, string) {
-	log.SetOutput(ioutil.Discard)
-	// step: create a fake oauth server
-	auth := newFakeOAuthServer()
-	// step: use the default config if required
-	if config == nil {
-		config = newFakeKeycloakConfig()
-	}
-	// step: set the config
-	config.DiscoveryURL = auth.getLocation()
-	config.RevocationEndpoint = auth.getRevocationURL()
-
-	// step: create a proxy
-	proxy, err := newProxy(config)
-	if err != nil {
-		panic("failed to create proxy service, error: " + err.Error())
-	}
-
-	// step: create an fake upstream endpoint
-	proxy.upstream = new(testReverseProxy)
-	service := httptest.NewServer(proxy.router)
-	config.RedirectionURL = service.URL
-
-	// step: we need to update the client config
-	proxy.client, proxy.idp, proxy.idpClient, err = newOpenIDClient(config)
-	if err != nil {
-		panic("failed to recreate the openid client, error: " + err.Error())
-	}
-
-	return proxy, auth, service.URL
-}
-
-func newTestServiceWithWithResources(t *testing.T, resources []*Resource) (*oauthProxy, string) {
-	config := newFakeKeycloakConfig()
-	config.Resources = resources
-	px, _, url := newTestProxyService(config)
-
-	return px, url
-}
-
-func TestNewKeycloakProxy(t *testing.T) {
-	cfg := newFakeKeycloakConfig()
-	cfg.DiscoveryURL = newFakeOAuthServer().getLocation()
-
-	proxy, err := newProxy(cfg)
-	assert.NoError(t, err)
-	assert.NotNil(t, proxy)
-	assert.NotNil(t, proxy.config)
-	assert.NotNil(t, proxy.router)
-	assert.NotNil(t, proxy.endpoint)
-}
-
-func newFakeResponse() *fakeResponse {
-	return &fakeResponse{
-		status:  http.StatusOK,
-		headers: make(http.Header, 0),
-	}
-}
-
-func newFakeGinContext(method, uri string) *gin.Context {
-	return &gin.Context{
-		Request: &http.Request{
-			Method:     method,
-			Host:       "127.0.0.1",
-			RequestURI: uri,
-			URL: &url.URL{
-				Scheme: "http",
-				Host:   "127.0.0.1",
-				Path:   uri,
-			},
-			Header:     make(http.Header, 0),
-			RemoteAddr: "127.0.0.1:8989",
-		},
-		Writer: newFakeResponse(),
-	}
-}
-
-// makeTestOauthLogin performs a fake oauth login into the service, retrieving the access token
-func makeTestOauthLogin(location string) (string, error) {
-	resp, err := makeTestCodeFlowLogin(location)
-	if err != nil {
-		return "", err
-	}
-
-	// step: check the cookie is there
-	for _, c := range resp.Cookies() {
-		if c.Name == "kc-access" {
-			return c.Value, nil
-		}
-	}
-
-	return "", errors.New("access cookie not found in response from oauth service")
-}
-
-func newFakeHTTPRequest(method, path string) *http.Request {
-	return &http.Request{
-		Method: method,
-		Header: make(map[string][]string, 0),
-		URL: &url.URL{
-			Scheme: "http",
-			Host:   "127.0.0.1",
-			Path:   path,
 		},
 	}
 }
@@ -373,7 +270,7 @@ func makeTestCodeFlowLogin(location string) (*http.Response, error) {
 	// step: get the redirect
 	var resp *http.Response
 	for count := 0; count < 4; count++ {
-		req, err := http.NewRequest("GET", location, nil)
+		req, err := http.NewRequest(http.MethodGet, location, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -390,66 +287,79 @@ func makeTestCodeFlowLogin(location string) (*http.Response, error) {
 			location = fmt.Sprintf("%s://%s%s", u.Scheme, u.Host, location)
 		}
 	}
-
 	return resp, nil
 }
 
-func newFakeGinContextWithCookies(method, url string, cookies []*http.Cookie) *gin.Context {
-	cx := newFakeGinContext(method, url)
-	for _, x := range cookies {
-		cx.Request.AddCookie(x)
-	}
-
-	return cx
+// fakeUpstreamResponse is the response from fake upstream
+type fakeUpstreamResponse struct {
+	URI     string      `json:"uri"`
+	Method  string      `json:"method"`
+	Address string      `json:"address"`
+	Headers http.Header `json:"headers"`
 }
 
-// testUpstreamResponse is the response from fake upstream
-type testUpstreamResponse struct {
-	URI     string
-	Method  string
-	Address string
-	Headers http.Header
-}
+// fakeUpstreamService acts as a fake upstream service, returns the headers and request
+type fakeUpstreamService struct{}
 
-const testProxyAccepted = "Proxy-Accepted"
-
-type testReverseProxy struct{}
-
-func (r testReverseProxy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	resp := testUpstreamResponse{
-		URI:     req.RequestURI,
-		Method:  req.Method,
-		Address: req.RemoteAddr,
-		Headers: req.Header,
-	}
-	w.WriteHeader(http.StatusOK)
+func (f *fakeUpstreamService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set(testProxyAccepted, "true")
 	w.Header().Set("Content-Type", "application/json")
-	// step: encode the response
-	encoded, _ := json.Marshal(&resp)
-
-	w.Write(encoded)
+	w.WriteHeader(http.StatusOK)
+	content, _ := json.Marshal(&fakeUpstreamResponse{
+		URI:     r.RequestURI,
+		Method:  r.Method,
+		Address: r.RemoteAddr,
+		Headers: r.Header,
+	})
+	w.Write(content)
 }
 
-type fakeResponse struct {
-	size    int
-	status  int
-	headers http.Header
-	body    bytes.Buffer
-	written bool
+type fakeToken struct {
+	claims jose.Claims
 }
 
-func (r *fakeResponse) Flush()              {}
-func (r *fakeResponse) Written() bool       { return r.written }
-func (r *fakeResponse) WriteHeaderNow()     {}
-func (r *fakeResponse) Size() int           { return r.size }
-func (r *fakeResponse) Status() int         { return r.status }
-func (r *fakeResponse) Header() http.Header { return r.headers }
-func (r *fakeResponse) WriteHeader(code int) {
-	r.status = code
-	r.written = true
+func newTestToken(issuer string) *fakeToken {
+	claims := make(jose.Claims, 0)
+	for k, v := range defaultTestTokenClaims {
+		claims[k] = v
+	}
+	claims.Add("exp", float64(time.Now().Add(1*time.Hour).Unix()))
+	claims.Add("iat", float64(time.Now().Unix()))
+	claims.Add("iss", issuer)
+
+	return &fakeToken{claims: claims}
 }
-func (r *fakeResponse) Write(content []byte) (int, error)            { return len(content), nil }
-func (r *fakeResponse) WriteString(s string) (int, error)            { return len(s), nil }
-func (r *fakeResponse) Hijack() (net.Conn, *bufio.ReadWriter, error) { return nil, nil, nil }
-func (r *fakeResponse) CloseNotify() <-chan bool                     { return make(chan bool, 0) }
+
+// merge is responsible for merging claims into the token
+func (t *fakeToken) merge(claims jose.Claims) {
+	for k, v := range claims {
+		t.claims.Add(k, v)
+	}
+}
+
+// getToken returns a JWT token from the clains
+func (t *fakeToken) getToken() jose.JWT {
+	tk, _ := jose.NewJWT(jose.JOSEHeader{"alg": "RS256"}, t.claims)
+	return tk
+}
+
+// setExpiration sets the expiration of the token
+func (t *fakeToken) setExpiration(tm time.Time) {
+	t.claims.Add("exp", float64(tm.Unix()))
+}
+
+// addRealmRoles adds realms roles to token
+func (t *fakeToken) addRealmRoles(roles []string) {
+	t.claims.Add("realm_access", map[string]interface{}{
+		"roles": roles,
+	})
+}
+
+// addClientRoles adds client roles to the token
+func (t *fakeToken) addClientRoles(client string, roles []string) {
+	t.claims.Add("resource_access", map[string]interface{}{
+		client: map[string]interface{}{
+			"roles": roles,
+		},
+	})
+}
