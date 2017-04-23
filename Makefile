@@ -49,6 +49,12 @@ docker-test:
 	    -v ${ROOT_DIR}/tests:/opt/tests:ro \
 	    ${REGISTRY}/${AUTHOR}/${NAME}:${VERSION} --config /etc/keycloak/config.yml
 
+docker-release:
+	@echo "--> Building a release image"
+	@make static
+	@make docker
+	@docker push ${REGISTRY}/${AUTHOR}/${NAME}:${VERSION}
+
 docker:
 	@echo "--> Building the docker image"
 	docker build -t ${REGISTRY}/${AUTHOR}/${NAME}:${VERSION} .
