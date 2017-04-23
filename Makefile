@@ -86,6 +86,7 @@ authors:
 deps:
 	@echo "--> Installing build dependencies"
 	@go get github.com/tools/godep
+	@go get github.com/client9/misspell
 
 vet:
 	@echo "--> Running go vet $(VETARGS) ."
@@ -118,6 +119,10 @@ format:
 	@echo "--> Running go fmt"
 	@gofmt -s -w *.go
 
+spelling:
+	@echo "--> Checking the spelling"
+	@misspell -error *.go
+
 bench:
 	@echo "--> Running go bench"
 	@godep go test -v -bench=.
@@ -136,6 +141,7 @@ test: deps
 	@godep go test -v
 	@$(MAKE) golang
 	@$(MAKE) gofmt
+	@$(MAKE) spelling
 	@$(MAKE) vet
 	@$(MAKE) cover
 
