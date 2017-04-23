@@ -28,9 +28,9 @@ import (
 func newDefaultConfig() *Config {
 	return &Config{
 		AccessTokenDuration:         time.Duration(720) * time.Hour,
-		Tags:                        make(map[string]string, 0),
-		MatchClaims:                 make(map[string]string, 0),
-		Headers:                     make(map[string]string, 0),
+		Tags:                        make(map[string]string),
+		MatchClaims:                 make(map[string]string),
+		Headers:                     make(map[string]string),
 		UpstreamTimeout:             time.Duration(10) * time.Second,
 		UpstreamKeepaliveTimeout:    time.Duration(10) * time.Second,
 		EnableAuthorizationHeader:   true,
@@ -154,18 +154,10 @@ func (r *Config) isValid() error {
 
 // hasCustomSignInPage checks if there is a custom sign in  page
 func (r *Config) hasCustomSignInPage() bool {
-	if r.SignInPage != "" {
-		return true
-	}
-
-	return false
+	return r.SignInPage != ""
 }
 
 // hasForbiddenPage checks if there is a custom forbidden page
 func (r *Config) hasCustomForbiddenPage() bool {
-	if r.ForbiddenPage != "" {
-		return true
-	}
-
-	return false
+	return r.ForbiddenPage != ""
 }

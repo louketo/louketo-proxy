@@ -85,7 +85,7 @@ func (r *oauthProxy) getAccessCookieExpiration(token jose.JWT, refresh string) t
 	// refresh token
 	duration := r.config.AccessTokenDuration
 	if _, ident, err := parseToken(refresh); err == nil {
-		duration = ident.ExpiresAt.Sub(time.Now())
+		duration = time.Until(ident.ExpiresAt)
 	}
 
 	return duration

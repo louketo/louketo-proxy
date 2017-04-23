@@ -2,8 +2,7 @@ NAME=keycloak-proxy
 AUTHOR=gambol99
 AUTHOR_EMAIL=gambol99@gmail.com
 REGISTRY=quay.io
-GOVERSION ?= 1.8.0
-SUDO=
+GOVERSION ?= 1.8.1
 ROOT_DIR=${PWD}
 HARDWARE=$(shell uname -m)
 GIT_SHA=$(shell git --no-pager describe --always --dirty)
@@ -27,39 +26,32 @@ version:
 
 build:
 	@echo "--> Compiling the project"
-	mkdir -p bin
+	@mkdir -p bin
 	godep go build -ldflags "${LFLAGS}" -o bin/${NAME}
 
 static: golang deps
 	@echo "--> Compiling the static binary"
-	mkdir -p bin
+	@mkdir -p bin
 	CGO_ENABLED=0 GOOS=linux godep go build -a -tags netgo -ldflags "-w ${LFLAGS}" -o bin/${NAME}
 
 docker-build:
 	@echo "--> Compiling the project"
-	${SUDO} docker run --rm -v ${ROOT_DIR}:/go/src/github.com/gambol99/keycloak-proxy \
-		-w /go/src/github.com/gambol99/keycloak-proxy -e GOOS=linux golang:${GOVERSION} make static
+	docker run --rm \
+		-v ${ROOT_DIR}:/go/src/github.com/gambol99/keycloak-proxy \
+		-w /go/src/github.com/gambol99/keycloak-proxy \
+		-e GOOS=linux golang:${GOVERSION} \
+		make static
 
 docker-test:
 	@echo "--> Running the docker test"
-	${SUDO} docker run --rm -ti -p 3000:3000 \
+	docker run --rm -ti -p 3000:3000 \
 	    -v ${ROOT_DIR}/config.yml:/etc/keycloak/config.yml:ro \
 	    -v ${ROOT_DIR}/tests:/opt/tests:ro \
 	    ${REGISTRY}/${AUTHOR}/${NAME}:${VERSION} --config /etc/keycloak/config.yml
 
 docker:
 	@echo "--> Building the docker image"
-	${SUDO} docker build -t ${REGISTRY}/${AUTHOR}/${NAME}:${VERSION} .
-
-docker-release:
-	@echo "--> Building a release image"
-	@make static
-	@make docker
-	@docker push ${REGISTRY}/${AUTHOR}/${NAME}:${VERSION}
-
-docker-push:
-	@echo "--> Pushing the docker images to the registry"
-	${SUDO} docker push ${REGISTRY}/${AUTHOR}/${NAME}:${VERSION}
+	docker build -t ${REGISTRY}/${AUTHOR}/${NAME}:${VERSION} .
 
 certs:
 	@echo "--> Generating the root CA"
@@ -112,6 +104,10 @@ gofmt:
             exit 1; \
 	    fi
 
+verify:
+	@echo "--> Linting the code"
+	@gometalinter --disable=errcheck --disable=gocyclo --disable=gas --disable=aligncheck
+
 format:
 	@echo "--> Running go fmt"
 	@gofmt -s -w *.go
@@ -132,6 +128,7 @@ cover:
 test: deps
 	@echo "--> Running the tests"
 	@godep go test -v
+	@$(MAKE) golang
 	@$(MAKE) gofmt
 	@$(MAKE) vet
 	@$(MAKE) cover

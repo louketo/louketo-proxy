@@ -126,7 +126,7 @@ func (r *oauthProxy) oauthAuthorizationHandler(cx echo.Context) error {
 
 	// step: if we have a custom sign in page, lets display that
 	if r.config.hasCustomSignInPage() {
-		model := make(map[string]string, 0)
+		model := make(map[string]string)
 		model["redirect"] = authURL
 
 		return cx.Render(http.StatusOK, path.Base(r.config.SignInPage), mergeMaps(model, r.config.Tags))
@@ -190,7 +190,7 @@ func (r *oauthProxy) oauthCallbackHandler(cx echo.Context) error {
 	log.WithFields(log.Fields{
 		"email":    identity.Email,
 		"expires":  identity.ExpiresAt.Format(time.RFC3339),
-		"duration": identity.ExpiresAt.Sub(time.Now()).String(),
+		"duration": time.Until(identity.ExpiresAt).String(),
 	}).Infof("issuing access token for user, email: %s", identity.Email)
 
 	// step: does the response has a refresh token and we are NOT ignore refresh tokens?
@@ -218,11 +218,11 @@ func (r *oauthProxy) oauthCallbackHandler(cx echo.Context) error {
 			if _, ident, err := parseToken(resp.RefreshToken); err != nil {
 				r.dropRefreshTokenCookie(cx.Request(), cx.Response().Writer, encrypted, time.Duration(240)*time.Hour)
 			} else {
-				r.dropRefreshTokenCookie(cx.Request(), cx.Response().Writer, encrypted, ident.ExpiresAt.Sub(time.Now()))
+				r.dropRefreshTokenCookie(cx.Request(), cx.Response().Writer, encrypted, time.Until(ident.ExpiresAt))
 			}
 		}
 	} else {
-		r.dropAccessTokenCookie(cx.Request(), cx.Response().Writer, token.Encode(), identity.ExpiresAt.Sub(time.Now()))
+		r.dropAccessTokenCookie(cx.Request(), cx.Response().Writer, token.Encode(), time.Until(identity.ExpiresAt))
 	}
 
 	// step: decode the state variable
@@ -277,7 +277,7 @@ func (r *oauthProxy) loginHandler(cx echo.Context) error {
 			return "unable to decode the access token", http.StatusNotImplemented, err
 		}
 
-		r.dropAccessTokenCookie(cx.Request(), cx.Response().Writer, token.AccessToken, identity.ExpiresAt.Sub(time.Now()))
+		r.dropAccessTokenCookie(cx.Request(), cx.Response().Writer, token.AccessToken, time.Until(identity.ExpiresAt))
 
 		cx.JSON(http.StatusOK, tokenResponse{
 			IDToken:      token.IDToken,
