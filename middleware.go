@@ -70,7 +70,7 @@ func (r *oauthProxy) loggingMiddleware() echo.MiddlewareFunc {
 		return func(cx echo.Context) error {
 			start := time.Now()
 			next(cx)
-			latency := time.Now().Sub(start)
+			latency := time.Since(start)
 			addr := cx.RealIP()
 			log.WithFields(log.Fields{
 				"client_ip": addr,
@@ -236,7 +236,7 @@ func (r *oauthProxy) authenticationMiddleware(resource *Resource) echo.Middlewar
 
 // admissionMiddleware is responsible checking the access token against the protected resource
 func (r *oauthProxy) admissionMiddleware(resource *Resource) echo.MiddlewareFunc {
-	claimMatches := make(map[string]*regexp.Regexp, 0)
+	claimMatches := make(map[string]*regexp.Regexp)
 	for k, v := range r.config.MatchClaims {
 		claimMatches[k] = regexp.MustCompile(v)
 	}
@@ -318,7 +318,7 @@ func (r *oauthProxy) admissionMiddleware(resource *Resource) echo.MiddlewareFunc
 			log.WithFields(log.Fields{
 				"access":   "permitted",
 				"email":    user.email,
-				"expires":  user.expiresAt.Sub(time.Now()).String(),
+				"expires":  time.Until(user.expiresAt).String(),
 				"resource": resource.URL,
 			}).Debugf("access permitted to resource")
 

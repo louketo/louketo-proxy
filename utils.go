@@ -63,8 +63,7 @@ var (
 )
 
 var (
-	httpMethodRegex = regexp.MustCompile("^(ANY|GET|POST|DELETE|PATCH|HEAD|PUT|TRACE)$")
-	symbolsFilter   = regexp.MustCompilePOSIX("[_$><\\[\\].,\\+-/'%^&*()!\\\\]+")
+	symbolsFilter = regexp.MustCompilePOSIX("[_$><\\[\\].,\\+-/'%^&*()!\\\\]+")
 )
 
 // readConfigFile reads and parses the configuration file
@@ -218,7 +217,7 @@ func newOpenIDClient(cfg *Config) (*oidc.Client, oidc.ProviderConfig, *http.Clie
 
 // decodeKeyPairs converts a list of strings (key=pair) to a map
 func decodeKeyPairs(list []string) (map[string]string, error) {
-	kp := make(map[string]string, 0)
+	kp := make(map[string]string)
 
 	for _, x := range list {
 		items := strings.Split(x, "=")
@@ -249,34 +248,6 @@ func defaultTo(v, d string) string {
 	}
 
 	return d
-}
-
-// cloneTLSConfig clones the tls configuration
-func cloneTLSConfig(cfg *tls.Config) *tls.Config {
-	if cfg == nil {
-		return &tls.Config{}
-	}
-	return &tls.Config{
-		Rand:                     cfg.Rand,
-		Time:                     cfg.Time,
-		Certificates:             cfg.Certificates,
-		NameToCertificate:        cfg.NameToCertificate,
-		GetCertificate:           cfg.GetCertificate,
-		RootCAs:                  cfg.RootCAs,
-		NextProtos:               cfg.NextProtos,
-		ServerName:               cfg.ServerName,
-		ClientAuth:               cfg.ClientAuth,
-		ClientCAs:                cfg.ClientCAs,
-		InsecureSkipVerify:       cfg.InsecureSkipVerify,
-		CipherSuites:             cfg.CipherSuites,
-		PreferServerCipherSuites: cfg.PreferServerCipherSuites,
-		SessionTicketsDisabled:   cfg.SessionTicketsDisabled,
-		SessionTicketKey:         cfg.SessionTicketKey,
-		ClientSessionCache:       cfg.ClientSessionCache,
-		MinVersion:               cfg.MinVersion,
-		MaxVersion:               cfg.MaxVersion,
-		CurvePreferences:         cfg.CurvePreferences,
-	}
 }
 
 // fileExists check if a file exists
@@ -338,22 +309,13 @@ func tryDialEndpoint(location *url.URL) (net.Conn, error) {
 
 // isUpgradedConnection checks to see if the request is requesting
 func isUpgradedConnection(req *http.Request) bool {
-	if req.Header.Get(headerUpgrade) != "" {
-		return true
-	}
-
-	return false
+	return req.Header.Get(headerUpgrade) != ""
 }
 
 // transferBytes transfers bytes between the sink and source
 func transferBytes(src io.Reader, dest io.Writer, wg *sync.WaitGroup) (int64, error) {
 	defer wg.Done()
-	copied, err := io.Copy(dest, src)
-	if err != nil {
-		return copied, err
-	}
-
-	return copied, nil
+	return io.Copy(dest, src)
 }
 
 // tryUpdateConnection attempt to upgrade the connection to a http pdy stream
@@ -473,7 +435,7 @@ func getWithin(expires time.Time, within float64) time.Duration {
 	if left <= 0 {
 		return time.Duration(0)
 	}
-	seconds := int(float64(left * within))
+	seconds := int(left * within)
 
 	return time.Duration(seconds) * time.Second
 }

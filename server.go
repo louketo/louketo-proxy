@@ -242,7 +242,7 @@ func (r *oauthProxy) createForwardingProxy() error {
 		// @NOTES, somewhat annoying but goproxy hands back a nil response on proxy client errors
 		if resp != nil && r.config.EnableLogging {
 			start := ctx.UserData.(time.Time)
-			latency := time.Now().Sub(start)
+			latency := time.Since(start)
 
 			log.WithFields(log.Fields{
 				"method":  resp.Request.Method,
@@ -306,7 +306,7 @@ func (r *oauthProxy) Run() error {
 		}
 		httpsvc := &http.Server{
 			Addr:    r.config.ListenHTTP,
-			Handler: http.Handler(r.router),
+			Handler: r.router,
 		}
 		go func() {
 			if err := httpsvc.Serve(httpListener); err != nil {

@@ -17,7 +17,6 @@ package main
 
 import (
 	"bytes"
-	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -245,11 +244,6 @@ func BenchmarkContainsSubString(t *testing.B) {
 	for n := 0; n < t.N; n++ {
 		containsSubString("svc.cluster.local", []string{"nginx.pr1.svc.cluster.local"})
 	}
-}
-
-func TestCloneTLSConfig(t *testing.T) {
-	assert.NotNil(t, cloneTLSConfig(nil))
-	assert.NotNil(t, cloneTLSConfig(&tls.Config{}))
 }
 
 func TestDialAddress(t *testing.T) {

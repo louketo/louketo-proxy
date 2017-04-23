@@ -61,10 +61,10 @@ func (r *oauthProxy) clearAllCookies(req *http.Request, w http.ResponseWriter) {
 
 // clearRefreshSessionCookie clears the session cookie
 func (r *oauthProxy) clearRefreshTokenCookie(req *http.Request, w http.ResponseWriter) {
-	r.dropCookie(w, req.Host, r.config.CookieRefreshName, "", time.Duration(-10*time.Hour))
+	r.dropCookie(w, req.Host, r.config.CookieRefreshName, "", -10*time.Hour)
 }
 
 // clearAccessTokenCookie clears the session cookie
 func (r *oauthProxy) clearAccessTokenCookie(req *http.Request, w http.ResponseWriter) {
-	r.dropCookie(w, req.Host, r.config.CookieAccessName, "", time.Duration(-10*time.Hour))
+	r.dropCookie(w, req.Host, r.config.CookieAccessName, "", -10*time.Hour)
 }

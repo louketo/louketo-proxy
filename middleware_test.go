@@ -89,7 +89,7 @@ func newFakeProxy(c *Config) *fakeProxy {
 		panic("failed to recreate the openid client, error: " + err.Error())
 	}
 
-	return &fakeProxy{c, auth, proxy, service, make(map[string]*http.Cookie, 0)}
+	return &fakeProxy{c, auth, proxy, service, make(map[string]*http.Cookie)}
 }
 
 // RunTests performs a series of requests against a fake proxy service

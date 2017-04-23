@@ -80,11 +80,7 @@ func extractIdentity(token jose.JWT) (*userContext, error) {
 
 // isAudience checks the audience
 func (r *userContext) isAudience(aud string) bool {
-	if r.audience == aud {
-		return true
-	}
-
-	return false
+	return r.audience == aud
 }
 
 // getRoles returns a list of roles
