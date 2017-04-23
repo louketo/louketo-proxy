@@ -104,7 +104,7 @@ func getUserinfo(client *oauth2.Client, endpoint string, token string) (jose.Cla
 		return nil, err
 	}
 	var claims jose.Claims
-	if err := json.Unmarshal([]byte(content), &claims); err != nil {
+	if err := json.Unmarshal(content, &claims); err != nil {
 		return nil, newAPIError("unable to decode response", resp.StatusCode)
 	}
 

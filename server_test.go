@@ -208,7 +208,7 @@ func newTestProxyService(config *Config) (*oauthProxy, *fakeAuthServer, string) 
 func newFakeHTTPRequest(method, path string) *http.Request {
 	return &http.Request{
 		Method: method,
-		Header: make(map[string][]string, 0),
+		Header: make(map[string][]string),
 		Host:   "127.0.0.1",
 		URL: &url.URL{
 			Scheme: "http",
@@ -319,7 +319,7 @@ type fakeToken struct {
 }
 
 func newTestToken(issuer string) *fakeToken {
-	claims := make(jose.Claims, 0)
+	claims := make(jose.Claims)
 	for k, v := range defaultTestTokenClaims {
 		claims[k] = v
 	}

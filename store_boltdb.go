@@ -45,7 +45,7 @@ func newBoltDBStore(location *url.URL) (storage, error) {
 
 	log.Infof("creating the bolddb store, file: %s", path)
 	db, err := bolt.Open(path, 0600, &bolt.Options{
-		Timeout: time.Duration(10 * time.Second),
+		Timeout: 10 * time.Second,
 	})
 	if err != nil {
 		return nil, err
