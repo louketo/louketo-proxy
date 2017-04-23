@@ -138,8 +138,8 @@ cover:
 
 test: deps
 	@echo "--> Running the tests"
-	@godep go test -v
 	@$(MAKE) golang
+	@godep go test -v
 	@$(MAKE) gofmt
 	@$(MAKE) spelling
 	@$(MAKE) vet
