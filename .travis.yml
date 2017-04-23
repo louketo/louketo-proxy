@@ -12,6 +12,7 @@ go:
 - 1.8
 install:
 - go get github.com/tools/godep
+- go get github.com/client9/misspell
 script:
 - make test
 - if ([[ ${TRAVIS_BRANCH} == "master" ]] && [[ ${TRAVIS_EVENT_TYPE} == "push" ]]) || [[ -n ${TRAVIS_TAG} ]]; then

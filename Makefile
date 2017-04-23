@@ -121,6 +121,10 @@ spelling:
 	@echo "--> Checking the spelling"
 	@misspell -error *.go
 
+linting:
+	@echo "--> Checking against linters"
+	@gometalinter --disable=errcheck --disable=gocyclo
+
 bench:
 	@echo "--> Running go bench"
 	@godep go test -v -bench=.
@@ -136,6 +140,7 @@ cover:
 
 test: deps
 	@echo "--> Running the tests"
+	@$(MAKE) golang
 	@godep go test -v
 	@$(MAKE) gofmt
 	@$(MAKE) spelling
