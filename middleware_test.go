@@ -17,6 +17,7 @@ package main
 
 import (
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -44,6 +45,7 @@ type fakeRequest struct {
 	OnResponse              func(int, *resty.Request, *resty.Response)
 	Password                string
 	ProxyRequest            bool
+	ProxyProtocol           bool
 	RawToken                string
 	Redirects               bool
 	Roles                   []string
@@ -161,6 +163,20 @@ func (f *fakeProxy) RunTests(t *testing.T, requests []fakeRequest) {
 				signed, _ := f.idp.signToken(token.claims)
 				setRequestAuthentication(f.config, client, request, &c, signed.Encode())
 			}
+		}
+		if c.ProxyProtocol {
+			client.SetTransport(&http.Transport{
+				Dial: func(network, addr string) (net.Conn, error) {
+					conn, err := net.Dial("tcp", addr)
+					if err != nil {
+						return nil, err
+					}
+					header := "PROXY TCP4 10.0.0.1 10.0.0.2 1000 2000\r\n"
+					conn.Write([]byte(header))
+
+					return conn, nil
+				},
+			})
 		}
 
 		// step: execute the request

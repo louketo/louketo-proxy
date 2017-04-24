@@ -171,6 +171,28 @@ func TestAuthorizationTemplate(t *testing.T) {
 	newFakeProxy(cfg).RunTests(t, requests)
 }
 
+func TestProxyProtocol(t *testing.T) {
+	c := newFakeKeycloakConfig()
+	c.EnableProxyProtocol = true
+	requests := []fakeRequest{
+		{
+			URI:           fakeAuthAllURL + "/test",
+			HasToken:      true,
+			ProxyProtocol: true,
+			ExpectedProxy: true,
+			ExpectedProxyHeaders: map[string]string{
+				"X-Auth-Email":    "gambol99@gmail.com",
+				"X-Auth-Roles":    "role:admin",
+				"X-Auth-Userid":   "rjayawardene",
+				"X-Auth-Username": "rjayawardene",
+				"X-Forwarded-For": "127.0.0.1",
+			},
+			ExpectedCode: http.StatusOK,
+		},
+	}
+	newFakeProxy(c).RunTests(t, requests)
+}
+
 func newTestService() string {
 	_, _, u := newTestProxyService(nil)
 	return u
