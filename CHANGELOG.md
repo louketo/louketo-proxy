@@ -4,6 +4,7 @@ FIXES:
 * fixed the parsing of slices for command line arguments (i.e. --cors-origins etc)
 * fixed any accidental proxying on the /oauth or /debug URI
 * removed all references to the underlining web framework in tests
+* adding unit tests for proxy protocol and using the run() method [#PR214](https://github.com/gambol99/keycloak-proxy/pull/214)
 
 FEATURES
 * changed the routing engine from gin to echo
