@@ -32,7 +32,7 @@ func newOauthProxyApp() *cli.App {
 	app := cli.NewApp()
 	app.Name = prog
 	app.Usage = description
-	app.Version = version
+	app.Version = getVersion()
 	app.Author = author
 	app.Email = email
 	app.Flags = getCommandLineOptions()

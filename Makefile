@@ -6,11 +6,11 @@ GOVERSION ?= 1.8.1
 ROOT_DIR=${PWD}
 HARDWARE=$(shell uname -m)
 GIT_SHA=$(shell git --no-pager describe --always --dirty)
-BUILD_TIME=$(shell date -u '+%Y-%m-%d_%I:%M:%S%p')
+BUILD_TIME=$(shell date '+%s')
 VERSION ?= $(shell awk '/release.*=/ { print $$3 }' doc.go | sed 's/"//g')
 DEPS=$(shell go list -f '{{range .TestImports}}{{.}} {{end}}' ./...)
 PACKAGES=$(shell go list ./...)
-LFLAGS ?= -X main.gitsha=${GIT_SHA}
+LFLAGS ?= -X main.gitsha=${GIT_SHA} -X main.compiled=${BUILD_TIME}
 VETARGS ?= -asmdecl -atomic -bool -buildtags -copylocks -methods -nilfunc -printf -rangeloops -shift -structtags -unsafeptr
 
 .PHONY: test authors changelog build docker static release lint cover vet
