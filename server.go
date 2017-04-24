@@ -62,6 +62,10 @@ type oauthProxy struct {
 	store storage
 	// the prometheus handler
 	prometheusHandler http.Handler
+	// the default server
+	server *http.Server
+	// the default listener
+	listener net.Listener
 }
 
 func init() {
@@ -284,19 +288,23 @@ func (r *oauthProxy) Run() error {
 		Addr:    r.config.Listen,
 		Handler: r.router,
 	}
+	r.server = server
+	r.listener = listener
 
 	go func() {
 		log.Infof("keycloak proxy service starting on %s", r.config.Listen)
 		if err = server.Serve(listener); err != nil {
-			log.WithFields(log.Fields{
-				"error": err.Error(),
-			}).Fatalf("failed to start the http service")
+			if err != http.ErrServerClosed {
+				log.WithFields(log.Fields{
+					"error": err.Error(),
+				}).Fatalf("failed to start the http service")
+			}
 		}
 	}()
 
 	// step: are we running http service as well?
 	if r.config.ListenHTTP != "" {
-		log.Infof("keycloak proxy service starting on %s", r.config.ListenHTTP)
+		log.Infof("keycloak proxy http service starting on %s", r.config.ListenHTTP)
 		httpListener, err := createHTTPListener(listenerConfig{
 			listen:        r.config.ListenHTTP,
 			proxyProtocol: r.config.EnableProxyProtocol,

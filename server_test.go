@@ -178,14 +178,19 @@ func TestProxyProtocol(t *testing.T) {
 		{
 			URI:           fakeAuthAllURL + "/test",
 			HasToken:      true,
-			ProxyProtocol: true,
 			ExpectedProxy: true,
 			ExpectedProxyHeaders: map[string]string{
-				"X-Auth-Email":    "gambol99@gmail.com",
-				"X-Auth-Roles":    "role:admin",
-				"X-Auth-Userid":   "rjayawardene",
-				"X-Auth-Username": "rjayawardene",
 				"X-Forwarded-For": "127.0.0.1",
+			},
+			ExpectedCode: http.StatusOK,
+		},
+		{
+			URI:           fakeAuthAllURL + "/test",
+			HasToken:      true,
+			ProxyProtocol: "189.10.10.1",
+			ExpectedProxy: true,
+			ExpectedProxyHeaders: map[string]string{
+				"X-Forwarded-For": "189.10.10.1",
 			},
 			ExpectedCode: http.StatusOK,
 		},
@@ -242,13 +247,12 @@ func newFakeHTTPRequest(method, path string) *http.Request {
 
 func newFakeKeycloakConfig() *Config {
 	return &Config{
-		ClientID:                  fakeClientID,
-		ClientSecret:              fakeSecret,
-		CookieAccessName:          "kc-access",
-		CookieRefreshName:         "kc-state",
-		DiscoveryURL:              "127.0.0.1:0",
-		Listen:                    "127.0.0.1:0",
-		ListenHTTP:                "127.0.0.1:0",
+		ClientID:          fakeClientID,
+		ClientSecret:      fakeSecret,
+		CookieAccessName:  "kc-access",
+		CookieRefreshName: "kc-state",
+		DiscoveryURL:      "127.0.0.1:0",
+		Listen:            "127.0.0.1:0",
 		EnableAuthorizationHeader: true,
 		EnableLoginHandler:        true,
 		EncryptionKey:             "AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j",
