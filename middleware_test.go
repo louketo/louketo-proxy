@@ -16,9 +16,10 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -43,6 +44,7 @@ type fakeRequest struct {
 	NotSigned               bool
 	OnResponse              func(int, *resty.Request, *resty.Response)
 	Password                string
+	ProxyProtocol           string
 	ProxyRequest            bool
 	RawToken                string
 	Redirects               bool
@@ -65,7 +67,6 @@ type fakeProxy struct {
 	config  *Config
 	idp     *fakeAuthServer
 	proxy   *oauthProxy
-	server  *httptest.Server
 	cookies map[string]*http.Cookie
 }
 
@@ -82,22 +83,29 @@ func newFakeProxy(c *Config) *fakeProxy {
 		panic("failed to create fake proxy service, error: " + err.Error())
 	}
 	proxy.upstream = &fakeUpstreamService{}
-	service := httptest.NewServer(proxy.router)
-	c.RedirectionURL = service.URL
+	if err = proxy.Run(); err != nil {
+		panic("failed to create the proxy service, error: " + err.Error())
+	}
+	c.RedirectionURL = fmt.Sprintf("http://%s", proxy.listener.Addr().String())
 	// step: we need to update the client configs
 	if proxy.client, proxy.idp, proxy.idpClient, err = newOpenIDClient(c); err != nil {
 		panic("failed to recreate the openid client, error: " + err.Error())
 	}
 
-	return &fakeProxy{c, auth, proxy, service, make(map[string]*http.Cookie)}
+	return &fakeProxy{c, auth, proxy, make(map[string]*http.Cookie)}
+}
+
+func (f *fakeProxy) getServiceURL() string {
+	return fmt.Sprintf("http://%s", f.proxy.listener.Addr().String())
 }
 
 // RunTests performs a series of requests against a fake proxy service
 func (f *fakeProxy) RunTests(t *testing.T, requests []fakeRequest) {
 	defer func() {
 		f.idp.Close()
-		f.server.Close()
+		f.proxy.server.Close()
 	}()
+
 	for i, c := range requests {
 		var upstream fakeUpstreamResponse
 
@@ -109,6 +117,21 @@ func (f *fakeProxy) RunTests(t *testing.T, requests []fakeRequest) {
 		// create a http client
 		client := resty.New()
 		request := client.SetRedirectPolicy(resty.NoRedirectPolicy()).R()
+
+		if c.ProxyProtocol != "" {
+			client.SetTransport(&http.Transport{
+				Dial: func(network, addr string) (net.Conn, error) {
+					conn, err := net.Dial("tcp", addr)
+					if err != nil {
+						return nil, err
+					}
+					header := fmt.Sprintf("PROXY TCP4 %s 10.0.0.1 1000 2000\r\n", c.ProxyProtocol)
+					conn.Write([]byte(header))
+
+					return conn, nil
+				},
+			})
+		}
 
 		// are we performing a oauth login beforehand
 		if c.HasLogin {
@@ -126,7 +149,7 @@ func (f *fakeProxy) RunTests(t *testing.T, requests []fakeRequest) {
 			request.SetResult(&upstream)
 		}
 		if c.ProxyRequest {
-			request.SetProxy(f.server.URL)
+			request.SetProxy(f.getServiceURL())
 		}
 		if c.BasicAuth {
 			request.SetBasicAuth(c.Username, c.Password)
@@ -168,7 +191,7 @@ func (f *fakeProxy) RunTests(t *testing.T, requests []fakeRequest) {
 		var err error
 		switch c.URL {
 		case "":
-			resp, err = request.Execute(c.Method, f.server.URL+c.URI)
+			resp, err = request.Execute(c.Method, f.getServiceURL()+c.URI)
 		default:
 			resp, err = request.Execute(c.Method, c.URL)
 		}
@@ -226,7 +249,7 @@ func (f *fakeProxy) RunTests(t *testing.T, requests []fakeRequest) {
 }
 
 func (f *fakeProxy) performUserLogin(uri string) error {
-	resp, err := makeTestCodeFlowLogin(f.server.URL + uri)
+	resp, err := makeTestCodeFlowLogin(f.getServiceURL() + uri)
 	if err != nil {
 		return err
 	}

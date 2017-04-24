@@ -171,6 +171,33 @@ func TestAuthorizationTemplate(t *testing.T) {
 	newFakeProxy(cfg).RunTests(t, requests)
 }
 
+func TestProxyProtocol(t *testing.T) {
+	c := newFakeKeycloakConfig()
+	c.EnableProxyProtocol = true
+	requests := []fakeRequest{
+		{
+			URI:           fakeAuthAllURL + "/test",
+			HasToken:      true,
+			ExpectedProxy: true,
+			ExpectedProxyHeaders: map[string]string{
+				"X-Forwarded-For": "127.0.0.1",
+			},
+			ExpectedCode: http.StatusOK,
+		},
+		{
+			URI:           fakeAuthAllURL + "/test",
+			HasToken:      true,
+			ProxyProtocol: "189.10.10.1",
+			ExpectedProxy: true,
+			ExpectedProxyHeaders: map[string]string{
+				"X-Forwarded-For": "189.10.10.1",
+			},
+			ExpectedCode: http.StatusOK,
+		},
+	}
+	newFakeProxy(c).RunTests(t, requests)
+}
+
 func newTestService() string {
 	_, _, u := newTestProxyService(nil)
 	return u
@@ -220,13 +247,12 @@ func newFakeHTTPRequest(method, path string) *http.Request {
 
 func newFakeKeycloakConfig() *Config {
 	return &Config{
-		ClientID:                  fakeClientID,
-		ClientSecret:              fakeSecret,
-		CookieAccessName:          "kc-access",
-		CookieRefreshName:         "kc-state",
-		DiscoveryURL:              "127.0.0.1:0",
-		Listen:                    "127.0.0.1:0",
-		ListenHTTP:                "127.0.0.1:0",
+		ClientID:          fakeClientID,
+		ClientSecret:      fakeSecret,
+		CookieAccessName:  "kc-access",
+		CookieRefreshName: "kc-state",
+		DiscoveryURL:      "127.0.0.1:0",
+		Listen:            "127.0.0.1:0",
 		EnableAuthorizationHeader: true,
 		EnableLoginHandler:        true,
 		EncryptionKey:             "AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j",
