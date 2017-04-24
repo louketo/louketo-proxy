@@ -425,7 +425,7 @@ func (r *oauthProxy) tokenHandler(cx echo.Context) error {
 
 // healthHandler is a health check handler for the service
 func (r *oauthProxy) healthHandler(cx echo.Context) error {
-	cx.Response().Writer.Header().Set(versionHeader, version)
+	cx.Response().Writer.Header().Set(versionHeader, getVersion())
 
 	return cx.String(http.StatusOK, "OK\n")
 }

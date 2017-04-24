@@ -17,16 +17,19 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/coreos/go-oidc/jose"
 )
 
 var (
-	release = "v2.1.0"
-	gitsha  = "no gitsha provided"
-	version = release + " (git+sha: " + gitsha + ")"
+	release  = "v2.1.0"
+	gitsha   = "no gitsha provided"
+	compiled = "0"
+	version  = ""
 )
 
 const (
@@ -34,7 +37,6 @@ const (
 	author      = "Rohith"
 	email       = "gambol99@gmail.com"
 	description = "is a proxy using the keycloak service for auth and authorization"
-	httpSchema  = "http"
 
 	headerUpgrade       = "Upgrade"
 	userContextName     = "identity"
@@ -42,6 +44,7 @@ const (
 	authorizationHeader = "Authorization"
 	versionHeader       = "X-Auth-Proxy-Version"
 	envPrefix           = "PROXY_"
+	httpSchema          = "http"
 
 	oauthURL         = "/oauth"
 	authorizationURL = "/authorize"
@@ -229,10 +232,23 @@ type Config struct {
 	ForwardingDomains []string `json:"forwarding-domains" yaml:"forwarding-domains" usage:"list of domains which should be signed; everything else is relayed unsigned"`
 }
 
+// getVersion returns the proxy version
+func getVersion() string {
+	if version == "" {
+		tm, err := strconv.ParseInt(compiled, 10, 64)
+		if err != nil {
+			return "unable to parse compiled time"
+		}
+		version = fmt.Sprintf("git+sha: %s, built: %s", gitsha, time.Unix(tm, 0).Format("02/01/2006"))
+	}
+
+	return version
+}
+
 // storage is used to hold the offline refresh token, assuming you don't want to use
 // the default practice of a encrypted cookie
 type storage interface {
-	// Add the token to the store
+	// Set the token to the store
 	Set(string, string) error
 	// Get retrieves a token from the store
 	Get(string) (string, error)
