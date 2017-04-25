@@ -182,7 +182,7 @@ func (r *oauthProxy) createReverseProxy() error {
 	// step: provision in the protected resources
 	for _, x := range r.config.Resources {
 		if x.URL[len(x.URL)-1:] == "/" {
-			log.Warnf("the resource url: %s is not a prefix, you probably want %s* or %s* to protect the xs", x.URL, x.URL, strings.TrimRight(x.URL, "/"))
+			log.Warnf("the resource url: %s is not a prefix, you probably want %s* or %s* to protect the resource", x.URL, x.URL, strings.TrimRight(x.URL, "/"))
 		}
 	}
 	for _, x := range r.config.Resources {

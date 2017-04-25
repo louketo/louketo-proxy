@@ -76,6 +76,8 @@ var (
 	ErrRefreshTokenExpired = errors.New("the refresh token has expired")
 	// ErrNoTokenAudience indicates their is not audience in the token
 	ErrNoTokenAudience = errors.New("the token does not audience in claims")
+	// ErrDecryption indicates we can't decrypt the token
+	ErrDecryption = errors.New("failed to decrypt token")
 )
 
 // Resource represents a url resource to protect
@@ -191,12 +193,12 @@ type Config struct {
 	CorsHeaders []string `json:"cors-headers" yaml:"cors-headers" usage:"set of headers to add to the CORS access control (Access-Control-Allow-Headers)"`
 	// CorsExposedHeaders are the exposed header fields
 	CorsExposedHeaders []string `json:"cors-exposed-headers" yaml:"cors-exposed-headers" usage:"expose cors headers access control (Access-Control-Expose-Headers)"`
-	// CorsCredentials set the creds flag
+	// CorsCredentials set the credentials flag
 	CorsCredentials bool `json:"cors-credentials" yaml:"cors-credentials" usage:"credentials access control header (Access-Control-Allow-Credentials)"`
 	// CorsMaxAge is the age for CORS
 	CorsMaxAge time.Duration `json:"cors-max-age" yaml:"cors-max-age" usage:"max age applied to cors headers (Access-Control-Max-Age)"`
 
-	// Hostname is a list of hostname's the service should response to
+	// Hostnames is a list of hostname's the service should response to
 	Hostnames []string `json:"hostnames" yaml:"hostnames" usage:"list of hostnames the service will respond to"`
 
 	// Store is a url for a store resource, used to hold the refresh tokens

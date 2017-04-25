@@ -376,12 +376,11 @@ func TestStrangeAdminRequests(t *testing.T) {
 			ExpectedProxy: true,
 			ExpectedCode:  http.StatusOK,
 		},
-		{ // check for it works
-			URI:           "//admin//test",
-			HasToken:      true,
-			Roles:         []string{fakeAdminRole},
-			ExpectedProxy: true,
-			ExpectedCode:  http.StatusOK,
+		{ // check for is doens't work
+			URI:          "//admin//test",
+			HasToken:     true,
+			Roles:        []string{"bad"},
+			ExpectedCode: http.StatusForbidden,
 		},
 		{
 			URI:          "/help/../admin/test/21",

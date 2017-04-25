@@ -205,9 +205,9 @@ func TestTokenEncryption(t *testing.T) {
 	requests := []fakeRequest{
 		{
 			URI:           "/auth_all/test",
-			Redirects:     true,
 			HasLogin:      true,
 			ExpectedProxy: true,
+			Redirects:     true,
 			ExpectedProxyHeaders: map[string]string{
 				"X-Auth-Email":    "gambol99@gmail.com",
 				"X-Auth-Userid":   "rjayawardene",
@@ -215,6 +215,12 @@ func TestTokenEncryption(t *testing.T) {
 				"X-Forwarded-For": "127.0.0.1",
 			},
 			ExpectedCode: http.StatusOK,
+		},
+		// the token must be encrypted
+		{
+			URI:          "/auth_all/test",
+			HasToken:     true,
+			ExpectedCode: http.StatusUnauthorized,
 		},
 	}
 	newFakeProxy(c).RunTests(t, requests)
@@ -277,7 +283,6 @@ func newFakeKeycloakConfig() *Config {
 		Listen:            "127.0.0.1:0",
 		EnableAuthorizationHeader: true,
 		EnableLoginHandler:        true,
-		EncryptionKey:             "AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j",
 		Scopes:                    []string{},
 		Resources: []*Resource{
 			{

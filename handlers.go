@@ -137,11 +137,10 @@ func (r *oauthProxy) oauthAuthorizationHandler(cx echo.Context) error {
 
 // oauthCallbackHandler is responsible for handling the response from oauth service
 func (r *oauthProxy) oauthCallbackHandler(cx echo.Context) error {
-	// step: is token verification switched on?
 	if r.config.SkipTokenVerification {
 		return cx.NoContent(http.StatusNotAcceptable)
 	}
-	// step: ensure we have a authorization code to exchange
+	// step: ensure we have a authorization code
 	code := cx.QueryParam("code")
 	if code == "" {
 		return cx.NoContent(http.StatusBadRequest)
@@ -153,27 +152,26 @@ func (r *oauthProxy) oauthCallbackHandler(cx echo.Context) error {
 		return cx.NoContent(http.StatusInternalServerError)
 	}
 
-	// step: exchange the authorization for a access token
 	resp, err := exchangeAuthenticationCode(client, code)
 	if err != nil {
 		log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to exchange code for access token")
 		return r.accessForbidden(cx)
 	}
 
-	// step: parse decode the identity token
+	// Flow: once we exchange the authorization code we parse the ID Token; we then check for a access token,
+	// if a access token is present and we can decode it, we use that as the session token, otherwise we default
+	// to the ID Token.
 	token, identity, err := parseToken(resp.IDToken)
 	if err != nil {
 		log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to parse id token for identity")
 		return r.accessForbidden(cx)
 	}
-
-	// step: attempt to decode the access token else we default to the id token
 	access, id, err := parseToken(resp.AccessToken)
-	if err != nil {
-		log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to parse the access token, using id token only")
-	} else {
+	if err == nil {
 		token = access
 		identity = id
+	} else {
+		log.WithFields(log.Fields{"error": err.Error()}).Warn("unable to parse the access token, using id token only")
 	}
 
 	// step: check the access token is valid
@@ -195,7 +193,7 @@ func (r *oauthProxy) oauthCallbackHandler(cx echo.Context) error {
 		"email":    identity.Email,
 		"expires":  identity.ExpiresAt.Format(time.RFC3339),
 		"duration": time.Until(identity.ExpiresAt).String(),
-	}).Infof("issuing access token for user, email: %s", identity.Email)
+	}).Info("issuing access token for user")
 
 	// step: does the response has a refresh token and we are NOT ignore refresh tokens?
 	if r.config.EnableRefreshTokens && resp.RefreshToken != "" {
@@ -205,7 +203,6 @@ func (r *oauthProxy) oauthCallbackHandler(cx echo.Context) error {
 			log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to encrypt the refresh token")
 			return cx.NoContent(http.StatusInternalServerError)
 		}
-
 		// drop in the access token - cookie expiration = access token
 		r.dropAccessTokenCookie(cx.Request(), cx.Response().Writer, accessToken, r.getAccessCookieExpiration(token, resp.RefreshToken))
 
@@ -247,7 +244,6 @@ func (r *oauthProxy) oauthCallbackHandler(cx echo.Context) error {
 // loginHandler provide's a generic endpoint for clients to perform a user_credentials login to the provider
 func (r *oauthProxy) loginHandler(cx echo.Context) error {
 	errorMsg, code, err := func() (string, int, error) {
-		// step: check if the handler is disable
 		if !r.config.EnableLoginHandler {
 			return "attempt to login when login handler is disabled", http.StatusNotImplemented, errors.New("login handler disabled")
 		}
@@ -257,7 +253,6 @@ func (r *oauthProxy) loginHandler(cx echo.Context) error {
 			return "request does not have both username and password", http.StatusBadRequest, errors.New("no credentials")
 		}
 
-		// step: get the client
 		client, err := r.client.OAuthClient()
 		if err != nil {
 			return "unable to create the oauth client for user_credentials request", http.StatusInternalServerError, err
@@ -309,10 +304,10 @@ func emptyHandler(cx echo.Context) error {
 //  - if it's just a access token, the cookie is deleted
 //  - if the user has a refresh token, the token is invalidated by the provider
 //  - optionally, the user can be redirected by to a url
-//
 func (r *oauthProxy) logoutHandler(cx echo.Context) error {
 	// the user can specify a url to redirect the back
 	redirectURL := cx.QueryParam("redirect")
+
 	// step: drop the access token
 	user, err := r.getIdentity(cx.Request())
 	if err != nil {
@@ -336,15 +331,12 @@ func (r *oauthProxy) logoutHandler(cx echo.Context) error {
 		}()
 	}
 
-	// step: get the revocation endpoint from either the idp and or the user config
 	revocationURL := defaultTo(r.config.RevocationEndpoint, r.idp.EndSessionEndpoint.String())
-
 	// step: do we have a revocation endpoint?
 	if revocationURL != "" {
 		client, err := r.client.OAuthClient()
 		if err != nil {
 			log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to retrieve the openid client")
-
 			return cx.NoContent(http.StatusInternalServerError)
 		}
 
@@ -360,19 +352,17 @@ func (r *oauthProxy) logoutHandler(cx echo.Context) error {
 			log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to construct the revocation request")
 			return cx.NoContent(http.StatusInternalServerError)
 		}
-
 		// step: add the authentication headers and content-type
 		request.SetBasicAuth(encodedID, encodedSecret)
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-		// step: attempt to make the
 		response, err := client.HttpClient().Do(request)
 		if err != nil {
 			log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to post to revocation endpoint")
 			return nil
 		}
 
-		// step: add a log for debugging
+		// step: check the response
 		switch response.StatusCode {
 		case http.StatusNoContent:
 			log.WithFields(log.Fields{
