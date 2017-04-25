@@ -89,9 +89,8 @@ func getUserinfo(client *oauth2.Client, endpoint string, token string) (jose.Cla
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+	req.Header.Set(authorizationHeader, fmt.Sprintf("Bearer %s", token))
 
-	// step: make the request
 	resp, err := client.HttpClient().Do(req)
 	if err != nil {
 		return nil, err

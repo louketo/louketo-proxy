@@ -203,7 +203,7 @@ func (f *fakeProxy) RunTests(t *testing.T, requests []fakeRequest) {
 		}
 		status := resp.StatusCode()
 		if c.ExpectedCode != 0 {
-			assert.Equal(t, c.ExpectedCode, status, "case %d, expected: %d, got: %d", i, c.URI, c.ExpectedCode, status)
+			assert.Equal(t, c.ExpectedCode, status, "case %d, expected status code: %d, got: %d", i, c.ExpectedCode, status)
 		}
 		if c.ExpectedLocation != "" {
 			l := resp.Header().Get("Location")

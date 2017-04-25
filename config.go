@@ -120,8 +120,11 @@ func (r *Config) isValid() error {
 					return errors.New("the security filter must be switch on for this feature: hostnames")
 				}
 			}
+			if r.EnableEncryptedToken && r.EncryptionKey != "" {
+				return errors.New("you have not specified an encryption key for encoding the access token")
+			}
 			if r.EnableRefreshTokens && r.EncryptionKey == "" {
-				return errors.New("you have not specified a encryption key for encoding the session state")
+				return errors.New("you have not specified an encryption key for encoding the session state")
 			}
 			if r.EnableRefreshTokens && (len(r.EncryptionKey) != 16 && len(r.EncryptionKey) != 32) {
 				return fmt.Errorf("the encryption key (%d) must be either 16 or 32 characters for AES-128/AES-256 selection", len(r.EncryptionKey))

@@ -25,7 +25,7 @@
 Keycloak-proxy is a proxy service which at the risk of stating the obvious integrates with the [Keycloak](https://github.com/keycloak/keycloak) authentication service. Although technically the service has no dependency on Keycloak itself and would quite happily work with any OpenID provider. The service supports both access tokens in browser cookie or bearer tokens.
 
 ```shell
-[jest@starfury keycloak-proxy]$ bin/keycloak-proxy --help
+[jest@starfury keycloak-proxy]$ bin/keycloak-proxy help
 NAME:
    keycloak-proxy - is a proxy using the keycloak service for auth and authorization
 
@@ -33,7 +33,7 @@ USAGE:
    keycloak-proxy [options]
 
 VERSION:
-   v2.1.0 (git+sha: f74c713)
+   v2.1.0 (git+sha: 960c2e5-dirty, built: 25/04/2017)
 
 AUTHOR:
    Rohith <gambol99@gmail.com>
@@ -55,6 +55,7 @@ GLOBAL OPTIONS:
    --upstream-url value                url for the upstream endpoint you wish to proxy [$PROXY_UPSTREAM_URL]
    --resources value                   list of resources 'uri=/admin|methods=GET,PUT|roles=role1,role2'
    --headers value                     custom headers to the upstream request, key=value
+   --enable-encrypted-token            indicates you want the access token encrypted (default: false)
    --enable-logging                    enable http logging of the requests (default: false)
    --enable-json-logging               switch on json logging rather than text (default: false)
    --enable-forwarding                 enables the forwarding proxy mode, signing outbound request (default: false)
@@ -230,13 +231,13 @@ Note the HTTP routing rules following the guidelines from [echo](https://echo.la
 
 Although the role extensions do require a Keycloak IDP or at the very least a IDP that produces a token which contains roles, there's nothing stopping you from using it against any OpenID providers, such as Google. Go to the Google Developers Console and create a new application *(via "Enable and Manage APIs -> Credentials)*. Once you've created the application, take the client id, secret and make sure you've added the callback url to the application scope *(using the default this would be http://127.0.0.1:3000/oauth/callback)*
 
-``` shell
+```shell
 bin/keycloak-proxy \
-    --discovery-url=https://accounts.google.com/.well-known/openid-configuration \
-    --client-id=<CLIENT_ID> \
-    --client-secret=<CLIENT_SECRET> \
-    --resources="uri=/*" \
-    --verbose=true
+  --discovery-url=https://accounts.google.com/.well-known/openid-configuration \
+  --client-id=<CLIENT_ID> \
+  --client-secret=<CLIENT_SECRET> \
+  --resources="uri=/*" \
+  --verbose=true
 ```
 
 Open a browser an go to http://127.0.0.1:3000 and you should be redirected to Google for authenticate and back the application when done and you should see something like the below.
@@ -259,7 +260,6 @@ Example setup:
 You have collection of micro-services which are permitted to speak to one another; you've already setup the credentials, roles, clients etc in Keycloak, providing granular role controls over issue tokens.
 
 ```YAML
-# kubernetes pod example
 - name: keycloak-proxy
   image: quay.io/gambol99/keycloak-proxy:latest
   args:
@@ -287,7 +287,7 @@ Receiver side you could setup the keycloak-proxy (--no=redirects=true) and permi
 
 #### **Forwarding Signing HTTPS Connect**
 
-Handling HTTPS requires man in the middling the TLS connection. By default if no -tls-ca-cert and -tls-ca-key is provided the proxy will use the default certificate. If you wish to verify the trust, you'll need to generate a CA, for example
+Handling HTTPS requires man in the middling the TLS connection. By default if no -tls-ca-cert and -tls-ca-key is provided the proxy will use the default certificate. If you wish to verify the trust, you'll need to generate a CA, for example.
 
 ```shell
 [jest@starfury keycloak-proxy]$ openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout ca.key -out ca.pem
@@ -311,6 +311,10 @@ The proxy supports http listener, though the only real requirement for this woul
 --enable-security-filter=true  # is required for the https redirect
 --enable-https-redirection
 ```
+
+#### **Access Token Encryption**
+
+By default the session token *(i.e. access/id token)* is placed into a cookie in plaintext. If prefer you to encrypt the session cookie using --enable-encrypted-token and --encryption-key options. Note, the access token forwarded in the X-Auth-Token header to upstream is unaffected.
 
 #### **Upstream Headers**
 

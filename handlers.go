@@ -147,11 +147,9 @@ func (r *oauthProxy) oauthCallbackHandler(cx echo.Context) error {
 		return cx.NoContent(http.StatusBadRequest)
 	}
 
-	// step: create a oauth client
 	client, err := r.getOAuthClient(r.getRedirectionURL(cx))
 	if err != nil {
 		log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to create a oauth2 client")
-
 		return cx.NoContent(http.StatusInternalServerError)
 	}
 
@@ -159,7 +157,6 @@ func (r *oauthProxy) oauthCallbackHandler(cx echo.Context) error {
 	resp, err := exchangeAuthenticationCode(client, code)
 	if err != nil {
 		log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to exchange code for access token")
-
 		return r.accessForbidden(cx)
 	}
 
@@ -167,14 +164,6 @@ func (r *oauthProxy) oauthCallbackHandler(cx echo.Context) error {
 	token, identity, err := parseToken(resp.IDToken)
 	if err != nil {
 		log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to parse id token for identity")
-
-		return r.accessForbidden(cx)
-	}
-
-	// step: verify the token is valid
-	if err = verifyToken(r.client, token); err != nil {
-		log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to verify the id token")
-
 		return r.accessForbidden(cx)
 	}
 
@@ -187,6 +176,21 @@ func (r *oauthProxy) oauthCallbackHandler(cx echo.Context) error {
 		identity = id
 	}
 
+	// step: check the access token is valid
+	if err = verifyToken(r.client, token); err != nil {
+		log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to verify the id token")
+		return r.accessForbidden(cx)
+	}
+	accessToken := token.Encode()
+
+	// step: are we encrypting the access token?
+	if r.config.EnableEncryptedToken {
+		if accessToken, err = encodeText(accessToken, r.config.EncryptionKey); err != nil {
+			log.WithFields(log.Fields{"error": err.Error()}).Error("unable to encode the access token")
+			return cx.NoContent(http.StatusInternalServerError)
+		}
+	}
+
 	log.WithFields(log.Fields{
 		"email":    identity.Email,
 		"expires":  identity.ExpiresAt.Format(time.RFC3339),
@@ -195,21 +199,19 @@ func (r *oauthProxy) oauthCallbackHandler(cx echo.Context) error {
 
 	// step: does the response has a refresh token and we are NOT ignore refresh tokens?
 	if r.config.EnableRefreshTokens && resp.RefreshToken != "" {
-		// step: encrypt the refresh token
-		encrypted, err := encodeText(resp.RefreshToken, r.config.EncryptionKey)
+		var encrypted string
+		encrypted, err = encodeText(resp.RefreshToken, r.config.EncryptionKey)
 		if err != nil {
 			log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to encrypt the refresh token")
-
 			return cx.NoContent(http.StatusInternalServerError)
 		}
 
 		// drop in the access token - cookie expiration = access token
-		r.dropAccessTokenCookie(cx.Request(), cx.Response().Writer, token.Encode(),
-			r.getAccessCookieExpiration(token, resp.RefreshToken))
+		r.dropAccessTokenCookie(cx.Request(), cx.Response().Writer, accessToken, r.getAccessCookieExpiration(token, resp.RefreshToken))
 
 		switch r.useStore() {
 		case true:
-			if err := r.StoreRefreshToken(token, encrypted); err != nil {
+			if err = r.StoreRefreshToken(token, encrypted); err != nil {
 				log.WithFields(log.Fields{"error": err.Error()}).Warnf("failed to save the refresh token in the store")
 			}
 		default:
@@ -222,7 +224,7 @@ func (r *oauthProxy) oauthCallbackHandler(cx echo.Context) error {
 			}
 		}
 	} else {
-		r.dropAccessTokenCookie(cx.Request(), cx.Response().Writer, token.Encode(), time.Until(identity.ExpiresAt))
+		r.dropAccessTokenCookie(cx.Request(), cx.Response().Writer, accessToken, time.Until(identity.ExpiresAt))
 	}
 
 	// step: decode the state variable
@@ -249,8 +251,6 @@ func (r *oauthProxy) loginHandler(cx echo.Context) error {
 		if !r.config.EnableLoginHandler {
 			return "attempt to login when login handler is disabled", http.StatusNotImplemented, errors.New("login handler disabled")
 		}
-
-		// step: parse the client credentials
 		username := cx.Request().PostFormValue("username")
 		password := cx.Request().PostFormValue("password")
 		if username == "" || password == "" {
@@ -271,7 +271,6 @@ func (r *oauthProxy) loginHandler(cx echo.Context) error {
 			return "unable to request the access token via grant_type 'password'", http.StatusInternalServerError, err
 		}
 
-		// step: parse the token
 		_, identity, err := parseToken(token.AccessToken)
 		if err != nil {
 			return "unable to decode the access token", http.StatusNotImplemented, err
@@ -306,7 +305,6 @@ func emptyHandler(cx echo.Context) error {
 	return nil
 }
 
-//
 // logoutHandler performs a logout
 //  - if it's just a access token, the cookie is deleted
 //  - if the user has a refresh token, the token is invalidated by the provider
@@ -315,13 +313,11 @@ func emptyHandler(cx echo.Context) error {
 func (r *oauthProxy) logoutHandler(cx echo.Context) error {
 	// the user can specify a url to redirect the back
 	redirectURL := cx.QueryParam("redirect")
-
 	// step: drop the access token
 	user, err := r.getIdentity(cx.Request())
 	if err != nil {
 		return cx.NoContent(http.StatusBadRequest)
 	}
-
 	// step: can either use the id token or the refresh token
 	identityToken := user.token.Encode()
 	if refresh, err := r.retrieveRefreshToken(cx.Request(), user); err == nil {
@@ -390,7 +386,6 @@ func (r *oauthProxy) logoutHandler(cx echo.Context) error {
 			}).Errorf("invalid response from revocation endpoint")
 		}
 	}
-
 	// step: should we redirect the user
 	if redirectURL != "" {
 		return r.redirectToURL(redirectURL, cx)
@@ -426,7 +421,6 @@ func (r *oauthProxy) tokenHandler(cx echo.Context) error {
 // healthHandler is a health check handler for the service
 func (r *oauthProxy) healthHandler(cx echo.Context) error {
 	cx.Response().Writer.Header().Set(versionHeader, getVersion())
-
 	return cx.String(http.StatusOK, "OK\n")
 }
 

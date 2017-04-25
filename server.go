@@ -200,6 +200,10 @@ func (r *oauthProxy) createReverseProxy() error {
 	if r.config.RedirectionURL == "" {
 		log.Warnf("no redirection url has been set, will use host headers")
 	}
+	if r.config.EnableEncryptedToken {
+		log.Info("session access tokens will be encrypted")
+	}
+
 	engine.Use(r.proxyMiddleware())
 
 	return nil

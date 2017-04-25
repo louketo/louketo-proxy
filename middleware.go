@@ -97,8 +97,6 @@ func (r *oauthProxy) metricsMiddleware() echo.MiddlewareFunc {
 		},
 		[]string{"code", "method"},
 	)
-
-	// step: register the metric with prometheus
 	prometheus.MustRegisterOrGet(statusMetrics)
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -118,19 +116,15 @@ func (r *oauthProxy) authenticationMiddleware(resource *Resource) echo.Middlewar
 			// step: grab the user identity from the request
 			user, err := r.getIdentity(cx.Request())
 			if err != nil {
-				log.WithFields(log.Fields{
-					"error": err.Error(),
-				}).Errorf("no session found in request, redirecting for authorization")
+				log.WithFields(log.Fields{"error": err.Error()}).Errorf("no session found in request, redirecting for authorization")
 
 				return r.redirectToAuthorization(cx)
 			}
-			// step: inject the user into the context
 			cx.Set(userContextName, user)
 
 			// step: skip if we are running skip-token-verification
 			if r.config.SkipTokenVerification {
 				log.Warnf("skip token verification enabled, skipping verification - TESTING ONLY")
-
 				if user.isExpired() {
 					log.WithFields(log.Fields{
 						"client_ip":  clientIP,
@@ -223,9 +217,8 @@ func (r *oauthProxy) authenticationMiddleware(resource *Resource) echo.Middlewar
 							}
 						}(user.token, token, refresh)
 					}
-					// step: update the with the new access token
+					// update the with the new access token and inject into the context
 					user.token = token
-					// step: inject the user into the context
 					cx.Set(userContextName, user)
 				}
 			}
@@ -247,18 +240,6 @@ func (r *oauthProxy) admissionMiddleware(resource *Resource) echo.MiddlewareFunc
 				return nil
 			}
 			user := cx.Get(userContextName).(*userContext)
-
-			// step: check the audience for the token is us
-			if r.config.ClientID != "" && !user.isAudience(r.config.ClientID) {
-				log.WithFields(log.Fields{
-					"client_id":  r.config.ClientID,
-					"email":      user.email,
-					"expired_on": user.expiresAt.String(),
-					"issuer":     user.audience,
-				}).Warnf("access token audience is not us, redirecting back for authentication")
-
-				return r.accessForbidden(cx)
-			}
 
 			// step: we need to check the roles
 			if roles := len(resource.Roles); roles > 0 {
@@ -336,8 +317,6 @@ func (r *oauthProxy) headersMiddleware(custom []string) echo.MiddlewareFunc {
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(cx echo.Context) error {
-
-			// step: retrieve the user context if any
 			if user := cx.Get(userContextName); user != nil {
 				id := user.(*userContext)
 				cx.Request().Header.Set("X-Auth-Email", id.email)
@@ -352,7 +331,6 @@ func (r *oauthProxy) headersMiddleware(custom []string) echo.MiddlewareFunc {
 				if r.config.EnableAuthorizationHeader {
 					cx.Request().Header.Set("Authorization", fmt.Sprintf("Bearer %s", id.token.Encode()))
 				}
-
 				// step: inject any custom claims
 				for claim, header := range customClaims {
 					if claim, found := id.claims[claim]; found {

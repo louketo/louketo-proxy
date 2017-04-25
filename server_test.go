@@ -89,7 +89,7 @@ func TestReverseProxyHeaders(t *testing.T) {
 	signed, _ := p.idp.signToken(token.claims)
 	requests := []fakeRequest{
 		{
-			URI:           fakeAuthAllURL,
+			URI:           "/auth_all/test",
 			RawToken:      signed.Encode(),
 			ExpectedProxy: true,
 			ExpectedProxyHeaders: map[string]string{
@@ -191,6 +191,28 @@ func TestProxyProtocol(t *testing.T) {
 			ExpectedProxy: true,
 			ExpectedProxyHeaders: map[string]string{
 				"X-Forwarded-For": "189.10.10.1",
+			},
+			ExpectedCode: http.StatusOK,
+		},
+	}
+	newFakeProxy(c).RunTests(t, requests)
+}
+
+func TestTokenEncryption(t *testing.T) {
+	c := newFakeKeycloakConfig()
+	c.EnableEncryptedToken = true
+	c.EncryptionKey = "US36S5kubc4BXbfzCIKTQcTzG6lvixVv"
+	requests := []fakeRequest{
+		{
+			URI:           "/auth_all/test",
+			Redirects:     true,
+			HasLogin:      true,
+			ExpectedProxy: true,
+			ExpectedProxyHeaders: map[string]string{
+				"X-Auth-Email":    "gambol99@gmail.com",
+				"X-Auth-Userid":   "rjayawardene",
+				"X-Auth-Username": "rjayawardene",
+				"X-Forwarded-For": "127.0.0.1",
 			},
 			ExpectedCode: http.StatusOK,
 		},

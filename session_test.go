@@ -45,11 +45,6 @@ func TestGetIndentity(t *testing.T) {
 				Header: http.Header{},
 			},
 		},
-		{
-			Request: &http.Request{
-				Header: http.Header{},
-			},
-		},
 	}
 
 	for i, c := range testCases {
