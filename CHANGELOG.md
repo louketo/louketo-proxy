@@ -12,6 +12,7 @@ FEATURES
 * the order of the resources are no longer important, the framework will handle the routing
 * improved the overall spec of the proxy by removing URL inspection and prefix checking
 * removed the CORS implementation and using the default echo middles, which is more compliant
+* added the --enable-encrypted-token option to enable encrypting the access token:wq
 
 BREAKING CHANGES:
 * the proxy no longer uses prefixes for resources, if you wish to use wildcard urls you need

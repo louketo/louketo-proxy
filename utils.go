@@ -67,7 +67,6 @@ var (
 
 // readConfigFile reads and parses the configuration file
 func readConfigFile(filename string, config *Config) error {
-	// step: read in the contents of the file
 	content, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return err
