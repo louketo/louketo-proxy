@@ -22,7 +22,6 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -90,17 +89,16 @@ func encryptDataBlock(plaintext, key []byte) ([]byte, error) {
 	if err != nil {
 		return []byte{}, err
 	}
-
-	cipherText := make([]byte, aes.BlockSize+len(plaintext))
-	iv := cipherText[:aes.BlockSize]
-	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
 		return []byte{}, err
 	}
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
+		return nil, err
+	}
 
-	stream := cipher.NewCFBEncrypter(block, iv)
-	stream.XORKeyStream(cipherText[aes.BlockSize:], plaintext)
-
-	return cipherText, nil
+	return gcm.Seal(nonce, nonce, plaintext, nil), nil
 }
 
 // decryptDataBlock decrypts some cipher text
@@ -109,21 +107,17 @@ func decryptDataBlock(cipherText, key []byte) ([]byte, error) {
 	if err != nil {
 		return []byte{}, err
 	}
-
-	// The IV needs to be unique, but not secure. Therefore it's common to
-	// include it at the beginning of the ciphertext.
-	if len(cipherText) < aes.BlockSize {
-		return []byte{}, errors.New("failed to descrypt the ciphertext, the text is too short")
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return []byte{}, err
 	}
+	nonceSize := gcm.NonceSize()
+	if len(cipherText) < nonceSize {
+		return nil, errors.New("failed to decrypt the ciphertext, the text is too short")
+	}
+	nonce, input := cipherText[:nonceSize], cipherText[nonceSize:]
 
-	iv := cipherText[:aes.BlockSize]
-	cipherText = cipherText[aes.BlockSize:]
-	stream := cipher.NewCFBDecrypter(block, iv)
-
-	// XORKeyStream can work in-place if the two arguments are the same.
-	stream.XORKeyStream(cipherText, cipherText)
-
-	return cipherText, nil
+	return gcm.Open(nil, nonce, input, nil)
 }
 
 // encodeText encodes the session state information into a value for a cookie to consume
@@ -133,17 +127,15 @@ func encodeText(plaintext string, key string) (string, error) {
 		return "", err
 	}
 
-	return base64.StdEncoding.EncodeToString(cipherText), nil
+	return hex.EncodeToString(cipherText), nil
 }
 
 // decodeText decodes the session state cookie value
 func decodeText(state, key string) (string, error) {
-	// step: decode the base64 encrypted cookie
-	cipherText, err := base64.StdEncoding.DecodeString(state)
+	cipherText, err := hex.DecodeString(state)
 	if err != nil {
 		return "", err
 	}
-
 	// step: decrypt the cookie back in the expiration|token
 	encoded, err := decryptDataBlock(cipherText, []byte(key))
 	if err != nil {
