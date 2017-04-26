@@ -89,7 +89,7 @@ func TestReverseProxyHeaders(t *testing.T) {
 	signed, _ := p.idp.signToken(token.claims)
 	requests := []fakeRequest{
 		{
-			URI:           fakeAuthAllURL,
+			URI:           "/auth_all/test",
 			RawToken:      signed.Encode(),
 			ExpectedProxy: true,
 			ExpectedProxyHeaders: map[string]string{
@@ -198,6 +198,34 @@ func TestProxyProtocol(t *testing.T) {
 	newFakeProxy(c).RunTests(t, requests)
 }
 
+func TestTokenEncryption(t *testing.T) {
+	c := newFakeKeycloakConfig()
+	c.EnableEncryptedToken = true
+	c.EncryptionKey = "US36S5kubc4BXbfzCIKTQcTzG6lvixVv"
+	requests := []fakeRequest{
+		{
+			URI:           "/auth_all/test",
+			HasLogin:      true,
+			ExpectedProxy: true,
+			Redirects:     true,
+			ExpectedProxyHeaders: map[string]string{
+				"X-Auth-Email":    "gambol99@gmail.com",
+				"X-Auth-Userid":   "rjayawardene",
+				"X-Auth-Username": "rjayawardene",
+				"X-Forwarded-For": "127.0.0.1",
+			},
+			ExpectedCode: http.StatusOK,
+		},
+		// the token must be encrypted
+		{
+			URI:          "/auth_all/test",
+			HasToken:     true,
+			ExpectedCode: http.StatusUnauthorized,
+		},
+	}
+	newFakeProxy(c).RunTests(t, requests)
+}
+
 func newTestService() string {
 	_, _, u := newTestProxyService(nil)
 	return u
@@ -255,7 +283,6 @@ func newFakeKeycloakConfig() *Config {
 		Listen:            "127.0.0.1:0",
 		EnableAuthorizationHeader: true,
 		EnableLoginHandler:        true,
-		EncryptionKey:             "AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j",
 		Scopes:                    []string{},
 		Resources: []*Resource{
 			{

@@ -31,6 +31,11 @@ func (r *oauthProxy) getIdentity(req *http.Request) (*userContext, error) {
 	if err != nil {
 		return nil, err
 	}
+	if r.config.EnableEncryptedToken {
+		if access, err = decodeText(access, r.config.EncryptionKey); err != nil {
+			return nil, ErrDecryption
+		}
+	}
 	token, err := jose.ParseJWT(access)
 	if err != nil {
 		return nil, err
