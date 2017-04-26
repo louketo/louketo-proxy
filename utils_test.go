@@ -129,6 +129,53 @@ func TestEncodeText(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+var (
+	fakePlainText = []byte(`nFlhnhwRzC9uJ9mjhR0PQezUpIiDlU9ASLqH1KIKFhBZZrMZfnAAdHdgKs2OJoni8cTSQ
+	JxkaNpboZ6hnrMytlw5kf0biF7dLTU885uHIGkUIRy75hx6BaTEEhbN36qVTxediEHd6xeBPS3qpJ7riO6J
+	EeaQr1rroDL0LvmDyB6Zds4LdVQEmtUueusc7jkBz7gJ12vnTHIxviZM5rzcq4tyCbZO7Kb37RqZg5kbYGK
+	PfErhUwUIin7jsNVE7coB`)
+	fakeCipherText = []byte("IF0cfjWXNO0cVZYmfHLv+8R4P4/7seNcIX8jfwy/x/vLPEb9nITdwY7d0zfiQaGTwTV9s5yGgxKT9Ktv6PAjbCR/7M1KjMmlIbKh/PYmEltFxJJTXC4CYrwTiFkfvhad3Zv7pcXk0yLNTX9+V0ZogT629fXdujRzyUdi71t/q1iEE2MM/4EqkBBHnBtW52Rb1Gad8dxAHXA77iWJB/GnUZoGS9eanjEDgU2oSQJicFoFCJ6FXpStUjLuTThB9XIvpClAqQ2P6t7bagN4Zg9XKo5NlftLPflj4alEhpOGcUgCNws85x/95AEUsSlK0pEG059CMIR9K8eRDCMCNqWtp10aHH+b7Jf3gGfWxLhGnD2EiG49Pzc=")
+	fakeKey        = []byte("u3K0eKsmGl76jY1buzexwYoRRLLQrQck")
+)
+
+/*
+func TestEncryptedText(t *testing.T) {
+	s, err := encodeText(string(fakePlainText), string(fakeKey))
+	require.NoError(t, err)
+	require.NotEmpty(t, s)
+	d, err := decodeText(s, string(fakeKey))
+	require.NoError(t, err)
+	require.NotEmpty(t, d)
+	assert.Equal(t, string(fakePlainText), d)
+	fmt.Printf("Encoded: '%s'\n", s)
+	fmt.Printf("Decoded: '%s'\n", d)
+}
+*/
+
+func BenchmarkEncryptDataBlock(b *testing.B) {
+	for n := 0; n < b.N; n++ {
+		encryptDataBlock(fakePlainText, fakeKey)
+	}
+}
+
+func BenchmarkEncodeText(b *testing.B) {
+	text := string(fakePlainText)
+	key := string(fakeKey)
+	for n := 0; n < b.N; n++ {
+		encodeText(text, key)
+	}
+}
+
+func BenchmarkDecodeText(b *testing.B) {
+	t := string(fakeCipherText)
+	k := string(fakeKey)
+	for n := 0; n < b.N; n++ {
+		if _, err := decodeText(t, k); err != nil {
+			b.FailNow()
+		}
+	}
+}
+
 func TestDecodeText(t *testing.T) {
 	fakeKey := "HYLNt2JSzD7Lpz0djTRudmlOpbwx1oHB"
 	fakeText := "12245325632323263762"
@@ -147,11 +194,8 @@ func TestDecodeText(t *testing.T) {
 
 func TestFindCookie(t *testing.T) {
 	cookies := []*http.Cookie{
-		{
-			Name: "cookie_there",
-		},
+		{Name: "cookie_there"},
 	}
-
 	assert.NotNil(t, findCookie("cookie_there", cookies))
 	assert.Nil(t, findCookie("not_there", cookies))
 }
