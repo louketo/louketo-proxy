@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewOpenIDClient(t *testing.T) {
@@ -134,7 +135,7 @@ var (
 	JxkaNpboZ6hnrMytlw5kf0biF7dLTU885uHIGkUIRy75hx6BaTEEhbN36qVTxediEHd6xeBPS3qpJ7riO6J
 	EeaQr1rroDL0LvmDyB6Zds4LdVQEmtUueusc7jkBz7gJ12vnTHIxviZM5rzcq4tyCbZO7Kb37RqZg5kbYGK
 	PfErhUwUIin7jsNVE7coB`)
-	fakeCipherText = []byte("IF0cfjWXNO0cVZYmfHLv+8R4P4/7seNcIX8jfwy/x/vLPEb9nITdwY7d0zfiQaGTwTV9s5yGgxKT9Ktv6PAjbCR/7M1KjMmlIbKh/PYmEltFxJJTXC4CYrwTiFkfvhad3Zv7pcXk0yLNTX9+V0ZogT629fXdujRzyUdi71t/q1iEE2MM/4EqkBBHnBtW52Rb1Gad8dxAHXA77iWJB/GnUZoGS9eanjEDgU2oSQJicFoFCJ6FXpStUjLuTThB9XIvpClAqQ2P6t7bagN4Zg9XKo5NlftLPflj4alEhpOGcUgCNws85x/95AEUsSlK0pEG059CMIR9K8eRDCMCNqWtp10aHH+b7Jf3gGfWxLhGnD2EiG49Pzc=")
+	fakeCipherText = []byte("149e576b52d64bea996e161e4ad0079a95923ee945e93bfe29a5dd3ced347b3c14ea0d58c0d02a5d503cf36cdbf959af4d04e654c8d46c4367903c785867097ea08185602544c6daac59fd8a8a44d83afecc71a1d4ead199bb64bd276f24552c9001fc76113d4ed9838eba6728e0b0e31444a47157d02f40a9ae708ad2f10c271454dcedbecc1455357826962115e88c8230a44bd81d264a3e6e1cf7d0221faa2076f934c1e26f50e6edfbb3c16bc51f826d53cc01e40a755c546df918714cef9743d4ff6355937ee1214eef7925dc204165feb1ee0a926294bf91ed2c54a6ac4764d68b332896bc70379b69029a22966ee0e535a496c4f8eef8399ad4f7011a1b98cd45deed134d791185e5b9f2dccfbd14da3eb618bef4dba52590e96ceb3e9e39")
 	fakeKey        = []byte("u3K0eKsmGl76jY1buzexwYoRRLLQrQck")
 )
 
@@ -181,10 +182,7 @@ func TestDecodeText(t *testing.T) {
 	fakeText := "12245325632323263762"
 
 	encrypted, err := encodeText(fakeText, fakeKey)
-	if !assert.NoError(t, err) {
-		t.Error("the encryptStateSession() should not have handed an error")
-		t.FailNow()
-	}
+	require.NoError(t, err)
 	assert.NotEmpty(t, encrypted)
 
 	decoded, _ := decodeText(encrypted, fakeKey)
