@@ -120,7 +120,7 @@ format:
 
 bench:
 	@echo "--> Running go bench"
-	@godep go test -v -bench=.
+	@godep go test -bench=.
 
 coverage:
 	@echo "--> Running go coverage"
