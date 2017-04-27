@@ -22,7 +22,6 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -44,19 +43,30 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-oidc/jose"
 	"github.com/coreos/go-oidc/oidc"
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo"
 	"github.com/urfave/cli"
 	"gopkg.in/yaml.v2"
 )
 
 var (
-	httpMethodRegex = regexp.MustCompile("^(ANY|GET|POST|DELETE|PATCH|HEAD|PUT|TRACE)$")
-	symbolsFilter   = regexp.MustCompilePOSIX("[_$><\\[\\].,\\+-/'%^&*()!\\\\]+")
+	allHTTPMethods = []string{
+		echo.DELETE,
+		echo.GET,
+		echo.HEAD,
+		echo.OPTIONS,
+		echo.PATCH,
+		echo.POST,
+		echo.PUT,
+		echo.TRACE,
+	}
+)
+
+var (
+	symbolsFilter = regexp.MustCompilePOSIX("[_$><\\[\\].,\\+-/'%^&*()!\\\\]+")
 )
 
 // readConfigFile reads and parses the configuration file
 func readConfigFile(filename string, config *Config) error {
-	// step: read in the contents of the file
 	content, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return err
@@ -78,17 +88,16 @@ func encryptDataBlock(plaintext, key []byte) ([]byte, error) {
 	if err != nil {
 		return []byte{}, err
 	}
-
-	cipherText := make([]byte, aes.BlockSize+len(plaintext))
-	iv := cipherText[:aes.BlockSize]
-	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
 		return []byte{}, err
 	}
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
+		return nil, err
+	}
 
-	stream := cipher.NewCFBEncrypter(block, iv)
-	stream.XORKeyStream(cipherText[aes.BlockSize:], plaintext)
-
-	return cipherText, nil
+	return gcm.Seal(nonce, nonce, plaintext, nil), nil
 }
 
 // decryptDataBlock decrypts some cipher text
@@ -97,21 +106,17 @@ func decryptDataBlock(cipherText, key []byte) ([]byte, error) {
 	if err != nil {
 		return []byte{}, err
 	}
-
-	// The IV needs to be unique, but not secure. Therefore it's common to
-	// include it at the beginning of the ciphertext.
-	if len(cipherText) < aes.BlockSize {
-		return []byte{}, errors.New("failed to descrypt the ciphertext, the text is too short")
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return []byte{}, err
 	}
+	nonceSize := gcm.NonceSize()
+	if len(cipherText) < nonceSize {
+		return nil, errors.New("failed to decrypt the ciphertext, the text is too short")
+	}
+	nonce, input := cipherText[:nonceSize], cipherText[nonceSize:]
 
-	iv := cipherText[:aes.BlockSize]
-	cipherText = cipherText[aes.BlockSize:]
-	stream := cipher.NewCFBDecrypter(block, iv)
-
-	// XORKeyStream can work in-place if the two arguments are the same.
-	stream.XORKeyStream(cipherText, cipherText)
-
-	return cipherText, nil
+	return gcm.Open(nil, nonce, input, nil)
 }
 
 // encodeText encodes the session state information into a value for a cookie to consume
@@ -121,17 +126,15 @@ func encodeText(plaintext string, key string) (string, error) {
 		return "", err
 	}
 
-	return base64.StdEncoding.EncodeToString(cipherText), nil
+	return hex.EncodeToString(cipherText), nil
 }
 
 // decodeText decodes the session state cookie value
 func decodeText(state, key string) (string, error) {
-	// step: decode the base64 encrypted cookie
-	cipherText, err := base64.StdEncoding.DecodeString(state)
+	cipherText, err := hex.DecodeString(state)
 	if err != nil {
 		return "", err
 	}
-
 	// step: decrypt the cookie back in the expiration|token
 	encoded, err := decryptDataBlock(cipherText, []byte(key))
 	if err != nil {
@@ -141,18 +144,19 @@ func decodeText(state, key string) (string, error) {
 	return string(encoded), nil
 }
 
-// createOpenIDClient initializes the openID configuration, note: the redirection url is deliberately left blank
+// newOpenIDClient initializes the openID configuration, note: the redirection url is deliberately left blank
 // in order to retrieve it from the host header on request
-func createOpenIDClient(cfg *Config) (*oidc.Client, oidc.ProviderConfig, error) {
+func newOpenIDClient(cfg *Config) (*oidc.Client, oidc.ProviderConfig, *http.Client, error) {
 	var err error
-	var providerConfig oidc.ProviderConfig
+	var config oidc.ProviderConfig
 
 	// step: fix up the url if required, the underlining lib will add the .well-known/openid-configuration to the discovery url for us.
 	if strings.HasSuffix(cfg.DiscoveryURL, "/.well-known/openid-configuration") {
 		cfg.DiscoveryURL = strings.TrimSuffix(cfg.DiscoveryURL, "/.well-known/openid-configuration")
 	}
+
 	// step: create a idp http client
-	providerHTTPClient := &http.Client{
+	hc := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: cfg.SkipOpenIDProviderTLSVerify,
@@ -165,8 +169,8 @@ func createOpenIDClient(cfg *Config) (*oidc.Client, oidc.ProviderConfig, error) 
 	completeCh := make(chan bool)
 	go func() {
 		for {
-			log.Infof("attempting to retrieve the openid configuration from the discovery url: %s", cfg.DiscoveryURL)
-			if providerConfig, err = oidc.FetchProviderConfig(providerHTTPClient, cfg.DiscoveryURL); err == nil {
+			log.Infof("attempting to retrieve openid configuration from discovery url: %s", cfg.DiscoveryURL)
+			if config, err = oidc.FetchProviderConfig(hc, cfg.DiscoveryURL); err == nil {
 				break // break and complete
 			}
 			log.Warnf("failed to get provider configuration from discovery url: %s, %s", cfg.DiscoveryURL, err)
@@ -177,36 +181,34 @@ func createOpenIDClient(cfg *Config) (*oidc.Client, oidc.ProviderConfig, error) 
 	// step: wait for timeout or successful retrieval
 	select {
 	case <-time.After(30 * time.Second):
-		return nil, oidc.ProviderConfig{}, errors.New("failed to retrieve the provider configuration from discovery url")
+		return nil, config, nil, errors.New("failed to retrieve the provider configuration from discovery url")
 	case <-completeCh:
 		log.Infof("successfully retrieved the openid configuration from the discovery url: %s", cfg.DiscoveryURL)
 	}
 
 	client, err := oidc.NewClient(oidc.ClientConfig{
-		ProviderConfig: providerConfig,
+		ProviderConfig: config,
 		Credentials: oidc.ClientCredentials{
 			ID:     cfg.ClientID,
 			Secret: cfg.ClientSecret,
 		},
 		RedirectURL: fmt.Sprintf("%s/oauth/callback", cfg.RedirectionURL),
 		Scope:       append(cfg.Scopes, oidc.DefaultScope...),
-		HTTPClient:  providerHTTPClient,
+		HTTPClient:  hc,
 	})
 	if err != nil {
-		return nil, oidc.ProviderConfig{}, err
+		return nil, config, hc, err
 	}
 
 	// step: start the provider sync for key rotation
 	client.SyncProviderConfig(cfg.DiscoveryURL)
 
-	return client, providerConfig, nil
+	return client, config, hc, nil
 }
 
-//
 // decodeKeyPairs converts a list of strings (key=pair) to a map
-//
 func decodeKeyPairs(list []string) (map[string]string, error) {
-	kp := make(map[string]string, 0)
+	kp := make(map[string]string)
 
 	for _, x := range list {
 		items := strings.Split(x, "=")
@@ -219,46 +221,27 @@ func decodeKeyPairs(list []string) (map[string]string, error) {
 	return kp, nil
 }
 
-//
 // isValidHTTPMethod ensure this is a valid http method type
-//
 func isValidHTTPMethod(method string) bool {
-	return httpMethodRegex.MatchString(method)
+	for _, x := range allHTTPMethods {
+		if method == x {
+			return true
+		}
+	}
+
+	return false
 }
 
-//
-// cloneTLSConfig clones the tls configuration
-//
-func cloneTLSConfig(cfg *tls.Config) *tls.Config {
-	if cfg == nil {
-		return &tls.Config{}
+// defaultTo returns the value of the default
+func defaultTo(v, d string) string {
+	if v != "" {
+		return v
 	}
-	return &tls.Config{
-		Rand:                     cfg.Rand,
-		Time:                     cfg.Time,
-		Certificates:             cfg.Certificates,
-		NameToCertificate:        cfg.NameToCertificate,
-		GetCertificate:           cfg.GetCertificate,
-		RootCAs:                  cfg.RootCAs,
-		NextProtos:               cfg.NextProtos,
-		ServerName:               cfg.ServerName,
-		ClientAuth:               cfg.ClientAuth,
-		ClientCAs:                cfg.ClientCAs,
-		InsecureSkipVerify:       cfg.InsecureSkipVerify,
-		CipherSuites:             cfg.CipherSuites,
-		PreferServerCipherSuites: cfg.PreferServerCipherSuites,
-		SessionTicketsDisabled:   cfg.SessionTicketsDisabled,
-		SessionTicketKey:         cfg.SessionTicketKey,
-		ClientSessionCache:       cfg.ClientSessionCache,
-		MinVersion:               cfg.MinVersion,
-		MaxVersion:               cfg.MaxVersion,
-		CurvePreferences:         cfg.CurvePreferences,
-	}
+
+	return d
 }
 
-//
 // fileExists check if a file exists
-//
 func fileExists(filename string) bool {
 	if _, err := os.Stat(filename); err != nil {
 		if os.IsNotExist(err) {
@@ -269,9 +252,7 @@ func fileExists(filename string) bool {
 	return true
 }
 
-//
 // hasRoles checks the scopes are the same
-//
 func hasRoles(required, issued []string) bool {
 	for _, role := range required {
 		if !containedIn(role, issued) {
@@ -282,9 +263,7 @@ func hasRoles(required, issued []string) bool {
 	return true
 }
 
-//
 // containedIn checks if a value in a list of a strings
-//
 func containedIn(value string, list []string) bool {
 	for _, x := range list {
 		if x == value {
@@ -295,9 +274,7 @@ func containedIn(value string, list []string) bool {
 	return false
 }
 
-//
 // containsSubString checks if substring exists
-//
 func containsSubString(value string, list []string) bool {
 	for _, x := range list {
 		if strings.Contains(value, x) {
@@ -308,9 +285,7 @@ func containsSubString(value string, list []string) bool {
 	return false
 }
 
-//
 // tryDialEndpoint dials the upstream endpoint via plain
-//
 func tryDialEndpoint(location *url.URL) (net.Conn, error) {
 	switch dialAddress := dialAddress(location); location.Scheme {
 	case httpSchema:
@@ -323,34 +298,19 @@ func tryDialEndpoint(location *url.URL) (net.Conn, error) {
 	}
 }
 
-//
 // isUpgradedConnection checks to see if the request is requesting
-//
 func isUpgradedConnection(req *http.Request) bool {
-	if req.Header.Get(headerUpgrade) != "" {
-		return true
-	}
-
-	return false
+	return req.Header.Get(headerUpgrade) != ""
 }
 
-//
 // transferBytes transfers bytes between the sink and source
-//
 func transferBytes(src io.Reader, dest io.Writer, wg *sync.WaitGroup) (int64, error) {
 	defer wg.Done()
-	copied, err := io.Copy(dest, src)
-	if err != nil {
-		return copied, err
-	}
-
-	return copied, nil
+	return io.Copy(dest, src)
 }
 
-//
 // tryUpdateConnection attempt to upgrade the connection to a http pdy stream
-//
-func tryUpdateConnection(cx *gin.Context, endpoint *url.URL) error {
+func tryUpdateConnection(req *http.Request, writer http.ResponseWriter, endpoint *url.URL) error {
 	// step: dial the endpoint
 	tlsConn, err := tryDialEndpoint(endpoint)
 	if err != nil {
@@ -359,14 +319,14 @@ func tryUpdateConnection(cx *gin.Context, endpoint *url.URL) error {
 	defer tlsConn.Close()
 
 	// step: we need to hijack the underlining client connection
-	clientConn, _, err := cx.Writer.(http.Hijacker).Hijack()
+	clientConn, _, err := writer.(http.Hijacker).Hijack()
 	if err != nil {
 		return err
 	}
 	defer clientConn.Close()
 
 	// step: write the request to upstream
-	if err = cx.Request.Write(tlsConn); err != nil {
+	if err = req.Write(tlsConn); err != nil {
 		return err
 	}
 
@@ -380,9 +340,7 @@ func tryUpdateConnection(cx *gin.Context, endpoint *url.URL) error {
 	return nil
 }
 
-//
 // dialAddress extracts the dial address from the url
-//
 func dialAddress(location *url.URL) string {
 	items := strings.Split(location.Host, ":")
 	if len(items) != 2 {
@@ -397,9 +355,7 @@ func dialAddress(location *url.URL) string {
 	return location.Host
 }
 
-//
 // findCookie looks for a cookie in a list of cookies
-//
 func findCookie(name string, cookies []*http.Cookie) *http.Cookie {
 	for _, cookie := range cookies {
 		if cookie.Name == name {
@@ -410,9 +366,7 @@ func findCookie(name string, cookies []*http.Cookie) *http.Cookie {
 	return nil
 }
 
-//
 // toHeader is a helper method to play nice in the headers
-//
 func toHeader(v string) string {
 	var list []string
 
@@ -424,9 +378,7 @@ func toHeader(v string) string {
 	return strings.Join(list, "-")
 }
 
-//
 // capitalize capitalizes the first letter of a word
-//
 func capitalize(s string) string {
 	if s == "" {
 		return ""
@@ -436,9 +388,7 @@ func capitalize(s string) string {
 	return string(unicode.ToUpper(r)) + s[n:]
 }
 
-//
 // mergeMaps simples copies the keys from source to destination
-//
 func mergeMaps(dest, source map[string]string) map[string]string {
 	for k, v := range source {
 		dest[k] = v
@@ -447,9 +397,7 @@ func mergeMaps(dest, source map[string]string) map[string]string {
 	return dest
 }
 
-//
 // loadCA loads the certificate authority
-//
 func loadCA(cert, key string) (*tls.Certificate, error) {
 	caCert, err := ioutil.ReadFile(cert)
 	if err != nil {
@@ -471,26 +419,25 @@ func loadCA(cert, key string) (*tls.Certificate, error) {
 	return &ca, err
 }
 
-//
 // getWithin calculates a duration of x percent of the time period, i.e. something
 // expires in 1 hours, get me a duration within 80%
-//
-func getWithin(expires time.Time, in float64) time.Duration {
-	seconds := int(float64(expires.Sub(time.Now()).Seconds()) * in)
+func getWithin(expires time.Time, within float64) time.Duration {
+	left := expires.UTC().Sub(time.Now().UTC()).Seconds()
+	if left <= 0 {
+		return time.Duration(0)
+	}
+	seconds := int(left * within)
+
 	return time.Duration(seconds) * time.Second
 }
 
-//
 // getHashKey returns a hash of the encodes jwt token
-//
 func getHashKey(token *jose.JWT) string {
 	hash := md5.Sum([]byte(token.Encode()))
 	return hex.EncodeToString(hash[:])
 }
 
-//
 // printError display the command line usage and error
-//
 func printError(message string, args ...interface{}) *cli.ExitError {
 	return cli.NewExitError(fmt.Sprintf("[error] "+message, args...), 1)
 }

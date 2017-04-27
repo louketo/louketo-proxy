@@ -27,9 +27,10 @@ import (
 // newDefaultConfig returns a initialized config
 func newDefaultConfig() *Config {
 	return &Config{
-		Tags:                        make(map[string]string, 0),
-		MatchClaims:                 make(map[string]string, 0),
-		Headers:                     make(map[string]string, 0),
+		AccessTokenDuration:         time.Duration(720) * time.Hour,
+		Tags:                        make(map[string]string),
+		MatchClaims:                 make(map[string]string),
+		Headers:                     make(map[string]string),
 		UpstreamTimeout:             time.Duration(10) * time.Second,
 		UpstreamKeepaliveTimeout:    time.Duration(10) * time.Second,
 		EnableAuthorizationHeader:   true,
@@ -119,13 +120,16 @@ func (r *Config) isValid() error {
 					return errors.New("the security filter must be switch on for this feature: hostnames")
 				}
 			}
+			if r.EnableEncryptedToken && r.EncryptionKey == "" {
+				return errors.New("you have not specified an encryption key for encoding the access token")
+			}
 			if r.EnableRefreshTokens && r.EncryptionKey == "" {
-				return errors.New("you have not specified a encryption key for encoding the session state")
+				return errors.New("you have not specified an encryption key for encoding the session state")
 			}
 			if r.EnableRefreshTokens && (len(r.EncryptionKey) != 16 && len(r.EncryptionKey) != 32) {
 				return fmt.Errorf("the encryption key (%d) must be either 16 or 32 characters for AES-128/AES-256 selection", len(r.EncryptionKey))
 			}
-			if !r.NoRedirects && r.SecureCookie && !strings.HasPrefix(r.RedirectionURL, "https") {
+			if !r.NoRedirects && r.SecureCookie && r.RedirectionURL != "" && !strings.HasPrefix(r.RedirectionURL, "https") {
 				return errors.New("the cookie is set to secure but your redirection url is non-tls")
 			}
 			if r.StoreURL != "" {
@@ -153,18 +157,10 @@ func (r *Config) isValid() error {
 
 // hasCustomSignInPage checks if there is a custom sign in  page
 func (r *Config) hasCustomSignInPage() bool {
-	if r.SignInPage != "" {
-		return true
-	}
-
-	return false
+	return r.SignInPage != ""
 }
 
 // hasForbiddenPage checks if there is a custom forbidden page
 func (r *Config) hasCustomForbiddenPage() bool {
-	if r.ForbiddenPage != "" {
-		return true
-	}
-
-	return false
+	return r.ForbiddenPage != ""
 }

@@ -1,3 +1,64 @@
+#### **2.1.0**
+
+FIXES:
+* fixed the parsing of slices for command line arguments (i.e. --cors-origins etc)
+* fixed any accidental proxying on the /oauth or /debug URI
+* removed all references to the underlining web framework in tests
+* adding unit tests for proxy protocol and using the run() method [#PR214](https://github.com/gambol99/keycloak-proxy/pull/214)
+
+FEATURES
+* changed the routing engine from gin to echo
+* we now normalize all inbound URI before applying the protection middleware
+* the order of the resources are no longer important, the framework will handle the routing
+* improved the overall spec of the proxy by removing URL inspection and prefix checking
+* removed the CORS implementation and using the default echo middles, which is more compliant
+* added the --enable-encrypted-token option to enable encrypting the access token:wq
+
+BREAKING CHANGES:
+* the proxy no longer uses prefixes for resources, if you wish to use wildcard urls you need
+  to specify it, i.e. --resource=/ becomes --resource=/* or =admin/ becomes =admin/* or /admin*;
+  a full set of routing details can bt found at https://echo.labstack.com/guide/routing
+* removed the --enable-cors-global option, CORS is now handled the default echo middleware
+* changed option from log-requests -> enable-logging
+* changed option from json-format -> enable-json-logging
+
+#### **2.0.5 (unreleased)**
+
+FIXES:
+ * We normalize all urls before the protection middleware is applied [#PR202](https://github.com/gambol99/keycloak-proxy/pull/202)
+
+#### **2.0.4**
+
+FIXES:
+ * Fixes a bug in authentication, which permitted double slashed url entry [#PR200](https://github.com/gambol99/keycloak-proxy/pull/200)
+
+FEATURES:
+ * Grabbing the revocation-url from the idp config if user override is not specified [#PR193](https://github.com/gambol99/keycloak-proxy/pull/193)
+
+#### **2.0.3**
+
+FEATURES:
+ * Adding the PROXY_ENCRYPTION_KEY environment varable [#PR191](https://github.com/gambol99/keycloak-proxy/pull/191)
+
+#### **2.0.2**
+
+FEATURES:
+ * Adding the --enable-cors-global to switch on CORs header injects into every response [#PR174](https://github.com/gambol99/keycloak-proxy/pull/174)
+ * Adding the ability to reload the certificates when the change [#PR178](https://github.com/gambol99/keycloak-proxy/pull/178)
+ * Removing the requirement of a redirection-url, if none is specified it will use Host header or the X-Forwarded-Host if present [#PR183](https://github.com/gambol99/keycloak-proxy/pull/183)
+
+CHANGES:
+ * Updated the gin dependency to latest version and removed dependency in tests for gin [#PR181](https://github.com/gambol99/keycloak-proxy/pull/181)
+ * Updated to go-proxy to the latest version [#PR180](https://github.com/gambol99/keycloak-proxy/pull/180)
+ * Fixed up some spelling mistakes [#PR177](https://github.com/gambol99/keycloak-proxy/pull/177)
+ * Changed the CLI to use reflection of the config struct [#PR176](https://github.com/gambol99/keycloak-proxy/pull/176)
+ * Updated the docker base image to alpine:3.5 [#PR184](https://github.com/gambol99/keycloak-proxy/pull/184)
+ * Added a new options to control the access token duration [#PR188](https://github.com/gambol99/keycloak-proxy/pull/188)
+
+BUGS:
+ * Fixed the time.Duration flags in the reflection code [#PR173](https://github.com/gambol99/keycloak-proxy/pull/173)
+ * Fixed the environment variable type [#PR176](https://github.com/gambol99/keycloak-proxy/pull/176)
+ * Fixed the refresh tokens, the access token cookie was timing out too quickly ([#PR188](https://github.com/gambol99/keycloak-proxy/pull/188)
 
 #### **2.0.1**
 

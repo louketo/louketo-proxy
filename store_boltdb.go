@@ -34,9 +34,7 @@ var (
 	ErrNoBoltdbBucket = errors.New("the boltdb bucket does not exists")
 )
 
-//
 // A local file store used to hold the refresh tokens
-//
 type boltdbStore struct {
 	client *bolt.DB
 }
@@ -47,7 +45,7 @@ func newBoltDBStore(location *url.URL) (storage, error) {
 
 	log.Infof("creating the bolddb store, file: %s", path)
 	db, err := bolt.Open(path, 0600, &bolt.Options{
-		Timeout: time.Duration(10 * time.Second),
+		Timeout: 10 * time.Second,
 	})
 	if err != nil {
 		return nil, err
@@ -65,7 +63,7 @@ func newBoltDBStore(location *url.URL) (storage, error) {
 }
 
 // Set adds a token to the store
-func (r boltdbStore) Set(key, value string) error {
+func (r *boltdbStore) Set(key, value string) error {
 	log.WithFields(log.Fields{
 		"key":   key,
 		"value": value,
@@ -81,7 +79,7 @@ func (r boltdbStore) Set(key, value string) error {
 }
 
 // Get retrieves a token from the store
-func (r boltdbStore) Get(key string) (string, error) {
+func (r *boltdbStore) Get(key string) (string, error) {
 	log.WithFields(log.Fields{
 		"key": key,
 	}).Debugf("retrieving the key: %s from store", key)
@@ -100,7 +98,7 @@ func (r boltdbStore) Get(key string) (string, error) {
 }
 
 // Delete removes the key from the bucket
-func (r boltdbStore) Delete(key string) error {
+func (r *boltdbStore) Delete(key string) error {
 	log.WithFields(log.Fields{
 		"key": key,
 	}).Debugf("deleting the key: %s from store", key)
@@ -115,7 +113,7 @@ func (r boltdbStore) Delete(key string) error {
 }
 
 // Close closes of any open resources
-func (r boltdbStore) Close() error {
+func (r *boltdbStore) Close() error {
 	log.Infof("closing the resourcese for boltdb store")
 	return r.client.Close()
 }

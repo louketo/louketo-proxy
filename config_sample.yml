@@ -1,5 +1,4 @@
 
-
 # is the url for retrieve the openid configuration - normally the <server>/auth/realm/<realm_name>
 discovery-url: https://keycloak.example.com/auth/realms/commons
 # the client id for the 'client' application
@@ -12,9 +11,11 @@ listen: 127.0.0.1:3000
 # whether to request offline access and use a refresh token
 enable-refresh-tokens: true
 # log all incoming requests
-log-requests: true
+enable-logging: true
 # log in json format
-json-format: true
+enable-json-logging: true
+# should the access token be encrypted - you need an encryption-key if 'true'
+enable-encrypted-token: false
 # do not redirec the request, simple 307 it
 no-redirects: false
 # the location of a certificate you wish the proxy to use for TLS support
@@ -41,7 +42,7 @@ skip-upstream-tls-verify: true|false
 scopes: []
 # enables a more extra secuirty features
 enable-security-filter: true
-# headers permits you to inject custom headers into all request
+# headers permits you to inject custom headers into all requests
 headers:
   myheader_name: my_header_value
 # a map of claims that MUST exist in the token presented and the value is it MUST match
@@ -56,35 +57,32 @@ add-claims:
 - name
 # a collection of resource i.e. urls that you wish to protect
 resources:
-  - uri: /admin/test
-    # the methods on this url that should be protected, if missing, we assuming all
-    methods:
-      - GET
-    # a list of roles the user must have in order to accces urls under the above
-    roles:
-      - openvpn:vpn-user
-      - openvpn:prod-vpn
-  - uri: /admin/white_listed
-    # permits a url prefix through, bypassing the admission controls
-    white-listed: true
-  - uri: /admin
-    methods:
-      - GET
-    roles:
-      - openvpn:vpn-user
-      - openvpn:prod-vpn
+- uri: /admin/test
+  # the methods on this url that should be protected, if missing, we assuming all
+  methods:
+  - GET
+  # a list of roles the user must have in order to accces urls under the above
+  roles:
+    - openvpn:vpn-test
+- uri: /admin/white_listed
+  # permits a url prefix through, bypassing the admission controls
+  white-listed: true
+- uri: /admin/*
+  methods:
+  - GET
+  roles:
+    - openvpn:vpn-user
+    - openvpn:prod-vpn
 
-# set the cross origin resource sharing headers
-cors:
-  # an array of origins (Access-Control-Allow-Origin)
-  origins: []
-  # an array of headers to apply (Access-Control-Allow-Headers)
-  headers: []
-  # an array of expose headers (Access-Control-Expose-Headers)
-  exposed-headers: []
-  # an array of methods (Access-Control-Allow-Methods)
-  methods: []
-  # the credentials flag (Access-Control-Allow-Credentials)
-  credentials: true|false
-  # the max age (Access-Control-Max-Age)
-  max-age: 1h
+# an array of origins (Access-Control-Allow-Origin)
+cors-origins: []
+# an array of headers to apply (Access-Control-Allow-Headers)
+cors-headers: []
+# an array of expose headers (Access-Control-Expose-Headers)
+cors-exposed-headers: []
+# an array of methods (Access-Control-Allow-Methods)
+cors-methods: []
+# the credentials flag (Access-Control-Allow-Credentials)
+cors-credentials: true|false
+# the max age (Access-Control-Max-Age)
+cors-max-age: 1h

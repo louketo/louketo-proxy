@@ -16,335 +16,291 @@ limitations under the License.
 package main
 
 import (
-	"errors"
-	"fmt"
 	"net/http"
-	"net/url"
 	"testing"
 	"time"
-
-	"github.com/coreos/go-oidc/jose"
-	"github.com/go-resty/resty"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestExpirationHandler(t *testing.T) {
-	proxy, _, _ := newTestProxyService(nil)
-
-	cases := []struct {
-		Token    *jose.JWT
-		HTTPCode int
-	}{
+	uri := oauthURL + expiredURL
+	requests := []fakeRequest{
 		{
-			HTTPCode: http.StatusUnauthorized,
+			URI:          uri,
+			ExpectedCode: http.StatusUnauthorized,
 		},
 		{
-			Token: newFakeJWTToken(t, jose.Claims{
-				"exp": float64(time.Now().Add(-24 * time.Hour).Unix()),
-			}),
-			HTTPCode: http.StatusUnauthorized,
+			URI:          uri,
+			HasToken:     true,
+			Expires:      time.Duration(-48 * time.Hour),
+			ExpectedCode: http.StatusUnauthorized,
 		},
 		{
-			Token: newFakeJWTToken(t, jose.Claims{
-				"exp":                float64(time.Now().Add(10 * time.Hour).Unix()),
-				"aud":                "test",
-				"iss":                "https://keycloak.example.com/auth/realms/commons",
-				"sub":                "1e11e539-8256-4b3b-bda8-cc0d56cddb48",
-				"email":              "gambol99@gmail.com",
-				"name":               "Rohith Jayawardene",
-				"preferred_username": "rjayawardene",
-			}),
-			HTTPCode: http.StatusOK,
-		},
-		{
-			Token: newFakeJWTToken(t, jose.Claims{
-				"exp":                float64(time.Now().Add(-24 * time.Hour).Unix()),
-				"aud":                "test",
-				"iss":                "https://keycloak.example.com/auth/realms/commons",
-				"sub":                "1e11e539-8256-4b3b-bda8-cc0d56cddb48",
-				"email":              "gambol99@gmail.com",
-				"name":               "Rohith Jayawardene",
-				"preferred_username": "rjayawardene",
-			}),
-			HTTPCode: http.StatusUnauthorized,
+			URI:          uri,
+			HasToken:     true,
+			Expires:      time.Duration(14 * time.Hour),
+			ExpectedCode: http.StatusOK,
 		},
 	}
+	newFakeProxy(nil).RunTests(t, requests)
+}
 
-	for i, c := range cases {
-		// step: inject a resource
-		cx := newFakeGinContext("GET", "/oauth/expiration")
-		// step: add the token is there is one
-		if c.Token != nil {
-			cx.Request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.Token.Encode()))
-		}
-		// step: if closure so we need to get the handler each time
-		proxy.expirationHandler(cx)
-		// step: check the content result
-		assert.Equal(t, c.HTTPCode, cx.Writer.Status(), "test case %d should have recieved: %d, but got %d", i,
-			c.HTTPCode, cx.Writer.Status())
+func TestOauthRequestNotProxying(t *testing.T) {
+	requests := []fakeRequest{
+		{URI: "/oauth/test"},
+		{URI: "/oauth/..//oauth/test/"},
+		{URI: "/oauth/expired", Method: http.MethodPost, ExpectedCode: http.StatusNotFound},
+		{URI: "/oauth/expiring", Method: http.MethodPost},
+		{URI: "/oauth%2F///../test%2F%2Foauth"},
 	}
+	newFakeProxy(nil).RunTests(t, requests)
 }
 
 func TestLoginHandlerDisabled(t *testing.T) {
-	config := newFakeKeycloakConfig()
-	config.EnableLoginHandler = false
-
-	_, _, url := newTestProxyService(config)
-	resp, err := http.Post(url+"/oauth/login", "", nil)
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	c := newFakeKeycloakConfig()
+	c.EnableLoginHandler = false
+	requests := []fakeRequest{
+		{URI: oauthURL + loginURL, Method: http.MethodPost, ExpectedCode: http.StatusNotImplemented},
+		{URI: oauthURL + loginURL, ExpectedCode: http.StatusNotFound},
+	}
+	newFakeProxy(c).RunTests(t, requests)
 }
 
 func TestLoginHandlerNotDisabled(t *testing.T) {
-	config := newFakeKeycloakConfig()
-	config.EnableLoginHandler = true
-	_, _, url := newTestProxyService(config)
-	resp, err := http.Post(url+"/oauth/login", "", nil)
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	c := newFakeKeycloakConfig()
+	c.EnableLoginHandler = true
+	requests := []fakeRequest{
+		{URI: "/oauth/login", Method: http.MethodPost, ExpectedCode: http.StatusBadRequest},
+	}
+	newFakeProxy(c).RunTests(t, requests)
 }
 
 func TestLoginHandler(t *testing.T) {
-	_, _, u := newTestProxyService(nil)
-
-	cs := []struct {
-		Username     string
-		Password     string
-		ExpectedCode int
-	}{
+	uri := oauthURL + loginURL
+	requests := []fakeRequest{
 		{
-			Username:     "",
-			Password:     "",
+			URI:          uri,
+			Method:       http.MethodPost,
 			ExpectedCode: http.StatusBadRequest,
 		},
 		{
-			Username:     "test",
-			Password:     "",
+			URI:          uri,
+			Method:       http.MethodPost,
+			FormValues:   map[string]string{"username": "test"},
 			ExpectedCode: http.StatusBadRequest,
 		},
 		{
-			Username:     "",
-			Password:     "test",
+			URI:          uri,
+			Method:       http.MethodPost,
+			FormValues:   map[string]string{"password": "test"},
 			ExpectedCode: http.StatusBadRequest,
 		},
 		{
-			Username:     "test",
-			Password:     "test",
+			URI:    uri,
+			Method: http.MethodPost,
+			FormValues: map[string]string{
+				"password": "test",
+				"username": "test",
+			},
 			ExpectedCode: http.StatusOK,
 		},
 		{
-			Username:     "test",
-			Password:     "notmypassword",
+			URI:    uri,
+			Method: http.MethodPost,
+			FormValues: map[string]string{
+				"password": "test",
+				"username": "notmypassword",
+			},
 			ExpectedCode: http.StatusUnauthorized,
 		},
 	}
-
-	for i, x := range cs {
-		uri := u + oauthURL + loginURL
-		values := url.Values{}
-		if x.Username != "" {
-			values.Add("username", x.Username)
-		}
-		if x.Password != "" {
-			values.Add("password", x.Password)
-		}
-
-		resp, err := http.PostForm(uri, values)
-		if err != nil {
-			t.Errorf("case %d, unable to make requets, error: %s", i, err)
-			continue
-		}
-		assert.Equal(t, x.ExpectedCode, resp.StatusCode, "case %d, expect: %v, got: %d",
-			i, x.ExpectedCode, resp.StatusCode)
-	}
+	newFakeProxy(nil).RunTests(t, requests)
 }
 
 func TestLogoutHandlerBadRequest(t *testing.T) {
-	_, _, u := newTestProxyService(nil)
-
-	res, err := http.Get(u + oauthURL + logoutURL)
-	assert.NoError(t, err)
-	assert.NotNil(t, res)
-	assert.Equal(t, res.StatusCode, http.StatusBadRequest)
+	requests := []fakeRequest{
+		{URI: oauthURL + logoutURL, ExpectedCode: http.StatusBadRequest},
+	}
+	newFakeProxy(nil).RunTests(t, requests)
 }
 
 func TestLogoutHandlerBadToken(t *testing.T) {
-	u := newTestService()
-	req, err := http.NewRequest("GET", u+oauthURL+logoutURL, nil)
-	assert.NoError(t, err)
-	req.Header.Add("kc-access", "this.is.a.bad.token")
-	res, err := http.DefaultTransport.RoundTrip(req)
-	assert.NoError(t, err)
-	assert.NotNil(t, res)
-	assert.Equal(t, http.StatusBadRequest, res.StatusCode)
+	requests := []fakeRequest{
+		{
+			URI:          oauthURL + logoutURL,
+			ExpectedCode: http.StatusBadRequest,
+		},
+		{
+			URI:            oauthURL + logoutURL,
+			HasCookieToken: true,
+			RawToken:       "this.is.a.bad.token",
+			ExpectedCode:   http.StatusBadRequest,
+		},
+		{
+			URI:          oauthURL + logoutURL,
+			RawToken:     "this.is.a.bad.token",
+			ExpectedCode: http.StatusBadRequest,
+		},
+	}
+	newFakeProxy(nil).RunTests(t, requests)
 }
 
 func TestLogoutHandlerGood(t *testing.T) {
-	u := newTestService()
-	// step: first we login and get a token
-	token, err := makeTestOauthLogin(u + "/admin")
-	if !assert.NoError(t, err) {
-		t.Errorf("failed to perform oauth login, reason: %s", err)
-		t.Fail()
+	requests := []fakeRequest{
+		{
+			URI:          oauthURL + logoutURL,
+			HasToken:     true,
+			ExpectedCode: http.StatusOK,
+		},
+		{
+			URI:              oauthURL + logoutURL + "?redirect=http://example.com",
+			HasToken:         true,
+			ExpectedCode:     http.StatusTemporaryRedirect,
+			ExpectedLocation: "http://example.com",
+		},
 	}
-
-	// step: attempt to logout
-	res, err := resty.DefaultClient.R().
-		SetAuthToken(token).
-		Get(u + oauthURL + logoutURL)
-	if !assert.NoError(t, err) {
-		t.Fail()
-	}
-	assert.Equal(t, http.StatusOK, res.StatusCode())
+	newFakeProxy(nil).RunTests(t, requests)
 }
 
 func TestTokenHandler(t *testing.T) {
-	token := newFakeAccessToken(nil, 0)
-	_, _, u := newTestProxyService(nil)
-	url := u + oauthURL + tokenURL
-
-	// step: get a request
-	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Set("Authorization", "Bearer "+token.Encode())
-	resp, err := http.DefaultTransport.RoundTrip(req)
-	if err != nil {
-		t.Errorf("failed to make request, error: %s", err)
-		t.FailNow()
+	uri := oauthURL + tokenURL
+	requests := []fakeRequest{
+		{
+			URI:          uri,
+			HasToken:     true,
+			ExpectedCode: http.StatusOK,
+		},
+		{
+			URI:          uri,
+			ExpectedCode: http.StatusBadRequest,
+		},
+		{
+			URI:          uri,
+			RawToken:     "niothing",
+			ExpectedCode: http.StatusBadRequest,
+		},
+		{
+			URI:            uri,
+			HasToken:       true,
+			HasCookieToken: true,
+			ExpectedCode:   http.StatusOK,
+		},
 	}
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-
-	req, _ = http.NewRequest("GET", url, nil)
-	resp, err = http.DefaultTransport.RoundTrip(req)
-	if err != nil {
-		t.Errorf("failed to make request, error: %s", err)
-		t.FailNow()
-	}
-	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	newFakeProxy(nil).RunTests(t, requests)
 }
 
-func TestNoRedirect(t *testing.T) {
-	p, _, svc := newTestProxyService(nil)
-	p.config.NoRedirects = true
+func TestServiceRedirect(t *testing.T) {
+	requests := []fakeRequest{
+		{
+			URI:              "/admin",
+			Redirects:        true,
+			ExpectedCode:     http.StatusTemporaryRedirect,
+			ExpectedLocation: "/oauth/authorize?state=L2FkbWlu",
+		},
+		{
+			URI:          "/admin",
+			ExpectedCode: http.StatusUnauthorized,
+		},
+	}
+	newFakeProxy(nil).RunTests(t, requests)
+}
 
-	req, _ := http.NewRequest("GET", svc+"/admin", nil)
-	resp, err := http.DefaultTransport.RoundTrip(req)
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-
-	p.config.NoRedirects = false
-	req, _ = http.NewRequest("GET", svc+"/admin", nil)
-	resp, err = http.DefaultTransport.RoundTrip(req)
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-	assert.Equal(t, http.StatusTemporaryRedirect, resp.StatusCode)
+func TestAuthorizationURLWithSkipToken(t *testing.T) {
+	c := newFakeKeycloakConfig()
+	c.SkipTokenVerification = true
+	newFakeProxy(c).RunTests(t, []fakeRequest{
+		{
+			URI:          oauthURL + authorizationURL,
+			ExpectedCode: http.StatusNotAcceptable,
+		},
+	})
 }
 
 func TestAuthorizationURL(t *testing.T) {
-	_, _, u := newTestProxyService(nil)
-	client := &http.Client{
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return errors.New("no redirect")
-		},
-	}
-	cs := []struct {
-		URL          string
-		ExpectedURL  string
-		ExpectedCode int
-	}{
+	requests := []fakeRequest{
 		{
-			URL:          "/",
+			URI:              "/admin",
+			Redirects:        true,
+			ExpectedLocation: "/oauth/authorize?state=L2FkbWlu",
+			ExpectedCode:     http.StatusTemporaryRedirect,
+		},
+		{
+			URI:              "/admin/test",
+			Redirects:        true,
+			ExpectedLocation: "/oauth/authorize?state=L2FkbWluL3Rlc3Q=",
+			ExpectedCode:     http.StatusTemporaryRedirect,
+		},
+		{
+			URI:              "/help/../admin",
+			Redirects:        true,
+			ExpectedLocation: "/oauth/authorize?state=L2FkbWlu",
+			ExpectedCode:     http.StatusTemporaryRedirect,
+		},
+		{
+			URI:              "/admin?test=yes&test1=test",
+			Redirects:        true,
+			ExpectedLocation: "/oauth/authorize?state=L2FkbWluP3Rlc3Q9eWVzJnRlc3QxPXRlc3Q=",
+			ExpectedCode:     http.StatusTemporaryRedirect,
+		},
+		{
+			URI:          "/oauth/test",
+			Redirects:    true,
 			ExpectedCode: http.StatusNotFound,
 		},
 		{
-			URL:          "/admin",
-			ExpectedURL:  "/oauth/authorize?state=L2FkbWlu",
-			ExpectedCode: http.StatusTemporaryRedirect,
-		},
-		{
-			URL:          "/admin/test",
-			ExpectedURL:  "/oauth/authorize?state=L2FkbWluL3Rlc3Q=",
-			ExpectedCode: http.StatusTemporaryRedirect,
-		},
-		{
-			URL:          "/admin/../",
-			ExpectedURL:  "/oauth/authorize?state=L2FkbWluLy4uLw==",
-			ExpectedCode: http.StatusTemporaryRedirect,
-		},
-		{
-			URL:          "/admin?test=yes&test1=test",
-			ExpectedURL:  "/oauth/authorize?state=L2FkbWluP3Rlc3Q9eWVzJnRlc3QxPXRlc3Q=",
-			ExpectedCode: http.StatusTemporaryRedirect,
+			URI:          "/oauth/callback/..//test",
+			Redirects:    true,
+			ExpectedCode: http.StatusNotFound,
 		},
 	}
-	for i, x := range cs {
-		resp, _ := client.Get(u + x.URL)
-		assert.Equal(t, x.ExpectedCode, resp.StatusCode, "case %d, expect: %v, got: %s", i, x.ExpectedCode, resp.StatusCode)
-		assert.Equal(t, x.ExpectedURL, resp.Header.Get("Location"), "case %d, expect: %v, got: %s", i, x.ExpectedURL, resp.Header.Get("Location"))
-	}
+	newFakeProxy(nil).RunTests(t, requests)
 }
 
 func TestCallbackURL(t *testing.T) {
-	_, _, u := newTestProxyService(nil)
-
-	cs := []struct {
-		URL         string
-		ExpectedURL string
-	}{
+	cfg := newFakeKeycloakConfig()
+	requests := []fakeRequest{
 		{
-			URL:         "/oauth/authorize?state=L2FkbWlu",
-			ExpectedURL: "/admin",
+			URI:          oauthURL + callbackURL,
+			Method:       http.MethodPost,
+			ExpectedCode: http.StatusNotFound,
 		},
 		{
-			URL:         "/oauth/authorize",
-			ExpectedURL: "/",
+			URI:          oauthURL + callbackURL,
+			ExpectedCode: http.StatusBadRequest,
 		},
 		{
-			URL:         "/oauth/authorize?state=L2FkbWluL3Rlc3QxP3Rlc3QxJmhlbGxv",
-			ExpectedURL: "/admin/test1?test1&hello",
+			URI:              oauthURL + callbackURL + "?code=fake",
+			ExpectedCookies:  []string{cfg.CookieAccessName},
+			ExpectedLocation: "/",
+			ExpectedCode:     http.StatusTemporaryRedirect,
+		},
+		{
+			URI:              oauthURL + callbackURL + "?code=fake&state=/admin",
+			ExpectedCookies:  []string{cfg.CookieAccessName},
+			ExpectedLocation: "/",
+			ExpectedCode:     http.StatusTemporaryRedirect,
+		},
+		{
+			URI:              oauthURL + callbackURL + "?code=fake&state=L2FkbWlu",
+			ExpectedCookies:  []string{cfg.CookieAccessName},
+			ExpectedLocation: "/admin",
+			ExpectedCode:     http.StatusTemporaryRedirect,
 		},
 	}
-	for i, x := range cs {
-		// step: call the authorization endpoint
-		req, err := http.NewRequest("GET", u+x.URL, nil)
-		if err != nil {
-			continue
-		}
-		resp, err := http.DefaultTransport.RoundTrip(req)
-		if !assert.NoError(t, err, "case %d, should not have failed", i) {
-			continue
-		}
-		openIDURL := resp.Header.Get("Location")
-		if !assert.NotEmpty(t, openIDURL, "case %d, the open id redirection url is empty", i) {
-			continue
-		}
-		req, _ = http.NewRequest("GET", openIDURL, nil)
-		resp, err = http.DefaultTransport.RoundTrip(req)
-		if !assert.NoError(t, err, "case %d, should not have failed calling the opend id url", i) {
-			continue
-		}
-		callbackURL := resp.Header.Get("Location")
-		if !assert.NotEmpty(t, callbackURL, "case %d, should have recieved a callback url", i) {
-			continue
-		}
-		// step: call the callback url
-		req, _ = http.NewRequest("GET", callbackURL, nil)
-		resp, err = http.DefaultTransport.RoundTrip(req)
-		if !assert.NoError(t, err, "case %d, unable to call the callback url", i) {
-			continue
-		}
-		// step: check the callback location is as expected
-		assert.Contains(t, resp.Header.Get("Location"), x.ExpectedURL)
-	}
+	newFakeProxy(cfg).RunTests(t, requests)
 }
 
 func TestHealthHandler(t *testing.T) {
-	p, _, _ := newTestProxyService(nil)
-	context := newFakeGinContext("GET", healthURL)
-	p.healthHandler(context)
-	assert.Equal(t, http.StatusOK, context.Writer.Status())
-	assert.NotEmpty(t, context.Writer.Header().Get(versionHeader))
-	assert.Equal(t, version, context.Writer.Header().Get(versionHeader))
+	requests := []fakeRequest{
+		{
+			URI:             oauthURL + healthURL,
+			ExpectedCode:    http.StatusOK,
+			ExpectedContent: "OK\n",
+		},
+		{
+			URI:          oauthURL + healthURL,
+			Method:       http.MethodHead,
+			ExpectedCode: http.StatusMethodNotAllowed,
+		},
+	}
+	newFakeProxy(nil).RunTests(t, requests)
 }

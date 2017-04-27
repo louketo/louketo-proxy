@@ -17,16 +17,19 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/coreos/go-oidc/jose"
 )
 
 var (
-	release = "v2.0.1"
-	gitsha  = "no gitsha provided"
-	version = release + " (git+sha: " + gitsha + ")"
+	release  = "v2.1.0"
+	gitsha   = "no gitsha provided"
+	compiled = "0"
+	version  = ""
 )
 
 const (
@@ -34,23 +37,24 @@ const (
 	author      = "Rohith"
 	email       = "gambol99@gmail.com"
 	description = "is a proxy using the keycloak service for auth and authorization"
-	httpSchema  = "http"
 
 	headerUpgrade       = "Upgrade"
 	userContextName     = "identity"
+	revokeContextName   = "revoke"
 	authorizationHeader = "Authorization"
 	versionHeader       = "X-Auth-Proxy-Version"
 	envPrefix           = "PROXY_"
+	httpSchema          = "http"
 
 	oauthURL         = "/oauth"
 	authorizationURL = "/authorize"
 	callbackURL      = "/callback"
-	healthURL        = "/health"
-	tokenURL         = "/token"
 	expiredURL       = "/expired"
-	logoutURL        = "/logout"
+	healthURL        = "/health"
 	loginURL         = "/login"
+	logoutURL        = "/logout"
 	metricsURL       = "/metrics"
+	tokenURL         = "/token"
 
 	claimPreferredName  = "preferred_username"
 	claimAudience       = "aud"
@@ -72,6 +76,8 @@ var (
 	ErrRefreshTokenExpired = errors.New("the refresh token has expired")
 	// ErrNoTokenAudience indicates their is not audience in the token
 	ErrNoTokenAudience = errors.New("the token does not audience in claims")
+	// ErrDecryption indicates we can't decrypt the token
+	ErrDecryption = errors.New("failed to decrypt token")
 )
 
 // Resource represents a url resource to protect
@@ -84,22 +90,6 @@ type Resource struct {
 	WhiteListed bool `json:"white-listed" yaml:"white-listed"`
 	// Roles the roles required to access this url
 	Roles []string `json:"roles" yaml:"roles"`
-}
-
-// Cors access controls
-type Cors struct {
-	// Origins is a list of origins permitted
-	Origins []string `json:"origins" yaml:"origins"`
-	// Methods is a set of access control methods
-	Methods []string `json:"methods" yaml:"methods"`
-	// Headers is a set of cors headers
-	Headers []string `json:"headers" yaml:"headers"`
-	// ExposedHeaders are the exposed header fields
-	ExposedHeaders []string `json:"exposed-headers" yaml:"exposed-headers"`
-	// Credentials set the creds flag
-	Credentials bool `json:"credentials" yaml:"credentials"`
-	// MaxAge is the age for CORS
-	MaxAge time.Duration `json:"max-age" yaml:"max-age"`
 }
 
 // Config is the configuration for the proxy
@@ -115,9 +105,9 @@ type Config struct {
 	// ClientID is the client id
 	ClientID string `json:"client-id" yaml:"client-id" usage:"client id used to authenticate to the oauth service" env:"CLIENT_ID"`
 	// ClientSecret is the secret for AS
-	ClientSecret string `json:"client-secret" yaml:"client-secret" usage:"client secret used to authenticate to the oauth service" env:"CLIENT_SECERT"`
+	ClientSecret string `json:"client-secret" yaml:"client-secret" usage:"client secret used to authenticate to the oauth service" env:"CLIENT_SECRET"`
 	// RedirectionURL the redirection url
-	RedirectionURL string `json:"redirection-url" yaml:"redirection-url" usage:"redirection url for the oauth callback url" env:"REDIRECTION_URL"`
+	RedirectionURL string `json:"redirection-url" yaml:"redirection-url" usage:"redirection url for the oauth callback url, defaults to host header is absent" env:"REDIRECTION_URL"`
 	// RevocationEndpoint is the token revocation endpoint to revoke refresh tokens
 	RevocationEndpoint string `json:"revocation-url" yaml:"revocation-url" usage:"url for the revocation endpoint to revoke refresh token" env:"REVOCATION_URL"`
 	// SkipOpenIDProviderTLSVerify skips the tls verification for openid provider communication
@@ -131,6 +121,12 @@ type Config struct {
 	// Headers permits adding customs headers across the board
 	Headers map[string]string `json:"headers" yaml:"headers" usage:"custom headers to the upstream request, key=value"`
 
+	// EnableEncryptedToken indicates the access token should be encoded
+	EnableEncryptedToken bool `json:"enable-encrypted-token" yaml:"enable-encrypted-token" usage:"enable encryption for the access tokens"`
+	// EnableLogging indicates if we should log all the requests
+	EnableLogging bool `json:"enable-logging" yaml:"enable-logging" usage:"enable http logging of the requests"`
+	// EnableJSONLogging is the logging format
+	EnableJSONLogging bool `json:"enable-json-logging" yaml:"enable-json-logging" usage:"switch on json logging rather than text"`
 	// EnableForwarding enables the forwarding proxy
 	EnableForwarding bool `json:"enable-forwarding" yaml:"enable-forwarding" usage:"enables the forwarding proxy mode, signing outbound request"`
 	// EnableSecurityFilter enabled the security handler
@@ -158,6 +154,8 @@ type Config struct {
 	// LocalhostMetrics indicated the metrics can only be consume via localhost
 	LocalhostMetrics bool `json:"localhost-metrics" yaml:"localhost-metrics" usage:"enforces the metrics page can only been requested from 127.0.0.1"`
 
+	// AccessTokenDuration is default duration applied to the access token cookie
+	AccessTokenDuration time.Duration `json:"access-token-duration" yaml:"access-token-duration" usage:"fallback cookie duration for the access token when using refresh tokens"`
 	// CookieDomain is a list of domains the cookie is available to
 	CookieDomain string `json:"cookie-domain" yaml:"cookie-domain" usage:"domain the access cookie is available to, defaults host header"`
 	// CookieAccessName is the name of the access cookie holding the access token
@@ -195,23 +193,19 @@ type Config struct {
 	CorsHeaders []string `json:"cors-headers" yaml:"cors-headers" usage:"set of headers to add to the CORS access control (Access-Control-Allow-Headers)"`
 	// CorsExposedHeaders are the exposed header fields
 	CorsExposedHeaders []string `json:"cors-exposed-headers" yaml:"cors-exposed-headers" usage:"expose cors headers access control (Access-Control-Expose-Headers)"`
-	// CorsCredentials set the creds flag
+	// CorsCredentials set the credentials flag
 	CorsCredentials bool `json:"cors-credentials" yaml:"cors-credentials" usage:"credentials access control header (Access-Control-Allow-Credentials)"`
 	// CorsMaxAge is the age for CORS
 	CorsMaxAge time.Duration `json:"cors-max-age" yaml:"cors-max-age" usage:"max age applied to cors headers (Access-Control-Max-Age)"`
 
-	// Hostname is a list of hostname's the service should response to
+	// Hostnames is a list of hostname's the service should response to
 	Hostnames []string `json:"hostnames" yaml:"hostnames" usage:"list of hostnames the service will respond to"`
 
 	// Store is a url for a store resource, used to hold the refresh tokens
 	StoreURL string `json:"store-url" yaml:"store-url" usage:"url for the storage subsystem, e.g redis://127.0.0.1:6379, file:///etc/tokens.file"`
 	// EncryptionKey is the encryption key used to encrypt the refresh token
-	EncryptionKey string `json:"encryption-key" yaml:"encryption-key" usage:"encryption key used to encrpytion the session state"`
+	EncryptionKey string `json:"encryption-key" yaml:"encryption-key" usage:"encryption key used to encryption the session state" env:"ENCRYPTION_KEY"`
 
-	// LogRequests indicates if we should log all the requests
-	LogRequests bool `json:"log-requests" yaml:"log-requests" usage:"enable http logging of the requests"`
-	// LogFormat is the logging format
-	LogJSONFormat bool `json:"json-format" yaml:"json-format" usage:"switch on json logging rather than text"`
 	// NoRedirects informs we should hand back a 401 not a redirect
 	NoRedirects bool `json:"no-redirects" yaml:"no-redirects" usage:"do not have back redirects when no authentication is present, 401 them"`
 	// SkipTokenVerification tells the service to skipp verifying the access token - for testing purposes
@@ -242,10 +236,23 @@ type Config struct {
 	ForwardingDomains []string `json:"forwarding-domains" yaml:"forwarding-domains" usage:"list of domains which should be signed; everything else is relayed unsigned"`
 }
 
-// store is used to hold the offline refresh token, assuming you don't want to use
+// getVersion returns the proxy version
+func getVersion() string {
+	if version == "" {
+		tm, err := strconv.ParseInt(compiled, 10, 64)
+		if err != nil {
+			return "unable to parse compiled time"
+		}
+		version = fmt.Sprintf("%s (git+sha: %s, built: %s)", release, gitsha, time.Unix(tm, 0).Format("02-01-2006"))
+	}
+
+	return version
+}
+
+// storage is used to hold the offline refresh token, assuming you don't want to use
 // the default practice of a encrypted cookie
 type storage interface {
-	// Add the token to the store
+	// Set the token to the store
 	Set(string, string) error
 	// Get retrieves a token from the store
 	Get(string) (string, error)

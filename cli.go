@@ -32,10 +32,10 @@ func newOauthProxyApp() *cli.App {
 	app := cli.NewApp()
 	app.Name = prog
 	app.Usage = description
-	app.Version = version
+	app.Version = getVersion()
 	app.Author = author
 	app.Email = email
-	app.Flags = getCLIOptions()
+	app.Flags = getCommandLineOptions()
 	app.UsageText = "keycloak-proxy [options]"
 
 	// step: the standard usage message isn't that helpful
@@ -86,8 +86,9 @@ func newOauthProxyApp() *cli.App {
 	return app
 }
 
-// getCLIOptions returns the command line options
-func getCLIOptions() []cli.Flag {
+// getCommandLineOptions builds the command line options by reflecting the Config struct and extracting
+// the tagged information
+func getCommandLineOptions() []cli.Flag {
 	defaults := newDefaultConfig()
 	var flags []cli.Flag
 	count := reflect.TypeOf(Config{}).NumField()
@@ -149,7 +150,6 @@ func getCLIOptions() []cli.Flag {
 }
 
 // parseCLIOptions parses the command line options and constructs a config object
-// @TODO look for a shorter way of doing this, we're maintaining the same options in multiple places, it's tedious!
 func parseCLIOptions(cx *cli.Context, config *Config) (err error) {
 	// step: we can ignore these options in the Config struct
 	ignoredOptions := []string{"tag-data", "match-claims", "resources", "headers"}
@@ -169,8 +169,13 @@ func parseCLIOptions(cx *cli.Context, config *Config) (err error) {
 			case reflect.String:
 				reflect.ValueOf(config).Elem().FieldByName(field.Name).SetString(cx.String(name))
 			case reflect.Slice:
-				for _, x := range cx.StringSlice(name) {
-					reflect.Append(reflect.ValueOf(config).Elem().FieldByName(field.Name), reflect.ValueOf(x))
+				reflect.ValueOf(config).Elem().FieldByName(field.Name).Set(reflect.ValueOf(cx.StringSlice(name)))
+			case reflect.Int64:
+				switch field.Type.String() {
+				case "time.Duration":
+					reflect.ValueOf(config).Elem().FieldByName(field.Name).SetInt(int64(cx.Duration(name)))
+				default:
+					reflect.ValueOf(config).Elem().FieldByName(field.Name).SetInt(cx.Int64(name))
 				}
 			}
 		}

@@ -24,8 +24,8 @@ import (
 )
 
 func TestGetIndentity(t *testing.T) {
-	p, _, _ := newTestProxyService(nil)
-	token := newFakeAccessToken(nil, 0)
+	p, idp, _ := newTestProxyService(nil)
+	token := newTestToken(idp.getLocation()).getToken()
 	encoded := token.Encode()
 
 	testCases := []struct {
@@ -45,12 +45,6 @@ func TestGetIndentity(t *testing.T) {
 				Header: http.Header{},
 			},
 		},
-		{
-			Request: &http.Request{
-				Header: http.Header{},
-			},
-		},
-		// @TODO need to other checks
 	}
 
 	for i, c := range testCases {
@@ -70,7 +64,7 @@ func TestGetIndentity(t *testing.T) {
 
 func TestGetTokenInRequest(t *testing.T) {
 	defaultName := newDefaultConfig().CookieAccessName
-	token := newFakeAccessToken(nil, 0)
+	token := newTestToken("test").getToken()
 	cs := []struct {
 		Token    string
 		IsBearer bool

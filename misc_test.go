@@ -18,62 +18,32 @@ package main
 import (
 	"net/http"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestRedirectToAuthorizationUnauthorized(t *testing.T) {
-	context := newFakeGinContext("GET", "/admin")
-	p, _, _ := newTestProxyService(nil)
-	p.config.SkipTokenVerification = false
-	p.config.NoRedirects = true
-
-	p.redirectToAuthorization(context)
-	assert.Equal(t, http.StatusUnauthorized, context.Writer.Status())
+	requests := []fakeRequest{
+		{URI: "/admin", ExpectedCode: http.StatusUnauthorized},
+	}
+	newFakeProxy(nil).RunTests(t, requests)
 }
 
 func TestRedirectToAuthorization(t *testing.T) {
-	context := newFakeGinContext("GET", "/admin")
-	p, _, _ := newTestProxyService(nil)
-
-	p.config.SkipTokenVerification = false
-	p.redirectToAuthorization(context)
-	assert.Equal(t, http.StatusTemporaryRedirect, context.Writer.Status())
+	requests := []fakeRequest{
+		{
+			URI:              "/admin",
+			Redirects:        true,
+			ExpectedLocation: "/oauth/authorize?state=L2FkbWlu",
+			ExpectedCode:     http.StatusTemporaryRedirect,
+		},
+	}
+	newFakeProxy(nil).RunTests(t, requests)
 }
 
 func TestRedirectToAuthorizationSkipToken(t *testing.T) {
-	context := newFakeGinContext("GET", "/admin")
-	p, _, _ := newTestProxyService(nil)
-
-	p.config.SkipTokenVerification = true
-	p.redirectToAuthorization(context)
-	assert.Equal(t, http.StatusForbidden, context.Writer.Status())
-}
-
-func TestRedirectURL(t *testing.T) {
-	context := newFakeGinContext("GET", "/admin")
-	p, _, _ := newTestProxyService(nil)
-
-	if p.redirectToURL("http://127.0.0.1", context); context.Writer.Status() != http.StatusTemporaryRedirect {
-		t.Error("we should have recieved a redirect")
+	requests := []fakeRequest{
+		{URI: "/admin", ExpectedCode: http.StatusUnauthorized},
 	}
-
-	if !context.IsAborted() {
-		t.Error("the context should have been aborted")
-	}
-}
-
-func TestAccessForbidden(t *testing.T) {
-	context := newFakeGinContext("GET", "/admin")
-	p, _, _ := newTestProxyService(nil)
-
-	p.config.SkipTokenVerification = false
-	if p.accessForbidden(context); context.Writer.Status() != http.StatusForbidden {
-		t.Error("we should have recieved a forbidden access")
-	}
-
-	p.config.SkipTokenVerification = true
-	if p.accessForbidden(context); context.Writer.Status() != http.StatusForbidden {
-		t.Error("we should have recieved a forbidden access")
-	}
+	c := newFakeKeycloakConfig()
+	c.SkipTokenVerification = true
+	newFakeProxy(c).RunTests(t, requests)
 }

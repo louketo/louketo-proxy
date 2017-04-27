@@ -18,18 +18,24 @@ package main
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/urfave/cli"
 )
 
+func TestNewOauthProxyApp(t *testing.T) {
+	a := newOauthProxyApp()
+	assert.NotNil(t, a)
+}
+
 func TestGetCLIOptions(t *testing.T) {
-	if flags := getCLIOptions(); flags == nil {
+	if flags := getCommandLineOptions(); flags == nil {
 		t.Error("we should have received some flags options")
 	}
 }
 
 func TestReadOptions(t *testing.T) {
 	c := cli.NewApp()
-	c.Flags = getCLIOptions()
+	c.Flags = getCommandLineOptions()
 	c.Action = func(cx *cli.Context) error {
 		parseCLIOptions(cx, &Config{})
 		return nil

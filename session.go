@@ -25,28 +25,27 @@ import (
 
 // getIdentity retrieves the user identity from a request, either from a session cookie or a bearer token
 func (r *oauthProxy) getIdentity(req *http.Request) (*userContext, error) {
-	isBearer := false
-
+	var isBearer bool
 	// step: check for a bearer token or cookie with jwt token
 	access, isBearer, err := getTokenInRequest(req, r.config.CookieAccessName)
 	if err != nil {
 		return nil, err
 	}
-	// step: parse the access token
+	if r.config.EnableEncryptedToken {
+		if access, err = decodeText(access, r.config.EncryptionKey); err != nil {
+			return nil, ErrDecryption
+		}
+	}
 	token, err := jose.ParseJWT(access)
 	if err != nil {
 		return nil, err
 	}
-
-	// step: parse the access token and extract the user identity
 	user, err := extractIdentity(token)
 	if err != nil {
 		return nil, err
 	}
-
 	user.bearerToken = isBearer
 
-	// step: add some logging for debug purposed
 	log.WithFields(log.Fields{
 		"id":    user.id,
 		"name":  user.name,
@@ -102,10 +101,8 @@ func getTokenInBearer(req *http.Request) (string, error) {
 
 // getTokenInCookie retrieves the access token from the request cookies
 func getTokenInCookie(req *http.Request, name string) (string, error) {
-	cookie := findCookie(name, req.Cookies())
-	if cookie == nil {
-		return "", ErrSessionNotFound
+	if cookie := findCookie(name, req.Cookies()); cookie != nil {
+		return cookie.Value, nil
 	}
-
-	return cookie.Value, nil
+	return "", ErrSessionNotFound
 }
