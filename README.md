@@ -323,21 +323,17 @@ On protected resources the upstream endpoint will receive a number of headers ad
 ```GO
 # add the header to the upstream endpoint
 id := user.(*userContext)
-cx.Request.Header.Add("X-Auth-Userid", id.name)
-cx.Request.Header.Add("X-Auth-Subject", id.id)
-cx.Request.Header.Add("X-Auth-Username", id.name)
-cx.Request.Header.Add("X-Auth-Email", id.email)
-cx.Request.Header.Add("X-Auth-ExpiresIn", id.expiresAt.String())
-cx.Request.Header.Add("X-Auth-Token", id.token.Encode())
-cx.Request.Header.Add("X-Auth-Roles", strings.Join(id.roles, ","))
-cx.Request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", id.token.Encode()))
-
-# plus the default
-cx.Request.Header.Add("X-Forwarded-For", cx.Request.RemoteAddr)
-cx.Request.Header.Add("X-Forwarded-Proto", <CLIENT_PROTO>)
-cx.Request.Header.Set("X-Forwarded-Agent", prog)
-cx.Request.Header.Set("X-Forwarded-Agent-Version", version)
-cx.Request.Header.Set("X-Forwarded-Host", cx.Request.Host)
+cx.Request().Header.Set("X-Auth-Email", id.email)
+cx.Request().Header.Set("X-Auth-ExpiresIn", id.expiresAt.String())
+cx.Request().Header.Set("X-Auth-Roles", strings.Join(id.roles, ","))
+cx.Request().Header.Set("X-Auth-Subject", id.id)
+cx.Request().Header.Set("X-Auth-Token", id.token.Encode())
+cx.Request().Header.Set("X-Auth-Userid", id.name)
+cx.Request().Header.Set("X-Auth-Username", id.name)
+// step: add the authorization header if requested
+if r.config.EnableAuthorizationHeader {
+	cx.Request().Header.Set("Authorization", fmt.Sprintf("Bearer %s", id.token.Encode()))
+}
 ```
 
 #### **Custom Claim Headers**
