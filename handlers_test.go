@@ -21,6 +21,25 @@ import (
 	"time"
 )
 
+func TestDebugHandler(t *testing.T) {
+	c := newFakeKeycloakConfig()
+	c.Resources = make([]*Resource, 0)
+	c.EnableProfiling = true
+	requests := []fakeRequest{
+		{URI: "/debug/pprof/no_there", ExpectedCode: http.StatusNotFound},
+		{URI: "/debug/pprof/heap", ExpectedCode: http.StatusOK},
+		{URI: "/debug/pprof/goroutine", ExpectedCode: http.StatusOK},
+		{URI: "/debug/pprof/block", ExpectedCode: http.StatusOK},
+		{URI: "/debug/pprof/threadcreate", ExpectedCode: http.StatusOK},
+		{URI: "/debug/pprof/cmdline", ExpectedCode: http.StatusOK},
+		{URI: "/debug/pprof/trace", ExpectedCode: http.StatusOK},
+		{URI: "/debug/pprof/symbol", ExpectedCode: http.StatusOK},
+		{URI: "/debug/pprof/symbol", Method: http.MethodPost, ExpectedCode: http.StatusOK},
+		{URI: "/debug/pprof/symbol", Method: http.MethodPost, ExpectedCode: http.StatusOK},
+	}
+	newFakeProxy(c).RunTests(t, requests)
+}
+
 func TestExpirationHandler(t *testing.T) {
 	uri := oauthURL + expiredURL
 	requests := []fakeRequest{

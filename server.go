@@ -149,7 +149,7 @@ func (r *oauthProxy) createReverseProxy() error {
 
 	if r.config.EnableProfiling {
 		log.Warn("enabling the debug profiling on /debug/pprof")
-		engine.Any("/debug/pprof/:name", r.debugHandler, r.proxyRevokeMiddleware())
+		engine.Any("/debug/pprof/:name", r.debugHandler)
 	}
 	if r.config.EnableLogging {
 		engine.Use(r.loggingMiddleware())

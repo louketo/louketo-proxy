@@ -416,6 +416,7 @@ func (r *oauthProxy) healthHandler(cx echo.Context) error {
 
 // debugHandler is responsible for providing the pprof
 func (r *oauthProxy) debugHandler(cx echo.Context) error {
+	r.revokeProxy(cx)
 	name := cx.Param("name")
 	switch cx.Request().Method {
 	case http.MethodGet:
