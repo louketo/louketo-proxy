@@ -37,8 +37,8 @@ static: golang deps
 docker-build:
 	@echo "--> Compiling the project"
 	docker run --rm \
-		-v ${ROOT_DIR}:/go/src/github.com/gambol99/keycloak-proxy \
-		-w /go/src/github.com/gambol99/keycloak-proxy \
+		-v ${ROOT_DIR}:/go/src/github.com/${AUTHOR}/${NAME} \
+		-w /go/src/github.com/${AUTHOR}/${NAME} \
 		-e GOOS=linux golang:${GOVERSION} \
 		make static
 
@@ -51,8 +51,8 @@ docker-test:
 
 docker-release:
 	@echo "--> Building a release image"
-	@make static
-	@make docker
+	@$(MAKE) static
+	@$(MAKE) docker
 	@docker push ${REGISTRY}/${AUTHOR}/${NAME}:${VERSION}
 
 docker:
@@ -111,8 +111,8 @@ gofmt:
 	    fi
 
 verify:
-	@echo "--> Linting the code"
-	@gometalinter --disable=errcheck --disable=gocyclo --disable=gas --disable=aligncheck
+	@echo "--> Verifying the code"
+	gometalinter --disable=errcheck --disable=gocyclo --disable=gas --disable=aligncheck --errors
 
 format:
 	@echo "--> Running go fmt"
@@ -138,6 +138,12 @@ test: deps
 	@$(MAKE) gofmt
 	@$(MAKE) vet
 	@$(MAKE) cover
+
+all: test
+	echo "--> Performing all tests"
+	@${MAKE} verify
+	@$(MAKE) bench
+	@$(MAKE) coverage
 
 changelog: release
 	git log $(shell git tag | tail -n1)..HEAD --no-merges --format=%B > changelog
