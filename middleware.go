@@ -172,7 +172,7 @@ func (r *oauthProxy) authenticationMiddleware(resource *Resource) echo.Middlewar
 					}
 
 					// attempt to refresh the access token
-					token, _, err := getRefreshedToken(r.client, refresh)
+					token, exp, err := getRefreshedToken(r.client, refresh)
 					if err != nil {
 						switch err {
 						case ErrRefreshTokenExpired:
@@ -194,11 +194,18 @@ func (r *oauthProxy) authenticationMiddleware(resource *Resource) echo.Middlewar
 						"client_ip":   clientIP,
 						"cookie_name": r.config.CookieAccessName,
 						"email":       user.email,
-						"expires_in":  expiresIn.String(),
+						"expires_in":  time.Until(exp),
 					}).Infof("injecting the refreshed access token cookie")
 
+					accessToken := token.Encode()
+					if r.config.EnableEncryptedToken {
+						if accessToken, err = encodeText(accessToken, r.config.EncryptionKey); err != nil {
+							log.WithFields(log.Fields{"error": err.Error()}).Error("unable to encode the access token")
+							return cx.NoContent(http.StatusInternalServerError)
+						}
+					}
 					// step: inject the refreshed access token
-					r.dropAccessTokenCookie(cx.Request(), cx.Response().Writer, token.Encode(), expiresIn)
+					r.dropAccessTokenCookie(cx.Request(), cx.Response().Writer, accessToken, expiresIn)
 
 					if r.useStore() {
 						go func(old, new jose.JWT, state string) {
