@@ -22,7 +22,7 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/hex"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -126,12 +126,12 @@ func encodeText(plaintext string, key string) (string, error) {
 		return "", err
 	}
 
-	return hex.EncodeToString(cipherText), nil
+	return base64.RawStdEncoding.EncodeToString(cipherText), nil
 }
 
 // decodeText decodes the session state cookie value
 func decodeText(state, key string) (string, error) {
-	cipherText, err := hex.DecodeString(state)
+	cipherText, err := base64.RawStdEncoding.DecodeString(state)
 	if err != nil {
 		return "", err
 	}
@@ -434,7 +434,7 @@ func getWithin(expires time.Time, within float64) time.Duration {
 // getHashKey returns a hash of the encodes jwt token
 func getHashKey(token *jose.JWT) string {
 	hash := md5.Sum([]byte(token.Encode()))
-	return hex.EncodeToString(hash[:])
+	return base64.RawStdEncoding.EncodeToString(hash[:])
 }
 
 // printError display the command line usage and error
