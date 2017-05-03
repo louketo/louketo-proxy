@@ -5,22 +5,33 @@ FIXES:
 * fixed any accidental proxying on the /oauth or /debug URI
 * removed all references to the underlining web framework in tests
 * adding unit tests for proxy protocol and using the run() method [#PR214](https://github.com/gambol99/keycloak-proxy/pull/214)
+* removed unnecessary commands in the Dockerfile [#PR213](https://github.com/gambol99/keycloak-proxy/pull/213)
+* removed the unrequired testing tools [#PR210](https://github.com/gambol99/keycloak-proxy/pull/210)
+* fixed a number of linting errors highlighted by gometalinter [#PR209](https://github.com/gambol99/keycloak-proxy/pull/209)
+* added docker image instructions to the readme [#PR204](https://github.com/gambol99/keycloak-proxy/pull/204)
+* added unit tests for the debug handlers [#PR223](https://github.com/gambol99/keycloak-proxy/pull/223)
 
 FEATURES
 * changed the routing engine from gin to echo
 * we now normalize all inbound URI before applying the protection middleware
-* the order of the resources are no longer important, the framework will handle the routing
-* improved the overall spec of the proxy by removing URL inspection and prefix checking
-* removed the CORS implementation and using the default echo middles, which is more compliant
+* the order of the resources are no longer important, the framework will handle the routing [#PR199](https://github.com/gambol99/keycloak-proxy/pull/199)
+* improved the overall spec of the proxy by removing URL inspection and prefix checking [#PR199](https://github.com/gambol99/keycloak-proxy/pull/199)
+* removed the CORS implementation and using the default echo middles, which is more compliant [#PR199](https://github.com/gambol99/keycloak-proxy/pull/199)
+* added a warning for suspect resource urls not using wildcards [#PR206](https://github.com/gambol99/keycloak-proxy/pull/206)
+* added a build time to the version tag [#PR212](https://github.com/gambol99/keycloak-proxy/pull/212)
+* added coveralls coverage submission to the ci build [#PR215](https://github.com/gambol99/keycloak-proxy/pull/215)
+* added spelling code coverage to the ci build [#PR208](https://github.com/gambol99/keycloak-proxy/pull/208)
+* update the encryption to use aes gcm [#PR220](https://github.com/gambol99/keycloak-proxy/pull/220)
 * added the --enable-encrypted-token option to enable encrypting the access token:wq
+
 
 BREAKING CHANGES:
 * the proxy no longer uses prefixes for resources, if you wish to use wildcard urls you need
   to specify it, i.e. --resource=/ becomes --resource=/* or =admin/ becomes =admin/* or /admin*;
-  a full set of routing details can bt found at https://echo.labstack.com/guide/routing
+  a full set of routing details can bt found at https://echo.labstack.com/guide/routing [#PR199](https://github.com/gambol99/keycloak-proxy/pull/199)
 * removed the --enable-cors-global option, CORS is now handled the default echo middleware
-* changed option from log-requests -> enable-logging
-* changed option from json-format -> enable-json-logging
+* changed option from log-requests -> enable-logging [#PR199](https://github.com/gambol99/keycloak-proxy/pull/199)
+* changed option from json-format -> enable-json-logging [#PR199](https://github.com/gambol99/keycloak-proxy/pull/199)
 
 #### **2.0.5 (unreleased)**
 
