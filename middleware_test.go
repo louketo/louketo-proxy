@@ -323,6 +323,39 @@ func TestOauthRequests(t *testing.T) {
 	newFakeProxy(cfg).RunTests(t, requests)
 }
 
+func TestNoProxyingRequests(t *testing.T) {
+	c := newFakeKeycloakConfig()
+	c.Resources = []*Resource{
+		{
+			URL:     "*",
+			Methods: allHTTPMethods,
+		},
+	}
+	requests := []fakeRequest{
+		{ // check for escaping
+			URI:          "/.%2e/.%2e/.%2e/.%2e/.%2e/.%2e/.%2e/etc/passwd",
+			Redirects:    true,
+			ExpectedCode: http.StatusTemporaryRedirect,
+		},
+		{ // check for escaping
+			URI:          "/.%2e/.%2e/.%2e/.%2e/.%2e/.%2e/.%2e/",
+			Redirects:    true,
+			ExpectedCode: http.StatusTemporaryRedirect,
+		},
+		{ // check for escaping
+			URI:          "/../%2e",
+			Redirects:    true,
+			ExpectedCode: http.StatusTemporaryRedirect,
+		},
+		{ // check for escaping
+			URI:          "",
+			Redirects:    true,
+			ExpectedCode: http.StatusTemporaryRedirect,
+		},
+	}
+	newFakeProxy(c).RunTests(t, requests)
+}
+
 func TestStrangeAdminRequests(t *testing.T) {
 	cfg := newFakeKeycloakConfig()
 	cfg.Resources = []*Resource{

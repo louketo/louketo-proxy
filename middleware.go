@@ -50,8 +50,12 @@ func (r *oauthProxy) filterMiddleware() echo.MiddlewareFunc {
 			// step: keep a copy of the original
 			keep := cx.Request().URL.Path
 			purell.NormalizeURL(cx.Request().URL, normalizeFlags)
+			// step: ensure we have a slash in the url
+			if !strings.HasPrefix(cx.Request().URL.Path, "/") {
+				cx.Request().URL.Path = "/" + cx.Request().URL.Path
+			}
+			cx.Request().RequestURI = cx.Request().URL.RawPath
 			cx.Request().URL.RawPath = cx.Request().URL.Path
-			cx.Request().RequestURI = cx.Request().URL.Path
 			// step: continue the flow
 			next(cx)
 			// step: place back the original uri for proxying request
