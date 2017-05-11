@@ -92,7 +92,7 @@ func (c *certificationRotation) watch() error {
 			case err := <-watcher.Errors:
 				log.WithFields(log.Fields{
 					"error": err.Error(),
-				}).Error("recieved an error from the file watcher")
+				}).Error("received an error from the file watcher")
 			}
 		}
 	}()
