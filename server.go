@@ -379,6 +379,12 @@ func createHTTPListener(config listenerConfig) (net.Listener, error) {
 		}
 	}
 
+	// step: does it require proxy protocol?
+	if config.proxyProtocol {
+		log.Infof("enabling the proxy protocol on listener: %s", config.listen)
+		listener = &proxyproto.Listener{Listener: listener}
+	}
+
 	// step: does the socket require TLS?
 	if config.certificate != "" && config.privateKey != "" {
 		log.Infof("tls enabled, certificate: %s, key: %s", config.certificate, config.privateKey)
@@ -408,12 +414,6 @@ func createHTTPListener(config listenerConfig) (net.Listener, error) {
 			tlsConfig.ClientCAs = caCertPool
 			tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
 		}
-	}
-
-	// step: does it require proxy protocol?
-	if config.proxyProtocol {
-		log.Infof("enabling the proxy protocol on listener: %s", config.listen)
-		listener = &proxyproto.Listener{Listener: listener}
 	}
 
 	return listener, nil
