@@ -165,7 +165,7 @@ func (r *oauthProxy) authenticationMiddleware(resource *Resource) echo.Middlewar
 					}).Infof("accces token for user has expired, attemping to refresh the token")
 
 					// step: check if the user has refresh token
-					refresh, err := r.retrieveRefreshToken(cx.Request(), user)
+					refresh, encrypted, err := r.retrieveRefreshToken(cx.Request(), user)
 					if err != nil {
 						log.WithFields(log.Fields{
 							"client_ip": clientIP,
@@ -212,15 +212,15 @@ func (r *oauthProxy) authenticationMiddleware(resource *Resource) echo.Middlewar
 					r.dropAccessTokenCookie(cx.Request(), cx.Response().Writer, accessToken, expiresIn)
 
 					if r.useStore() {
-						go func(old, new jose.JWT, state string) {
+						go func(old, new jose.JWT, encrypted string) {
 							if err := r.DeleteRefreshToken(old); err != nil {
 								log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to remove old token")
 							}
-							if err := r.StoreRefreshToken(new, state); err != nil {
+							if err := r.StoreRefreshToken(new, encrypted); err != nil {
 								log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to store refresh token")
 								return
 							}
-						}(user.token, token, refresh)
+						}(user.token, token, encrypted)
 					}
 					// update the with the new access token and inject into the context
 					user.token = token

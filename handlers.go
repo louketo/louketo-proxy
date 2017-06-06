@@ -315,7 +315,7 @@ func (r *oauthProxy) logoutHandler(cx echo.Context) error {
 	}
 	// step: can either use the id token or the refresh token
 	identityToken := user.token.Encode()
-	if refresh, err := r.retrieveRefreshToken(cx.Request(), user); err == nil {
+	if refresh, _, err := r.retrieveRefreshToken(cx.Request(), user); err == nil {
 		identityToken = refresh
 	}
 	r.clearAllCookies(cx.Request(), cx.Response().Writer)
@@ -465,10 +465,7 @@ func (r *oauthProxy) metricsHandler(cx echo.Context) error {
 }
 
 // retrieveRefreshToken retrieves the refresh token from store or cookie
-func (r *oauthProxy) retrieveRefreshToken(req *http.Request, user *userContext) (string, error) {
-	var token string
-	var err error
-
+func (r *oauthProxy) retrieveRefreshToken(req *http.Request, user *userContext) (token, ecrypted string, err error) {
 	switch r.useStore() {
 	case true:
 		token, err = r.GetRefreshToken(user.token)
@@ -476,8 +473,10 @@ func (r *oauthProxy) retrieveRefreshToken(req *http.Request, user *userContext) 
 		token, err = r.getRefreshTokenFromCookie(req)
 	}
 	if err != nil {
-		return "", err
+		return
 	}
 
-	return decodeText(token, r.config.EncryptionKey)
+	ecrypted = token // returns encryped, avoid encoding twice
+	token, err = decodeText(token, r.config.EncryptionKey)
+	return
 }
