@@ -28,7 +28,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/coreos/go-oidc/jose"
+	"github.com/gambol99/go-oidc/jose"
 	"github.com/stretchr/testify/assert"
 )
 

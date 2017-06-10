@@ -41,8 +41,8 @@ import (
 	"unicode/utf8"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/coreos/go-oidc/jose"
-	"github.com/coreos/go-oidc/oidc"
+	"github.com/gambol99/go-oidc/jose"
+	"github.com/gambol99/go-oidc/oidc"
 	"github.com/labstack/echo"
 	"github.com/urfave/cli"
 	"gopkg.in/yaml.v2"

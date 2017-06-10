@@ -22,7 +22,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/coreos/go-oidc/jose"
+	"github.com/gambol99/go-oidc/jose"
 )
 
 var (

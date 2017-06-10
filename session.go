@@ -20,7 +20,7 @@ import (
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/coreos/go-oidc/jose"
+	"github.com/gambol99/go-oidc/jose"
 )
 
 // getIdentity retrieves the user identity from a request, either from a session cookie or a bearer token

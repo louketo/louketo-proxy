@@ -24,7 +24,7 @@ import (
 
 	"github.com/PuerkitoBio/purell"
 	log "github.com/Sirupsen/logrus"
-	"github.com/coreos/go-oidc/jose"
+	"github.com/gambol99/go-oidc/jose"
 	"github.com/labstack/echo"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/unrolled/secure"
