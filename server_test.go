@@ -226,6 +226,70 @@ func TestTokenEncryption(t *testing.T) {
 	newFakeProxy(c).RunTests(t, requests)
 }
 
+func TestSkipClientIDDisabled(t *testing.T) {
+	c := newFakeKeycloakConfig()
+	p := newFakeProxy(c)
+	// create two token, one with a bad client id
+	bad := newTestToken(p.idp.getLocation())
+	bad.merge(jose.Claims{"aud": "bad_client_id"})
+	badSigned, _ := p.idp.signToken(bad.claims)
+	// and the good
+	good := newTestToken(p.idp.getLocation())
+	goodSigned, _ := p.idp.signToken(good.claims)
+	requests := []fakeRequest{
+		{
+			URI:           "/auth_all/test",
+			RawToken:      goodSigned.Encode(),
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
+		},
+		{
+			URI:          "/auth_all/test",
+			RawToken:     badSigned.Encode(),
+			ExpectedCode: http.StatusForbidden,
+		},
+	}
+	p.RunTests(t, requests)
+}
+
+func TestSkipClientIDEnabled(t *testing.T) {
+	c := newFakeKeycloakConfig()
+	c.SkipClientID = true
+	p := newFakeProxy(c)
+	// create two token, one with a bad client id
+	bad := newTestToken(p.idp.getLocation())
+	bad.merge(jose.Claims{"aud": "bad_client_id"})
+	badSigned, _ := p.idp.signToken(bad.claims)
+	// and the good
+	good := newTestToken(p.idp.getLocation())
+	goodSigned, _ := p.idp.signToken(good.claims)
+	// bad issuer
+	badIssurer := newTestToken("http://someone_else")
+	badIssurer.merge(jose.Claims{"aud": "bad_client_id"})
+	badIssuerSigned, _ := p.idp.signToken(badIssurer.claims)
+
+	requests := []fakeRequest{
+		{
+			URI:           "/auth_all/test",
+			RawToken:      goodSigned.Encode(),
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
+		},
+		{
+			URI:           "/auth_all/test",
+			RawToken:      badSigned.Encode(),
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
+		},
+		{
+			URI:          "/auth_all/test",
+			RawToken:     badIssuerSigned.Encode(),
+			ExpectedCode: http.StatusForbidden,
+		},
+	}
+	p.RunTests(t, requests)
+}
+
 func newTestService() string {
 	_, _, u := newTestProxyService(nil)
 	return u

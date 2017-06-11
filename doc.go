@@ -184,6 +184,8 @@ type Config struct {
 	TLSClientCertificate string `json:"tls-client-certificate" yaml:"tls-client-certificate" usage:"path to the client certificate for outbound connections in reverse and forwarding proxy modes"`
 	// SkipUpstreamTLSVerify skips the verification of any upstream tls
 	SkipUpstreamTLSVerify bool `json:"skip-upstream-tls-verify" yaml:"skip-upstream-tls-verify" usage:"skip the verification of any upstream TLS"`
+	// SkipClientID indicates we don't need to check the client id of the token
+	SkipClientID bool `json:"skip-client-id" yaml:"skip-client-id" usage:"skip the check on the client token"`
 
 	// CorsOrigins is a list of origins permitted
 	CorsOrigins []string `json:"cors-origins" yaml:"cors-origins" usage:"origins to add to the CORE origins control (Access-Control-Allow-Origin)"`

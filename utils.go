@@ -150,22 +150,22 @@ func newOpenIDClient(cfg *Config) (*oidc.Client, oidc.ProviderConfig, *http.Clie
 	var err error
 	var config oidc.ProviderConfig
 
-	// step: fix up the url if required, the underlining lib will add the .well-known/openid-configuration to the discovery url for us.
+	// fix up the url if required, the underlining lib will add the .well-known/openid-configuration to the discovery url for us.
 	if strings.HasSuffix(cfg.DiscoveryURL, "/.well-known/openid-configuration") {
 		cfg.DiscoveryURL = strings.TrimSuffix(cfg.DiscoveryURL, "/.well-known/openid-configuration")
 	}
 
-	// step: create a idp http client
 	hc := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: cfg.SkipOpenIDProviderTLSVerify,
 			},
+			IdleConnTimeout: time.Second * 10,
 		},
 		Timeout: time.Second * 10,
 	}
 
-	// step: attempt to retrieve the provider configuration
+	// attempt to retrieve the provider configuration
 	completeCh := make(chan bool)
 	go func() {
 		for {
@@ -178,7 +178,7 @@ func newOpenIDClient(cfg *Config) (*oidc.Client, oidc.ProviderConfig, *http.Clie
 		}
 		completeCh <- true
 	}()
-	// step: wait for timeout or successful retrieval
+	// wait for timeout or successful retrieval
 	select {
 	case <-time.After(30 * time.Second):
 		return nil, config, nil, errors.New("failed to retrieve the provider configuration from discovery url")
@@ -192,9 +192,10 @@ func newOpenIDClient(cfg *Config) (*oidc.Client, oidc.ProviderConfig, *http.Clie
 			ID:     cfg.ClientID,
 			Secret: cfg.ClientSecret,
 		},
-		RedirectURL: fmt.Sprintf("%s/oauth/callback", cfg.RedirectionURL),
-		Scope:       append(cfg.Scopes, oidc.DefaultScope...),
-		HTTPClient:  hc,
+		RedirectURL:       fmt.Sprintf("%s/oauth/callback", cfg.RedirectionURL),
+		Scope:             append(cfg.Scopes, oidc.DefaultScope...),
+		SkipClientIDCheck: cfg.SkipClientID,
+		HTTPClient:        hc,
 	})
 	if err != nil {
 		return nil, config, hc, err
