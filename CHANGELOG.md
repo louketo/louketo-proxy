@@ -23,7 +23,8 @@ FEATURES
 * added spelling code coverage to the ci build [#PR208](https://github.com/gambol99/keycloak-proxy/pull/208)
 * update the encryption to use aes gcm [#PR220](https://github.com/gambol99/keycloak-proxy/pull/220)
 * added the --enable-encrypted-token option to enable encrypting the access token:wq
-
+* added the --skip-client-id option to permit skipping the verification of the auduence against client in token [#PR236](https://github.com/gambol99/keycloak-proxy/pull/236)
+* updated the base image to apline 3.6 in commit [0fdebaf821](https://github.com/gambol99/keycloak-proxy/pull/236/commits/0fdebaf8215e9480896f01ec7ab2ef7caa242da1)
 
 BREAKING CHANGES:
 * the proxy no longer uses prefixes for resources, if you wish to use wildcard urls you need
@@ -32,6 +33,9 @@ BREAKING CHANGES:
 * removed the --enable-cors-global option, CORS is now handled the default echo middleware
 * changed option from log-requests -> enable-logging [#PR199](https://github.com/gambol99/keycloak-proxy/pull/199)
 * changed option from json-format -> enable-json-logging [#PR199](https://github.com/gambol99/keycloak-proxy/pull/199)
+
+MISC:
+* Switch to using a go-oidc [fork](https://github.com/gambol99/go-oidc/commit/2111f98a1397a35f1800f4c3c354a7abebbef75c) for now, until i get the various bit merged upstream
 
 #### **2.0.7**
 
