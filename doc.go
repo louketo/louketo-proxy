@@ -236,6 +236,9 @@ type Config struct {
 	ForwardingPassword string `json:"forwarding-password" yaml:"forwarding-password" usage:"password to use when logging into the openid provider"`
 	// ForwardingDomains is a collection of domains to signs
 	ForwardingDomains []string `json:"forwarding-domains" yaml:"forwarding-domains" usage:"list of domains which should be signed; everything else is relayed unsigned"`
+
+	// DisableAllLogging indicates no logging at all
+	DisableAllLogging bool `json:"disable-all-logging" yaml:"disable-all-logging" usage:"disables all logging to stdout and stderr"`
 }
 
 // getVersion returns the proxy version

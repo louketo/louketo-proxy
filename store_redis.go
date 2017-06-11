@@ -19,7 +19,6 @@ import (
 	"net/url"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	redis "gopkg.in/redis.v4"
 )
 
@@ -29,8 +28,6 @@ type redisStore struct {
 
 // newRedisStore creates a new redis store
 func newRedisStore(location *url.URL) (storage, error) {
-	log.Infof("creating a redis client for store: %s", location.Host)
-
 	// step: get any password
 	password := ""
 	if location.User != nil {
@@ -51,11 +48,6 @@ func newRedisStore(location *url.URL) (storage, error) {
 
 // Set adds a token to the store
 func (r redisStore) Set(key, value string) error {
-	log.WithFields(log.Fields{
-		"key":   key,
-		"value": value,
-	}).Debugf("adding the key: %s to the store", key)
-
 	if err := r.client.Set(key, value, time.Duration(0)); err.Err() != nil {
 		return err.Err()
 	}
@@ -65,10 +57,6 @@ func (r redisStore) Set(key, value string) error {
 
 // Get retrieves a token from the store
 func (r redisStore) Get(key string) (string, error) {
-	log.WithFields(log.Fields{
-		"key": key,
-	}).Debugf("retrieving the key: %s from store", key)
-
 	result := r.client.Get(key)
 	if result.Err() != nil {
 		return "", result.Err()
@@ -79,16 +67,11 @@ func (r redisStore) Get(key string) (string, error) {
 
 // Delete remove the key
 func (r redisStore) Delete(key string) error {
-	log.WithFields(log.Fields{
-		"key": key,
-	}).Debugf("deleting the key: %s from store", key)
-
 	return r.client.Del(key).Err()
 }
 
 // Close closes of any open resources
 func (r redisStore) Close() error {
-	log.Infof("closing the resourcese for redis store")
 	if r.client != nil {
 		return r.client.Close()
 	}

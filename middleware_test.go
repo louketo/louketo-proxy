@@ -18,17 +18,18 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/gambol99/go-oidc/jose"
 	"github.com/go-resty/resty"
 	"github.com/labstack/echo/middleware"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 )
 
 type fakeRequest struct {
@@ -83,13 +84,14 @@ func newFakeProxy(c *Config) *fakeProxy {
 	if err != nil {
 		panic("failed to create fake proxy service, error: " + err.Error())
 	}
+	proxy.log = zap.NewNop()
 	proxy.upstream = &fakeUpstreamService{}
 	if err = proxy.Run(); err != nil {
 		panic("failed to create the proxy service, error: " + err.Error())
 	}
 	c.RedirectionURL = fmt.Sprintf("http://%s", proxy.listener.Addr().String())
 	// step: we need to update the client configs
-	if proxy.client, proxy.idp, proxy.idpClient, err = newOpenIDClient(c); err != nil {
+	if proxy.client, proxy.idp, proxy.idpClient, err = proxy.newOpenIDClient(); err != nil {
 		panic("failed to recreate the openid client, error: " + err.Error())
 	}
 

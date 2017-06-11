@@ -40,7 +40,6 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/gambol99/go-oidc/jose"
 	"github.com/gambol99/go-oidc/oidc"
 	"github.com/labstack/echo"
@@ -142,69 +141,6 @@ func decodeText(state, key string) (string, error) {
 	}
 
 	return string(encoded), nil
-}
-
-// newOpenIDClient initializes the openID configuration, note: the redirection url is deliberately left blank
-// in order to retrieve it from the host header on request
-func newOpenIDClient(cfg *Config) (*oidc.Client, oidc.ProviderConfig, *http.Client, error) {
-	var err error
-	var config oidc.ProviderConfig
-
-	// fix up the url if required, the underlining lib will add the .well-known/openid-configuration to the discovery url for us.
-	if strings.HasSuffix(cfg.DiscoveryURL, "/.well-known/openid-configuration") {
-		cfg.DiscoveryURL = strings.TrimSuffix(cfg.DiscoveryURL, "/.well-known/openid-configuration")
-	}
-
-	hc := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: cfg.SkipOpenIDProviderTLSVerify,
-			},
-			IdleConnTimeout: time.Second * 10,
-		},
-		Timeout: time.Second * 10,
-	}
-
-	// attempt to retrieve the provider configuration
-	completeCh := make(chan bool)
-	go func() {
-		for {
-			log.Infof("attempting to retrieve openid configuration from discovery url: %s", cfg.DiscoveryURL)
-			if config, err = oidc.FetchProviderConfig(hc, cfg.DiscoveryURL); err == nil {
-				break // break and complete
-			}
-			log.Warnf("failed to get provider configuration from discovery url: %s, %s", cfg.DiscoveryURL, err)
-			time.Sleep(time.Second * 3)
-		}
-		completeCh <- true
-	}()
-	// wait for timeout or successful retrieval
-	select {
-	case <-time.After(30 * time.Second):
-		return nil, config, nil, errors.New("failed to retrieve the provider configuration from discovery url")
-	case <-completeCh:
-		log.Infof("successfully retrieved the openid configuration from the discovery url: %s", cfg.DiscoveryURL)
-	}
-
-	client, err := oidc.NewClient(oidc.ClientConfig{
-		ProviderConfig: config,
-		Credentials: oidc.ClientCredentials{
-			ID:     cfg.ClientID,
-			Secret: cfg.ClientSecret,
-		},
-		RedirectURL:       fmt.Sprintf("%s/oauth/callback", cfg.RedirectionURL),
-		Scope:             append(cfg.Scopes, oidc.DefaultScope...),
-		SkipClientIDCheck: cfg.SkipClientID,
-		HTTPClient:        hc,
-	})
-	if err != nil {
-		return nil, config, hc, err
-	}
-
-	// step: start the provider sync for key rotation
-	client.SyncProviderConfig(cfg.DiscoveryURL)
-
-	return client, config, hc, nil
 }
 
 // decodeKeyPairs converts a list of strings (key=pair) to a map

@@ -29,9 +29,9 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/gambol99/go-oidc/oauth2"
 	"github.com/labstack/echo"
+	"go.uber.org/zap"
 )
 
 // getRedirectionURL returns the redirectionURL for the oauth flow
@@ -78,7 +78,7 @@ func (r *oauthProxy) oauthHandler(cx echo.Context) error {
 			return r.tokenHandler(cx)
 		case metricsURL:
 			if r.config.EnableMetrics {
-				return r.metricsHandler(cx)
+				return r.proxyMetricsHandler(cx)
 			}
 		default:
 			return cx.NoContent(http.StatusNotFound)
@@ -104,10 +104,7 @@ func (r *oauthProxy) oauthAuthorizationHandler(cx echo.Context) error {
 	}
 	client, err := r.getOAuthClient(r.getRedirectionURL(cx))
 	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Errorf("failed to retrieve the oauth client for authorization")
-
+		r.log.Error("failed to retrieve the oauth client for authorization", zap.String("error", err.Error()))
 		return cx.NoContent(http.StatusInternalServerError)
 	}
 
@@ -118,11 +115,10 @@ func (r *oauthProxy) oauthAuthorizationHandler(cx echo.Context) error {
 	}
 
 	authURL := client.AuthCodeURL(cx.QueryParam("state"), accessType, "")
-	log.WithFields(log.Fields{
-		"access_type": accessType,
-		"auth-url":    authURL,
-		"client_ip":   cx.RealIP(),
-	}).Debugf("incoming authorization request from client address: %s", cx.RealIP())
+	r.log.Debug("incoming authorization request from client address",
+		zap.String("access_type", accessType),
+		zap.String("auth_url", authURL),
+		zap.String("client_ip", cx.RealIP()))
 
 	// step: if we have a custom sign in page, lets display that
 	if r.config.hasCustomSignInPage() {
@@ -148,13 +144,13 @@ func (r *oauthProxy) oauthCallbackHandler(cx echo.Context) error {
 
 	client, err := r.getOAuthClient(r.getRedirectionURL(cx))
 	if err != nil {
-		log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to create a oauth2 client")
+		r.log.Error("unable to create a oauth2 client", zap.String("error", err.Error()))
 		return cx.NoContent(http.StatusInternalServerError)
 	}
 
 	resp, err := exchangeAuthenticationCode(client, code)
 	if err != nil {
-		log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to exchange code for access token")
+		r.log.Error("unable to exchange code for access token", zap.String("error", err.Error()))
 		return r.accessForbidden(cx)
 	}
 
@@ -163,7 +159,7 @@ func (r *oauthProxy) oauthCallbackHandler(cx echo.Context) error {
 	// to the ID Token.
 	token, identity, err := parseToken(resp.IDToken)
 	if err != nil {
-		log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to parse id token for identity")
+		r.log.Error("unable to parse id token for identity", zap.String("error", err.Error()))
 		return r.accessForbidden(cx)
 	}
 	access, id, err := parseToken(resp.AccessToken)
@@ -171,12 +167,12 @@ func (r *oauthProxy) oauthCallbackHandler(cx echo.Context) error {
 		token = access
 		identity = id
 	} else {
-		log.WithFields(log.Fields{"error": err.Error()}).Warn("unable to parse the access token, using id token only")
+		r.log.Warn("unable to parse the access token, using id token only", zap.String("error", err.Error()))
 	}
 
 	// step: check the access token is valid
 	if err = verifyToken(r.client, token); err != nil {
-		log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to verify the id token")
+		r.log.Error("unable to verify the id token", zap.String("error", err.Error()))
 		return r.accessForbidden(cx)
 	}
 	accessToken := token.Encode()
@@ -184,23 +180,22 @@ func (r *oauthProxy) oauthCallbackHandler(cx echo.Context) error {
 	// step: are we encrypting the access token?
 	if r.config.EnableEncryptedToken {
 		if accessToken, err = encodeText(accessToken, r.config.EncryptionKey); err != nil {
-			log.WithFields(log.Fields{"error": err.Error()}).Error("unable to encode the access token")
+			r.log.Error("unable to encode the access token", zap.String("error", err.Error()))
 			return cx.NoContent(http.StatusInternalServerError)
 		}
 	}
 
-	log.WithFields(log.Fields{
-		"email":    identity.Email,
-		"expires":  identity.ExpiresAt.Format(time.RFC3339),
-		"duration": time.Until(identity.ExpiresAt).String(),
-	}).Info("issuing access token for user")
+	r.log.Info("issuing access token for user",
+		zap.String("email", identity.Email),
+		zap.String("expires", identity.ExpiresAt.Format(time.RFC3339)),
+		zap.String("duration", time.Until(identity.ExpiresAt).String()))
 
 	// step: does the response has a refresh token and we are NOT ignore refresh tokens?
 	if r.config.EnableRefreshTokens && resp.RefreshToken != "" {
 		var encrypted string
 		encrypted, err = encodeText(resp.RefreshToken, r.config.EncryptionKey)
 		if err != nil {
-			log.WithFields(log.Fields{"error": err.Error()}).Errorf("failed to encrypt the refresh token")
+			r.log.Error("failed to encrypt the refresh token", zap.String("error", err.Error()))
 			return cx.NoContent(http.StatusInternalServerError)
 		}
 		// drop in the access token - cookie expiration = access token
@@ -209,7 +204,7 @@ func (r *oauthProxy) oauthCallbackHandler(cx echo.Context) error {
 		switch r.useStore() {
 		case true:
 			if err = r.StoreRefreshToken(token, encrypted); err != nil {
-				log.WithFields(log.Fields{"error": err.Error()}).Warnf("failed to save the refresh token in the store")
+				r.log.Warn("failed to save the refresh token in the store", zap.String("error", err.Error()))
 			}
 		default:
 			// notes: not all idp refresh tokens are readable, google for example, so we attempt to decode into
@@ -229,10 +224,9 @@ func (r *oauthProxy) oauthCallbackHandler(cx echo.Context) error {
 	if cx.QueryParam("state") != "" {
 		decoded, err := base64.StdEncoding.DecodeString(cx.QueryParam("state"))
 		if err != nil {
-			log.WithFields(log.Fields{
-				"state": cx.QueryParam("state"),
-				"error": err.Error(),
-			}).Warnf("unable to decode the state parameter")
+			r.log.Warn("unable to decode the state parameter",
+				zap.String("state", cx.QueryParam("state")),
+				zap.String("error", err.Error()))
 		} else {
 			state = string(decoded)
 		}
@@ -284,10 +278,9 @@ func (r *oauthProxy) loginHandler(cx echo.Context) error {
 		return "", http.StatusOK, nil
 	}()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"client_ip": cx.RealIP(),
-			"error":     err.Error,
-		}).Errorf(errorMsg)
+		r.log.Error(errorMsg,
+			zap.String("client_ip", cx.RealIP()),
+			zap.String("error", err.Error()))
 
 		return cx.NoContent(code)
 	}
@@ -324,9 +317,7 @@ func (r *oauthProxy) logoutHandler(cx echo.Context) error {
 	if r.useStore() {
 		go func() {
 			if err := r.DeleteRefreshToken(user.token); err != nil {
-				log.WithFields(log.Fields{
-					"error": err.Error(),
-				}).Errorf("unable to remove the refresh token from store")
+				r.log.Error("unable to remove the refresh token from store", zap.String("error", err.Error()))
 			}
 		}()
 	}
@@ -336,7 +327,7 @@ func (r *oauthProxy) logoutHandler(cx echo.Context) error {
 	if revocationURL != "" {
 		client, err := r.client.OAuthClient()
 		if err != nil {
-			log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to retrieve the openid client")
+			r.log.Error("unable to retrieve the openid client", zap.String("error", err.Error()))
 			return cx.NoContent(http.StatusInternalServerError)
 		}
 
@@ -349,7 +340,7 @@ func (r *oauthProxy) logoutHandler(cx echo.Context) error {
 		request, err := http.NewRequest(http.MethodPost, revocationURL,
 			bytes.NewBufferString(fmt.Sprintf("refresh_token=%s", identityToken)))
 		if err != nil {
-			log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to construct the revocation request")
+			r.log.Error("unable to construct the revocation request", zap.String("error", err.Error()))
 			return cx.NoContent(http.StatusInternalServerError)
 		}
 		// step: add the authentication headers and content-type
@@ -358,22 +349,19 @@ func (r *oauthProxy) logoutHandler(cx echo.Context) error {
 
 		response, err := client.HttpClient().Do(request)
 		if err != nil {
-			log.WithFields(log.Fields{"error": err.Error()}).Errorf("unable to post to revocation endpoint")
+			r.log.Error("unable to post to revocation endpoint", zap.String("error", err.Error()))
 			return nil
 		}
 
 		// step: check the response
 		switch response.StatusCode {
 		case http.StatusNoContent:
-			log.WithFields(log.Fields{
-				"user": user.email,
-			}).Infof("successfully logged out of the endpoint")
+			r.log.Info("successfully logged out of the endpoint", zap.String("email", user.email))
 		default:
 			content, _ := ioutil.ReadAll(response.Body)
-			log.WithFields(log.Fields{
-				"status":   response.StatusCode,
-				"response": fmt.Sprintf("%s", content),
-			}).Errorf("invalid response from revocation endpoint")
+			r.log.Error("invalid response from revocation endpoint",
+				zap.Int("status", response.StatusCode),
+				zap.String("response", fmt.Sprintf("%s", content)))
 		}
 	}
 	// step: should we redirect the user
@@ -452,14 +440,14 @@ func (r *oauthProxy) debugHandler(cx echo.Context) error {
 	return nil
 }
 
-// metricsHandler forwards the request into the prometheus handler
-func (r *oauthProxy) metricsHandler(cx echo.Context) error {
+// proxyMetricsHandler forwards the request into the prometheus handler
+func (r *oauthProxy) proxyMetricsHandler(cx echo.Context) error {
 	if r.config.LocalhostMetrics {
 		if !net.ParseIP(cx.RealIP()).IsLoopback() {
 			return r.accessForbidden(cx)
 		}
 	}
-	r.prometheusHandler.ServeHTTP(cx.Response().Writer, cx.Request())
+	r.metricsHandler.ServeHTTP(cx.Response().Writer, cx.Request())
 
 	return nil
 }

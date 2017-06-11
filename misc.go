@@ -22,9 +22,9 @@ import (
 	"path"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/gambol99/go-oidc/jose"
 	"github.com/labstack/echo"
+	"go.uber.org/zap"
 )
 
 // revokeProxy is responsible to stopping the middleware from proxying the request
@@ -40,10 +40,9 @@ func (r *oauthProxy) accessForbidden(cx echo.Context) error {
 		tplName := path.Base(r.config.ForbiddenPage)
 		err := cx.Render(http.StatusForbidden, tplName, r.config.Tags)
 		if err != nil {
-			log.WithFields(log.Fields{
-				"error":    err,
-				"template": tplName,
-			}).Error("unable to render the template")
+			r.log.Error("unable to render the template",
+				zap.Error(err),
+				zap.String("template", tplName))
 		}
 
 		return err
@@ -71,7 +70,7 @@ func (r *oauthProxy) redirectToAuthorization(cx echo.Context) error {
 
 	// step: if verification is switched off, we can't authorization
 	if r.config.SkipTokenVerification {
-		log.Errorf("refusing to redirection to authorization endpoint, skip token verification switched on")
+		r.log.Error("refusing to redirection to authorization endpoint, skip token verification switched on")
 		return cx.NoContent(http.StatusForbidden)
 	}
 

@@ -27,7 +27,6 @@ import (
 	"testing"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/gambol99/go-oidc/jose"
 	"github.com/stretchr/testify/assert"
 )
@@ -317,7 +316,7 @@ func newTestProxyService(config *Config) (*oauthProxy, *fakeAuthServer, string) 
 	config.RedirectionURL = service.URL
 
 	// step: we need to update the client config
-	if proxy.client, proxy.idp, proxy.idpClient, err = newOpenIDClient(config); err != nil {
+	if proxy.client, proxy.idp, proxy.idpClient, err = proxy.newOpenIDClient(); err != nil {
 		panic("failed to recreate the openid client, error: " + err.Error())
 	}
 
@@ -347,6 +346,9 @@ func newFakeKeycloakConfig() *Config {
 		Listen:            "127.0.0.1:0",
 		EnableAuthorizationHeader: true,
 		EnableLoginHandler:        true,
+		EnableLogging:             false,
+		DisableAllLogging:         true,
+		Verbose:                   false,
 		Scopes:                    []string{},
 		Resources: []*Resource{
 			{

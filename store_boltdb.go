@@ -21,7 +21,6 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/boltdb/bolt"
 )
 
@@ -42,8 +41,6 @@ type boltdbStore struct {
 func newBoltDBStore(location *url.URL) (storage, error) {
 	// step: drop the initial slash
 	path := strings.TrimPrefix(location.Path, "/")
-
-	log.Infof("creating the bolddb store, file: %s", path)
 	db, err := bolt.Open(path, 0600, &bolt.Options{
 		Timeout: 10 * time.Second,
 	})
@@ -64,11 +61,6 @@ func newBoltDBStore(location *url.URL) (storage, error) {
 
 // Set adds a token to the store
 func (r *boltdbStore) Set(key, value string) error {
-	log.WithFields(log.Fields{
-		"key":   key,
-		"value": value,
-	}).Debugf("adding the key: %s in store", key)
-
 	return r.client.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(dbName))
 		if bucket == nil {
@@ -80,10 +72,6 @@ func (r *boltdbStore) Set(key, value string) error {
 
 // Get retrieves a token from the store
 func (r *boltdbStore) Get(key string) (string, error) {
-	log.WithFields(log.Fields{
-		"key": key,
-	}).Debugf("retrieving the key: %s from store", key)
-
 	var value string
 	err := r.client.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(dbName))
@@ -99,10 +87,6 @@ func (r *boltdbStore) Get(key string) (string, error) {
 
 // Delete removes the key from the bucket
 func (r *boltdbStore) Delete(key string) error {
-	log.WithFields(log.Fields{
-		"key": key,
-	}).Debugf("deleting the key: %s from store", key)
-
 	return r.client.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(dbName))
 		if bucket == nil {
@@ -114,6 +98,5 @@ func (r *boltdbStore) Delete(key string) error {
 
 // Close closes of any open resources
 func (r *boltdbStore) Close() error {
-	log.Infof("closing the resourcese for boltdb store")
 	return r.client.Close()
 }

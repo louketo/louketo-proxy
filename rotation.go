@@ -21,8 +21,8 @@ import (
 	"path"
 	"sync"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/fsnotify/fsnotify"
+	"go.uber.org/zap"
 )
 
 type certificationRotation struct {
@@ -33,10 +33,12 @@ type certificationRotation struct {
 	certificateFile string
 	// the privateKeyFile is the path of the private key
 	privateKeyFile string
+	// the logger for this service
+	log *zap.Logger
 }
 
 // newCertificateRotator creates a new certificate
-func newCertificateRotator(cert, key string) (*certificationRotation, error) {
+func newCertificateRotator(cert, key string, log *zap.Logger) (*certificationRotation, error) {
 	// step: attempt to load the certificate
 	certificate, err := tls.LoadX509KeyPair(cert, key)
 	if err != nil {
@@ -46,13 +48,17 @@ func newCertificateRotator(cert, key string) (*certificationRotation, error) {
 	return &certificationRotation{
 		certificate:     certificate,
 		certificateFile: cert,
+		log:             log,
 		privateKeyFile:  key,
 	}, nil
 }
 
 // watch is responsible for adding a file notification and watch on the files for changes
 func (c *certificationRotation) watch() error {
-	log.Infof("adding a file watch on the certificates, certificate: %s, key: %s", c.certificateFile, c.privateKeyFile)
+	c.log.Info("adding a file watch on the certificates, certificate",
+		zap.String("certificate", c.certificateFile),
+		zap.String("private_key", c.privateKeyFile))
+
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return err
@@ -67,7 +73,7 @@ func (c *certificationRotation) watch() error {
 	// step: watching for events
 	filewatchPaths := []string{c.certificateFile, c.privateKeyFile}
 	go func() {
-		log.Info("starting to watch changes to the tls certificate files")
+		c.log.Info("starting to watch changes to the tls certificate files")
 		for {
 			select {
 			case event := <-watcher.Events:
@@ -79,20 +85,17 @@ func (c *certificationRotation) watch() error {
 					// step: reload the certificate
 					certificate, err := tls.LoadX509KeyPair(c.certificateFile, c.privateKeyFile)
 					if err != nil {
-						log.WithFields(log.Fields{
-							"filename": event.Name,
-							"error":    err.Error(),
-						}).Error("unable to load the updated certificate")
+						c.log.Error("unable to load the updated certificate",
+							zap.String("filename", event.Name),
+							zap.Error(err))
 					}
 					// step: load the new certificate
 					c.storeCertificate(certificate)
 					// step: print a debug message for us
-					log.Infof("replacing the server certifacte with updated version")
+					c.log.Info("replacing the server certifacte with updated version")
 				}
 			case err := <-watcher.Errors:
-				log.WithFields(log.Fields{
-					"error": err.Error(),
-				}).Error("recieved an error from the file watcher")
+				c.log.Error("recieved an error from the file watcher", zap.Error(err))
 			}
 		}
 	}()
