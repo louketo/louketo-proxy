@@ -13,11 +13,6 @@
 			"Rev": "5bd2802263f21d8788851d5305584c82a5c75d7e"
 		},
 		{
-			"ImportPath": "github.com/Sirupsen/logrus",
-			"Comment": "v0.10.0-14-g081307d",
-			"Rev": "081307d9bc1364753142d5962fc1d795c742baaf"
-		},
-		{
 			"ImportPath": "github.com/armon/go-proxyproto",
 			"Rev": "609d6338d3a76ec26ac3fe7045a164d9a58436e7"
 		},
@@ -29,22 +24,6 @@
 			"ImportPath": "github.com/boltdb/bolt",
 			"Comment": "v1.2.0-13-g144418e",
 			"Rev": "144418e1475d8bf7abbdc48583500f1a20c62ea7"
-		},
-		{
-			"ImportPath": "github.com/coreos/go-oidc/http",
-			"Rev": "c797a55f1c1001ec3169f1d0fbb4c5523563bec6"
-		},
-		{
-			"ImportPath": "github.com/coreos/go-oidc/jose",
-			"Rev": "c797a55f1c1001ec3169f1d0fbb4c5523563bec6"
-		},
-		{
-			"ImportPath": "github.com/coreos/go-oidc/key",
-			"Rev": "c797a55f1c1001ec3169f1d0fbb4c5523563bec6"
-		},
-		{
-			"ImportPath": "github.com/coreos/go-oidc/oauth2",
-			"Rev": "c797a55f1c1001ec3169f1d0fbb4c5523563bec6"
 		},
 		{
 			"ImportPath": "github.com/coreos/pkg/health",
@@ -76,7 +55,15 @@
 			"Rev": "fd9ec7deca8bf46ecd2a795baaacf2b3a9be1197"
 		},
 		{
+			"ImportPath": "github.com/gambol99/go-oidc/http",
+			"Rev": "2111f98a1397a35f1800f4c3c354a7abebbef75c"
+		},
+		{
 			"ImportPath": "github.com/gambol99/go-oidc/jose",
+			"Rev": "2111f98a1397a35f1800f4c3c354a7abebbef75c"
+		},
+		{
+			"ImportPath": "github.com/gambol99/go-oidc/key",
 			"Rev": "2111f98a1397a35f1800f4c3c354a7abebbef75c"
 		},
 		{
@@ -207,6 +194,46 @@
 			"Rev": "dcecefd839c4193db0d35b88ec65b4c12d360ab0"
 		},
 		{
+			"ImportPath": "go.uber.org/atomic",
+			"Comment": "v1.2.0-7-g0506d69",
+			"Rev": "0506d69f5564c56e25797bf7183c28921d4c6360"
+		},
+		{
+			"ImportPath": "go.uber.org/zap",
+			"Comment": "v1.4.1-1-g54371c6",
+			"Rev": "54371c67da1bc746325e5582e48521a5db5d64ca"
+		},
+		{
+			"ImportPath": "go.uber.org/zap/buffer",
+			"Comment": "v1.4.1-1-g54371c6",
+			"Rev": "54371c67da1bc746325e5582e48521a5db5d64ca"
+		},
+		{
+			"ImportPath": "go.uber.org/zap/internal/bufferpool",
+			"Comment": "v1.4.1-1-g54371c6",
+			"Rev": "54371c67da1bc746325e5582e48521a5db5d64ca"
+		},
+		{
+			"ImportPath": "go.uber.org/zap/internal/color",
+			"Comment": "v1.4.1-1-g54371c6",
+			"Rev": "54371c67da1bc746325e5582e48521a5db5d64ca"
+		},
+		{
+			"ImportPath": "go.uber.org/zap/internal/exit",
+			"Comment": "v1.4.1-1-g54371c6",
+			"Rev": "54371c67da1bc746325e5582e48521a5db5d64ca"
+		},
+		{
+			"ImportPath": "go.uber.org/zap/internal/multierror",
+			"Comment": "v1.4.1-1-g54371c6",
+			"Rev": "54371c67da1bc746325e5582e48521a5db5d64ca"
+		},
+		{
+			"ImportPath": "go.uber.org/zap/zapcore",
+			"Comment": "v1.4.1-1-g54371c6",
+			"Rev": "54371c67da1bc746325e5582e48521a5db5d64ca"
+		},
+		{
 			"ImportPath": "golang.org/x/crypto/acme",
 			"Rev": "453249f01cfeb54c3d549ddb75ff152ca243f9d8"
 		},
@@ -278,14 +305,6 @@
 		{
 			"ImportPath": "gopkg.in/yaml.v2",
 			"Rev": "49c95bdc21843256fb6c4e0d370a05f24a0bf213"
-		},
-		{
-			"ImportPath": "github.com/gambol99/go-oidc/http",
-			"Rev": "2111f98a1397a35f1800f4c3c354a7abebbef75c"
-		},
-		{
-			"ImportPath": "github.com/gambol99/go-oidc/key",
-			"Rev": "2111f98a1397a35f1800f4c3c354a7abebbef75c"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/vendor/github.com/davecgh/go-spew/spew",

@@ -41,7 +41,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/gambol99/go-oidc/jose"
-	"github.com/gambol99/go-oidc/oidc"
 	"github.com/labstack/echo"
 	"github.com/urfave/cli"
 	"gopkg.in/yaml.v2"

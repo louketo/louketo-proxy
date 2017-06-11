@@ -537,14 +537,15 @@ func (r *oauthProxy) newOpenIDClient() (*oidc.Client, oidc.ProviderConfig, *http
 	}
 
 	client, err := oidc.NewClient(oidc.ClientConfig{
-		ProviderConfig: config,
 		Credentials: oidc.ClientCredentials{
 			ID:     r.config.ClientID,
 			Secret: r.config.ClientSecret,
 		},
-		RedirectURL: fmt.Sprintf("%s/oauth/callback", r.config.RedirectionURL),
-		Scope:       append(r.config.Scopes, oidc.DefaultScope...),
-		HTTPClient:  hc,
+		HTTPClient:        hc,
+		RedirectURL:       fmt.Sprintf("%s/oauth/callback", r.config.RedirectionURL),
+		ProviderConfig:    config,
+		Scope:             append(r.config.Scopes, oidc.DefaultScope...),
+		SkipClientIDCheck: r.config.SkipClientID,
 	})
 	if err != nil {
 		return nil, config, hc, err

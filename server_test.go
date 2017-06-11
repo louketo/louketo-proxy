@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -295,7 +294,6 @@ func newTestService() string {
 }
 
 func newTestProxyService(config *Config) (*oauthProxy, *fakeAuthServer, string) {
-	log.SetOutput(ioutil.Discard)
 	auth := newFakeAuthServer()
 	if config == nil {
 		config = newFakeKeycloakConfig()
@@ -338,18 +336,18 @@ func newFakeHTTPRequest(method, path string) *http.Request {
 
 func newFakeKeycloakConfig() *Config {
 	return &Config{
-		ClientID:          fakeClientID,
-		ClientSecret:      fakeSecret,
-		CookieAccessName:  "kc-access",
-		CookieRefreshName: "kc-state",
-		DiscoveryURL:      "127.0.0.1:0",
-		Listen:            "127.0.0.1:0",
-		EnableAuthorizationHeader: true,
-		EnableLoginHandler:        true,
-		EnableLogging:             false,
+		ClientID:                  fakeClientID,
+		ClientSecret:              fakeSecret,
+		CookieAccessName:          "kc-access",
+		CookieRefreshName:         "kc-state",
 		DisableAllLogging:         true,
-		Verbose:                   false,
+		DiscoveryURL:              "127.0.0.1:0",
+		EnableAuthorizationHeader: true,
+		EnableLogging:             false,
+		EnableLoginHandler:        true,
+		Listen:                    "127.0.0.1:0",
 		Scopes:                    []string{},
+		Verbose:                   true,
 		Resources: []*Resource{
 			{
 				URL:     fakeAdminRoleURL,
