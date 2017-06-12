@@ -30,14 +30,13 @@ import (
 func (r *oauthProxy) proxyMiddleware() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(cx echo.Context) error {
-			// step: permit the flow
 			next(cx)
-			// step: refuse to proxy
+			// refuse to proxy
 			if found := cx.Get(revokeContextName); found != nil {
 				return nil
 			}
 
-			// step: is this connection upgrading?
+			// is this connection upgrading?
 			if isUpgradedConnection(cx.Request()) {
 				r.log.Debug("upgrading the connnection", zap.String("client_ip", cx.RealIP()))
 				if err := tryUpdateConnection(cx.Request(), cx.Response().Writer, r.endpoint); err != nil {
@@ -47,7 +46,7 @@ func (r *oauthProxy) proxyMiddleware() echo.MiddlewareFunc {
 				}
 				return nil
 			}
-			// step: add any custom headers to the request
+			// add any custom headers to the request
 			for k, v := range r.config.Headers {
 				cx.Request().Header.Set(k, v)
 			}
@@ -70,13 +69,12 @@ func (r *oauthProxy) proxyMiddleware() echo.MiddlewareFunc {
 
 // forwardProxyHandler is responsible for signing outbound requests
 func (r *oauthProxy) forwardProxyHandler() func(*http.Request, *http.Response) {
-	// step: create oauth client
 	client, err := r.client.OAuthClient()
 	if err != nil {
 		r.log.Fatal("failed to create oauth client", zap.Error(err))
 	}
 
-	// step: the loop state
+	// the loop state
 	var state struct {
 		// the access token
 		token jose.JWT
@@ -93,7 +91,7 @@ func (r *oauthProxy) forwardProxyHandler() func(*http.Request, *http.Response) {
 	}
 	state.login = true
 
-	// step: create a routine to refresh the access tokens or login on expiration
+	// create a routine to refresh the access tokens or login on expiration
 	go func() {
 		for {
 			state.wait = false
@@ -200,7 +198,7 @@ func (r *oauthProxy) forwardProxyHandler() func(*http.Request, *http.Response) {
 	return func(req *http.Request, resp *http.Response) {
 		hostname := req.Host
 		req.URL.Host = hostname
-		// does the host being signed?
+		// is the host being signed?
 		if len(r.config.ForwardingDomains) == 0 || containsSubString(hostname, r.config.ForwardingDomains) {
 			req.Header.Set("X-Forwarded-Agent", prog)
 			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", state.token.Encode()))
