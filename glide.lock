@@ -1,32 +1,29 @@
-package: github.com/gambol99/keycloak-proxy
-import:
-- package: github.com/PuerkitoBio/purell
-  version: 0bcb03f4b4d0a9428594752bd2a3b9aa0a9d4bd4
-- package: github.com/PuerkitoBio/urlesc
-  version: 5bd2802263f21d8788851d5305584c82a5c75d7e
-- package: github.com/armon/go-proxyproto
+hash: b61fcd2b523ddfcacf31c69e7f46b2fd9286d0c6555029efe8a45de3552d25b2
+updated: 2017-06-12T14:55:48.532550213+01:00
+imports:
+- name: github.com/armon/go-proxyproto
   version: 609d6338d3a76ec26ac3fe7045a164d9a58436e7
-- package: github.com/beorn7/perks
+- name: github.com/beorn7/perks
   version: 3ac7bf7a47d159a033b107610db8a1b6575507a4
   subpackages:
   - quantile
-- package: github.com/boltdb/bolt
+- name: github.com/boltdb/bolt
   version: 144418e1475d8bf7abbdc48583500f1a20c62ea7
-- package: github.com/coreos/pkg
+- name: github.com/coreos/pkg
   version: 447b7ec906e523386d9c53be15b55a8ae86ea944
   subpackages:
   - health
   - httputil
   - timeutil
-- package: github.com/davecgh/go-spew
+- name: github.com/davecgh/go-spew
   version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
   subpackages:
   - spew
-- package: github.com/dgrijalva/jwt-go
+- name: github.com/dgrijalva/jwt-go
   version: 2268707a8f0843315e2004ee4f1d021dc08baedf
-- package: github.com/fsnotify/fsnotify
+- name: github.com/fsnotify/fsnotify
   version: fd9ec7deca8bf46ecd2a795baaacf2b3a9be1197
-- package: github.com/gambol99/go-oidc
+- name: github.com/gambol99/go-oidc
   version: 2111f98a1397a35f1800f4c3c354a7abebbef75c
   subpackages:
   - http
@@ -34,73 +31,77 @@ import:
   - key
   - oauth2
   - oidc
-- package: github.com/gambol99/goproxy
+- name: github.com/gambol99/goproxy
   version: e713e5909438245be49ef559e74dd904833ebe90
-- package: github.com/go-resty/resty
+- name: github.com/go-resty/resty
   version: 39c3db9c7bb4f9718ac143a83a924441521caf73
-- package: github.com/golang/protobuf
+- name: github.com/golang/protobuf
   version: 0c1f6d65b5a189c2250d10e71a5506f06f9fa0a0
   subpackages:
   - proto
-- package: github.com/jonboulle/clockwork
+- name: github.com/jonboulle/clockwork
   version: ed104f61ea4877bea08af6f759805674861e968d
-- package: github.com/labstack/echo
+- name: github.com/labstack/echo
   version: eac431df0dbad8ba6cc313fba37f1d4275c317e8
   subpackages:
   - middleware
-- package: github.com/labstack/gommon
+- name: github.com/labstack/gommon
   version: e8995fb26e646187d33cff439b18609cfba23088
   subpackages:
   - bytes
   - color
   - log
   - random
-- package: github.com/mattn/go-colorable
+- name: github.com/mattn/go-colorable
   version: 9cbef7c35391cca05f15f8181dc0b18bc9736dbb
-- package: github.com/mattn/go-isatty
+- name: github.com/mattn/go-isatty
   version: 56b76bdf51f7708750eac80fa38b952bb9f32639
-- package: github.com/matttproud/golang_protobuf_extensions
+- name: github.com/matttproud/golang_protobuf_extensions
   version: c12348ce28de40eed0136aa2b644d0ee0650e56c
   subpackages:
   - pbutil
-- package: github.com/pmezard/go-difflib
+- name: github.com/pmezard/go-difflib
   version: 792786c7400a136282c1664665ae0a8db921c6c2
   subpackages:
   - difflib
-- package: github.com/prometheus/client_golang
+- name: github.com/prometheus/client_golang
   version: 488edd04dc224ba64c401747cd0a4b5f05dfb234
   subpackages:
   - prometheus
-- package: github.com/prometheus/client_model
+- name: github.com/prometheus/client_model
   version: fa8ad6fec33561be4280a8f0514318c79d7f6cb6
   subpackages:
   - go
-- package: github.com/prometheus/common
+- name: github.com/prometheus/common
   version: 3a184ff7dfd46b9091030bf2e56c71112b0ddb0e
   subpackages:
   - expfmt
   - internal/bitbucket.org/ww/goautoneg
   - model
-- package: github.com/prometheus/procfs
+- name: github.com/prometheus/procfs
   version: abf152e5f3e97f2fafac028d2cc06c1feb87ffa5
-- package: github.com/stretchr/testify
+- name: github.com/PuerkitoBio/purell
+  version: 0bcb03f4b4d0a9428594752bd2a3b9aa0a9d4bd4
+- name: github.com/PuerkitoBio/urlesc
+  version: 5bd2802263f21d8788851d5305584c82a5c75d7e
+- name: github.com/stretchr/testify
   version: f6abca593680b2315d2075e0f5e2a9751e3f431a
   subpackages:
   - assert
   - require
   - vendor/github.com/davecgh/go-spew/spew
   - vendor/github.com/pmezard/go-difflib/difflib
-- package: github.com/unrolled/secure
+- name: github.com/unrolled/secure
   version: 4b41e52ab568cbfd31eda3612d98192da1575c77
-- package: github.com/urfave/cli
+- name: github.com/urfave/cli
   version: 0bdeddeeb0f650497d603c4ad7b20cfe685682f6
-- package: github.com/valyala/bytebufferpool
+- name: github.com/valyala/bytebufferpool
   version: e746df99fe4a3986f4d4f79e13c1e0117ce9c2f7
-- package: github.com/valyala/fasttemplate
+- name: github.com/valyala/fasttemplate
   version: dcecefd839c4193db0d35b88ec65b4c12d360ab0
-- package: go.uber.org/atomic
+- name: go.uber.org/atomic
   version: 0506d69f5564c56e25797bf7183c28921d4c6360
-- package: go.uber.org/zap
+- name: go.uber.org/zap
   version: 54371c67da1bc746325e5582e48521a5db5d64ca
   subpackages:
   - buffer
@@ -109,36 +110,37 @@ import:
   - internal/exit
   - internal/multierror
   - zapcore
-- package: golang.org/x/crypto
+- name: golang.org/x/crypto
   version: 453249f01cfeb54c3d549ddb75ff152ca243f9d8
   subpackages:
   - acme
   - acme/autocert
-- package: golang.org/x/net
+- name: golang.org/x/net
   version: bc3663df0ac92f928d419e31e0d2af22e683a5a2
   subpackages:
   - context
   - context/ctxhttp
   - idna
   - publicsuffix
-- package: golang.org/x/sys
+- name: golang.org/x/sys
   version: 833a04a10549a95dc34458c195cbad61bbb6cb4d
   subpackages:
   - unix
-- package: golang.org/x/text
+- name: golang.org/x/text
   version: f28f36722d5ef2f9655ad3de1f248e3e52ad5ebd
   subpackages:
   - transform
   - unicode/norm
   - width
-- package: gopkg.in/bsm/ratelimit.v1
+- name: gopkg.in/bsm/ratelimit.v1
   version: db14e161995a5177acef654cb0dd785e8ee8bc22
-- package: gopkg.in/redis.v4
+- name: gopkg.in/redis.v4
   version: 889409de38315d22b114fb5980f705e6fa48c6a2
   subpackages:
   - internal
   - internal/consistenthash
   - internal/hashtag
   - internal/pool
-- package: gopkg.in/yaml.v2
+- name: gopkg.in/yaml.v2
   version: 49c95bdc21843256fb6c4e0d370a05f24a0bf213
+testImports: []

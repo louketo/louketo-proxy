@@ -2,6 +2,7 @@
 *.swp
 .idea/
 bin/
+vendor/
 release/
 cover.html
 cover.out
