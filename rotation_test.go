@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 )
 
 const (
@@ -28,7 +29,7 @@ const (
 )
 
 func newTestCertificateRotator(t *testing.T) *certificationRotation {
-	c, err := newCertificateRotator(testCertificateFile, testPrivateKeyFile)
+	c, err := newCertificateRotator(testCertificateFile, testPrivateKeyFile, zap.NewNop())
 	assert.NotNil(t, c)
 	assert.Equal(t, testCertificateFile, c.certificateFile)
 	assert.Equal(t, testPrivateKeyFile, c.privateKeyFile)
@@ -40,13 +41,13 @@ func newTestCertificateRotator(t *testing.T) *certificationRotation {
 }
 
 func TestNewCeritifacteRotator(t *testing.T) {
-	c, err := newCertificateRotator(testCertificateFile, testPrivateKeyFile)
+	c, err := newCertificateRotator(testCertificateFile, testPrivateKeyFile, zap.NewNop())
 	assert.NotNil(t, c)
 	assert.NoError(t, err)
 }
 
 func TestNewCeritifacteRotatorFailure(t *testing.T) {
-	c, err := newCertificateRotator("./tests/does_not_exist", testPrivateKeyFile)
+	c, err := newCertificateRotator("./tests/does_not_exist", testPrivateKeyFile, zap.NewNop())
 	assert.Nil(t, c)
 	assert.Error(t, err)
 }

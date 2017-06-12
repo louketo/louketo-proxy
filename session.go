@@ -19,8 +19,8 @@ import (
 	"net/http"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/gambol99/go-oidc/jose"
+	"go.uber.org/zap"
 )
 
 // getIdentity retrieves the user identity from a request, either from a session cookie or a bearer token
@@ -46,12 +46,11 @@ func (r *oauthProxy) getIdentity(req *http.Request) (*userContext, error) {
 	}
 	user.bearerToken = isBearer
 
-	log.WithFields(log.Fields{
-		"id":    user.id,
-		"name":  user.name,
-		"email": user.email,
-		"roles": strings.Join(user.roles, ","),
-	}).Debugf("found the user identity: %s in the request", user.email)
+	r.log.Debug("found the user identity",
+		zap.String("id", user.id),
+		zap.String("name", user.name),
+		zap.String("email", user.email),
+		zap.String("roles", strings.Join(user.roles, ",")))
 
 	return user, nil
 }

@@ -25,6 +25,7 @@ FEATURES
 * added the --enable-encrypted-token option to enable encrypting the access token:wq
 * added the --skip-client-id option to permit skipping the verification of the auduence against client in token [#PR236](https://github.com/gambol99/keycloak-proxy/pull/236)
 * updated the base image to apline 3.6 in commit [0fdebaf821](https://github.com/gambol99/keycloak-proxy/pull/236/commits/0fdebaf8215e9480896f01ec7ab2ef7caa242da1)
+* moved to use zap for the logging [#PR237](https://github.com/gambol99/keycloak-proxy/pull/237)
 
 BREAKING CHANGES:
 * the proxy no longer uses prefixes for resources, if you wish to use wildcard urls you need

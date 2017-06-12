@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -27,7 +26,6 @@ import (
 	"testing"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/gambol99/go-oidc/jose"
 	"github.com/stretchr/testify/assert"
 )
@@ -296,7 +294,6 @@ func newTestService() string {
 }
 
 func newTestProxyService(config *Config) (*oauthProxy, *fakeAuthServer, string) {
-	log.SetOutput(ioutil.Discard)
 	auth := newFakeAuthServer()
 	if config == nil {
 		config = newFakeKeycloakConfig()
@@ -317,7 +314,7 @@ func newTestProxyService(config *Config) (*oauthProxy, *fakeAuthServer, string) 
 	config.RedirectionURL = service.URL
 
 	// step: we need to update the client config
-	if proxy.client, proxy.idp, proxy.idpClient, err = newOpenIDClient(config); err != nil {
+	if proxy.client, proxy.idp, proxy.idpClient, err = proxy.newOpenIDClient(); err != nil {
 		panic("failed to recreate the openid client, error: " + err.Error())
 	}
 
@@ -339,15 +336,18 @@ func newFakeHTTPRequest(method, path string) *http.Request {
 
 func newFakeKeycloakConfig() *Config {
 	return &Config{
-		ClientID:          fakeClientID,
-		ClientSecret:      fakeSecret,
-		CookieAccessName:  "kc-access",
-		CookieRefreshName: "kc-state",
-		DiscoveryURL:      "127.0.0.1:0",
-		Listen:            "127.0.0.1:0",
+		ClientID:                  fakeClientID,
+		ClientSecret:              fakeSecret,
+		CookieAccessName:          "kc-access",
+		CookieRefreshName:         "kc-state",
+		DisableAllLogging:         true,
+		DiscoveryURL:              "127.0.0.1:0",
 		EnableAuthorizationHeader: true,
+		EnableLogging:             false,
 		EnableLoginHandler:        true,
+		Listen:                    "127.0.0.1:0",
 		Scopes:                    []string{},
+		Verbose:                   true,
 		Resources: []*Resource{
 			{
 				URL:     fakeAdminRoleURL,

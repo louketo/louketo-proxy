@@ -30,15 +30,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewOpenIDClient(t *testing.T) {
-	_, auth, _ := newTestProxyService(nil)
-	client, _, _, err := newOpenIDClient(&Config{
-		DiscoveryURL: auth.location.String() + "/auth/realms/hod-test",
-	})
-	assert.NoError(t, err)
-	assert.NotNil(t, client)
-}
-
 func TestDecodeKeyPairs(t *testing.T) {
 	testCases := []struct {
 		List     []string

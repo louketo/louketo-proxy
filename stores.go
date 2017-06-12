@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"net/url"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/gambol99/go-oidc/jose"
+	"go.uber.org/zap"
 )
 
 // createStorage creates the store client for use
@@ -71,9 +71,7 @@ func (r *oauthProxy) GetRefreshToken(token jose.JWT) (string, error) {
 // DeleteRefreshToken removes a key from the store
 func (r *oauthProxy) DeleteRefreshToken(token jose.JWT) error {
 	if err := r.store.Delete(getHashKey(&token)); err != nil {
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Errorf("unable to delete token")
+		r.log.Error("unable to delete token", zap.Error(err))
 
 		return err
 	}
