@@ -231,18 +231,18 @@ func (r *oauthProxy) createForwardingProxy() error {
 	}
 	forwardingHandler := r.forwardProxyHandler()
 
-	// step: set the http handler
+	// set the http handler
 	proxy := r.upstream.(*goproxy.ProxyHttpServer)
 	r.router = proxy
 
-	// step: setup the tls configuration
+	// setup the tls configuration
 	if r.config.TLSCaCertificate != "" && r.config.TLSCaPrivateKey != "" {
 		ca, err := loadCA(r.config.TLSCaCertificate, r.config.TLSCaPrivateKey)
 		if err != nil {
 			return fmt.Errorf("unable to load certificate authority, error: %s", err)
 		}
 
-		// step: implement the goproxy connect method
+		// implement the goproxy connect method
 		proxy.OnRequest().HandleConnectFunc(
 			func(host string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string) {
 				return &goproxy.ConnectAction{
@@ -252,7 +252,7 @@ func (r *oauthProxy) createForwardingProxy() error {
 			},
 		)
 	} else {
-		// step: use the default certificate provided by goproxy
+		// use the default certificate provided by goproxy
 		proxy.OnRequest().HandleConnect(goproxy.AlwaysMitm)
 	}
 
@@ -275,7 +275,6 @@ func (r *oauthProxy) createForwardingProxy() error {
 	})
 	proxy.OnRequest().DoFunc(func(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
 		ctx.UserData = time.Now()
-		// step: forward into the handler
 		forwardingHandler(req, ctx.Resp)
 		return req, ctx.Resp
 	})

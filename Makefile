@@ -13,7 +13,7 @@ PACKAGES=$(shell go list ./...)
 LFLAGS ?= -X main.gitsha=${GIT_SHA} -X main.compiled=${BUILD_TIME}
 VETARGS ?= -asmdecl -atomic -bool -buildtags -copylocks -methods -nilfunc -printf -rangeloops -shift -structtags -unsafeptr
 
-.PHONY: test authors changelog build docker static release lint cover vet
+.PHONY: test authors changelog build docker static release lint cover vet glide-install
 
 default: build
 
@@ -21,18 +21,15 @@ golang:
 	@echo "--> Go Version"
 	@go version
 
-version:
-	@sed -i "s/const gitSHA =.*/const gitSHA = \"${GIT_SHA}\"/" doc.go
-
-build:
+build: golang deps
 	@echo "--> Compiling the project"
 	@mkdir -p bin
-	godep go build -ldflags "${LFLAGS}" -o bin/${NAME}
+	go build -ldflags "${LFLAGS}" -o bin/${NAME}
 
 static: golang deps
 	@echo "--> Compiling the static binary"
 	@mkdir -p bin
-	CGO_ENABLED=0 GOOS=linux godep go build -a -tags netgo -ldflags "-w ${LFLAGS}" -o bin/${NAME}
+	CGO_ENABLED=0 GOOS=linux go build -a -tags netgo -ldflags "-w ${LFLAGS}" -o bin/${NAME}
 
 docker-build:
 	@echo "--> Compiling the project"
@@ -45,9 +42,9 @@ docker-build:
 docker-test:
 	@echo "--> Running the docker test"
 	docker run --rm -ti -p 3000:3000 \
-	    -v ${ROOT_DIR}/config.yml:/etc/keycloak/config.yml:ro \
-	    -v ${ROOT_DIR}/tests:/opt/tests:ro \
-	    ${REGISTRY}/${AUTHOR}/${NAME}:${VERSION} --config /etc/keycloak/config.yml
+    -v ${ROOT_DIR}/config.yml:/etc/keycloak/config.yml:ro \
+    -v ${ROOT_DIR}/tests:/opt/tests:ro \
+    ${REGISTRY}/${AUTHOR}/${NAME}:${VERSION} --config /etc/keycloak/config.yml
 
 docker-release:
 	@echo "--> Building a release image"
@@ -83,9 +80,14 @@ authors:
 	@echo "--> Updating the AUTHORS"
 	git log --format='%aN <%aE>' | sort -u > AUTHORS
 
+glide-install:
+	@echo "--> Installing dependencies"
+	@glide install
+
 deps:
 	@echo "--> Installing build dependencies"
-	@go get github.com/tools/godep
+	@go get github.com/Masterminds/glide
+	@$(MAKE) glide-install
 
 vet:
 	@echo "--> Running go vet $(VETARGS) ."
@@ -120,20 +122,23 @@ format:
 
 bench:
 	@echo "--> Running go bench"
-	@godep go test -bench=.
+	@go test -bench=.
 
 coverage:
 	@echo "--> Running go coverage"
-	@godep go test -coverprofile cover.out
-	@godep go tool cover -html=cover.out -o cover.html
+	@go test -coverprofile cover.out
+	@go tool cover -html=cover.out -o cover.html
 
 cover:
 	@echo "--> Running go cover"
-	@godep go test --cover
+	@go test --cover
 
-test: deps
+test:
 	@echo "--> Running the tests"
-	@godep go test -v
+	@if [ ! -d "vendor" ]; then \
+		make glide-install; \
+  fi
+	@go test -v
 	@$(MAKE) golang
 	@$(MAKE) gofmt
 	@$(MAKE) vet
