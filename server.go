@@ -34,7 +34,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/armon/go-proxyproto"
-	"github.com/coreos/go-oidc/oidc"
+	"github.com/gambol99/go-oidc/oidc"
 	"github.com/gambol99/goproxy"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"

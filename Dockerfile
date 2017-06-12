@@ -1,8 +1,7 @@
-FROM alpine:3.5
+FROM alpine:3.6
 MAINTAINER Rohith <gambol99@gmail.com>
 
-RUN apk update && \
-    apk add ca-certificates
+RUN apk add ca-certificates --update
 
 ADD templates/ /opt/templates
 ADD bin/keycloak-proxy /opt/keycloak-proxy

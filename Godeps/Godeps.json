@@ -32,23 +32,19 @@
 		},
 		{
 			"ImportPath": "github.com/coreos/go-oidc/http",
-			"Rev": "dedb650fb29c39c2f21aa88c1e4cec66da8754d1"
+			"Rev": "c797a55f1c1001ec3169f1d0fbb4c5523563bec6"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-oidc/jose",
-			"Rev": "dedb650fb29c39c2f21aa88c1e4cec66da8754d1"
+			"Rev": "c797a55f1c1001ec3169f1d0fbb4c5523563bec6"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-oidc/key",
-			"Rev": "dedb650fb29c39c2f21aa88c1e4cec66da8754d1"
+			"Rev": "c797a55f1c1001ec3169f1d0fbb4c5523563bec6"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-oidc/oauth2",
-			"Rev": "dedb650fb29c39c2f21aa88c1e4cec66da8754d1"
-		},
-		{
-			"ImportPath": "github.com/coreos/go-oidc/oidc",
-			"Rev": "dedb650fb29c39c2f21aa88c1e4cec66da8754d1"
+			"Rev": "c797a55f1c1001ec3169f1d0fbb4c5523563bec6"
 		},
 		{
 			"ImportPath": "github.com/coreos/pkg/health",
@@ -78,6 +74,18 @@
 			"ImportPath": "github.com/fsnotify/fsnotify",
 			"Comment": "v1.4.2-2-gfd9ec7d",
 			"Rev": "fd9ec7deca8bf46ecd2a795baaacf2b3a9be1197"
+		},
+		{
+			"ImportPath": "github.com/gambol99/go-oidc/jose",
+			"Rev": "2111f98a1397a35f1800f4c3c354a7abebbef75c"
+		},
+		{
+			"ImportPath": "github.com/gambol99/go-oidc/oauth2",
+			"Rev": "2111f98a1397a35f1800f4c3c354a7abebbef75c"
+		},
+		{
+			"ImportPath": "github.com/gambol99/go-oidc/oidc",
+			"Rev": "2111f98a1397a35f1800f4c3c354a7abebbef75c"
 		},
 		{
 			"ImportPath": "github.com/gambol99/goproxy",
@@ -173,8 +181,13 @@
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/assert",
-			"Comment": "v1.1.4-27-g4d4bfba",
-			"Rev": "4d4bfba8f1d1027c4fdbe371823030df51419987"
+			"Comment": "v1.1.4-66-gf6abca5",
+			"Rev": "f6abca593680b2315d2075e0f5e2a9751e3f431a"
+		},
+		{
+			"ImportPath": "github.com/stretchr/testify/require",
+			"Comment": "v1.1.4-66-gf6abca5",
+			"Rev": "f6abca593680b2315d2075e0f5e2a9751e3f431a"
 		},
 		{
 			"ImportPath": "github.com/unrolled/secure",
@@ -267,14 +280,22 @@
 			"Rev": "49c95bdc21843256fb6c4e0d370a05f24a0bf213"
 		},
 		{
+			"ImportPath": "github.com/gambol99/go-oidc/http",
+			"Rev": "2111f98a1397a35f1800f4c3c354a7abebbef75c"
+		},
+		{
+			"ImportPath": "github.com/gambol99/go-oidc/key",
+			"Rev": "2111f98a1397a35f1800f4c3c354a7abebbef75c"
+		},
+		{
 			"ImportPath": "github.com/stretchr/testify/vendor/github.com/davecgh/go-spew/spew",
-			"Comment": "v1.1.4-27-g4d4bfba",
-			"Rev": "4d4bfba8f1d1027c4fdbe371823030df51419987"
+			"Comment": "v1.1.4-66-gf6abca5",
+			"Rev": "f6abca593680b2315d2075e0f5e2a9751e3f431a"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/vendor/github.com/pmezard/go-difflib/difflib",
-			"Comment": "v1.1.4-27-g4d4bfba",
-			"Rev": "4d4bfba8f1d1027c4fdbe371823030df51419987"
+			"Comment": "v1.1.4-66-gf6abca5",
+			"Rev": "f6abca593680b2315d2075e0f5e2a9751e3f431a"
 		}
 	]
 }

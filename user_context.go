@@ -20,8 +20,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/go-oidc/jose"
-	"github.com/coreos/go-oidc/oidc"
+	"github.com/gambol99/go-oidc/jose"
+	"github.com/gambol99/go-oidc/oidc"
 )
 
 // extractIdentity parse the jwt token and extracts the various elements is order to construct

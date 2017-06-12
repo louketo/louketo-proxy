@@ -24,7 +24,7 @@ import (
 
 	"github.com/PuerkitoBio/purell"
 	log "github.com/Sirupsen/logrus"
-	"github.com/coreos/go-oidc/jose"
+	"github.com/gambol99/go-oidc/jose"
 	"github.com/labstack/echo"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/unrolled/secure"
@@ -101,7 +101,7 @@ func (r *oauthProxy) metricsMiddleware() echo.MiddlewareFunc {
 		},
 		[]string{"code", "method"},
 	)
-	prometheus.MustRegisterOrGet(statusMetrics)
+	prometheus.MustRegister(statusMetrics)
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(cx echo.Context) error {
@@ -303,6 +303,7 @@ func (r *oauthProxy) admissionMiddleware(resource *Resource) echo.MiddlewareFunc
 
 			log.WithFields(log.Fields{
 				"access":   "permitted",
+				"client":   user.audience,
 				"email":    user.email,
 				"expires":  time.Until(user.expiresAt).String(),
 				"resource": resource.URL,

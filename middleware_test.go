@@ -25,7 +25,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/coreos/go-oidc/jose"
+	"github.com/gambol99/go-oidc/jose"
 	"github.com/go-resty/resty"
 	"github.com/labstack/echo/middleware"
 	"github.com/stretchr/testify/assert"
@@ -78,6 +78,7 @@ func newFakeProxy(c *Config) *fakeProxy {
 	auth := newFakeAuthServer()
 	c.DiscoveryURL = auth.getLocation()
 	c.RevocationEndpoint = auth.getRevocationURL()
+	c.Verbose = false
 	proxy, err := newProxy(c)
 	if err != nil {
 		panic("failed to create fake proxy service, error: " + err.Error())

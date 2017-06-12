@@ -20,7 +20,7 @@ import (
 	"net/url"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/coreos/go-oidc/jose"
+	"github.com/gambol99/go-oidc/jose"
 )
 
 // createStorage creates the store client for use

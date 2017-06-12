@@ -14,8 +14,8 @@ import (
 	"github.com/coreos/pkg/timeutil"
 	"github.com/jonboulle/clockwork"
 
-	phttp "github.com/coreos/go-oidc/http"
-	"github.com/coreos/go-oidc/oauth2"
+	phttp "github.com/gambol99/go-oidc/http"
+	"github.com/gambol99/go-oidc/oauth2"
 )
 
 const (
@@ -325,7 +325,7 @@ func contains(sli []string, ele string) bool {
 //
 // NOTE(ericchiang): For development purposes Valid does not mandate 'https' for
 // URLs fields where the OIDC spec requires it. This may change in future releases
-// of this package. See: https://github.com/coreos/go-oidc/issues/34
+// of this package. See: https://github.com/gambol99/go-oidc/issues/34
 func (p ProviderConfig) Valid() error {
 	grantTypes := p.GrantTypesSupported
 	if len(grantTypes) == 0 {
@@ -352,9 +352,6 @@ func (p ProviderConfig) Valid() error {
 
 	if !contains(p.IDTokenSigningAlgValues, "RS256") {
 		return errors.New("id_token_signing_alg_values_supported must include 'RS256'")
-	}
-	if contains(p.TokenEndpointAuthMethodsSupported, "none") {
-		return errors.New("token_endpoint_auth_signing_alg_values_supported cannot include 'none'")
 	}
 
 	uris := []struct {

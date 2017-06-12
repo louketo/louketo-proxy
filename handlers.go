@@ -30,7 +30,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/coreos/go-oidc/oauth2"
+	"github.com/gambol99/go-oidc/oauth2"
 	"github.com/labstack/echo"
 )
 
