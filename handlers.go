@@ -104,7 +104,7 @@ func (r *oauthProxy) oauthAuthorizationHandler(cx echo.Context) error {
 	}
 	client, err := r.getOAuthClient(r.getRedirectionURL(cx))
 	if err != nil {
-		r.log.Error("failed to retrieve the oauth client for authorization", zap.String("error", err.Error()))
+		r.log.Error("failed to retrieve the oauth client for authorization", zap.Error(err))
 		return cx.NoContent(http.StatusInternalServerError)
 	}
 
@@ -144,13 +144,13 @@ func (r *oauthProxy) oauthCallbackHandler(cx echo.Context) error {
 
 	client, err := r.getOAuthClient(r.getRedirectionURL(cx))
 	if err != nil {
-		r.log.Error("unable to create a oauth2 client", zap.String("error", err.Error()))
+		r.log.Error("unable to create a oauth2 client", zap.Error(err))
 		return cx.NoContent(http.StatusInternalServerError)
 	}
 
 	resp, err := exchangeAuthenticationCode(client, code)
 	if err != nil {
-		r.log.Error("unable to exchange code for access token", zap.String("error", err.Error()))
+		r.log.Error("unable to exchange code for access token", zap.Error(err))
 		return r.accessForbidden(cx)
 	}
 
@@ -159,7 +159,7 @@ func (r *oauthProxy) oauthCallbackHandler(cx echo.Context) error {
 	// to the ID Token.
 	token, identity, err := parseToken(resp.IDToken)
 	if err != nil {
-		r.log.Error("unable to parse id token for identity", zap.String("error", err.Error()))
+		r.log.Error("unable to parse id token for identity", zap.Error(err))
 		return r.accessForbidden(cx)
 	}
 	access, id, err := parseToken(resp.AccessToken)
@@ -167,12 +167,12 @@ func (r *oauthProxy) oauthCallbackHandler(cx echo.Context) error {
 		token = access
 		identity = id
 	} else {
-		r.log.Warn("unable to parse the access token, using id token only", zap.String("error", err.Error()))
+		r.log.Warn("unable to parse the access token, using id token only", zap.Error(err))
 	}
 
 	// step: check the access token is valid
 	if err = verifyToken(r.client, token); err != nil {
-		r.log.Error("unable to verify the id token", zap.String("error", err.Error()))
+		r.log.Error("unable to verify the id token", zap.Error(err))
 		return r.accessForbidden(cx)
 	}
 	accessToken := token.Encode()
@@ -180,7 +180,7 @@ func (r *oauthProxy) oauthCallbackHandler(cx echo.Context) error {
 	// step: are we encrypting the access token?
 	if r.config.EnableEncryptedToken {
 		if accessToken, err = encodeText(accessToken, r.config.EncryptionKey); err != nil {
-			r.log.Error("unable to encode the access token", zap.String("error", err.Error()))
+			r.log.Error("unable to encode the access token", zap.Error(err))
 			return cx.NoContent(http.StatusInternalServerError)
 		}
 	}
@@ -195,7 +195,7 @@ func (r *oauthProxy) oauthCallbackHandler(cx echo.Context) error {
 		var encrypted string
 		encrypted, err = encodeText(resp.RefreshToken, r.config.EncryptionKey)
 		if err != nil {
-			r.log.Error("failed to encrypt the refresh token", zap.String("error", err.Error()))
+			r.log.Error("failed to encrypt the refresh token", zap.Error(err))
 			return cx.NoContent(http.StatusInternalServerError)
 		}
 		// drop in the access token - cookie expiration = access token
@@ -204,7 +204,7 @@ func (r *oauthProxy) oauthCallbackHandler(cx echo.Context) error {
 		switch r.useStore() {
 		case true:
 			if err = r.StoreRefreshToken(token, encrypted); err != nil {
-				r.log.Warn("failed to save the refresh token in the store", zap.String("error", err.Error()))
+				r.log.Warn("failed to save the refresh token in the store", zap.Error(err))
 			}
 		default:
 			// notes: not all idp refresh tokens are readable, google for example, so we attempt to decode into
@@ -226,7 +226,7 @@ func (r *oauthProxy) oauthCallbackHandler(cx echo.Context) error {
 		if err != nil {
 			r.log.Warn("unable to decode the state parameter",
 				zap.String("state", cx.QueryParam("state")),
-				zap.String("error", err.Error()))
+				zap.Error(err))
 		} else {
 			state = string(decoded)
 		}
@@ -280,7 +280,7 @@ func (r *oauthProxy) loginHandler(cx echo.Context) error {
 	if err != nil {
 		r.log.Error(errorMsg,
 			zap.String("client_ip", cx.RealIP()),
-			zap.String("error", err.Error()))
+			zap.Error(err))
 
 		return cx.NoContent(code)
 	}
@@ -317,7 +317,7 @@ func (r *oauthProxy) logoutHandler(cx echo.Context) error {
 	if r.useStore() {
 		go func() {
 			if err := r.DeleteRefreshToken(user.token); err != nil {
-				r.log.Error("unable to remove the refresh token from store", zap.String("error", err.Error()))
+				r.log.Error("unable to remove the refresh token from store", zap.Error(err))
 			}
 		}()
 	}
@@ -327,7 +327,7 @@ func (r *oauthProxy) logoutHandler(cx echo.Context) error {
 	if revocationURL != "" {
 		client, err := r.client.OAuthClient()
 		if err != nil {
-			r.log.Error("unable to retrieve the openid client", zap.String("error", err.Error()))
+			r.log.Error("unable to retrieve the openid client", zap.Error(err))
 			return cx.NoContent(http.StatusInternalServerError)
 		}
 
@@ -340,7 +340,7 @@ func (r *oauthProxy) logoutHandler(cx echo.Context) error {
 		request, err := http.NewRequest(http.MethodPost, revocationURL,
 			bytes.NewBufferString(fmt.Sprintf("refresh_token=%s", identityToken)))
 		if err != nil {
-			r.log.Error("unable to construct the revocation request", zap.String("error", err.Error()))
+			r.log.Error("unable to construct the revocation request", zap.Error(err))
 			return cx.NoContent(http.StatusInternalServerError)
 		}
 		// step: add the authentication headers and content-type
@@ -349,7 +349,7 @@ func (r *oauthProxy) logoutHandler(cx echo.Context) error {
 
 		response, err := client.HttpClient().Do(request)
 		if err != nil {
-			r.log.Error("unable to post to revocation endpoint", zap.String("error", err.Error()))
+			r.log.Error("unable to post to revocation endpoint", zap.Error(err))
 			return nil
 		}
 
