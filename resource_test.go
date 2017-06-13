@@ -29,6 +29,7 @@ func TestDecodeResourceBad(t *testing.T) {
 		{Option: "unknown=bad"},
 		{Option: "uri=/|unknown=bad"},
 		{Option: "uri"},
+		{Option: "uri=hello"},
 		{Option: "uri=/|white-listed=ERROR"},
 	}
 	for i, c := range cs {
