@@ -33,7 +33,6 @@ func (r *Resource) parse(resource string) (*Resource, error) {
 	if resource == "" {
 		return nil, errors.New("the resource has no options")
 	}
-	// parse the syntax
 	for _, x := range strings.Split(resource, "|") {
 		kp := strings.Split(x, "=")
 		if len(kp) != 2 {
@@ -42,6 +41,9 @@ func (r *Resource) parse(resource string) (*Resource, error) {
 		switch kp[0] {
 		case "uri":
 			r.URL = kp[1]
+			if !strings.HasPrefix(r.URL, "/") {
+				return nil, errors.New("the resource uri should start with a '/'")
+			}
 		case "methods":
 			r.Methods = strings.Split(kp[1], ",")
 			if len(r.Methods) == 1 {
