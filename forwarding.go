@@ -61,7 +61,8 @@ func (r *oauthProxy) proxyMiddleware() echo.MiddlewareFunc {
 			cx.Request().Header.Set("X-Forwarded-Host", cx.Request().URL.Host)
 			cx.Request().Header.Set("X-Forwarded-Proto", cx.Request().Header.Get("X-Forwarded-Proto"))
 
-			r.upstream.ServeHTTP(cx.Response().Writer, cx.Request())
+			r.upstream.ServeHTTP(cx.Response(), cx.Request())
+
 			return nil
 		}
 	}
