@@ -326,6 +326,57 @@ func TestOauthRequests(t *testing.T) {
 	newFakeProxy(cfg).RunTests(t, requests)
 }
 
+func TestStrangeRoutingError(t *testing.T) {
+	cfg := newFakeKeycloakConfig()
+	cfg.Resources = []*Resource{
+		{
+			URL:     "/api/v1/event/123456789",
+			Methods: allHTTPMethods,
+			Roles:   []string{"user"},
+		},
+		{
+			URL:     "/api/v1/event/404",
+			Methods: allHTTPMethods,
+			Roles:   []string{"monitoring"},
+		},
+		{
+			URL:     "/api/v1/audit/*",
+			Methods: allHTTPMethods,
+			Roles:   []string{"auditor", "dev"},
+		},
+		{
+			URL:     "/*",
+			Methods: allHTTPMethods,
+			Roles:   []string{"dev"},
+		},
+	}
+	requests := []fakeRequest{
+		{ // should work
+			URI:           "/api/v1/event/123456789",
+			HasToken:      true,
+			Redirects:     true,
+			Roles:         []string{"user"},
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
+		},
+		{ // good
+			URI:           "/api/v1/event/404",
+			HasToken:      true,
+			Redirects:     false,
+			Roles:         []string{"monitoring"},
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
+		},
+		{ // this should fail here
+			URI:          "/api/v1/event/1000",
+			Redirects:    false,
+			ExpectedCode: http.StatusUnauthorized,
+		},
+	}
+
+	newFakeProxy(cfg).RunTests(t, requests)
+}
+
 func TestNoProxyingRequests(t *testing.T) {
 	c := newFakeKeycloakConfig()
 	c.Resources = []*Resource{
