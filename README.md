@@ -225,7 +225,7 @@ By default all requests will be proxyed on to the upstream, if you wish to ensur
 --resource=uri=/* # note, by default unless specified the methods is assumed to be 'any|ANY'
 ```
 
-Note the HTTP routing rules following the guidelines from [echo](https://echo.labstack.com/guide/routing). Its also worth nothing the ordering of the resource do not matter, the router will handle that for you.
+Note the HTTP routing rules following the guidelines from [chi](https://github.com/go-chi/chi#router-design). Its also worth nothing the ordering of the resource do not matter, the router will handle that for you.
 
 #### **Google OAuth**
 

@@ -21,7 +21,7 @@ golang:
 	@echo "--> Go Version"
 	@go version
 
-build: golang deps
+build: golang
 	@echo "--> Compiling the project"
 	@mkdir -p bin
 	go build -ldflags "${LFLAGS}" -o bin/${NAME}

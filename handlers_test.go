@@ -67,7 +67,7 @@ func TestOauthRequestNotProxying(t *testing.T) {
 	requests := []fakeRequest{
 		{URI: "/oauth/test"},
 		{URI: "/oauth/..//oauth/test/"},
-		{URI: "/oauth/expired", Method: http.MethodPost, ExpectedCode: http.StatusNotFound},
+		{URI: "/oauth/expired", Method: http.MethodPost, ExpectedCode: http.StatusMethodNotAllowed},
 		{URI: "/oauth/expiring", Method: http.MethodPost},
 		{URI: "/oauth%2F///../test%2F%2Foauth"},
 	}
@@ -79,7 +79,7 @@ func TestLoginHandlerDisabled(t *testing.T) {
 	c.EnableLoginHandler = false
 	requests := []fakeRequest{
 		{URI: oauthURL + loginURL, Method: http.MethodPost, ExpectedCode: http.StatusNotImplemented},
-		{URI: oauthURL + loginURL, ExpectedCode: http.StatusNotFound},
+		{URI: oauthURL + loginURL, ExpectedCode: http.StatusMethodNotAllowed},
 	}
 	newFakeProxy(c).RunTests(t, requests)
 }
@@ -280,7 +280,7 @@ func TestCallbackURL(t *testing.T) {
 		{
 			URI:          oauthURL + callbackURL,
 			Method:       http.MethodPost,
-			ExpectedCode: http.StatusNotFound,
+			ExpectedCode: http.StatusMethodNotAllowed,
 		},
 		{
 			URI:          oauthURL + callbackURL,

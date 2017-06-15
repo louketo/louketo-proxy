@@ -27,7 +27,7 @@ import (
 
 	"github.com/gambol99/go-oidc/jose"
 	"github.com/go-resty/resty"
-	"github.com/labstack/echo/middleware"
+	"github.com/rs/cors"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 )
@@ -79,7 +79,7 @@ func newFakeProxy(c *Config) *fakeProxy {
 	auth := newFakeAuthServer()
 	c.DiscoveryURL = auth.getLocation()
 	c.RevocationEndpoint = auth.getRevocationURL()
-	c.Verbose = false
+	c.Verbose = true
 	proxy, err := newProxy(c)
 	if err != nil {
 		panic("failed to create fake proxy service, error: " + err.Error())
@@ -330,12 +330,12 @@ func TestStrangeRoutingError(t *testing.T) {
 	cfg := newFakeKeycloakConfig()
 	cfg.Resources = []*Resource{
 		{
-			URL:     "/api/v1/event/123456789",
+			URL:     "/api/v1/events/123456789",
 			Methods: allHTTPMethods,
 			Roles:   []string{"user"},
 		},
 		{
-			URL:     "/api/v1/event/404",
+			URL:     "/api/v1/events/404",
 			Methods: allHTTPMethods,
 			Roles:   []string{"monitoring"},
 		},
@@ -352,25 +352,47 @@ func TestStrangeRoutingError(t *testing.T) {
 	}
 	requests := []fakeRequest{
 		{ // should work
-			URI:           "/api/v1/event/123456789",
+			URI:           "/api/v1/events/123456789",
 			HasToken:      true,
 			Redirects:     true,
 			Roles:         []string{"user"},
 			ExpectedProxy: true,
 			ExpectedCode:  http.StatusOK,
 		},
+		{ // should break with bad role
+			URI:          "/api/v1/events/123456789",
+			HasToken:     true,
+			Redirects:    true,
+			Roles:        []string{"bad_role"},
+			ExpectedCode: http.StatusForbidden,
+		},
 		{ // good
-			URI:           "/api/v1/event/404",
+			URI:           "/api/v1/events/404",
 			HasToken:      true,
 			Redirects:     false,
-			Roles:         []string{"monitoring"},
+			Roles:         []string{"monitoring", "test"},
 			ExpectedProxy: true,
 			ExpectedCode:  http.StatusOK,
 		},
-		{ // this should fail here
+		{ // this should fail with no roles - hits catch all
 			URI:          "/api/v1/event/1000",
 			Redirects:    false,
 			ExpectedCode: http.StatusUnauthorized,
+		},
+		{ // this should fail with bad role - hits catch all
+			URI:          "/api/v1/event/1000",
+			Redirects:    false,
+			HasToken:     true,
+			Roles:        []string{"bad"},
+			ExpectedCode: http.StatusForbidden,
+		},
+		{ // should work with catch-all
+			URI:           "/api/v1/event/1000",
+			Redirects:     false,
+			HasToken:      true,
+			Roles:         []string{"dev"},
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
 		},
 	}
 
@@ -381,7 +403,7 @@ func TestNoProxyingRequests(t *testing.T) {
 	c := newFakeKeycloakConfig()
 	c.Resources = []*Resource{
 		{
-			URL:     "*",
+			URL:     "/*",
 			Methods: allHTTPMethods,
 		},
 	}
@@ -593,12 +615,12 @@ func TestRolePermissionsMiddleware(t *testing.T) {
 			Roles:        []string{"bad_role"},
 			ExpectedCode: http.StatusForbidden,
 		},
-		{ // token, wrong roles, no 'get' method (5)
+		{ // token, but post method
 			URI:           "/test",
 			Method:        http.MethodPost,
 			Redirects:     false,
 			HasToken:      true,
-			Roles:         []string{"bad_role"},
+			Roles:         []string{fakeTestRole},
 			ExpectedCode:  http.StatusOK,
 			ExpectedProxy: true,
 		},
@@ -747,42 +769,52 @@ func TestRolePermissionsMiddleware(t *testing.T) {
 
 func TestCrossSiteHandler(t *testing.T) {
 	cases := []struct {
-		Cors    middleware.CORSConfig
+		Cors    cors.Options
 		Request fakeRequest
 	}{
 		{
-			Cors: middleware.CORSConfig{
-				AllowOrigins: []string{"*"},
+			Cors: cors.Options{
+				AllowedOrigins: []string{"*"},
 			},
 			Request: fakeRequest{
 				URI: fakeAuthAllURL,
+				Headers: map[string]string{
+					"Origin": "127.0.0.1",
+				},
 				ExpectedHeaders: map[string]string{
 					"Access-Control-Allow-Origin": "*",
 				},
 			},
 		},
 		{
-			Cors: middleware.CORSConfig{
-				AllowOrigins: []string{"*", "https://examples.com"},
+			Cors: cors.Options{
+				AllowedOrigins: []string{"*", "https://examples.com"},
 			},
 			Request: fakeRequest{
 				URI: fakeAuthAllURL,
+				Headers: map[string]string{
+					"Origin": "127.0.0.1",
+				},
 				ExpectedHeaders: map[string]string{
 					"Access-Control-Allow-Origin": "*",
 				},
 			},
 		},
 		{
-			Cors: middleware.CORSConfig{
-				AllowOrigins: []string{"*"},
-				AllowMethods: []string{"GET", "POST"},
+			Cors: cors.Options{
+				AllowedOrigins: []string{"*"},
+				AllowedMethods: []string{"GET", "POST"},
 			},
 			Request: fakeRequest{
 				URI:    fakeAuthAllURL,
 				Method: http.MethodOptions,
+				Headers: map[string]string{
+					"Origin":                        "127.0.0.1",
+					"Access-Control-Request-Method": "GET",
+				},
 				ExpectedHeaders: map[string]string{
 					"Access-Control-Allow-Origin":  "*",
-					"Access-Control-Allow-Methods": "GET,POST",
+					"Access-Control-Allow-Methods": "GET",
 				},
 			},
 		},
@@ -791,11 +823,11 @@ func TestCrossSiteHandler(t *testing.T) {
 	for _, c := range cases {
 		cfg := newFakeKeycloakConfig()
 		cfg.CorsCredentials = c.Cors.AllowCredentials
-		cfg.CorsExposedHeaders = c.Cors.ExposeHeaders
-		cfg.CorsHeaders = c.Cors.AllowHeaders
+		cfg.CorsExposedHeaders = c.Cors.ExposedHeaders
+		cfg.CorsHeaders = c.Cors.AllowedHeaders
 		cfg.CorsMaxAge = time.Duration(time.Duration(c.Cors.MaxAge) * time.Second)
-		cfg.CorsMethods = c.Cors.AllowMethods
-		cfg.CorsOrigins = c.Cors.AllowOrigins
+		cfg.CorsMethods = c.Cors.AllowedMethods
+		cfg.CorsOrigins = c.Cors.AllowedOrigins
 
 		newFakeProxy(cfg).RunTests(t, []fakeRequest{c.Request})
 	}
@@ -955,6 +987,7 @@ func TestAdmissionHandlerRoles(t *testing.T) {
 	newFakeProxy(cfg).RunTests(t, requests)
 }
 
+// check to see if custom headers are hitting the upstream
 func TestCustomHeaders(t *testing.T) {
 	uri := "/admin/test"
 	requests := []struct {
@@ -966,7 +999,7 @@ func TestCustomHeaders(t *testing.T) {
 				"TestHeaderOne": "one",
 			},
 			Request: fakeRequest{
-				URI:           "/test.html",
+				URI:           "/gambol99.htm",
 				ExpectedProxy: true,
 				ExpectedProxyHeaders: map[string]string{
 					"TestHeaderOne": "one",

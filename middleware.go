@@ -16,6 +16,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -24,78 +25,64 @@ import (
 
 	"github.com/PuerkitoBio/purell"
 	"github.com/gambol99/go-oidc/jose"
-	"github.com/labstack/echo"
+	"github.com/go-chi/chi/middleware"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/unrolled/secure"
 	"go.uber.org/zap"
 )
 
-const normalizeFlags purell.NormalizationFlags = purell.FlagRemoveDotSegments | purell.FlagRemoveDuplicateSlashes
+const (
+	// normalizeFlags is the options to purell
+	normalizeFlags purell.NormalizationFlags = purell.FlagRemoveDotSegments | purell.FlagRemoveDuplicateSlashes
+	// httpResponseName is the name of the http response hanlder
+	httpResponseName = "http.response"
+)
 
-// proxyRevokeMiddleware is just a helper to drop all requests proxying
-func (r *oauthProxy) proxyRevokeMiddleware() echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(cx echo.Context) error {
-			r.revokeProxy(cx)
-			cx.NoContent(http.StatusForbidden)
-			return next(cx)
+// entrypointMiddleware is custom filtering for incoming requests
+func entrypointMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		keep := req.URL.Path
+		purell.NormalizeURL(req.URL, normalizeFlags)
+
+		// ensure we have a slash in the url
+		if !strings.HasPrefix(req.URL.Path, "/") {
+			req.URL.Path = "/" + req.URL.Path
 		}
-	}
-}
+		req.RequestURI = req.URL.RawPath
+		req.URL.RawPath = req.URL.Path
 
-// filterMiddleware is custom filtering for incoming requests
-func (r *oauthProxy) filterMiddleware() echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(cx echo.Context) error {
-			// step: keep a copy of the original
-			keep := cx.Request().URL.Path
-			purell.NormalizeURL(cx.Request().URL, normalizeFlags)
-			// step: ensure we have a slash in the url
-			if !strings.HasPrefix(cx.Request().URL.Path, "/") {
-				cx.Request().URL.Path = "/" + cx.Request().URL.Path
-			}
-			cx.Request().RequestURI = cx.Request().URL.RawPath
-			cx.Request().URL.RawPath = cx.Request().URL.Path
-			// step: continue the flow
-			next(cx)
-			// step: place back the original uri for proxying request
-			cx.Request().URL.Path = keep
-			cx.Request().URL.RawPath = keep
-			cx.Request().RequestURI = keep
+		// continue the flow
+		scope := &RequestScope{}
+		resp := middleware.NewWrapResponseWriter(w, 2)
+		next.ServeHTTP(resp, req.WithContext(context.WithValue(req.Context(), contextScopeName, scope)))
 
-			return nil
-		}
-	}
+		// place back the original uri for proxying request
+		req.URL.Path = keep
+		req.URL.RawPath = keep
+		req.RequestURI = keep
+	})
 }
 
 // loggingMiddleware is a custom http logger
-func (r *oauthProxy) loggingMiddleware() echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(cx echo.Context) error {
-			start := time.Now()
-			next(cx)
-			latency := time.Since(start)
-			addr := cx.RealIP()
-			//msg := .Infof("[%d] |%s| |%10v| %-5s %s", cx.Response().Status, addr, latency, cx.Request().Method, cx.Request().URL.Path)
-			r.log.Info("client request",
-				zap.Int("response", cx.Response().Status),
-				zap.String("path", cx.Request().URL.Path),
-				zap.String("client_ip", addr),
-				zap.String("method", cx.Request().Method),
-				zap.Int("status", cx.Response().Status),
-				zap.Int64("bytes", cx.Response().Size),
-				zap.String("path", cx.Request().URL.Path),
-				zap.String("latency", latency.String()))
-
-			return nil
-		}
-	}
+func (r *oauthProxy) loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		start := time.Now()
+		resp := w.(middleware.WrapResponseWriter)
+		next.ServeHTTP(resp, req)
+		addr := req.RemoteAddr
+		r.log.Info("client request",
+			zap.Duration("latency", time.Since(start)),
+			zap.Int("status", resp.Status()),
+			zap.Int("bytes", resp.BytesWritten()),
+			zap.String("client_ip", addr),
+			zap.String("method", req.Method),
+			zap.String("path", req.URL.Path))
+	})
 }
 
 // metricsMiddleware is responsible for collecting metrics
-func (r *oauthProxy) metricsMiddleware() echo.MiddlewareFunc {
-	r.log.Info("enabled the service metrics middleware, available on",
-		zap.String("path", fmt.Sprintf("%s%s", oauthURL, metricsURL)))
+func (r *oauthProxy) metricsMiddleware(next http.Handler) http.Handler {
+	r.log.Info("enabled the service metrics middleware, available on", zap.String("path", fmt.Sprintf("%s%s", oauthURL, metricsURL)))
 
 	statusMetrics := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -106,27 +93,30 @@ func (r *oauthProxy) metricsMiddleware() echo.MiddlewareFunc {
 	)
 	prometheus.MustRegister(statusMetrics)
 
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(cx echo.Context) error {
-			statusMetrics.WithLabelValues(fmt.Sprintf("%d", cx.Response().Status), cx.Request().Method).Inc()
-			return next(cx)
-		}
-	}
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		resp := w.(middleware.WrapResponseWriter)
+		statusMetrics.WithLabelValues(fmt.Sprintf("%d", resp.Status()), req.Method).Inc()
+
+		next.ServeHTTP(w, req)
+	})
 }
 
 // authenticationMiddleware is responsible for verifying the access token
-func (r *oauthProxy) authenticationMiddleware(resource *Resource) echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(cx echo.Context) error {
-			clientIP := cx.RealIP()
-
-			// step: grab the user identity from the request
-			user, err := r.getIdentity(cx.Request())
+func (r *oauthProxy) authenticationMiddleware(resource *Resource) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			clientIP := req.RemoteAddr
+			// grab the user identity from the request
+			user, err := r.getIdentity(req)
 			if err != nil {
 				r.log.Error("no session found in request, redirecting for authorization", zap.Error(err))
-				return r.redirectToAuthorization(cx)
+				next.ServeHTTP(w, req.WithContext(r.redirectToAuthorization(w, req)))
+				return
 			}
-			cx.Set(userContextName, user)
+			// create the request scope
+			scope := req.Context().Value(contextScopeName).(*RequestScope)
+			scope.Identity = user
+			ctx := context.WithValue(req.Context(), contextScopeName, scope)
 
 			// step: skip if we are running skip-token-verification
 			if r.config.SkipTokenVerification {
@@ -136,7 +126,9 @@ func (r *oauthProxy) authenticationMiddleware(resource *Resource) echo.Middlewar
 						zap.String("client_ip", clientIP),
 						zap.String("username", user.name),
 						zap.String("expired_on", user.expiresAt.String()))
-					return r.redirectToAuthorization(cx)
+
+					next.ServeHTTP(w, req.WithContext(r.redirectToAuthorization(w, req)))
+					return
 				}
 			} else {
 				if err := verifyToken(r.client, user.token); err != nil {
@@ -147,7 +139,9 @@ func (r *oauthProxy) authenticationMiddleware(resource *Resource) echo.Middlewar
 						r.log.Error("access token failed verification",
 							zap.String("client_ip", clientIP),
 							zap.Error(err))
-						return r.accessForbidden(cx)
+
+						next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req)))
+						return
 					}
 
 					// step: check if we are refreshing the access tokens and if not re-auth
@@ -156,7 +150,9 @@ func (r *oauthProxy) authenticationMiddleware(resource *Resource) echo.Middlewar
 							zap.String("client_ip", clientIP),
 							zap.String("email", user.name),
 							zap.String("expired_on", user.expiresAt.String()))
-						return r.redirectToAuthorization(cx)
+
+						next.ServeHTTP(w, req.WithContext(r.redirectToAuthorization(w, req)))
+						return
 					}
 
 					r.log.Info("accces token for user has expired, attemping to refresh the token",
@@ -164,13 +160,15 @@ func (r *oauthProxy) authenticationMiddleware(resource *Resource) echo.Middlewar
 						zap.String("email", user.email))
 
 					// step: check if the user has refresh token
-					refresh, encrypted, err := r.retrieveRefreshToken(cx.Request(), user)
+					refresh, encrypted, err := r.retrieveRefreshToken(req.WithContext(ctx), user)
 					if err != nil {
 						r.log.Error("unable to find a refresh token for user",
 							zap.String("client_ip", clientIP),
 							zap.String("email", user.email),
 							zap.Error(err))
-						return r.redirectToAuthorization(cx)
+
+						next.ServeHTTP(w, req.WithContext(r.redirectToAuthorization(w, req)))
+						return
 					}
 
 					// attempt to refresh the access token
@@ -182,11 +180,13 @@ func (r *oauthProxy) authenticationMiddleware(resource *Resource) echo.Middlewar
 								zap.String("client_ip", clientIP),
 								zap.String("email", user.email))
 
-							r.clearAllCookies(cx.Request(), cx.Response().Writer)
+							r.clearAllCookies(req.WithContext(ctx), w)
 						default:
 							r.log.Error("failed to refresh the access token", zap.Error(err))
 						}
-						return r.redirectToAuthorization(cx)
+						next.ServeHTTP(w, req.WithContext(r.redirectToAuthorization(w, req)))
+
+						return
 					}
 					// get the expiration of the new access token
 					expiresIn := r.getAccessCookieExpiration(token, refresh)
@@ -201,11 +201,12 @@ func (r *oauthProxy) authenticationMiddleware(resource *Resource) echo.Middlewar
 					if r.config.EnableEncryptedToken {
 						if accessToken, err = encodeText(accessToken, r.config.EncryptionKey); err != nil {
 							r.log.Error("unable to encode the access token", zap.Error(err))
-							return cx.NoContent(http.StatusInternalServerError)
+							w.WriteHeader(http.StatusInternalServerError)
+							return
 						}
 					}
 					// step: inject the refreshed access token
-					r.dropAccessTokenCookie(cx.Request(), cx.Response().Writer, accessToken, expiresIn)
+					r.dropAccessTokenCookie(req.WithContext(ctx), w, accessToken, expiresIn)
 
 					if r.useStore() {
 						go func(old, new jose.JWT, encrypted string) {
@@ -220,27 +221,31 @@ func (r *oauthProxy) authenticationMiddleware(resource *Resource) echo.Middlewar
 					}
 					// update the with the new access token and inject into the context
 					user.token = token
-					cx.Set(userContextName, user)
+					ctx = context.WithValue(req.Context(), contextScopeName, scope)
 				}
 			}
-			return next(cx)
-		}
+
+			next.ServeHTTP(w, req.WithContext(ctx))
+		})
 	}
 }
 
 // admissionMiddleware is responsible checking the access token against the protected resource
-func (r *oauthProxy) admissionMiddleware(resource *Resource) echo.MiddlewareFunc {
+func (r *oauthProxy) admissionMiddleware(resource *Resource) func(http.Handler) http.Handler {
 	claimMatches := make(map[string]*regexp.Regexp)
 	for k, v := range r.config.MatchClaims {
 		claimMatches[k] = regexp.MustCompile(v)
 	}
 
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(cx echo.Context) error {
-			if found := cx.Get(revokeContextName); found != nil {
-				return nil
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			// we don't need to continue is a decision has been made
+			scope := req.Context().Value(contextScopeName).(*RequestScope)
+			if scope.AccessDenied {
+				next.ServeHTTP(w, req)
+				return
 			}
-			user := cx.Get(userContextName).(*userContext)
+			user := scope.Identity
 
 			// step: we need to check the roles
 			if roles := len(resource.Roles); roles > 0 {
@@ -251,13 +256,13 @@ func (r *oauthProxy) admissionMiddleware(resource *Resource) echo.MiddlewareFunc
 						zap.String("resource", resource.URL),
 						zap.String("required", resource.getRoles()))
 
-					return r.accessForbidden(cx)
+					next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req)))
+					return
 				}
 			}
 
 			// step: if we have any claim matching, lets validate the tokens has the claims
 			for claimName, match := range claimMatches {
-				// step: if the claim is NOT in the token, we access deny
 				value, found, err := user.claims.StringClaim(claimName)
 				if err != nil {
 					r.log.Error("unable to extract the claim from token",
@@ -266,7 +271,8 @@ func (r *oauthProxy) admissionMiddleware(resource *Resource) echo.MiddlewareFunc
 						zap.String("resource", resource.URL),
 						zap.Error(err))
 
-					return r.accessForbidden(cx)
+					next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req)))
+					return
 				}
 
 				if !found {
@@ -276,7 +282,8 @@ func (r *oauthProxy) admissionMiddleware(resource *Resource) echo.MiddlewareFunc
 						zap.String("email", user.email),
 						zap.String("resource", resource.URL))
 
-					return r.accessForbidden(cx)
+					next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req)))
+					return
 				}
 
 				// step: check the claim is the same
@@ -289,7 +296,8 @@ func (r *oauthProxy) admissionMiddleware(resource *Resource) echo.MiddlewareFunc
 						zap.String("required", match.String()),
 						zap.String("resource", resource.URL))
 
-					return r.accessForbidden(cx)
+					next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req)))
+					return
 				}
 			}
 
@@ -299,48 +307,50 @@ func (r *oauthProxy) admissionMiddleware(resource *Resource) echo.MiddlewareFunc
 				zap.Duration("expires", time.Until(user.expiresAt)),
 				zap.String("resource", resource.URL))
 
-			return next(cx)
-		}
+			next.ServeHTTP(w, req)
+		})
 	}
 }
 
 // headersMiddleware is responsible for add the authentication headers for the upstream
-func (r *oauthProxy) headersMiddleware(custom []string) echo.MiddlewareFunc {
+func (r *oauthProxy) headersMiddleware(custom []string) func(http.Handler) http.Handler {
 	customClaims := make(map[string]string)
 	for _, x := range custom {
 		customClaims[x] = fmt.Sprintf("X-Auth-%s", toHeader(x))
 	}
 
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(cx echo.Context) error {
-			if user := cx.Get(userContextName); user != nil {
-				id := user.(*userContext)
-				cx.Request().Header.Set("X-Auth-Email", id.email)
-				cx.Request().Header.Set("X-Auth-ExpiresIn", id.expiresAt.String())
-				cx.Request().Header.Set("X-Auth-Roles", strings.Join(id.roles, ","))
-				cx.Request().Header.Set("X-Auth-Subject", id.id)
-				cx.Request().Header.Set("X-Auth-Token", id.token.Encode())
-				cx.Request().Header.Set("X-Auth-Userid", id.name)
-				cx.Request().Header.Set("X-Auth-Username", id.name)
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			scope := req.Context().Value(contextScopeName).(*RequestScope)
+			if scope.Identity != nil {
+				user := scope.Identity
+				req.Header.Set("X-Auth-Email", user.email)
+				req.Header.Set("X-Auth-ExpiresIn", user.expiresAt.String())
+				req.Header.Set("X-Auth-Roles", strings.Join(user.roles, ","))
+				req.Header.Set("X-Auth-Subject", user.id)
+				req.Header.Set("X-Auth-Token", user.token.Encode())
+				req.Header.Set("X-Auth-Userid", user.name)
+				req.Header.Set("X-Auth-Username", user.name)
 
-				// step: add the authorization header if requested
+				// add the authorization header if requested
 				if r.config.EnableAuthorizationHeader {
-					cx.Request().Header.Set("Authorization", fmt.Sprintf("Bearer %s", id.token.Encode()))
+					req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", user.token.Encode()))
 				}
-				// step: inject any custom claims
+				// inject any custom claims
 				for claim, header := range customClaims {
-					if claim, found := id.claims[claim]; found {
-						cx.Request().Header.Set(header, fmt.Sprintf("%v", claim))
+					if claim, found := user.claims[claim]; found {
+						req.Header.Set(header, fmt.Sprintf("%v", claim))
 					}
 				}
 			}
-			return next(cx)
-		}
+
+			next.ServeHTTP(w, req)
+		})
 	}
 }
 
 // securityMiddleware performs numerous security checks on the request
-func (r *oauthProxy) securityMiddleware() echo.MiddlewareFunc {
+func (r *oauthProxy) securityMiddleware(next http.Handler) http.Handler {
 	r.log.Info("enabling the security filter middleware")
 	secure := secure.New(secure.Options{
 		AllowedHosts:          r.config.Hostnames,
@@ -351,13 +361,31 @@ func (r *oauthProxy) securityMiddleware() echo.MiddlewareFunc {
 		SSLRedirect:           r.config.EnableHTTPSRedirect,
 	})
 
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(cx echo.Context) error {
-			if err := secure.Process(cx.Response().Writer, cx.Request()); err != nil {
-				r.log.Error("failed security middleware", zap.Error(err))
-				return r.accessForbidden(cx)
-			}
-			return next(cx)
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if err := secure.Process(w, req); err != nil {
+			r.log.Warn("failed security middleware", zap.Error(err))
+			next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req)))
+			return
 		}
-	}
+
+		next.ServeHTTP(w, req)
+	})
+}
+
+// proxyDenyMiddleware just block everything
+func proxyDenyMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		sc := req.Context().Value(contextScopeName)
+		var scope *RequestScope
+		if sc == nil {
+			scope = &RequestScope{}
+		} else {
+			scope = sc.(*RequestScope)
+		}
+		scope.AccessDenied = true
+		// update the request context
+		ctx := context.WithValue(req.Context(), contextScopeName, scope)
+
+		next.ServeHTTP(w, req.WithContext(ctx))
+	})
 }
