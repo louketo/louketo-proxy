@@ -1,5 +1,5 @@
-hash: b61fcd2b523ddfcacf31c69e7f46b2fd9286d0c6555029efe8a45de3552d25b2
-updated: 2017-06-12T14:55:48.532550213+01:00
+hash: 94f0f660e0bc53763d820d0f3e951a1ef67c5e821abdd8c38b88fbfae5be5fb6
+updated: 2017-06-25T01:22:53.985873813+01:00
 imports:
 - name: github.com/armon/go-proxyproto
   version: 609d6338d3a76ec26ac3fe7045a164d9a58436e7
@@ -15,12 +15,6 @@ imports:
   - health
   - httputil
   - timeutil
-- name: github.com/davecgh/go-spew
-  version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
-  subpackages:
-  - spew
-- name: github.com/dgrijalva/jwt-go
-  version: 2268707a8f0843315e2004ee4f1d021dc08baedf
 - name: github.com/fsnotify/fsnotify
   version: fd9ec7deca8bf46ecd2a795baaacf2b3a9be1197
 - name: github.com/gambol99/go-oidc
@@ -33,37 +27,24 @@ imports:
   - oidc
 - name: github.com/gambol99/goproxy
   version: e713e5909438245be49ef559e74dd904833ebe90
-- name: github.com/go-resty/resty
-  version: 39c3db9c7bb4f9718ac143a83a924441521caf73
+- name: github.com/go-chi/chi
+  version: 18d990c0d1c023b05a3652d322ae36d8bdb62e07
+  subpackages:
+  - middleware
 - name: github.com/golang/protobuf
   version: 0c1f6d65b5a189c2250d10e71a5506f06f9fa0a0
   subpackages:
   - proto
 - name: github.com/jonboulle/clockwork
   version: ed104f61ea4877bea08af6f759805674861e968d
-- name: github.com/labstack/echo
-  version: eac431df0dbad8ba6cc313fba37f1d4275c317e8
-  subpackages:
-  - middleware
-- name: github.com/labstack/gommon
-  version: e8995fb26e646187d33cff439b18609cfba23088
-  subpackages:
-  - bytes
-  - color
-  - log
-  - random
-- name: github.com/mattn/go-colorable
-  version: 9cbef7c35391cca05f15f8181dc0b18bc9736dbb
-- name: github.com/mattn/go-isatty
-  version: 56b76bdf51f7708750eac80fa38b952bb9f32639
 - name: github.com/matttproud/golang_protobuf_extensions
   version: c12348ce28de40eed0136aa2b644d0ee0650e56c
   subpackages:
   - pbutil
-- name: github.com/pmezard/go-difflib
-  version: 792786c7400a136282c1664665ae0a8db921c6c2
+- name: github.com/pressly/chi
+  version: 18d990c0d1c023b05a3652d322ae36d8bdb62e07
   subpackages:
-  - difflib
+  - middleware
 - name: github.com/prometheus/client_golang
   version: 488edd04dc224ba64c401747cd0a4b5f05dfb234
   subpackages:
@@ -84,23 +65,14 @@ imports:
   version: 0bcb03f4b4d0a9428594752bd2a3b9aa0a9d4bd4
 - name: github.com/PuerkitoBio/urlesc
   version: 5bd2802263f21d8788851d5305584c82a5c75d7e
-- name: github.com/stretchr/testify
-  version: f6abca593680b2315d2075e0f5e2a9751e3f431a
-  subpackages:
-  - assert
-  - require
-  - vendor/github.com/davecgh/go-spew/spew
-  - vendor/github.com/pmezard/go-difflib/difflib
+- name: github.com/rs/cors
+  version: 8dd4211afb5d08dbb39a533b9bb9e4b486351df6
 - name: github.com/unrolled/secure
   version: 4b41e52ab568cbfd31eda3612d98192da1575c77
 - name: github.com/urfave/cli
   version: 0bdeddeeb0f650497d603c4ad7b20cfe685682f6
-- name: github.com/valyala/bytebufferpool
-  version: e746df99fe4a3986f4d4f79e13c1e0117ce9c2f7
-- name: github.com/valyala/fasttemplate
-  version: dcecefd839c4193db0d35b88ec65b4c12d360ab0
 - name: go.uber.org/atomic
-  version: 0506d69f5564c56e25797bf7183c28921d4c6360
+  version: 4e336646b2ef9fc6e47be8e21594178f98e5ebcf
 - name: go.uber.org/zap
   version: 54371c67da1bc746325e5582e48521a5db5d64ca
   subpackages:
@@ -110,16 +82,9 @@ imports:
   - internal/exit
   - internal/multierror
   - zapcore
-- name: golang.org/x/crypto
-  version: 453249f01cfeb54c3d549ddb75ff152ca243f9d8
-  subpackages:
-  - acme
-  - acme/autocert
 - name: golang.org/x/net
   version: bc3663df0ac92f928d419e31e0d2af22e683a5a2
   subpackages:
-  - context
-  - context/ctxhttp
   - idna
   - publicsuffix
 - name: golang.org/x/sys
@@ -143,4 +108,19 @@ imports:
   - internal/pool
 - name: gopkg.in/yaml.v2
   version: 49c95bdc21843256fb6c4e0d370a05f24a0bf213
-testImports: []
+testImports:
+- name: github.com/davecgh/go-spew
+  version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9
+  subpackages:
+  - spew
+- name: github.com/go-resty/resty
+  version: 39c3db9c7bb4f9718ac143a83a924441521caf73
+- name: github.com/pmezard/go-difflib
+  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
+  subpackages:
+  - difflib
+- name: github.com/stretchr/testify
+  version: f6abca593680b2315d2075e0f5e2a9751e3f431a
+  subpackages:
+  - assert
+  - require

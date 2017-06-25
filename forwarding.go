@@ -22,50 +22,50 @@ import (
 
 	"github.com/gambol99/go-oidc/jose"
 	"github.com/gambol99/go-oidc/oidc"
-	"github.com/labstack/echo"
 	"go.uber.org/zap"
 )
 
 // proxyMiddleware is responsible for handles reverse proxy request to the upstream endpoint
-func (r *oauthProxy) proxyMiddleware() echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(cx echo.Context) error {
-			next(cx)
-			// refuse to proxy
-			if found := cx.Get(revokeContextName); found != nil {
-				return nil
+func (r *oauthProxy) proxyMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		next.ServeHTTP(w, req)
+
+		// step: retrieve the request scope
+		scope := req.Context().Value(contextScopeName)
+		if scope != nil {
+			sc := scope.(*RequestScope)
+			if sc.AccessDenied {
+				return
 			}
-
-			// is this connection upgrading?
-			if isUpgradedConnection(cx.Request()) {
-				r.log.Debug("upgrading the connnection", zap.String("client_ip", cx.RealIP()))
-				if err := tryUpdateConnection(cx.Request(), cx.Response().Writer, r.endpoint); err != nil {
-					r.log.Error("failed to upgrade connection", zap.Error(err))
-					cx.NoContent(http.StatusInternalServerError)
-					return nil
-				}
-				return nil
-			}
-			// add any custom headers to the request
-			for k, v := range r.config.Headers {
-				cx.Request().Header.Set(k, v)
-			}
-
-			// By default goproxy only provides a forwarding proxy, thus all requests have to be absolute
-			// and we must update the host headers
-			cx.Request().URL.Host = r.endpoint.Host
-			cx.Request().URL.Scheme = r.endpoint.Scheme
-			cx.Request().Host = r.endpoint.Host
-
-			cx.Request().Header.Add("X-Forwarded-For", cx.RealIP())
-			cx.Request().Header.Set("X-Forwarded-Host", cx.Request().URL.Host)
-			cx.Request().Header.Set("X-Forwarded-Proto", cx.Request().Header.Get("X-Forwarded-Proto"))
-
-			r.upstream.ServeHTTP(cx.Response(), cx.Request())
-
-			return nil
 		}
-	}
+
+		if isUpgradedConnection(req) {
+			r.log.Debug("upgrading the connnection", zap.String("client_ip", req.RemoteAddr))
+			if err := tryUpdateConnection(req, w, r.endpoint); err != nil {
+				r.log.Error("failed to upgrade connection", zap.Error(err))
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			return
+		}
+
+		// add any custom headers to the request
+		for k, v := range r.config.Headers {
+			req.Header.Set(k, v)
+		}
+
+		// By default goproxy only provides a forwarding proxy, thus all requests have to be absolute
+		// and we must update the host headers
+		req.URL.Host = r.endpoint.Host
+		req.URL.Scheme = r.endpoint.Scheme
+		req.Host = r.endpoint.Host
+
+		req.Header.Add("X-Forwarded-For", realIP(req))
+		req.Header.Set("X-Forwarded-Host", req.URL.Host)
+		req.Header.Set("X-Forwarded-Proto", req.Header.Get("X-Forwarded-Proto"))
+
+		r.upstream.ServeHTTP(w, req)
+	})
 }
 
 // forwardProxyHandler is responsible for signing outbound requests
@@ -74,7 +74,6 @@ func (r *oauthProxy) forwardProxyHandler() func(*http.Request, *http.Response) {
 	if err != nil {
 		r.log.Fatal("failed to create oauth client", zap.Error(err))
 	}
-
 	// the loop state
 	var state struct {
 		// the access token

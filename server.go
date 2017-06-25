@@ -36,9 +36,10 @@ import (
 	"github.com/armon/go-proxyproto"
 	"github.com/gambol99/go-oidc/oidc"
 	"github.com/gambol99/goproxy"
-	"github.com/labstack/echo"
-	"github.com/labstack/echo/middleware"
+	"github.com/pressly/chi"
+	"github.com/pressly/chi/middleware"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/rs/cors"
 	"go.uber.org/zap"
 )
 
@@ -148,39 +149,59 @@ func (r *oauthProxy) createReverseProxy() error {
 	if err := r.createUpstreamProxy(r.endpoint); err != nil {
 		return err
 	}
+	engine := chi.NewRouter()
+	engine.MethodNotAllowed(emptyHandler)
+	engine.NotFound(emptyHandler)
+	engine.Use(middleware.Recoverer)
+	engine.Use(entrypointMiddleware)
 
-	// step: create the router
-	engine := echo.New()
-	engine.Pre(r.filterMiddleware())
-	engine.Use(middleware.Recover())
-
-	if r.config.EnableProfiling {
-		r.log.Warn("enabling the debug profiling on /debug/pprof")
-		engine.Any("/debug/pprof/:name", r.debugHandler)
-	}
 	if r.config.EnableLogging {
-		engine.Use(r.loggingMiddleware())
+		engine.Use(r.loggingMiddleware)
 	}
 	if r.config.EnableMetrics {
-		engine.Use(r.metricsMiddleware())
+		engine.Use(r.metricsMiddleware)
 	}
 	if r.config.EnableSecurityFilter {
-		engine.Use(r.securityMiddleware())
-	}
-	if len(r.config.CorsOrigins) > 0 {
-		engine.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-			AllowOrigins:     r.config.CorsOrigins,
-			AllowMethods:     r.config.CorsMethods,
-			AllowHeaders:     r.config.CorsHeaders,
-			AllowCredentials: r.config.CorsCredentials,
-			ExposeHeaders:    r.config.CorsExposedHeaders,
-			MaxAge:           int(r.config.CorsMaxAge.Seconds())}))
+		engine.Use(r.securityMiddleware)
 	}
 
-	// step: add the routing for aouth
-	engine.Group(oauthURL, r.proxyRevokeMiddleware())
-	engine.Any(oauthURL+"/:name", r.oauthHandler)
+	if len(r.config.CorsOrigins) > 0 {
+		c := cors.New(cors.Options{
+			AllowedOrigins:   r.config.CorsOrigins,
+			AllowedMethods:   r.config.CorsMethods,
+			AllowedHeaders:   r.config.CorsHeaders,
+			AllowCredentials: r.config.CorsCredentials,
+			ExposedHeaders:   r.config.CorsExposedHeaders,
+			MaxAge:           int(r.config.CorsMaxAge.Seconds()),
+		})
+		engine.Use(c.Handler)
+	}
+
+	engine.Use(r.proxyMiddleware)
 	r.router = engine
+
+	// step: add the routing for oauth
+	engine.With(proxyDenyMiddleware).Route(oauthURL, func(e chi.Router) {
+		e.MethodNotAllowed(methodNotAllowHandlder)
+		e.Get(authorizationURL, r.oauthAuthorizationHandler)
+		e.Get(callbackURL, r.oauthCallbackHandler)
+		e.Get(expiredURL, r.expirationHandler)
+		e.Get(healthURL, r.healthHandler)
+		e.Get(logoutURL, r.logoutHandler)
+		e.Get(tokenURL, r.tokenHandler)
+		e.Post(loginURL, r.loginHandler)
+		if r.config.EnableMetrics {
+			e.Get(metricsURL, r.proxyMetricsHandler)
+		}
+	})
+
+	if r.config.EnableProfiling {
+		engine.With(proxyDenyMiddleware).Route(debugURL, func(e chi.Router) {
+			r.log.Warn("enabling the debug profiling on /debug/pprof")
+			e.Get("/{name}", r.debugHandler)
+			e.Post("/{name}", r.debugHandler)
+		})
+	}
 
 	// step: load the templates if any
 	if err := r.createTemplates(); err != nil {
@@ -195,17 +216,27 @@ func (r *oauthProxy) createReverseProxy() error {
 				zap.String("ammended", strings.TrimRight(x.URL, "/")))
 		}
 	}
+
 	for _, x := range r.config.Resources {
 		r.log.Info("protecting resource", zap.String("resource", x.String()))
+		e := engine.With(
+			r.authenticationMiddleware(x),
+			r.admissionMiddleware(x),
+			r.headersMiddleware(r.config.AddClaims))
+		e.MethodNotAllowed(emptyHandler)
 		switch x.WhiteListed {
 		case false:
-			engine.Match(x.Methods, x.URL, emptyHandler, r.authenticationMiddleware(x), r.admissionMiddleware(x), r.headersMiddleware(r.config.AddClaims))
+			for _, m := range x.Methods {
+				e.MethodFunc(m, x.URL, emptyHandler)
+			}
 		default:
-			engine.Match(x.Methods, x.URL, emptyHandler)
+			for _, m := range x.Methods {
+				engine.MethodFunc(m, x.URL, emptyHandler)
+			}
 		}
 	}
 	for name, value := range r.config.MatchClaims {
-		r.log.Info("the token must contain", zap.String("claim", name), zap.String("value", value))
+		r.log.Info("token must contain", zap.String("claim", name), zap.String("value", value))
 	}
 	if r.config.RedirectionURL == "" {
 		r.log.Warn("no redirection url has been set, will use host headers")
@@ -213,8 +244,6 @@ func (r *oauthProxy) createReverseProxy() error {
 	if r.config.EnableEncryptedToken {
 		r.log.Info("session access tokens will be encrypted")
 	}
-
-	engine.Use(r.proxyMiddleware())
 
 	return nil
 }
@@ -224,7 +253,7 @@ func (r *oauthProxy) createForwardingProxy() error {
 	r.log.Info("enabling forward signing mode, listening on", zap.String("interface", r.config.Listen))
 
 	if r.config.SkipUpstreamTLSVerify {
-		r.log.Warn("TLS verification switched off. In forward signing mode it's recommended you verify! (--skip-upstream-tls-verify=false)")
+		r.log.Warn("tls verification switched off. In forward signing mode it's recommended you verify! (--skip-upstream-tls-verify=false)")
 	}
 	if err := r.createUpstreamProxy(nil); err != nil {
 		return err
@@ -297,14 +326,15 @@ func (r *oauthProxy) Run() error {
 	}
 	// step: create the http server
 	server := &http.Server{
-		Addr:    r.config.Listen,
-		Handler: r.router,
+		Addr:        r.config.Listen,
+		Handler:     r.router,
+		IdleTimeout: 120 * time.Second,
 	}
 	r.server = server
 	r.listener = listener
 
 	go func() {
-		r.log.Info("keycloak proxy service starting on", zap.String("interface", r.config.Listen))
+		r.log.Info("keycloak proxy service starting", zap.String("interface", r.config.Listen))
 		if err = server.Serve(listener); err != nil {
 			if err != http.ErrServerClosed {
 				r.log.Fatal("failed to start the http service", zap.Error(err))
@@ -314,7 +344,7 @@ func (r *oauthProxy) Run() error {
 
 	// step: are we running http service as well?
 	if r.config.ListenHTTP != "" {
-		r.log.Info("keycloak proxy http service starting on", zap.String("interface", r.config.ListenHTTP))
+		r.log.Info("keycloak proxy http service starting", zap.String("interface", r.config.ListenHTTP))
 		httpListener, err := r.createHTTPListener(listenerConfig{
 			listen:        r.config.ListenHTTP,
 			proxyProtocol: r.config.EnableProxyProtocol,
@@ -351,7 +381,7 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 	var listener net.Listener
 	var err error
 
-	// step: are we create a unix socket or tcp listener?
+	// are we create a unix socket or tcp listener?
 	if strings.HasPrefix(config.listen, "unix://") {
 		socket := strings.Trim(config.listen, "unix://")
 		if exists := fileExists(socket); exists {
@@ -369,22 +399,22 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 		}
 	}
 
-	// step: does it require proxy protocol?
+	// does it require proxy protocol?
 	if config.proxyProtocol {
 		r.log.Info("enabling the proxy protocol on listener", zap.String("interface", config.listen))
 		listener = &proxyproto.Listener{Listener: listener}
 	}
 
-	// step: does the socket require TLS?
+	// does the socket require TLS?
 	if config.certificate != "" && config.privateKey != "" {
 		r.log.Info("tls support enabled",
 			zap.String("certificate", config.certificate), zap.String("private_key", config.privateKey))
-		// step: creating a certificate rotation
+		// creating a certificate rotation
 		rotate, err := newCertificateRotator(config.certificate, config.privateKey, r.log)
 		if err != nil {
 			return nil, err
 		}
-		// step: start watching the files for changes
+		// start watching the files for changes
 		if err := rotate.watch(); err != nil {
 			return nil, err
 		}
@@ -394,7 +424,7 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 		}
 		listener = tls.NewListener(listener, tlsConfig)
 
-		// step: are we doing mutual tls?
+		// are we doing mutual tls?
 		if config.clientCert != "" {
 			caCert, err := ioutil.ReadFile(config.clientCert)
 			if err != nil {
@@ -429,11 +459,8 @@ func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) error {
 		upstream.Host = "domain-sock"
 		upstream.Scheme = "http"
 	}
-
 	// create the upstream tls configure
-	tlsConfig := &tls.Config{
-		InsecureSkipVerify: r.config.SkipUpstreamTLSVerify,
-	}
+	tlsConfig := &tls.Config{InsecureSkipVerify: r.config.SkipUpstreamTLSVerify}
 
 	// are we using a client certificate
 	// @TODO provide a means of reload on the client certificate when it expires. I'm not sure if it's just a
@@ -482,15 +509,9 @@ func (r *oauthProxy) createTemplates() error {
 	if len(list) > 0 {
 		r.log.Info("loading the custom templates", zap.String("templates", strings.Join(list, ",")))
 		r.templates = template.Must(template.ParseFiles(list...))
-		r.router.(*echo.Echo).Renderer = r
 	}
 
 	return nil
-}
-
-// Render implements the echo Render interface
-func (r *oauthProxy) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
-	return r.templates.ExecuteTemplate(w, name, data)
 }
 
 // newOpenIDClient initializes the openID configuration, note: the redirection url is deliberately left blank
@@ -553,4 +574,9 @@ func (r *oauthProxy) newOpenIDClient() (*oidc.Client, oidc.ProviderConfig, *http
 	client.SyncProviderConfig(r.config.DiscoveryURL)
 
 	return client, config, hc, nil
+}
+
+// Render implements the echo Render interface
+func (r *oauthProxy) Render(w io.Writer, name string, data interface{}) error {
+	return r.templates.ExecuteTemplate(w, name, data)
 }

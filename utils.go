@@ -41,21 +41,20 @@ import (
 	"unicode/utf8"
 
 	"github.com/gambol99/go-oidc/jose"
-	"github.com/labstack/echo"
 	"github.com/urfave/cli"
 	"gopkg.in/yaml.v2"
 )
 
 var (
 	allHTTPMethods = []string{
-		echo.DELETE,
-		echo.GET,
-		echo.HEAD,
-		echo.OPTIONS,
-		echo.PATCH,
-		echo.POST,
-		echo.PUT,
-		echo.TRACE,
+		http.MethodDelete,
+		http.MethodGet,
+		http.MethodHead,
+		http.MethodOptions,
+		http.MethodPatch,
+		http.MethodPost,
+		http.MethodPut,
+		http.MethodTrace,
 	}
 )
 
@@ -376,4 +375,17 @@ func getHashKey(token *jose.JWT) string {
 // printError display the command line usage and error
 func printError(message string, args ...interface{}) *cli.ExitError {
 	return cli.NewExitError(fmt.Sprintf("[error] "+message, args...), 1)
+}
+
+// realIP retrieves the client ip address from a http request
+func realIP(req *http.Request) string {
+	ra := req.RemoteAddr
+	if ip := req.Header.Get(headerXForwardedFor); ip != "" {
+		ra = strings.Split(ip, ", ")[0]
+	} else if ip := req.Header.Get(headerXRealIP); ip != "" {
+		ra = ip
+	} else {
+		ra, _, _ = net.SplitHostPort(ra)
+	}
+	return ra
 }

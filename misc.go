@@ -16,6 +16,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"net/http"
@@ -23,58 +24,63 @@ import (
 	"time"
 
 	"github.com/gambol99/go-oidc/jose"
-	"github.com/labstack/echo"
 	"go.uber.org/zap"
 )
 
 // revokeProxy is responsible to stopping the middleware from proxying the request
-func (r *oauthProxy) revokeProxy(cx echo.Context) {
-	cx.Set(revokeContextName, true)
+func (r *oauthProxy) revokeProxy(w http.ResponseWriter, req *http.Request) context.Context {
+	var scope *RequestScope
+	sc := req.Context().Value(contextScopeName)
+	switch sc {
+	case nil:
+		scope = &RequestScope{AccessDenied: true}
+	default:
+		scope = sc.(*RequestScope)
+	}
+	scope.AccessDenied = true
+
+	return context.WithValue(req.Context(), contextScopeName, scope)
 }
 
 // accessForbidden redirects the user to the forbidden page
-func (r *oauthProxy) accessForbidden(cx echo.Context) error {
-	r.revokeProxy(cx)
-
+func (r *oauthProxy) accessForbidden(w http.ResponseWriter, req *http.Request) context.Context {
+	w.WriteHeader(http.StatusForbidden)
+	// are we using a custom http template for 403?
 	if r.config.hasCustomForbiddenPage() {
-		tplName := path.Base(r.config.ForbiddenPage)
-		err := cx.Render(http.StatusForbidden, tplName, r.config.Tags)
-		if err != nil {
-			r.log.Error("unable to render the template",
-				zap.Error(err),
-				zap.String("template", tplName))
+		name := path.Base(r.config.ForbiddenPage)
+		if err := r.Render(w, name, r.config.Tags); err != nil {
+			r.log.Error("failed to render the template", zap.Error(err), zap.String("template", name))
 		}
-
-		return err
 	}
 
-	return cx.NoContent(http.StatusForbidden)
+	return r.revokeProxy(w, req)
 }
 
 // redirectToURL redirects the user and aborts the context
-func (r *oauthProxy) redirectToURL(url string, cx echo.Context) error {
-	r.revokeProxy(cx)
+func (r *oauthProxy) redirectToURL(url string, w http.ResponseWriter, req *http.Request) context.Context {
+	http.Redirect(w, req, url, http.StatusTemporaryRedirect)
 
-	return cx.Redirect(http.StatusTemporaryRedirect, url)
+	return r.revokeProxy(w, req)
 }
 
 // redirectToAuthorization redirects the user to authorization handler
-func (r *oauthProxy) redirectToAuthorization(cx echo.Context) error {
-	r.revokeProxy(cx)
-
+func (r *oauthProxy) redirectToAuthorization(w http.ResponseWriter, req *http.Request) context.Context {
 	if r.config.NoRedirects {
-		return cx.NoContent(http.StatusUnauthorized)
+		w.WriteHeader(http.StatusUnauthorized)
+		return r.revokeProxy(w, req)
 	}
 	// step: add a state referrer to the authorization page
-	authQuery := fmt.Sprintf("?state=%s", base64.StdEncoding.EncodeToString([]byte(cx.Request().URL.RequestURI())))
+	authQuery := fmt.Sprintf("?state=%s", base64.StdEncoding.EncodeToString([]byte(req.URL.RequestURI())))
 
 	// step: if verification is switched off, we can't authorization
 	if r.config.SkipTokenVerification {
 		r.log.Error("refusing to redirection to authorization endpoint, skip token verification switched on")
-		return cx.NoContent(http.StatusForbidden)
+		w.WriteHeader(http.StatusForbidden)
+		return r.revokeProxy(w, req)
 	}
+	r.redirectToURL(oauthURL+authorizationURL+authQuery, w, req)
 
-	return r.redirectToURL(oauthURL+authorizationURL+authQuery, cx)
+	return r.revokeProxy(w, req)
 }
 
 // getAccessCookieExpiration calucates the expiration of the access token cookie

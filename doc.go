@@ -38,13 +38,12 @@ const (
 	email       = "gambol99@gmail.com"
 	description = "is a proxy using the keycloak service for auth and authorization"
 
-	headerUpgrade       = "Upgrade"
-	userContextName     = "identity"
-	revokeContextName   = "revoke"
 	authorizationHeader = "Authorization"
-	versionHeader       = "X-Auth-Proxy-Version"
+	contextScopeName    = "context.scope.name"
 	envPrefix           = "PROXY_"
+	headerUpgrade       = "Upgrade"
 	httpSchema          = "http"
+	versionHeader       = "X-Auth-Proxy-Version"
 
 	oauthURL         = "/oauth"
 	authorizationURL = "/authorize"
@@ -55,12 +54,22 @@ const (
 	logoutURL        = "/logout"
 	metricsURL       = "/metrics"
 	tokenURL         = "/token"
+	debugURL         = "/debug/pprof"
 
 	claimPreferredName  = "preferred_username"
 	claimAudience       = "aud"
 	claimResourceAccess = "resource_access"
 	claimRealmAccess    = "realm_access"
 	claimResourceRoles  = "roles"
+)
+
+const (
+	headerXForwardedFor      = "X-Forwarded-For"
+	headerXForwardedProto    = "X-Forwarded-Proto"
+	headerXForwardedProtocol = "X-Forwarded-Protocol"
+	headerXForwardedSsl      = "X-Forwarded-Ssl"
+	headerXRealIP            = "X-Real-IP"
+	headerXRequestID         = "X-Request-ID"
 )
 
 var (
@@ -252,6 +261,14 @@ func getVersion() string {
 	}
 
 	return version
+}
+
+// RequestScope is a request level context scope passed between middleware
+type RequestScope struct {
+	// AccessDenied indicates the request should not be proxied on
+	AccessDenied bool
+	// Identity is the user Identity of the request
+	Identity *userContext
 }
 
 // storage is used to hold the offline refresh token, assuming you don't want to use

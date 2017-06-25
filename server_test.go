@@ -97,7 +97,6 @@ func TestReverseProxyHeaders(t *testing.T) {
 				"X-Auth-Token":    signed.Encode(),
 				"X-Auth-Userid":   "rjayawardene",
 				"X-Auth-Username": "rjayawardene",
-				"X-Forwarded-For": "127.0.0.1",
 			},
 			ExpectedCode: http.StatusOK,
 		},
@@ -138,7 +137,7 @@ func TestForbiddenTemplate(t *testing.T) {
 	}
 	requests := []fakeRequest{
 		{
-			URI:                     "/",
+			URI:                     "/test",
 			Redirects:               false,
 			HasToken:                true,
 			ExpectedCode:            http.StatusForbidden,

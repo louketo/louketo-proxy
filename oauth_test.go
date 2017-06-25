@@ -17,6 +17,7 @@ package main
 
 import (
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"math/rand"
@@ -29,7 +30,8 @@ import (
 
 	"github.com/gambol99/go-oidc/jose"
 	"github.com/gambol99/go-oidc/oauth2"
-	"github.com/labstack/echo"
+	"github.com/pressly/chi"
+	"github.com/pressly/chi/middleware"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -110,14 +112,15 @@ func newFakeAuthServer() *fakeAuthServer {
 		signer: jose.NewSignerRSA("test-kid", *privateKey),
 	}
 
-	r := echo.New()
-	r.GET("auth/realms/hod-test/.well-known/openid-configuration", service.discoveryHandler)
-	r.GET("auth/realms/hod-test/protocol/openid-connect/certs", service.keysHandler)
-	r.GET("auth/realms/hod-test/protocol/openid-connect/token", service.tokenHandler)
-	r.POST("auth/realms/hod-test/protocol/openid-connect/token", service.tokenHandler)
-	r.GET("auth/realms/hod-test/protocol/openid-connect/auth", service.authHandler)
-	r.POST("auth/realms/hod-test/protocol/openid-connect/logout", service.logoutHandler)
-	r.GET("auth/realms/hod-test/protocol/openid-connect/userinfo", service.userInfoHandler)
+	r := chi.NewRouter()
+	r.Use(middleware.Recoverer)
+	r.Get("/auth/realms/hod-test/.well-known/openid-configuration", service.discoveryHandler)
+	r.Get("/auth/realms/hod-test/protocol/openid-connect/certs", service.keysHandler)
+	r.Get("/auth/realms/hod-test/protocol/openid-connect/token", service.tokenHandler)
+	r.Get("/auth/realms/hod-test/protocol/openid-connect/auth", service.authHandler)
+	r.Get("/auth/realms/hod-test/protocol/openid-connect/userinfo", service.userInfoHandler)
+	r.Post("/auth/realms/hod-test/protocol/openid-connect/logout", service.logoutHandler)
+	r.Post("/auth/realms/hod-test/protocol/openid-connect/token", service.tokenHandler)
 
 	service.server = httptest.NewServer(r)
 	location, err := url.Parse(service.server.URL)
@@ -151,8 +154,8 @@ func (r *fakeAuthServer) setTokenExpiration(tm time.Duration) *fakeAuthServer {
 	return r
 }
 
-func (r *fakeAuthServer) discoveryHandler(cx echo.Context) error {
-	return cx.JSON(http.StatusOK, fakeDiscoveryResponse{
+func (r *fakeAuthServer) discoveryHandler(w http.ResponseWriter, req *http.Request) {
+	renderJSON(http.StatusOK, w, req, fakeDiscoveryResponse{
 		AuthorizationEndpoint:            fmt.Sprintf("http://%s/auth/realms/hod-test/protocol/openid-connect/auth", r.location.Host),
 		EndSessionEndpoint:               fmt.Sprintf("http://%s/auth/realms/hod-test/protocol/openid-connect/logout", r.location.Host),
 		Issuer:                           fmt.Sprintf("http://%s/auth/realms/hod-test", r.location.Host),
@@ -169,47 +172,52 @@ func (r *fakeAuthServer) discoveryHandler(cx echo.Context) error {
 	})
 }
 
-func (r *fakeAuthServer) keysHandler(cx echo.Context) error {
-	return cx.JSON(http.StatusOK, jose.JWKSet{Keys: []jose.JWK{r.key}})
+func (r *fakeAuthServer) keysHandler(w http.ResponseWriter, req *http.Request) {
+	renderJSON(http.StatusOK, w, req, jose.JWKSet{Keys: []jose.JWK{r.key}})
 }
 
-func (r *fakeAuthServer) authHandler(cx echo.Context) error {
-	state := cx.QueryParam("state")
-	redirect := cx.QueryParam("redirect_uri")
+func (r *fakeAuthServer) authHandler(w http.ResponseWriter, req *http.Request) {
+	state := req.URL.Query().Get("state")
+	redirect := req.URL.Query().Get("redirect_uri")
 	if redirect == "" {
-		return cx.NoContent(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	if state == "" {
 		state = "/"
 	}
 	redirectionURL := fmt.Sprintf("%s?state=%s&code=%s", redirect, state, getRandomString(32))
 
-	return cx.Redirect(http.StatusTemporaryRedirect, redirectionURL)
+	http.Redirect(w, req, redirectionURL, http.StatusTemporaryRedirect)
 }
 
-func (r *fakeAuthServer) logoutHandler(cx echo.Context) error {
-	if refreshToken := cx.FormValue("refresh_token"); refreshToken == "" {
-		return cx.NoContent(http.StatusBadRequest)
+func (r *fakeAuthServer) logoutHandler(w http.ResponseWriter, req *http.Request) {
+	if refreshToken := req.FormValue("refresh_token"); refreshToken == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
 
-	return cx.NoContent(http.StatusNoContent)
+	w.WriteHeader(http.StatusNoContent)
 }
 
-func (r *fakeAuthServer) userInfoHandler(cx echo.Context) error {
-	items := strings.Split(cx.Request().Header.Get("Authorization"), " ")
+func (r *fakeAuthServer) userInfoHandler(w http.ResponseWriter, req *http.Request) {
+	items := strings.Split(req.Header.Get("Authorization"), " ")
 	if len(items) != 2 {
-		return echo.ErrUnauthorized
+		w.WriteHeader(http.StatusUnauthorized)
+		return
 	}
 	decoded, err := jose.ParseJWT(items[1])
 	if err != nil {
-		return echo.ErrUnauthorized
+		w.WriteHeader(http.StatusUnauthorized)
+		return
 	}
 	claims, err := decoded.Claims()
 	if err != nil {
-		return echo.ErrUnauthorized
+		w.WriteHeader(http.StatusUnauthorized)
+		return
 	}
 
-	return cx.JSON(http.StatusOK, map[string]interface{}{
+	renderJSON(http.StatusOK, w, req, map[string]interface{}{
 		"sub":                claims["sub"],
 		"name":               claims["name"],
 		"given_name":         claims["given_name"],
@@ -220,7 +228,7 @@ func (r *fakeAuthServer) userInfoHandler(cx echo.Context) error {
 	})
 }
 
-func (r *fakeAuthServer) tokenHandler(cx echo.Context) error {
+func (r *fakeAuthServer) tokenHandler(w http.ResponseWriter, req *http.Request) {
 	expires := time.Now().Add(r.expiration)
 	unsigned := newTestToken(r.getLocation())
 	unsigned.setExpiration(expires)
@@ -228,39 +236,42 @@ func (r *fakeAuthServer) tokenHandler(cx echo.Context) error {
 	// sign the token with the private key
 	token, err := jose.NewSignedJWT(unsigned.claims, r.signer)
 	if err != nil {
-		return cx.NoContent(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
-	switch cx.FormValue("grant_type") {
+	switch req.FormValue("grant_type") {
 	case oauth2.GrantTypeUserCreds:
-		username := cx.FormValue("username")
-		password := cx.FormValue("password")
+		username := req.FormValue("username")
+		password := req.FormValue("password")
 		if username == "" || password == "" {
-			return cx.NoContent(http.StatusBadRequest)
+			w.WriteHeader(http.StatusBadRequest)
+			return
 		}
 		if username == validUsername && password == validPassword {
-			return cx.JSON(http.StatusOK, tokenResponse{
+			renderJSON(http.StatusOK, w, req, tokenResponse{
 				IDToken:      token.Encode(),
 				AccessToken:  token.Encode(),
 				RefreshToken: token.Encode(),
 				ExpiresIn:    expires.UTC().Second(),
 			})
+			return
 		}
-		return cx.JSON(http.StatusUnauthorized, map[string]string{
+		renderJSON(http.StatusUnauthorized, w, req, map[string]string{
 			"error":             "invalid_grant",
 			"error_description": "Invalid user credentials",
 		})
 	case oauth2.GrantTypeRefreshToken:
 		fallthrough
 	case oauth2.GrantTypeAuthCode:
-		return cx.JSON(http.StatusOK, tokenResponse{
+		renderJSON(http.StatusOK, w, req, tokenResponse{
 			IDToken:      token.Encode(),
 			AccessToken:  token.Encode(),
 			RefreshToken: token.Encode(),
 			ExpiresIn:    expires.Second(),
 		})
 	default:
-		return cx.NoContent(http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
 	}
 }
 
@@ -311,4 +322,13 @@ func getRandomString(n int) string {
 		b[i] = letterRunes[rand.Intn(len(letterRunes))]
 	}
 	return string(b)
+}
+
+func renderJSON(code int, w http.ResponseWriter, req *http.Request, data interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 }
