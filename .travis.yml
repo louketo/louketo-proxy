@@ -17,8 +17,8 @@ install:
 script:
 - make test
 - if ([[ ${TRAVIS_BRANCH} == "master" ]] && [[ ${TRAVIS_EVENT_TYPE} == "push" ]]) || [[ -n ${TRAVIS_TAG} ]]; then
-    NAME=GOOS=windows GOARCH=amd64 godep go build -o bin/keycloak-proxy-windows-amd64.exe;
-    NAME=GOOS=linux GOARCH=amd64 godep go build -o bin/keycloak-proxy-linux-amd64;
+    NAME=GOOS=windows GOARCH=amd64 go build -o bin/keycloak-proxy-windows-amd64.exe;
+    NAME=GOOS=linux GOARCH=amd64 go build -o bin/keycloak-proxy-linux-amd64;
     docker login -u ${REGISTRY_USERNAME} -p ${REGISTRY_TOKEN} -e ${AUTHOR_EMAIL} ${REGISTRY};
     VERSION=${TRAVIS_TAG:-latest} make docker-release;
   fi
