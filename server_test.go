@@ -287,6 +287,46 @@ func TestSkipClientIDEnabled(t *testing.T) {
 	p.RunTests(t, requests)
 }
 
+func TestAuthTokenHeaderEnabled(t *testing.T) {
+	p := newFakeProxy(nil)
+	token := newTestToken(p.idp.getLocation())
+	signed, _ := p.idp.signToken(token.claims)
+
+	requests := []fakeRequest{
+		{
+			URI:      "/auth_all/test",
+			RawToken: signed.Encode(),
+			ExpectedProxyHeaders: map[string]string{
+				"X-Auth-Token": signed.Encode(),
+			},
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
+		},
+	}
+	p.RunTests(t, requests)
+}
+
+func TestAuthTokenHeaderDisabled(t *testing.T) {
+	c := newFakeKeycloakConfig()
+	c.EnableTokenHeader = false
+	p := newFakeProxy(c)
+	token := newTestToken(p.idp.getLocation())
+	signed, _ := p.idp.signToken(token.claims)
+
+	requests := []fakeRequest{
+		{
+			URI:      "/auth_all/test",
+			RawToken: signed.Encode(),
+			ExpectedProxyHeaders: map[string]string{
+				"X-Auth-Token": "",
+			},
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
+		},
+	}
+	p.RunTests(t, requests)
+}
+
 func newTestService() string {
 	_, _, u := newTestProxyService(nil)
 	return u
@@ -344,6 +384,7 @@ func newFakeKeycloakConfig() *Config {
 		EnableAuthorizationHeader: true,
 		EnableLogging:             false,
 		EnableLoginHandler:        true,
+		EnableTokenHeader:         true,
 		Listen:                    "127.0.0.1:0",
 		Scopes:                    []string{},
 		Verbose:                   true,

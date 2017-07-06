@@ -34,8 +34,6 @@ import (
 const (
 	// normalizeFlags is the options to purell
 	normalizeFlags purell.NormalizationFlags = purell.FlagRemoveDotSegments | purell.FlagRemoveDuplicateSlashes
-	// httpResponseName is the name of the http response hanlder
-	httpResponseName = "http.response"
 )
 
 // entrypointMiddleware is custom filtering for incoming requests
@@ -328,14 +326,17 @@ func (r *oauthProxy) headersMiddleware(custom []string) func(http.Handler) http.
 				req.Header.Set("X-Auth-ExpiresIn", user.expiresAt.String())
 				req.Header.Set("X-Auth-Roles", strings.Join(user.roles, ","))
 				req.Header.Set("X-Auth-Subject", user.id)
-				req.Header.Set("X-Auth-Token", user.token.Encode())
 				req.Header.Set("X-Auth-Userid", user.name)
 				req.Header.Set("X-Auth-Username", user.name)
-
+				// should we add the token header?
+				if r.config.EnableTokenHeader {
+					req.Header.Set("X-Auth-Token", user.token.Encode())
+				}
 				// add the authorization header if requested
 				if r.config.EnableAuthorizationHeader {
 					req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", user.token.Encode()))
 				}
+
 				// inject any custom claims
 				for claim, header := range customClaims {
 					if claim, found := user.claims[claim]; found {

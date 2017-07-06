@@ -33,7 +33,7 @@ USAGE:
    keycloak-proxy [options]
 
 VERSION:
-   v2.1.0 (git+sha: 960c2e5-dirty, built: 25/04/2017)
+   v2.1.0-rc2 (git+sha: 6782490-dirty, built: 06-07-2017)
 
 AUTHOR:
    Rohith <gambol99@gmail.com>
@@ -55,7 +55,8 @@ GLOBAL OPTIONS:
    --upstream-url value                url for the upstream endpoint you wish to proxy [$PROXY_UPSTREAM_URL]
    --resources value                   list of resources 'uri=/admin|methods=GET,PUT|roles=role1,role2'
    --headers value                     custom headers to the upstream request, key=value
-   --enable-encrypted-token            indicates you want the access token encrypted (default: false)
+   --enable-token-header               enables the token authentication header X-Auth-Token to upstream (default: true)
+   --enable-encrypted-token            enable encryption for the access tokens (default: false)
    --enable-logging                    enable http logging of the requests (default: false)
    --enable-json-logging               switch on json logging rather than text (default: false)
    --enable-forwarding                 enables the forwarding proxy mode, signing outbound request (default: false)
@@ -85,6 +86,7 @@ GLOBAL OPTIONS:
    --tls-ca-key value                  path the ca private key, used by the forward signing proxy
    --tls-client-certificate value      path to the client certificate for outbound connections in reverse and forwarding proxy modes
    --skip-upstream-tls-verify          skip the verification of any upstream TLS (default: true)
+   --skip-client-id                    skip the check on the client token (default: false)
    --cors-origins value                origins to add to the CORE origins control (Access-Control-Allow-Origin)
    --cors-methods value                methods permitted in the access control (Access-Control-Allow-Methods)
    --cors-headers value                set of headers to add to the CORS access control (Access-Control-Allow-Headers)
@@ -107,6 +109,7 @@ GLOBAL OPTIONS:
    --forwarding-username value         username to use when logging into the openid provider
    --forwarding-password value         password to use when logging into the openid provider
    --forwarding-domains value          list of domains which should be signed; everything else is relayed unsigned
+   --disable-all-logging               disables all logging to stdout and stderr (default: false)
    --help, -h                          show help
    --version, -v                       print the version
 ```
