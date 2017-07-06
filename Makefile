@@ -9,9 +9,8 @@ GIT_SHA=$(shell git --no-pager describe --always --dirty)
 BUILD_TIME=$(shell date '+%s')
 VERSION ?= $(shell awk '/release.*=/ { print $$3 }' doc.go | sed 's/"//g')
 DEPS=$(shell go list -f '{{range .TestImports}}{{.}} {{end}}' ./...)
-PACKAGES=$(shell go list ./...)
-LFLAGS ?= -X main.gitsha=${GIT_SHA} -X main.compiled=${BUILD_TIME}
-VETARGS ?= -asmdecl -atomic -bool -buildtags -copylocks -methods -nilfunc -printf -rangeloops -shift -structtags -unsafeptr
+PACKAGES=$(shell go list ./... | grep -v vendor)
+LFLAGS ?= -X constants.Gitsha=${GIT_SHA} -X constants.Compiled=${BUILD_TIME}
 
 .PHONY: test authors changelog build docker static release lint cover vet glide-install
 
@@ -24,7 +23,7 @@ golang:
 build: golang
 	@echo "--> Compiling the project"
 	@mkdir -p bin
-	go build -ldflags "${LFLAGS}" -o bin/${NAME}
+	go build -ldflags "${LFLAGS}" -o bin/${NAME} cmd/keycloak-proxy/*.go
 
 static: golang deps
 	@echo "--> Compiling the static binary"
@@ -39,9 +38,9 @@ docker-build:
 		-e GOOS=linux golang:${GOVERSION} \
 		make static
 
-docker-test:
+docker-test: static docker
 	@echo "--> Running the docker test"
-	docker run --rm -ti -p 3000:3000 \
+	docker run --rm -ti --net=host \
     -v ${ROOT_DIR}/config.yml:/etc/keycloak/config.yml:ro \
     -v ${ROOT_DIR}/tests:/opt/tests:ro \
     ${REGISTRY}/${AUTHOR}/${NAME}:${VERSION} --config /etc/keycloak/config.yml
@@ -94,7 +93,7 @@ vet:
 	@go tool vet 2>/dev/null ; if [ $$? -eq 3 ]; then \
 		go get golang.org/x/tools/cmd/vet; \
 	fi
-	@go tool vet $(VETARGS) *.go
+	@go vet $(PACKAGES)
 
 lint:
 	@echo "--> Running golint"
@@ -105,12 +104,11 @@ lint:
 
 gofmt:
 	@echo "--> Running gofmt check"
-	@gofmt -s -l *.go \
-	    | grep -q \.go ; if [ $$? -eq 0 ]; then \
-            echo "You need to runn the make format, we have file unformatted"; \
-            gofmt -s -l *.go; \
-            exit 1; \
-	    fi
+	@gofmt -s -l *.go | grep -q \.go ; if [ $$? -eq 0 ]; then \
+      echo "You need to runn the make format, we have file unformatted"; \
+      gofmt -s -l *.go; \
+      exit 1; \
+	  fi
 
 verify:
 	@echo "--> Verifying the code"
@@ -127,18 +125,18 @@ bench:
 coverage:
 	@echo "--> Running go coverage"
 	@go test -coverprofile cover.out
-	@go tool cover -html=cover.out -o cover.html
+	@go tool cover $(PACKAGES) -html=cover.out -o cover.html
 
 cover:
 	@echo "--> Running go cover"
-	@go test --cover
+	@go test --cover $(PACKAGES)
 
 test:
 	@echo "--> Running the tests"
 	@if [ ! -d "vendor" ]; then \
 		make glide-install; \
   fi
-	@go test -v
+	@go test -v $(PACKAGES)
 	@$(MAKE) golang
 	@$(MAKE) gofmt
 	@$(MAKE) vet
@@ -146,7 +144,7 @@ test:
 
 all: test
 	echo "--> Performing all tests"
-	@${MAKE} verify
+	@$(MAKE) verify
 	@$(MAKE) bench
 	@$(MAKE) coverage
 

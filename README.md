@@ -212,16 +212,16 @@ Note, anything defined in the configuration file can also be configured as comma
 
 ```shell
 bin/keycloak-proxy \
-    --discovery-url=https://keycloak.example.com/auth/realms/<REALM_NAME> \
-    --client-id=<CLIENT_ID> \
-    --client-secret=<SECRET> \
-    --listen=127.0.0.1:3000 \ # unix sockets format unix://path
-    --redirection-url=http://127.0.0.1:3000 \
-    --enable-refresh-token=true \
-    --encryption-key=AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j \
-    --upstream-url=http://127.0.0.1:80 \
-    --resources="uri=/admin*|methods=GET|roles=test1,test2" \
-    --resources="uri=/backend*|roles=test1"
+  --discovery-url=https://keycloak.example.com/auth/realms/<REALM_NAME> \
+  --client-id=<CLIENT_ID> \
+  --client-secret=<SECRET> \
+  --listen=127.0.0.1:3000 \ # unix sockets format unix://path
+  --redirection-url=http://127.0.0.1:3000 \
+  --enable-refresh-token=true \
+  --encryption-key=AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j \
+  --upstream-url=http://127.0.0.1:80 \
+  --resources="uri=/admin*|methods=GET|roles=test1,test2" \
+  --resources="uri=/backend*|roles=test1"
 ```
 
 #### **HTTP Routing**
