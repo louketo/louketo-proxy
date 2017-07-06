@@ -34,6 +34,7 @@ func newDefaultConfig() *Config {
 		UpstreamTimeout:             time.Duration(10) * time.Second,
 		UpstreamKeepaliveTimeout:    time.Duration(10) * time.Second,
 		EnableAuthorizationHeader:   true,
+		EnableTokenHeader:           true,
 		CookieAccessName:            "kc-access",
 		CookieRefreshName:           "kc-state",
 		SecureCookie:                true,

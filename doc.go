@@ -130,6 +130,8 @@ type Config struct {
 	// Headers permits adding customs headers across the board
 	Headers map[string]string `json:"headers" yaml:"headers" usage:"custom headers to the upstream request, key=value"`
 
+	// EnableTokenHeader adds the JWT token to the upstream authentication headers
+	EnableTokenHeader bool `json:"enable-token-header" yaml:"enable-token-header" usage:"enables the token authentication header X-Auth-Token to upstream"`
 	// EnableEncryptedToken indicates the access token should be encoded
 	EnableEncryptedToken bool `json:"enable-encrypted-token" yaml:"enable-encrypted-token" usage:"enable encryption for the access tokens"`
 	// EnableLogging indicates if we should log all the requests
