@@ -1,4 +1,6 @@
-
+####
+# Sample Configuration
+####
 # is the url for retrieve the openid configuration - normally the <server>/auth/realm/<realm_name>
 discovery-url: https://keycloak.example.com/auth/realms/commons
 # the client id for the 'client' application
@@ -47,14 +49,33 @@ headers:
   myheader_name: my_header_value
 # a map of claims that MUST exist in the token presented and the value is it MUST match
 # So for example, you could match the audience or the issuer or some custom attribute
-match-claims:
-  aud: openvpn
-  iss: https://keycloak.example.com/auth/realms/commons
-# a list of claims to inject into the authentication headers i.e. given_name -> X-Auth-Given-Name
-add-claims:
-- given_name
-- family_name
-- name
+
+virtual:
+- hostname: default
+  resources:
+  - uri: /admin/test
+    # the methods on this url that should be protected, if missing, we assuming all
+    methods: [ GET ]
+    # a list of roles the user must have in order to accces urls under the above
+    roles: [ openvpn:vpn-test ]
+  - uri: /admin/white_listed
+    # permits a url prefix through, bypassing the admission controls
+    white-listed: true
+  - uri: /admin/*
+    methods:
+    - GET
+    roles:
+    - openvpn:vpn-user
+    - openvpn:prod-vpn
+  match-claims:
+    aud: openvpn
+    iss: https://keycloak.example.com/auth/realms/commons
+  # a list of claims to inject into the authentication headers i.e. given_name -> X-Auth-Given-Name
+  add-claims:
+  - given_name
+  - family_name
+  - name
+
 # a collection of resource i.e. urls that you wish to protect
 resources:
 - uri: /admin/test
@@ -63,7 +84,7 @@ resources:
   - GET
   # a list of roles the user must have in order to accces urls under the above
   roles:
-    - openvpn:vpn-test
+  - openvpn:vpn-test
 - uri: /admin/white_listed
   # permits a url prefix through, bypassing the admission controls
   white-listed: true
@@ -71,8 +92,8 @@ resources:
   methods:
   - GET
   roles:
-    - openvpn:vpn-user
-    - openvpn:prod-vpn
+  - openvpn:vpn-user
+  - openvpn:prod-vpn
 
 # an array of origins (Access-Control-Allow-Origin)
 cors-origins: []
