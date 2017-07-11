@@ -40,6 +40,8 @@ func newDefaultConfig() *Config {
 		SecureCookie:                true,
 		SkipUpstreamTLSVerify:       true,
 		SkipOpenIDProviderTLSVerify: false,
+		UseLetsEncrypt:              false,
+		LetsEncryptCacheDir:         "./cache/",
 	}
 }
 
@@ -63,8 +65,13 @@ func (r *Config) isValid() error {
 	if r.TLSCaCertificate != "" && !fileExists(r.TLSCaCertificate) {
 		return fmt.Errorf("the tls ca certificate file %s does not exist", r.TLSCaCertificate)
 	}
+
 	if r.TLSClientCertificate != "" && !fileExists(r.TLSClientCertificate) {
 		return fmt.Errorf("the tls client certificate %s does not exist", r.TLSClientCertificate)
+	}
+
+	if r.UseLetsEncrypt && r.LetsEncryptCacheDir == "" {
+		return fmt.Errorf("the letsencrypt cache dir has not been set")
 	}
 
 	if r.EnableForwarding {
