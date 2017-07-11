@@ -25,6 +25,9 @@ import:
 - package: go.uber.org/zap
 - package: gopkg.in/redis.v4
 - package: gopkg.in/yaml.v2
+- package: golang.org/x/crypto
+  subpackages:
+  - acme/autocert
 testImport:
 - package: github.com/go-resty/resty
 - package: github.com/stretchr/testify
