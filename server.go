@@ -37,8 +37,8 @@ import (
 	httplog "log"
 
 	"github.com/armon/go-proxyproto"
-	"github.com/elazarl/goproxy"
 	"github.com/gambol99/go-oidc/oidc"
+	"github.com/gambol99/goproxy"
 	"github.com/pressly/chi"
 	"github.com/pressly/chi/middleware"
 	"github.com/prometheus/client_golang/prometheus"
