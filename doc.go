@@ -238,7 +238,7 @@ type Config struct {
 	UseLetsEncrypt bool `json:"use-letsencrypt" yaml:"use-letsencrypt" usage:"use letsencrypt for certificates"`
 
 	// LetsEncryptCacheDir is the path to store letsencrypt certificates
-	LetsEncryptCacheDir string `json:"letsencrypt-cache-dir" yaml:"lets-encrypt-cache-dir" usage:"path where cached letsencrypt certificates are stored"`
+	LetsEncryptCacheDir string `json:"letsencrypt-cache-dir" yaml:"letsencrypt-cache-dir" usage:"path where cached letsencrypt certificates are stored"`
 
 	// SignInPage is the relative url for the sign in page
 	SignInPage string `json:"sign-in-page" yaml:"sign-in-page" usage:"path to custom template displayed for signin"`
