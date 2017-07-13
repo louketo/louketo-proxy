@@ -325,7 +325,7 @@ func (r *oauthProxy) Run() error {
 		proxyProtocol:       r.config.EnableProxyProtocol,
 		useLetsEncrypt:      r.config.UseLetsEncrypt,
 		letsEncryptCacheDir: r.config.LetsEncryptCacheDir,
-		redirectionURL:      r.config.RedirectionURL,
+		hostnames:           r.config.Hostnames,
 	})
 
 	if err != nil {
@@ -375,15 +375,15 @@ func (r *oauthProxy) Run() error {
 
 // listenerConfig encapsulate listener options
 type listenerConfig struct {
-	listen              string // the interface to bind the listener to
-	certificate         string // the path to the certificate if any
-	privateKey          string // the path to the private key if any
-	ca                  string // the path to a certificate authority
-	clientCert          string // the path to a client certificate to use for mutual tls
-	proxyProtocol       bool   // whether to enable proxy protocol on the listen
-	useLetsEncrypt      bool   // whether to use lets encrypt for retrieving ssl certificates
-	redirectionURL      string // the url to redirect to, used to verify the letsencrypt allowed domains
-	letsEncryptCacheDir string // the path to cache letsencrypt certificates
+	listen              string   // the interface to bind the listener to
+	certificate         string   // the path to the certificate if any
+	privateKey          string   // the path to the private key if any
+	ca                  string   // the path to a certificate authority
+	clientCert          string   // the path to a client certificate to use for mutual tls
+	proxyProtocol       bool     // whether to enable proxy protocol on the listen
+	hostnames           []string // list of hostnames the service will respond to
+	useLetsEncrypt      bool     // whether to use lets encrypt for retrieving ssl certificates
+	letsEncryptCacheDir string   // the path to cache letsencrypt certificates
 }
 
 // createHTTPListener is responsible for creating a listening socket
@@ -426,13 +426,17 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 				Prompt: autocert.AcceptTOS,
 				Cache:  autocert.DirCache(config.letsEncryptCacheDir),
 				HostPolicy: func(_ context.Context, host string) error {
-					if u, err := url.Parse(config.redirectionURL); err != nil {
-						return err
-					} else if u.Host != host {
-						return errors.New("acme/autocert: host not configured")
-					} else {
-						return nil
+					found := false
+
+					for _, h := range config.hostnames {
+						found = found || (h == host)
 					}
+
+					if !found {
+						return errors.New("acme/autocert: host not configured")
+					}
+
+					return nil
 				},
 			}
 
