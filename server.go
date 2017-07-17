@@ -326,6 +326,7 @@ func (r *oauthProxy) Run() error {
 		useLetsEncrypt:      r.config.UseLetsEncrypt,
 		letsEncryptCacheDir: r.config.LetsEncryptCacheDir,
 		hostnames:           r.config.Hostnames,
+		redirectionURL:      r.config.RedirectionURL,
 	})
 
 	if err != nil {
@@ -382,9 +383,12 @@ type listenerConfig struct {
 	clientCert          string   // the path to a client certificate to use for mutual tls
 	proxyProtocol       bool     // whether to enable proxy protocol on the listen
 	hostnames           []string // list of hostnames the service will respond to
+	redirectionURL      string   // url to redirect to
 	useLetsEncrypt      bool     // whether to use lets encrypt for retrieving ssl certificates
 	letsEncryptCacheDir string   // the path to cache letsencrypt certificates
 }
+
+var ErrHostNotConfigured = errors.New("acme/autocert: host not configured")
 
 // createHTTPListener is responsible for creating a listening socket
 func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, error) {
@@ -426,14 +430,22 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 				Prompt: autocert.AcceptTOS,
 				Cache:  autocert.DirCache(config.letsEncryptCacheDir),
 				HostPolicy: func(_ context.Context, host string) error {
-					found := false
+					if len(config.hostnames) > 0 {
+						found := false
 
-					for _, h := range config.hostnames {
-						found = found || (h == host)
-					}
+						for _, h := range config.hostnames {
+							found = found || (h == host)
+						}
 
-					if !found {
-						return errors.New("acme/autocert: host not configured")
+						if !found {
+							return ErrHostNotConfigured
+						}
+					} else if config.redirectionURL != "" {
+						if u, err := url.Parse(config.redirectionURL); err != nil {
+							return err
+						} else if u.Host != host {
+							return ErrHostNotConfigured
+						}
 					}
 
 					return nil
