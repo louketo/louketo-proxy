@@ -16,6 +16,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -30,6 +31,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"golang.org/x/crypto/acme/autocert"
 
 	httplog "log"
 
@@ -314,13 +317,18 @@ func (r *oauthProxy) createForwardingProxy() error {
 // Run starts the proxy service
 func (r *oauthProxy) Run() error {
 	listener, err := r.createHTTPListener(listenerConfig{
-		listen:        r.config.Listen,
-		certificate:   r.config.TLSCertificate,
-		privateKey:    r.config.TLSPrivateKey,
-		ca:            r.config.TLSCaCertificate,
-		clientCert:    r.config.TLSClientCertificate,
-		proxyProtocol: r.config.EnableProxyProtocol,
+		listen:              r.config.Listen,
+		certificate:         r.config.TLSCertificate,
+		privateKey:          r.config.TLSPrivateKey,
+		ca:                  r.config.TLSCaCertificate,
+		clientCert:          r.config.TLSClientCertificate,
+		proxyProtocol:       r.config.EnableProxyProtocol,
+		useLetsEncrypt:      r.config.UseLetsEncrypt,
+		letsEncryptCacheDir: r.config.LetsEncryptCacheDir,
+		hostnames:           r.config.Hostnames,
+		redirectionURL:      r.config.RedirectionURL,
 	})
+
 	if err != nil {
 		return err
 	}
@@ -368,13 +376,19 @@ func (r *oauthProxy) Run() error {
 
 // listenerConfig encapsulate listener options
 type listenerConfig struct {
-	listen        string // the interface to bind the listener to
-	certificate   string // the path to the certificate if any
-	privateKey    string // the path to the private key if any
-	ca            string // the path to a certificate authority
-	clientCert    string // the path to a client certificate to use for mutual tls
-	proxyProtocol bool   // whether to enable proxy protocol on the listen
+	listen              string   // the interface to bind the listener to
+	certificate         string   // the path to the certificate if any
+	privateKey          string   // the path to the private key if any
+	ca                  string   // the path to a certificate authority
+	clientCert          string   // the path to a client certificate to use for mutual tls
+	proxyProtocol       bool     // whether to enable proxy protocol on the listen
+	hostnames           []string // list of hostnames the service will respond to
+	redirectionURL      string   // url to redirect to
+	useLetsEncrypt      bool     // whether to use lets encrypt for retrieving ssl certificates
+	letsEncryptCacheDir string   // the path to cache letsencrypt certificates
 }
+
+var ErrHostNotConfigured = errors.New("acme/autocert: host not configured")
 
 // createHTTPListener is responsible for creating a listening socket
 func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, error) {
@@ -406,22 +420,60 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 	}
 
 	// does the socket require TLS?
-	if config.certificate != "" && config.privateKey != "" {
-		r.log.Info("tls support enabled",
-			zap.String("certificate", config.certificate), zap.String("private_key", config.privateKey))
-		// creating a certificate rotation
-		rotate, err := newCertificateRotator(config.certificate, config.privateKey, r.log)
-		if err != nil {
-			return nil, err
+	if (config.certificate != "" && config.privateKey != "") || config.useLetsEncrypt {
+		getCertificate := func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+			return nil, errors.New("Not configured")
 		}
-		// start watching the files for changes
-		if err := rotate.watch(); err != nil {
-			return nil, err
+
+		if config.useLetsEncrypt {
+			m := autocert.Manager{
+				Prompt: autocert.AcceptTOS,
+				Cache:  autocert.DirCache(config.letsEncryptCacheDir),
+				HostPolicy: func(_ context.Context, host string) error {
+					if len(config.hostnames) > 0 {
+						found := false
+
+						for _, h := range config.hostnames {
+							found = found || (h == host)
+						}
+
+						if !found {
+							return ErrHostNotConfigured
+						}
+					} else if config.redirectionURL != "" {
+						if u, err := url.Parse(config.redirectionURL); err != nil {
+							return err
+						} else if u.Host != host {
+							return ErrHostNotConfigured
+						}
+					}
+
+					return nil
+				},
+			}
+
+			getCertificate = m.GetCertificate
+		} else {
+			r.log.Info("tls support enabled",
+				zap.String("certificate", config.certificate), zap.String("private_key", config.privateKey))
+			// creating a certificate rotation
+			rotate, err := newCertificateRotator(config.certificate, config.privateKey, r.log)
+			if err != nil {
+				return nil, err
+			}
+			// start watching the files for changes
+			if err := rotate.watch(); err != nil {
+				return nil, err
+			}
+
+			getCertificate = rotate.GetCertificate
 		}
+
 		tlsConfig := &tls.Config{
 			PreferServerCipherSuites: true,
-			GetCertificate:           rotate.GetCertificate,
+			GetCertificate:           getCertificate,
 		}
+
 		listener = tls.NewListener(listener, tlsConfig)
 
 		// are we doing mutual tls?

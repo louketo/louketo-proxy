@@ -1,5 +1,5 @@
-hash: 94f0f660e0bc53763d820d0f3e951a1ef67c5e821abdd8c38b88fbfae5be5fb6
-updated: 2017-06-25T01:22:53.985873813+01:00
+hash: f6bf634e96842367a387aa5cc9bfadc78ea32060c513c04ae050412f205a2ddb
+updated: 2017-07-11T17:24:26.212477004+02:00
 imports:
 - name: github.com/armon/go-proxyproto
   version: 609d6338d3a76ec26ac3fe7045a164d9a58436e7
@@ -82,6 +82,11 @@ imports:
   - internal/exit
   - internal/multierror
   - zapcore
+- name: golang.org/x/crypto
+  version: dd85ac7e6a88fc6ca420478e934de5f1a42dd3c6
+  subpackages:
+  - acme
+  - acme/autocert
 - name: golang.org/x/net
   version: bc3663df0ac92f928d419e31e0d2af22e683a5a2
   subpackages:

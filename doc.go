@@ -234,6 +234,12 @@ type Config struct {
 	// EnableProxyProtocol controls the proxy protocol
 	EnableProxyProtocol bool `json:"enabled-proxy-protocol" yaml:"enabled-proxy-protocol" usage:"enable proxy protocol"`
 
+	// UseLetsEncrypt controls if we should use letsencrypt to retrieve certificates
+	UseLetsEncrypt bool `json:"use-letsencrypt" yaml:"use-letsencrypt" usage:"use letsencrypt for certificates"`
+
+	// LetsEncryptCacheDir is the path to store letsencrypt certificates
+	LetsEncryptCacheDir string `json:"letsencrypt-cache-dir" yaml:"letsencrypt-cache-dir" usage:"path where cached letsencrypt certificates are stored"`
+
 	// SignInPage is the relative url for the sign in page
 	SignInPage string `json:"sign-in-page" yaml:"sign-in-page" usage:"path to custom template displayed for signin"`
 	// ForbiddenPage is a access forbidden page
