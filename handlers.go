@@ -295,7 +295,13 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 		}()
 	}
 
-	revocationURL := defaultTo(r.config.RevocationEndpoint, r.idp.EndSessionEndpoint.String())
+	// set the default revocation url
+	revokeDefault := ""
+	if r.idp.EndSessionEndpoint != nil {
+		revokeDefault = r.idp.EndSessionEndpoint.String()
+	}
+	revocationURL := defaultTo(r.config.RevocationEndpoint, revokeDefault)
+
 	// step: do we have a revocation endpoint?
 	if revocationURL != "" {
 		client, err := r.client.OAuthClient()
