@@ -19,6 +19,8 @@ import (
 	"crypto/tls"
 	"testing"
 
+	"github.com/gambol99/keycloak-proxy/pkg/api"
+
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 )
@@ -29,7 +31,7 @@ const (
 )
 
 func newTestCertificateRotator(t *testing.T) *certificationRotation {
-	p, err := New(testCertificateFile, testPrivateKeyFile, zap.NewNop())
+	p, err := New(&api.Config{TLSCertificate: testCertificateFile, TLSPrivateKey: testPrivateKeyFile}, zap.NewNop())
 	c := p.(*certificationRotation)
 	assert.NotNil(t, c)
 	assert.Equal(t, testCertificateFile, c.certificateFile)
@@ -41,14 +43,8 @@ func newTestCertificateRotator(t *testing.T) *certificationRotation {
 	return c
 }
 
-func TestNewCeritifacteRotator(t *testing.T) {
-	c, err := New(testCertificateFile, testPrivateKeyFile, zap.NewNop())
-	assert.NotNil(t, c)
-	assert.NoError(t, err)
-}
-
 func TestNewCeritifacteRotatorFailure(t *testing.T) {
-	c, err := New("./tests/does_not_exist", testPrivateKeyFile, zap.NewNop())
+	c, err := New(&api.Config{}, zap.NewNop())
 	assert.Nil(t, c)
 	assert.Error(t, err)
 }

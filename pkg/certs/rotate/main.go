@@ -21,6 +21,7 @@ import (
 	"path"
 	"sync"
 
+	"github.com/gambol99/keycloak-proxy/pkg/api"
 	"github.com/gambol99/keycloak-proxy/pkg/certs"
 	"github.com/gambol99/keycloak-proxy/pkg/utils"
 
@@ -41,17 +42,17 @@ type certificationRotation struct {
 }
 
 // New creates a new certificate
-func New(cert, key string, log *zap.Logger) (certs.Provider, error) {
+func New(c *api.Config, log *zap.Logger) (certs.Provider, error) {
 	// step: attempt to load the certificate
-	certificate, err := tls.LoadX509KeyPair(cert, key)
+	certificate, err := tls.LoadX509KeyPair(c.TLSCertificate, c.TLSPrivateKey)
 	if err != nil {
 		return nil, err
 	}
 	svc := &certificationRotation{
 		certificate:     certificate,
-		certificateFile: cert,
+		certificateFile: c.TLSCertificate,
 		log:             log,
-		privateKeyFile:  key,
+		privateKeyFile:  c.TLSPrivateKey,
 	}
 
 	// start watching the certificates
