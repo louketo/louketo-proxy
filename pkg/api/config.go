@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package api
 
 import (
 	"errors"
@@ -28,18 +28,19 @@ import (
 func NewDefaultConfig() *Config {
 	return &Config{
 		AccessTokenDuration:         time.Duration(720) * time.Hour,
-		Tags:                        make(map[string]string),
-		MatchClaims:                 make(map[string]string),
-		Headers:                     make(map[string]string),
-		UpstreamTimeout:             time.Duration(10) * time.Second,
-		UpstreamKeepaliveTimeout:    time.Duration(10) * time.Second,
-		EnableAuthorizationHeader:   true,
-		EnableTokenHeader:           true,
 		CookieAccessName:            "kc-access",
 		CookieRefreshName:           "kc-state",
+		EnableAuthorizationHeader:   true,
+		EnableTokenHeader:           true,
+		Headers:                     make(map[string]string),
+		LetsEncryptCacheDir:         "./cache/",
+		MatchClaims:                 make(map[string]string),
 		SecureCookie:                true,
-		SkipUpstreamTLSVerify:       true,
 		SkipOpenIDProviderTLSVerify: false,
+		SkipUpstreamTLSVerify:       true,
+		Tags: make(map[string]string),
+		UpstreamKeepaliveTimeout: time.Duration(10) * time.Second,
+		UpstreamTimeout:          time.Duration(10) * time.Second,
 		UseLetsEncrypt:              false,
 		LetsEncryptCacheDir:         "./cache/",
 	}
@@ -56,11 +57,11 @@ func (c *Config) IsValid() error {
 	if c.TLSPrivateKey != "" && c.TLSCertificate == "" {
 		return errors.New("you have not provided a certificate file")
 	}
-        if c.UseLetsEncrypt && c.LetsEncryptCacheDir == "" {
+	if c.UseLetsEncrypt && c.LetsEncryptCacheDir == "" {
 		return fmt.Errorf("the letsencrypt cache dir has not been set")
 	}
 
-	if r.EnableForwarding {
+	if c.EnableForwarding {
 		if c.ClientID == "" {
 			return errors.New("you have not specified the client id")
 		}
@@ -86,10 +87,6 @@ func (c *Config) IsValid() error {
 		if _, err := url.Parse(c.Upstream); err != nil {
 			return fmt.Errorf("the upstream endpoint is invalid, %s", err)
 		}
-		if r.SkipUpstreamTLSVerify && r.UpstreamCA != "" {
-			return fmt.Errorf("you cannot skip upstream tls and load a root ca: %s to verify it", r.UpstreamCA)
-		}
-
 		// step: if the skip verification is off, we need the below
 		if !c.SkipTokenVerification {
 			if c.ClientID == "" {

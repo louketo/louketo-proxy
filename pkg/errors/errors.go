@@ -38,4 +38,6 @@ var (
 	ErrDecryptionTextSmall = errors.New("failed to decrypt the ciphertext, the text is too short")
 	// ErrUserInfoValidation indicates the token was not validated by userinfo endpoint
 	ErrUserInfoValidation = errors.New("token not validate by userinfo endpoint")
+	// ErrHostNotConfigured indicates the hostname was not found
+	ErrHostNotConfigured = errors.New("acme/autocert: host not configured")
 )
