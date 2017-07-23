@@ -39,10 +39,10 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/gambol99/go-oidc/jose"
 	"github.com/gambol99/keycloak-proxy/pkg/constants"
 	"github.com/gambol99/keycloak-proxy/pkg/errors"
 
-	"github.com/gambol99/go-oidc/jose"
 	"github.com/urfave/cli"
 	"gopkg.in/yaml.v2"
 )
@@ -57,12 +57,15 @@ func ReadConfigFile(filename string, data interface{}) error {
 	if err != nil {
 		return err
 	}
-	// step: attempt to un-marshal the data
 	switch ext := filepath.Ext(filename); ext {
-	case "json":
+	case ".json":
 		err = json.Unmarshal(content, data)
-	default:
+	case ".yaml":
+		fallthrough
+	case ".yml":
 		err = yaml.Unmarshal(content, data)
+	default:
+		return errors.ErrInvalidFormat
 	}
 
 	return err
@@ -150,7 +153,6 @@ func DefaultTo(v, d string) string {
 	if v != "" {
 		return v
 	}
-
 	return d
 }
 
@@ -224,7 +226,6 @@ func TransferBytes(src io.Reader, dest io.Writer, wg *sync.WaitGroup) (int64, er
 
 // TryUpdateConnection attempt to upgrade the connection to a http pdy stream
 func TryUpdateConnection(req *http.Request, writer http.ResponseWriter, endpoint *url.URL) error {
-	// step: dial the endpoint
 	tlsConn, err := TryDialEndpoint(endpoint)
 	if err != nil {
 		return err
@@ -243,7 +244,7 @@ func TryUpdateConnection(req *http.Request, writer http.ResponseWriter, endpoint
 		return err
 	}
 
-	// step: copy the date between client and upstream endpoint
+	// step: copy the data between client and upstream endpoint
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go TransferBytes(tlsConn, clientConn, &wg)
@@ -282,8 +283,6 @@ func FindCookie(name string, cookies []*http.Cookie) *http.Cookie {
 // ToHeader is a helper method to play nice in the headers
 func ToHeader(v string) string {
 	var list []string
-
-	// step: filter out any symbols and convert to dashes
 	for _, x := range symbolsFilter.Split(v, -1) {
 		list = append(list, Capitalize(x))
 	}

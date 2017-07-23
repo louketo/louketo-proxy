@@ -43,8 +43,6 @@ func (r *oauthProxy) getRedirectionURL(w http.ResponseWriter, req *http.Request)
 	var redirect string
 	switch r.config.RedirectionURL {
 	case "":
-		// need to determine the scheme, cx.Request.URL.Scheme doesn't have it, best way is to default
-		// and then check for TLS
 		scheme := constants.HTTPSchema
 		if req.TLS != nil {
 			scheme = constants.HTTPSSchema
@@ -91,7 +89,6 @@ func (r *oauthProxy) oauthAuthorizationHandler(w http.ResponseWriter, req *http.
 		model["redirect"] = authURL
 		w.WriteHeader(http.StatusOK)
 		r.Render(w, path.Base(r.config.SignInPage), utils.MergeMaps(model, r.config.Tags))
-
 		return
 	}
 
@@ -275,7 +272,6 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 	// the user can specify a url to redirect the back
 	redirectURL := req.URL.Query().Get("redirect")
 
-	// step: drop the access token
 	user, err := r.getIdentity(req)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -305,7 +301,6 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 	}
 	revocationURL := utils.DefaultTo(r.config.RevocationEndpoint, revokeDefault)
 
-	// step: do we have a revocation endpoint?
 	if revocationURL != "" {
 		client, err := r.client.OAuthClient()
 		if err != nil {
@@ -335,7 +330,6 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		// step: check the response
 		switch response.StatusCode {
 		case http.StatusNoContent:
 			r.log.Info("successfully logged out of the endpoint", zap.String("email", user.email))
@@ -346,7 +340,7 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 				zap.String("response", fmt.Sprintf("%s", content)))
 		}
 	}
-	// step: should we redirect the user
+
 	if redirectURL != "" {
 		r.redirectToURL(redirectURL, w, req)
 	}
@@ -359,7 +353,6 @@ func (r *oauthProxy) expirationHandler(w http.ResponseWriter, req *http.Request)
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-
 	if user.isExpired() {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -432,7 +425,7 @@ func (r *oauthProxy) proxyMetricsHandler(w http.ResponseWriter, req *http.Reques
 }
 
 // retrieveRefreshToken retrieves the refresh token from store or cookie
-func (r *oauthProxy) retrieveRefreshToken(req *http.Request, user *userContext) (token, ecrypted string, err error) {
+func (r *oauthProxy) retrieveRefreshToken(req *http.Request, user *userContext) (token, encrypted string, err error) {
 	switch r.useStore() {
 	case true:
 		token, err = r.GetRefreshToken(user.token)
@@ -443,7 +436,7 @@ func (r *oauthProxy) retrieveRefreshToken(req *http.Request, user *userContext) 
 		return
 	}
 
-	ecrypted = token // returns encryped, avoid encoding twice
+	encrypted = token
 	token, err = utils.DecodeText(token, r.config.EncryptionKey)
 	return
 }

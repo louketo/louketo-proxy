@@ -239,7 +239,6 @@ type Config struct {
 
 	// UseLetsEncrypt controls if we should use letsencrypt to retrieve certificates
 	UseLetsEncrypt bool `json:"use-letsencrypt" yaml:"use-letsencrypt" usage:"use letsencrypt for certificates"`
-
 	// LetsEncryptCacheDir is the path to store letsencrypt certificates
 	LetsEncryptCacheDir string `json:"letsencrypt-cache-dir" yaml:"letsencrypt-cache-dir" usage:"path where cached letsencrypt certificates are stored"`
 

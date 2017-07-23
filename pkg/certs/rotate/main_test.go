@@ -30,12 +30,10 @@ const (
 	testPrivateKeyFile  = "../../../tests/proxy-key.pem"
 )
 
-func newTestCertificateRotator(t *testing.T) *certificationRotation {
+func newTestCertificateRotator(t *testing.T) *provider {
 	p, err := New(&api.Config{TLSCertificate: testCertificateFile, TLSPrivateKey: testPrivateKeyFile}, zap.NewNop())
-	c := p.(*certificationRotation)
+	c := p.(*provider)
 	assert.NotNil(t, c)
-	assert.Equal(t, testCertificateFile, c.certificateFile)
-	assert.Equal(t, testPrivateKeyFile, c.privateKeyFile)
 	if !assert.NoError(t, err) {
 		t.Fatalf("unable to create the certificate rotator, error: %s", err)
 	}

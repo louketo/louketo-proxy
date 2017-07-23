@@ -26,15 +26,13 @@ import (
 
 // NewResource returns a new resource
 func NewResource() *Resource {
-	return &Resource{
-		Methods: constants.AllHTTPMethods,
-	}
+	return &Resource{Methods: constants.AllHTTPMethods}
 }
 
 // Parse decodes a resource definition
 func (r *Resource) Parse(resource string) (*Resource, error) {
 	if resource == "" {
-		return nil, errors.New("the resource has no options")
+		return nil, errors.New("resource has no options")
 	}
 	for _, x := range strings.Split(resource, "|") {
 		items := strings.Split(x, "=")
@@ -46,7 +44,7 @@ func (r *Resource) Parse(resource string) (*Resource, error) {
 		case "uri":
 			r.URI = items[1]
 			if !strings.HasPrefix(r.URI, "/") {
-				return nil, errors.New("the resource uri should start with a '/'")
+				return nil, errors.New("resource uri should start with a '/'")
 			}
 		case "methods":
 			r.Methods = strings.Split(items[1], ",")
@@ -85,7 +83,6 @@ func (r *Resource) IsValid() error {
 	if r.URI == "" {
 		return errors.New("neither uri or hostname specified")
 	}
-	// step: add any of no methods
 	if len(r.Methods) <= 0 {
 		r.Methods = constants.AllHTTPMethods
 	}
