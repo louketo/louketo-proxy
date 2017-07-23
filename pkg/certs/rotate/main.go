@@ -29,33 +29,24 @@ import (
 	"go.uber.org/zap"
 )
 
-type certificationRotation struct {
+type provider struct {
 	sync.RWMutex
-	// certificate holds the current issuing certificate
+	config      *api.Config
 	certificate tls.Certificate
-	// certificateFile is the path the certificate
-	certificateFile string
-	// the privateKeyFile is the path of the private key
-	privateKeyFile string
-	// the logger for this service
-	log *zap.Logger
+	log         *zap.Logger
 }
 
-// New creates a new certificate
+// New creates a new rotate provider
 func New(c *api.Config, log *zap.Logger) (certs.Provider, error) {
-	// step: attempt to load the certificate
 	certificate, err := tls.LoadX509KeyPair(c.TLSCertificate, c.TLSPrivateKey)
 	if err != nil {
 		return nil, err
 	}
-	svc := &certificationRotation{
-		certificate:     certificate,
-		certificateFile: c.TLSCertificate,
-		log:             log,
-		privateKeyFile:  c.TLSPrivateKey,
+	svc := &provider{
+		certificate: certificate,
+		config:      c,
+		log:         log,
 	}
-
-	// start watching the certificates
 	if err := svc.watch(); err != nil {
 		return nil, err
 	}
@@ -64,26 +55,26 @@ func New(c *api.Config, log *zap.Logger) (certs.Provider, error) {
 }
 
 // watch is responsible for adding a file notification and watch on the files for changes
-func (c *certificationRotation) watch() error {
-	c.log.Info("adding a file watch on the certificates, certificate",
-		zap.String("certificate", c.certificateFile),
-		zap.String("private_key", c.privateKeyFile))
+func (p *provider) watch() error {
+	p.log.Info("adding a file watch on the tls certificates",
+		zap.String("certificate", p.tlsCertificate()),
+		zap.String("private_key", p.tlsPrivateKey()))
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return err
 	}
 	// add the files to the watch list
-	for _, x := range []string{c.certificateFile, c.privateKeyFile} {
+	for _, x := range []string{p.tlsCertificate(), p.tlsPrivateKey()} {
 		if err := watcher.Add(path.Dir(x)); err != nil {
 			return fmt.Errorf("unable to add watch on directory: %s, error: %s", path.Dir(x), err)
 		}
 	}
 
 	// step: watching for events
-	filewatchPaths := []string{c.certificateFile, c.privateKeyFile}
+	filewatchPaths := []string{p.tlsCertificate(), p.tlsPrivateKey()}
 	go func() {
-		c.log.Info("starting to watch changes to the tls certificate files")
+		p.log.Info("starting to watch changes to the tls certificate files")
 		for {
 			select {
 			case event := <-watcher.Events:
@@ -93,19 +84,17 @@ func (c *certificationRotation) watch() error {
 						continue
 					}
 					// step: reload the certificate
-					certificate, err := tls.LoadX509KeyPair(c.certificateFile, c.privateKeyFile)
+					certificate, err := tls.LoadX509KeyPair(p.tlsCertificate(), p.tlsPrivateKey())
 					if err != nil {
-						c.log.Error("unable to load the updated certificate",
+						p.log.Error("unable to load the updated certificate",
 							zap.String("filename", event.Name),
 							zap.Error(err))
 					}
-					// step: load the new certificate
-					c.storeCertificate(certificate)
-					// step: print a debug message for us
-					c.log.Info("replacing the server certifacte with updated version")
+					p.storeCertificate(certificate)
+					p.log.Info("replacing the server certifacte with updated version")
 				}
 			case err := <-watcher.Errors:
-				c.log.Error("recieved an error from the file watcher", zap.Error(err))
+				p.log.Error("recieved an error from the file watcher", zap.Error(err))
 			}
 		}
 	}()
@@ -114,18 +103,26 @@ func (c *certificationRotation) watch() error {
 }
 
 // storeCertificate provides entrypoint to update the certificate
-func (c *certificationRotation) storeCertificate(certifacte tls.Certificate) error {
-	c.Lock()
-	defer c.Unlock()
-	c.certificate = certifacte
+func (p *provider) storeCertificate(certifacte tls.Certificate) error {
+	p.Lock()
+	defer p.Unlock()
+	p.certificate = certifacte
 
 	return nil
 }
 
 // GetCertificate is responsible for retrieving
-func (c *certificationRotation) GetCertificate(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	c.RLock()
-	defer c.RUnlock()
+func (p *provider) GetCertificate(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
+	p.RLock()
+	defer p.RUnlock()
 
-	return &c.certificate, nil
+	return &p.certificate, nil
+}
+
+func (p *provider) tlsCertificate() string {
+	return p.config.TLSCertificate
+}
+
+func (p *provider) tlsPrivateKey() string {
+	return p.config.TLSPrivateKey
 }

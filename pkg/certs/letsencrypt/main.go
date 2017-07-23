@@ -29,38 +29,36 @@ import (
 )
 
 type provider struct {
-	manager        *autocert.Manager
-	hostnames      []string
-	redirectionURL string
+	manager *autocert.Manager
+	config  *api.Config
 }
 
 // New returns a letsencrypt provider
 func New(c *api.Config, log *zap.Logger) (certs.Provider, error) {
 	p := &provider{
-		hostnames:      c.Hostnames,
-		redirectionURL: c.RedirectionURL,
+		config: c,
+		manager: &autocert.Manager{
+			Prompt: autocert.AcceptTOS,
+			Cache:  autocert.DirCache(c.LetsEncryptCacheDir),
+		},
 	}
-	p.manager = &autocert.Manager{
-		Prompt:     autocert.AcceptTOS,
-		Cache:      autocert.DirCache(c.LetsEncryptCacheDir),
-		HostPolicy: p.enforceHostPolicy,
-	}
+	p.manager.HostPolicy = p.enforceHostPolicy
 
 	return p, nil
 }
 
 // enforceHostPolicy is responsible for the hostname policy
 func (p *provider) enforceHostPolicy(_ context.Context, hostname string) error {
-	if len(p.hostnames) > 0 {
+	if len(p.hostnames()) > 0 {
 		found := false
-		for _, h := range p.hostnames {
+		for _, h := range p.hostnames() {
 			found = found || (h == hostname)
 		}
 		if !found {
 			return errors.ErrHostNotConfigured
 		}
-	} else if p.redirectionURL != "" {
-		u, err := url.Parse(p.redirectionURL)
+	} else if p.redirectionURL() != "" {
+		u, err := url.Parse(p.redirectionURL())
 		if err != nil {
 			return err
 		}
@@ -75,4 +73,14 @@ func (p *provider) enforceHostPolicy(_ context.Context, hostname string) error {
 // GetCertificate just wraps the letsencrypt method
 func (p *provider) GetCertificate(h *tls.ClientHelloInfo) (*tls.Certificate, error) {
 	return p.manager.GetCertificate(h)
+}
+
+// hostnames returns a list of hostnames from the config
+func (p *provider) hostnames() []string {
+	return p.config.Hostnames
+}
+
+// redirectionURL returns the redirectionURL from config
+func (p *provider) redirectionURL() string {
+	return p.config.RedirectionURL
 }
