@@ -7,7 +7,7 @@ ROOT_DIR=${PWD}
 HARDWARE=$(shell uname -m)
 GIT_SHA=$(shell git --no-pager describe --always --dirty)
 BUILD_TIME=$(shell date '+%s')
-VERSION ?= $(shell awk '/release.*=/ { print $$3 }' doc.go | sed 's/"//g')
+VERSION ?= $(shell awk '/Release.*=/ { print $$3 }' pkg/constants/const.go | sed 's/"//g')
 DEPS=$(shell go list -f '{{range .TestImports}}{{.}} {{end}}' ./...)
 PACKAGES=$(shell go list ./... | grep -v vendor)
 LFLAGS ?= -X constants.Gitsha=${GIT_SHA} -X constants.Compiled=${BUILD_TIME}
