@@ -19,13 +19,14 @@
   - Forward Signed Proxy
   - URL Role Tokenization
   - Listen on unix sockets, proxy upstream to unix sockets
+  - Let's Encrypt support
 
 ----
 
 Keycloak-proxy is a proxy service which at the risk of stating the obvious integrates with the [Keycloak](https://github.com/keycloak/keycloak) authentication service. Although technically the service has no dependency on Keycloak itself and would quite happily work with any OpenID provider. The service supports both access tokens in browser cookie or bearer tokens.
 
 ```shell
-[jest@starfury keycloak-proxy]$ bin/keycloak-proxy help
+$ bin/keycloak-proxy help
 NAME:
    keycloak-proxy - is a proxy using the keycloak service for auth and authorization
 
@@ -33,7 +34,7 @@ USAGE:
    keycloak-proxy [options]
 
 VERSION:
-   v2.1.0-rc2 (git+sha: 6782490-dirty, built: 06-07-2017)
+   v2.1.0-rc2 (git+sha: ffe2fc4, built: 21-07-2017)
 
 AUTHOR:
    Rohith <gambol99@gmail.com>
@@ -103,6 +104,8 @@ GLOBAL OPTIONS:
    --upstream-keepalive-timeout value  specifies the keep-alive period for an active network connection (default: 10s)
    --verbose                           switch on debug / verbose logging (default: false)
    --enabled-proxy-protocol            enable proxy protocol (default: false)
+   --use-letsencrypt                   use letsencrypt for certificates (default: false)
+   --letsencrypt-cache-dir value       path where cached letsencrypt certificates are stored (default: "./cache/")
    --sign-in-page value                path to custom template displayed for signin
    --forbidden-page value              path to custom template used for access forbidden
    --tags value                        keypairs passed to the templates at render,e.g title=Page
@@ -232,7 +235,7 @@ Note the HTTP routing rules following the guidelines from [chi](https://github.c
 
 #### **Google OAuth**
 
-Although the role extensions do require a Keycloak IDP or at the very least a IDP that produces a token which contains roles, there's nothing stopping you from using it against any OpenID providers, such as Google. Go to the Google Developers Console and create a new application *(via "Enable and Manage APIs -> Credentials)*. Once you've created the application, take the client id, secret and make sure you've added the callback url to the application scope *(using the default this would be http://127.0.0.1:3000/oauth/callback)*
+Although the role extensions do require a Keycloak IDP or at the very least a IDP that produces a token which contains roles, there's nothing stopping you from using it against any OpenID providers, such as Google. Go to the Google Developers Console/Google Cloud Console and create a new OAuth 2.0 client ID *(via "API Manager-> Credentials)*. Once you've created the OAuth 2.0 client ID, take the client ID, secret and make sure you've added the callback url to the application scope *(using the default this would be http://127.0.0.1:3000/oauth/callback)*
 
 ```shell
 bin/keycloak-proxy \
@@ -283,25 +286,25 @@ You have collection of micro-services which are permitted to speak to one anothe
   image: some_images
 
 # test the forward proxy
-[jest@starfury keycloak-proxy]$ curl -k --proxy http://127.0.0.1:3000 https://test.projesta.svc.cluster.local
+$ curl -k --proxy http://127.0.0.1:3000 https://test.projesta.svc.cluster.local
 ```
 
 Receiver side you could setup the keycloak-proxy (--no=redirects=true) and permit this proxy to verify and handle admission for you. Alternatively, the access token can found as a bearer token in the request.
 
 #### **Forwarding Signing HTTPS Connect**
 
-Handling HTTPS requires man in the middling the TLS connection. By default if no -tls-ca-cert and -tls-ca-key is provided the proxy will use the default certificate. If you wish to verify the trust, you'll need to generate a CA, for example.
+Handling HTTPS requires man in the middling the TLS connection. By default if no `--tls-ca-certificate` and `--tls-ca-key` is provided the proxy will use the default certificate. If you wish to verify the trust, you'll need to generate a CA, for example.
 
 ```shell
-[jest@starfury keycloak-proxy]$ openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout ca.key -out ca.pem
-[jest@starfury keycloak-proxy]$ bin/keycloak-proxy \
+$ openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout ca.key -out ca.pem
+$ bin/keycloak-proxy \
   --enable-forwarding \
   --forwarding-username=USERNAME \
   --forwarding-password=PASSWORD \
   --client-id=CLIENT_ID \
   --client-secret=SECRET \
   --discovery-url=https://keycloak.example.com/auth/realms/test \
-  --tls-ca-cert=ca.pem \
+  --tls-ca-certificate=ca.pem \
   --tls-ca-key=ca-key.pem
 ```
 
@@ -314,6 +317,23 @@ The proxy supports http listener, though the only real requirement for this woul
 --enable-security-filter=true  # is required for the https redirect
 --enable-https-redirection
 ```
+
+### **Let's Encrypt**
+
+Example of required configuration for Let's Encrypt support:
+
+```YAML
+listen: 0.0.0.0:443
+enable-https-redirection: true
+enable-security-filter: true
+use-letsencrypt: true
+letsencrypt-cache-dir: ./cache/
+redirection-url: https://domain.tld:443/
+hostnames:
+  - domain.tld
+```
+
+Note: listening on the port 443 is mandatory requirement
 
 #### **Access Token Encryption**
 
