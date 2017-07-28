@@ -318,7 +318,7 @@ The proxy supports http listener, though the only real requirement for this woul
 --enable-https-redirection
 ```
 
-### **Let's Encrypt**
+#### **Let's Encrypt**
 
 Example of required configuration for Let's Encrypt support:
 
