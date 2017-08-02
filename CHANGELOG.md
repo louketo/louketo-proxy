@@ -30,6 +30,7 @@ FEATURES
 * moved to use zap for the logging [#PR237](https://github.com/gambol99/keycloak-proxy/pull/237)
 * making the X-Auth-Token optional in the upstream headers via the --enable-token-header [#PR247](https://github.com/gambol99/keycloak-proxy/pull/247)
 * the upstream url is optional, meaning when not configured via --upstream-url is will proxy all requests to the Host header [#PR248](https://github.com/gambol99/keycloak-proxy/pull/248)
+* updated the Dockerfile to use stages and build in one go [#PR?](https://github.com/gambol99/keycloak-proxy/pull/?]
 * adding the ability to load a CA authority to provide trust on upstream endpoint [#PR248](https://github.com/gambol99/keycloak-proxy/pull/248)
 * adding the ability to set various http server and upstream timeout [#PR268](https://github.com/gambol99/keycloak-proxy/pull/268)
 * adding the `--enable-authorization-cookies` command line option to control upstream cookies [$PR287](https://github.com/gambol99/keycloak-proxy/pull/287)

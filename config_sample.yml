@@ -50,8 +50,9 @@ headers:
 # a map of claims that MUST exist in the token presented and the value is it MUST match
 # So for example, you could match the audience or the issuer or some custom attribute
 
-virtual:
-- hostname: default
+hosts:
+- hostname: _default_
+  upstream-url: https://ingress.svc.cluster.local
   resources:
   - uri: /admin/test
     # the methods on this url that should be protected, if missing, we assuming all
