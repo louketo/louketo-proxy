@@ -34,7 +34,7 @@ USAGE:
    keycloak-proxy [options]
 
 VERSION:
-   v2.1.0-rc2 (git+sha: ffe2fc4, built: 21-07-2017)
+   v2.1.0-rc2 (git+sha: 6782490-dirty, built: 06-07-2017)
 
 AUTHOR:
    Rohith <gambol99@gmail.com>
@@ -54,6 +54,7 @@ GLOBAL OPTIONS:
    --skip-openid-provider-tls-verify   skip the verification of any TLS communication with the openid provider (default: false)
    --scopes value                      list of scopes requested when authenticating the user
    --upstream-url value                url for the upstream endpoint you wish to proxy [$PROXY_UPSTREAM_URL]
+   --upstream-ca value                 the path to a file container a CA certificate to validate the upstream tls endpoint
    --resources value                   list of resources 'uri=/admin|methods=GET,PUT|roles=role1,role2'
    --headers value                     custom headers to the upstream request, key=value
    --enable-token-header               enables the token authentication header X-Auth-Token to upstream (default: true)
