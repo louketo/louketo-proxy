@@ -40,8 +40,7 @@ func NewDefaultConfig() *Config {
 		Tags: make(map[string]string),
 		UpstreamKeepaliveTimeout: time.Duration(10) * time.Second,
 		UpstreamTimeout:          time.Duration(10) * time.Second,
-		UseLetsEncrypt:              false,
-		LetsEncryptCacheDir:         "./cache/",
+		UseLetsEncrypt:           false,
 	}
 }
 

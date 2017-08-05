@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gambol99/keycloak-proxy/pkg/api"
 	"github.com/gambol99/keycloak-proxy/pkg/constants"
 
 	"github.com/stretchr/testify/assert"
@@ -409,21 +410,28 @@ func TestMergeMaps(t *testing.T) {
 	}
 }
 
-func TestReadConfiguration(t *testing.T) {
-	var test struct {
-		ID   int    `yaml:"id"`
-		Name string `yaml:"name"`
-	}
+func TestReadConfigurationNotFound(t *testing.T) {
 	assert.Error(t, ReadConfigFile("not_found", nil))
-	content := `
-id: 12
-name: test
-`
-	file := writeFakeConfigFile(t, content)
-	assert.NoError(t, ReadConfigFile(file.Name(), &test))
-	assert.Equal(t, 12, test.ID)
-	assert.Equal(t, "test", test.Name)
-	os.Remove(file.Name())
+}
+
+func TestReadConfigurationOK(t *testing.T) {
+	cs := []struct {
+		Content  string
+		Expected api.Config
+	}{
+		{
+			Content:  "upstream-url: http://127.0.0.1:8080",
+			Expected: api.Config{Upstream: "http://127.0.0.1:8080"},
+		},
+	}
+	for _, c := range cs {
+		config := api.Config{}
+		filename := writeFakeConfigFile(t, c.Content)
+		defer os.Remove(filename)
+		assert.NoError(t, ReadConfigFile(filename, &config))
+		assert.Equal(t, c.Expected, config)
+
+	}
 }
 
 func getFakeURL(location string) *url.URL {
@@ -431,16 +439,11 @@ func getFakeURL(location string) *url.URL {
 	return u
 }
 
-func writeFakeConfigFile(t *testing.T, content string) *os.File {
-	f, err := ioutil.TempFile("", "node_label_file")
-	if err != nil {
-		t.Fatalf("unexpected error creating node_label_file: %v", err)
-	}
-	f.Close()
-
-	if err := ioutil.WriteFile(f.Name(), []byte(content), 0700); err != nil {
+func writeFakeConfigFile(t *testing.T, content string) string {
+	filename := "/tmp/keycloak_proxy_test.yml"
+	if err := ioutil.WriteFile(filename, []byte(content), 0700); err != nil {
 		t.Fatalf("unexpected error writing node label file: %v", err)
 	}
 
-	return f
+	return filename
 }
