@@ -443,9 +443,9 @@ Depending on how the application url's are laid out, you might want protect the 
 
 ```YAML
   resources:
-  - url: /some_white_listed_url
+  - uri: /some_white_listed_url
     white-listed: true
-  - url: /*
+  - uri: /*
     methods:
       - GET
     roles:
@@ -473,11 +473,11 @@ The proxy will automatically rotate the server certificate's if the files change
 
 Assuming a request for an access token contains a refresh token and the --enable-refresh-token is true, the proxy will automatically refresh the access token for you. The tokens themselves are kept either as an encrypted *(--encryption-key=KEY)* cookie *(cookie name: kc-state).* or a store *(still requires encryption key)*.
 
-At present the only store supported are[Redis](https://github.com/antirez/redis) and [Boltdb](https://github.com/boltdb/bolt). To enable a local boltdb store. --store-url boltdb:///PATH or relative path boltdb://PATH. For redis the option is redis://[USER:PASSWORD@]HOST:PORT. In both cases the refresh token is encrypted before placing into the store.
+At present the only store supported are [Redis](https://github.com/antirez/redis) and [Boltdb](https://github.com/boltdb/bolt). To enable a local boltdb store. --store-url boltdb:///PATH or relative path boltdb://PATH. For redis the option is redis://[USER:PASSWORD@]HOST:PORT. In both cases the refresh token is encrypted before placing into the store.
 
 #### **Logout Endpoint**
 
-A /oauth/logout?redirect=url is provided as a helper to logout the users. Aside from dropping any sessions cookies, we also attempt to revoke access via revocation url (config revocation-url or --revocation-url) with the provider. For Keycloak the url for this would be https://keycloak.example.com/auth/realms/REALM_NAME/protocol/openid-connect/logout, for google /oauth/revoke. If the url is not specified we will attempt to grab the url from the OpenID discovery response.
+A */oauth/logout?redirect=url* is provided as a helper to logout the users. Aside from dropping any sessions cookies, we also attempt to revoke access via revocation url (config *revocation-url* or *--revocation-url*) with the provider. For Keycloak the url for this would be https://keycloak.example.com/auth/realms/REALM_NAME/protocol/openid-connect/logout, for Google https://accounts.google.com/o/oauth2/revoke. If the url is not specified we will attempt to grab the url from the OpenID discovery response.
 
 #### **Cross Origin Resource Sharing (CORS)**
 
@@ -526,7 +526,7 @@ You can control the upstream endpoint via the --upstream-url option. Both http a
 
 #### **Metrics**
 
-Assuming the --enable-metrics has been set, a Prometheus endpoint can be found on /oauth/metrics; at present the only metric being exposed is a counter per http code.
+Assuming the *--enable-metrics* has been set, a Prometheus endpoint can be found on */oauth/metrics*; at present the only metric being exposed is a counter per http code.
 
 ### **Contribution Guidelines**
 ----
