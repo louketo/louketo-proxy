@@ -65,11 +65,9 @@ func (r *Config) isValid() error {
 	if r.TLSCaCertificate != "" && !fileExists(r.TLSCaCertificate) {
 		return fmt.Errorf("the tls ca certificate file %s does not exist", r.TLSCaCertificate)
 	}
-
 	if r.TLSClientCertificate != "" && !fileExists(r.TLSClientCertificate) {
 		return fmt.Errorf("the tls client certificate %s does not exist", r.TLSClientCertificate)
 	}
-
 	if r.UseLetsEncrypt && r.LetsEncryptCacheDir == "" {
 		return fmt.Errorf("the letsencrypt cache dir has not been set")
 	}
@@ -100,6 +98,10 @@ func (r *Config) isValid() error {
 		if _, err := url.Parse(r.Upstream); err != nil {
 			return fmt.Errorf("the upstream endpoint is invalid, %s", err)
 		}
+		if r.SkipUpstreamTLSVerify && r.UpstreamCA != "" {
+			return fmt.Errorf("you cannot skip upstream tls and load a root ca: %s to verify it", r.UpstreamCA)
+		}
+
 		// step: if the skip verification is off, we need the below
 		if !r.SkipTokenVerification {
 			if r.ClientID == "" {
