@@ -140,7 +140,7 @@ client-secret: <CLIENT_SECRET>
 # the interface definition you wish the proxy to listen, all interfaces is specified as ':<port>', unix sockets as unix://<REL_PATH>|</ABS PATH>
 listen: 127.0.0.1:3000
 # whether to enable refresh tokens
-enable-refresh-token: true
+enable-refresh-tokens: true
 # the location of a certificate you wish the proxy to use for TLS support
 tls-cert:
 # the location of a private key for TLS
@@ -217,7 +217,7 @@ bin/keycloak-proxy \
     --client-secret=<SECRET> \
     --listen=127.0.0.1:3000 \ # unix sockets format unix://path
     --redirection-url=http://127.0.0.1:3000 \
-    --enable-refresh-token=true \
+    --enable-refresh-tokens=true \
     --encryption-key=AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j \
     --upstream-url=http://127.0.0.1:80 \
     --resources="uri=/admin*|methods=GET|roles=test1,test2" \
@@ -471,7 +471,7 @@ The proxy will automatically rotate the server certificate's if the files change
 
 #### **Refresh Tokens**
 
-Assuming a request for an access token contains a refresh token and the --enable-refresh-token is true, the proxy will automatically refresh the access token for you. The tokens themselves are kept either as an encrypted *(--encryption-key=KEY)* cookie *(cookie name: kc-state).* or a store *(still requires encryption key)*.
+Assuming a request for an access token contains a refresh token and the --enable-refresh-tokens is true, the proxy will automatically refresh the access token for you. The tokens themselves are kept either as an encrypted *(--encryption-key=KEY)* cookie *(cookie name: kc-state).* or a store *(still requires encryption key)*.
 
 At present the only store supported are [Redis](https://github.com/antirez/redis) and [Boltdb](https://github.com/boltdb/bolt). To enable a local boltdb store. --store-url boltdb:///PATH or relative path boltdb://PATH. For redis the option is redis://[USER:PASSWORD@]HOST:PORT. In both cases the refresh token is encrypted before placing into the store.
 
