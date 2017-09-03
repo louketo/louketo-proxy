@@ -26,7 +26,7 @@ import (
 )
 
 var (
-	release  = "v2.1.0-rc3"
+	release  = "v2.1.0-rc4"
 	gitsha   = "no gitsha provided"
 	compiled = "0"
 	version  = ""
@@ -229,12 +229,25 @@ type Config struct {
 	UpstreamKeepalives bool `json:"upstream-keepalives" yaml:"upstream-keepalives" usage:"enables or disables the keepalive connections for upstream endpoint"`
 	// UpstreamTimeout is the maximum amount of time a dial will wait for a connect to complete
 	UpstreamTimeout time.Duration `json:"upstream-timeout" yaml:"upstream-timeout" usage:"maximum amount of time a dial will wait for a connect to complete"`
-	// UpstreamKeepaliveTimeout
+	// UpstreamKeepaliveTimeout is the upstream keepalive timeout
 	UpstreamKeepaliveTimeout time.Duration `json:"upstream-keepalive-timeout" yaml:"upstream-keepalive-timeout" usage:"specifies the keep-alive period for an active network connection"`
+	// UpstreamTLSHandshakeTimeout is the timeout for upstream to tls handshake
+	UpstreamTLSHandshakeTimeout time.Duration `json:"upstream-tls-handshake-timeout" yaml:"upstream-tls-handshake-timeout" usage:"the timeout placed on the tls handshake for upstream"`
+	// UpstreamResponseHeaderTimeout is the timeout for upstream header response
+	UpstreamResponseHeaderTimeout time.Duration `json:"upstream-response-header-timeout" yaml:"upstream-response-header-timeout" usage:"the timeout placed on the response header for upstream"`
+	// UpstreamExpectContinueTimeout is the timeout expect continue for upstream
+	UpstreamExpectContinueTimeout time.Duration `json:"upstream-expect-continue-timeout" yaml:"upstream-expect-continue-timeout" usage:"the timeout placed on the expect continue for upstream"`
+
 	// Verbose switches on debug logging
 	Verbose bool `json:"verbose" yaml:"verbose" usage:"switch on debug / verbose logging"`
 	// EnableProxyProtocol controls the proxy protocol
 	EnableProxyProtocol bool `json:"enabled-proxy-protocol" yaml:"enabled-proxy-protocol" usage:"enable proxy protocol"`
+	// ServerReadTimeout is the read timeout on the http server
+	ServerReadTimeout time.Duration `json:"server-read-timeout" yaml:"server-read-timeout" usage:"the server read timeout on the http server"`
+	// ServerWriteTimeout is the write timeout on the http server
+	ServerWriteTimeout time.Duration `json:"server-write-timeout" yaml:"server-write-timeout" usage:"the server write timeout on the http server"`
+	// ServerIdleTimeout is the idle timeout on the http server
+	ServerIdleTimeout time.Duration `json:"server-idle-timeout" yaml:"server-idle-timeout" usage:"the server idle timeout on the http server"`
 
 	// UseLetsEncrypt controls if we should use letsencrypt to retrieve certificates
 	UseLetsEncrypt bool `json:"use-letsencrypt" yaml:"use-letsencrypt" usage:"use letsencrypt for certificates"`
