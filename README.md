@@ -34,7 +34,7 @@ USAGE:
    keycloak-proxy [options]
 
 VERSION:
-   v2.1.0-rc2 (git+sha: ffe2fc4, built: 21-07-2017)
+   v2.1.0-rc3 (git+sha: 920a0a6-dirty, built: 28-08-2017)
 
 AUTHOR:
    Rohith <gambol99@gmail.com>
@@ -43,79 +43,85 @@ COMMANDS:
      help, h  Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
-   --config value                      path the a configuration file [$PROXY_CONFIG_FILE]
-   --listen value                      the interface the service should be listening on [$PROXY_LISTEN]
-   --listen-http value                 interface we should be listening [$PROXY_LISTEN_HTTP]
-   --discovery-url value               discovery url to retrieve the openid configuration [$PROXY_DISCOVERY_URL]
-   --client-id value                   client id used to authenticate to the oauth service [$PROXY_CLIENT_ID]
-   --client-secret value               client secret used to authenticate to the oauth service [$PROXY_CLIENT_SECRET]
-   --redirection-url value             redirection url for the oauth callback url, defaults to host header is absent [$PROXY_REDIRECTION_URL]
-   --revocation-url value              url for the revocation endpoint to revoke refresh token [$PROXY_REVOCATION_URL]
-   --skip-openid-provider-tls-verify   skip the verification of any TLS communication with the openid provider (default: false)
-   --scopes value                      list of scopes requested when authenticating the user
-   --upstream-url value                url for the upstream endpoint you wish to proxy [$PROXY_UPSTREAM_URL]
-   --upstream-ca value                 the path to a file container a CA certificate to validate the upstream tls endpoint
-   --resources value                   list of resources 'uri=/admin|methods=GET,PUT|roles=role1,role2'
-   --headers value                     custom headers to the upstream request, key=value
-   --enable-token-header               enables the token authentication header X-Auth-Token to upstream (default: true)
-   --enable-encrypted-token            enable encryption for the access tokens (default: false)
-   --enable-logging                    enable http logging of the requests (default: false)
-   --enable-json-logging               switch on json logging rather than text (default: false)
-   --enable-forwarding                 enables the forwarding proxy mode, signing outbound request (default: false)
-   --enable-security-filter            enables the security filter handler (default: false)
-   --enable-refresh-tokens             nables the handling of the refresh tokens (default: false) [$PROXY_ENABLE_SECURITY_FILTER]
-   --enable-login-handler              enables the handling of the refresh tokens (default: false) [$PROXY_ENABLE_LOGIN_HANDLER]
-   --enable-authorization-header       adds the authorization header to the proxy request (default: true)
-   --enable-https-redirection          enable the http to https redirection on the http service (default: false)
-   --enable-profiling                  switching on the golang profiling via pprof on /debug/pprof, /debug/pprof/heap etc (default: false)
-   --enable-metrics                    enable the prometheus metrics collector on /oauth/metrics (default: false)
-   --filter-browser-xss                enable the adds the X-XSS-Protection header with mode=block (default: false)
-   --filter-content-nosniff            adds the X-Content-Type-Options header with the value nosniff (default: false)
-   --filter-frame-deny                 enable to the frame deny header (default: false)
-   --content-security-policy value     specify the content security policy
-   --localhost-metrics                 enforces the metrics page can only been requested from 127.0.0.1 (default: false)
-   --access-token-duration value       fallback cookie duration for the access token when using refresh tokens (default: 720h0m0s)
-   --cookie-domain value               domain the access cookie is available to, defaults host header
-   --cookie-access-name value          name of the cookie use to hold the access token (default: "kc-access")
-   --cookie-refresh-name value         name of the cookie used to hold the encrypted refresh token (default: "kc-state")
-   --secure-cookie                     enforces the cookie to be secure (default: true)
-   --http-only-cookie                  enforces the cookie is in http only mode (default: false)
-   --match-claims value                keypair values for matching access token claims e.g. aud=myapp, iss=http://example.*
-   --add-claims value                  extra claims from the token and inject into headers, e.g given_name -> X-Auth-Given-Name
-   --tls-cert value                    path to ths TLS certificate
-   --tls-private-key value             path to the private key for TLS
-   --tls-ca-certificate value          path to the ca certificate used for signing requests
-   --tls-ca-key value                  path the ca private key, used by the forward signing proxy
-   --tls-client-certificate value      path to the client certificate for outbound connections in reverse and forwarding proxy modes
-   --skip-upstream-tls-verify          skip the verification of any upstream TLS (default: true)
-   --skip-client-id                    skip the check on the client token (default: false)
-   --cors-origins value                origins to add to the CORE origins control (Access-Control-Allow-Origin)
-   --cors-methods value                methods permitted in the access control (Access-Control-Allow-Methods)
-   --cors-headers value                set of headers to add to the CORS access control (Access-Control-Allow-Headers)
-   --cors-exposed-headers value        expose cors headers access control (Access-Control-Expose-Headers)
-   --cors-credentials                  credentials access control header (Access-Control-Allow-Credentials) (default: false)
-   --cors-max-age value                max age applied to cors headers (Access-Control-Max-Age) (default: 0s)
-   --hostnames value                   list of hostnames the service will respond to
-   --store-url value                   url for the storage subsystem, e.g redis://127.0.0.1:6379, file:///etc/tokens.file
-   --encryption-key value              encryption key used to encryption the session state [$PROXY_ENCRYPTION_KEY]
-   --no-redirects                      do not have back redirects when no authentication is present, 401 them (default: false)
-   --skip-token-verification           TESTING ONLY; bypass token verification, only expiration and roles enforced (default: false)
-   --upstream-keepalives               enables or disables the keepalive connections for upstream endpoint (default: false)
-   --upstream-timeout value            maximum amount of time a dial will wait for a connect to complete (default: 10s)
-   --upstream-keepalive-timeout value  specifies the keep-alive period for an active network connection (default: 10s)
-   --verbose                           switch on debug / verbose logging (default: false)
-   --enabled-proxy-protocol            enable proxy protocol (default: false)
-   --use-letsencrypt                   use letsencrypt for certificates (default: false)
-   --letsencrypt-cache-dir value       path where cached letsencrypt certificates are stored (default: "./cache/")
-   --sign-in-page value                path to custom template displayed for signin
-   --forbidden-page value              path to custom template used for access forbidden
-   --tags value                        keypairs passed to the templates at render,e.g title=Page
-   --forwarding-username value         username to use when logging into the openid provider
-   --forwarding-password value         password to use when logging into the openid provider
-   --forwarding-domains value          list of domains which should be signed; everything else is relayed unsigned
-   --disable-all-logging               disables all logging to stdout and stderr (default: false)
-   --help, -h                          show help
-   --version, -v                       print the version
+   --config value                            path the a configuration file [$PROXY_CONFIG_FILE]
+   --listen value                            the interface the service should be listening on [$PROXY_LISTEN]
+   --listen-http value                       interface we should be listening [$PROXY_LISTEN_HTTP]
+   --discovery-url value                     discovery url to retrieve the openid configuration [$PROXY_DISCOVERY_URL]
+   --client-id value                         client id used to authenticate to the oauth service [$PROXY_CLIENT_ID]
+   --client-secret value                     client secret used to authenticate to the oauth service [$PROXY_CLIENT_SECRET]
+   --redirection-url value                   redirection url for the oauth callback url, defaults to host header is absent [$PROXY_REDIRECTION_URL]
+   --revocation-url value                    url for the revocation endpoint to revoke refresh token [$PROXY_REVOCATION_URL]
+   --skip-openid-provider-tls-verify         skip the verification of any TLS communication with the openid provider (default: false)
+   --scopes value                            list of scopes requested when authenticating the user
+   --upstream-url value                      url for the upstream endpoint you wish to proxy [$PROXY_UPSTREAM_URL]
+   --upstream-ca value                       the path to a file container a CA certificate to validate the upstream tls endpoint
+   --resources value                         list of resources 'uri=/admin|methods=GET,PUT|roles=role1,role2'
+   --headers value                           custom headers to the upstream request, key=value
+   --enable-token-header                     enables the token authentication header X-Auth-Token to upstream (default: true)
+   --enable-encrypted-token                  enable encryption for the access tokens (default: false)
+   --enable-logging                          enable http logging of the requests (default: false)
+   --enable-json-logging                     switch on json logging rather than text (default: false)
+   --enable-forwarding                       enables the forwarding proxy mode, signing outbound request (default: false)
+   --enable-security-filter                  enables the security filter handler (default: false)
+   --enable-refresh-tokens                   nables the handling of the refresh tokens (default: false) [$PROXY_ENABLE_SECURITY_FILTER]
+   --enable-login-handler                    enables the handling of the refresh tokens (default: false) [$PROXY_ENABLE_LOGIN_HANDLER]
+   --enable-authorization-header             adds the authorization header to the proxy request (default: true)
+   --enable-https-redirection                enable the http to https redirection on the http service (default: false)
+   --enable-profiling                        switching on the golang profiling via pprof on /debug/pprof, /debug/pprof/heap etc (default: false)
+   --enable-metrics                          enable the prometheus metrics collector on /oauth/metrics (default: false)
+   --filter-browser-xss                      enable the adds the X-XSS-Protection header with mode=block (default: false)
+   --filter-content-nosniff                  adds the X-Content-Type-Options header with the value nosniff (default: false)
+   --filter-frame-deny                       enable to the frame deny header (default: false)
+   --content-security-policy value           specify the content security policy
+   --localhost-metrics                       enforces the metrics page can only been requested from 127.0.0.1 (default: false)
+   --access-token-duration value             fallback cookie duration for the access token when using refresh tokens (default: 720h0m0s)
+   --cookie-domain value                     domain the access cookie is available to, defaults host header
+   --cookie-access-name value                name of the cookie use to hold the access token (default: "kc-access")
+   --cookie-refresh-name value               name of the cookie used to hold the encrypted refresh token (default: "kc-state")
+   --secure-cookie                           enforces the cookie to be secure (default: true)
+   --http-only-cookie                        enforces the cookie is in http only mode (default: false)
+   --match-claims value                      keypair values for matching access token claims e.g. aud=myapp, iss=http://example.*
+   --add-claims value                        extra claims from the token and inject into headers, e.g given_name -> X-Auth-Given-Name
+   --tls-cert value                          path to ths TLS certificate
+   --tls-private-key value                   path to the private key for TLS
+   --tls-ca-certificate value                path to the ca certificate used for signing requests
+   --tls-ca-key value                        path the ca private key, used by the forward signing proxy
+   --tls-client-certificate value            path to the client certificate for outbound connections in reverse and forwarding proxy modes
+   --skip-upstream-tls-verify                skip the verification of any upstream TLS (default: true)
+   --skip-client-id                          skip the check on the client token (default: false)
+   --cors-origins value                      origins to add to the CORE origins control (Access-Control-Allow-Origin)
+   --cors-methods value                      methods permitted in the access control (Access-Control-Allow-Methods)
+   --cors-headers value                      set of headers to add to the CORS access control (Access-Control-Allow-Headers)
+   --cors-exposed-headers value              expose cors headers access control (Access-Control-Expose-Headers)
+   --cors-credentials                        credentials access control header (Access-Control-Allow-Credentials) (default: false)
+   --cors-max-age value                      max age applied to cors headers (Access-Control-Max-Age) (default: 0s)
+   --hostnames value                         list of hostnames the service will respond to
+   --store-url value                         url for the storage subsystem, e.g redis://127.0.0.1:6379, file:///etc/tokens.file
+   --encryption-key value                    encryption key used to encryption the session state [$PROXY_ENCRYPTION_KEY]
+   --no-redirects                            do not have back redirects when no authentication is present, 401 them (default: false)
+   --skip-token-verification                 TESTING ONLY; bypass token verification, only expiration and roles enforced (default: false)
+   --upstream-keepalives                     enables or disables the keepalive connections for upstream endpoint (default: false)
+   --upstream-timeout value                  maximum amount of time a dial will wait for a connect to complete (default: 10s)
+   --upstream-keepalive-timeout value        specifies the keep-alive period for an active network connection (default: 10s)
+   --upstream-tls-handshake-timeout value    the timeout placed on the tls handshake for upstream (default: 10s)
+   --upstream-response-header-timeout value  the timeout placed on the response header for upstream (default: 1s)
+   --upstream-expect-continue-timeout value  the timeout placed on the expect continue for upstream (default: 10s)
+   --verbose                                 switch on debug / verbose logging (default: false)
+   --enabled-proxy-protocol                  enable proxy protocol (default: false)
+   --server-read-timeout value               the server read timeout on the http server (default: 5s)
+   --server-write-timeout value              the server write timeout on the http server (default: 10s)
+   --server-idle-timeout value               the server idle timeout on the http server (default: 2m0s)
+   --use-letsencrypt                         use letsencrypt for certificates (default: false)
+   --letsencrypt-cache-dir value             path where cached letsencrypt certificates are stored (default: "./cache/")
+   --sign-in-page value                      path to custom template displayed for signin
+   --forbidden-page value                    path to custom template used for access forbidden
+   --tags value                              keypairs passed to the templates at render,e.g title=Page
+   --forwarding-username value               username to use when logging into the openid provider
+   --forwarding-password value               password to use when logging into the openid provider
+   --forwarding-domains value                list of domains which should be signed; everything else is relayed unsigned
+   --disable-all-logging                     disables all logging to stdout and stderr (default: false)
+   --help, -h                                show help
+   --version, -v                             print the version
 ```
 
 #### **Building**

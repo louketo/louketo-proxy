@@ -334,9 +334,11 @@ func (r *oauthProxy) Run() error {
 	}
 	// step: create the http server
 	server := &http.Server{
-		Addr:        r.config.Listen,
-		Handler:     r.router,
-		IdleTimeout: 120 * time.Second,
+		Addr:         r.config.Listen,
+		Handler:      r.router,
+		ReadTimeout:  r.config.ServerReadTimeout,
+		WriteTimeout: r.config.ServerWriteTimeout,
+		IdleTimeout:  r.config.ServerIdleTimeout,
 	}
 	r.server = server
 	r.listener = listener
@@ -361,8 +363,11 @@ func (r *oauthProxy) Run() error {
 			return err
 		}
 		httpsvc := &http.Server{
-			Addr:    r.config.ListenHTTP,
-			Handler: r.router,
+			Addr:         r.config.ListenHTTP,
+			Handler:      r.router,
+			ReadTimeout:  r.config.ServerReadTimeout,
+			WriteTimeout: r.config.ServerWriteTimeout,
+			IdleTimeout:  r.config.ServerIdleTimeout,
 		}
 		go func() {
 			if err := httpsvc.Serve(httpListener); err != nil {
@@ -548,12 +553,18 @@ func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) error {
 	proxy.Logger = httplog.New(ioutil.Discard, "", 0)
 	r.upstream = proxy
 
-	// update the tls configuration of the reverse proxy
-	r.upstream.(*goproxy.ProxyHttpServer).Tr = &http.Transport{
-		Dial:              dialer,
-		TLSClientConfig:   tlsConfig,
-		DisableKeepAlives: !r.config.UpstreamKeepalives,
+	// create the http transport
+	tp := &http.Transport{
+		Dial:                  dialer,
+		DisableKeepAlives:     !r.config.UpstreamKeepalives,
+		ExpectContinueTimeout: r.config.UpstreamExpectContinueTimeout,
+		ResponseHeaderTimeout: r.config.UpstreamResponseHeaderTimeout,
+		TLSClientConfig:       tlsConfig,
+		TLSHandshakeTimeout:   r.config.UpstreamTLSHandshakeTimeout,
 	}
+
+	// update the tls configuration of the reverse proxy
+	r.upstream.(*goproxy.ProxyHttpServer).Tr = tp
 
 	return nil
 }
