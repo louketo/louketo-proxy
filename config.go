@@ -40,6 +40,7 @@ func newDefaultConfig() *Config {
 		ServerReadTimeout:           5 * time.Second,
 		ServerWriteTimeout:          10 * time.Second,
 		SkipOpenIDProviderTLSVerify: false,
+		OpenIDProviderProxy:         "",
 		SkipUpstreamTLSVerify:       true,
 		Tags: make(map[string]string, 0),
 		UpstreamExpectContinueTimeout: 10 * time.Second,
