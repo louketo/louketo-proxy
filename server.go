@@ -591,23 +591,6 @@ func (r *oauthProxy) createTemplates() error {
 	return nil
 }
 
-// parsing OpenIDProviderProxy from the config
-/*
-func OpenIDProviderProxyFromConfig(r *http.Request) (*url.URL, error) {
-	if r.config.OpenIDProviderProxy != "" {
-		idpProxyURL, err := url.Parse(r.config.OpenIDProviderProxy)
-		if err != nil {
-			r.log.Warn("invalid proxy address for open IDP provider proxy", zap.Error(err))
-			return nil, nil
-		}
-		return idpProxyURL, nil
-	} else {
-		return nil, nil
-	}
-
-}
-*/
-
 // newOpenIDClient initializes the openID configuration, note: the redirection url is deliberately left blank
 // in order to retrieve it from the host header on request
 func (r *oauthProxy) newOpenIDClient() (*oidc.Client, oidc.ProviderConfig, *http.Client, error) {
@@ -622,8 +605,6 @@ func (r *oauthProxy) newOpenIDClient() (*oidc.Client, oidc.ProviderConfig, *http
 	// step: create a idp http client
 	hc := &http.Client{
 		Transport: &http.Transport{
-			//Proxy: OpenIDProviderProxyFromConfig,
-			//Proxy: http.ProxyFromEnvironment,
 			Proxy: func(_ *http.Request) (*url.URL, error) {
 				if r.config.OpenIDProviderProxy != "" {
 					idpProxyURL, err := url.Parse(r.config.OpenIDProviderProxy)
@@ -635,27 +616,6 @@ func (r *oauthProxy) newOpenIDClient() (*oidc.Client, oidc.ProviderConfig, *http
 				} else {
 					return nil, nil
 				}
-				/*
-					if len(config.hostnames) > 0 {
-						found := false
-
-						for _, h := range config.hostnames {
-							found = found || (h == host)
-						}
-
-						if !found {
-							return ErrHostNotConfigured
-						}
-					} else if config.redirectionURL != "" {
-						if u, err := url.Parse(config.redirectionURL); err != nil {
-							return err
-						} else if u.Host != host {
-							return ErrHostNotConfigured
-						}
-					}
-
-					return nil
-				*/
 			},
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: r.config.SkipOpenIDProviderTLSVerify,

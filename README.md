@@ -34,7 +34,7 @@ USAGE:
    keycloak-proxy [options]
 
 VERSION:
-   v2.1.0-rc3 (git+sha: 920a0a6-dirty, built: 28-08-2017)
+   v2.1.0-rc4 (git+sha: 8c31d10-dirty, built: 06-09-2017)
 
 AUTHOR:
    Rohith <gambol99@gmail.com>
@@ -52,6 +52,7 @@ GLOBAL OPTIONS:
    --redirection-url value                   redirection url for the oauth callback url, defaults to host header is absent [$PROXY_REDIRECTION_URL]
    --revocation-url value                    url for the revocation endpoint to revoke refresh token [$PROXY_REVOCATION_URL]
    --skip-openid-provider-tls-verify         skip the verification of any TLS communication with the openid provider (default: false)
+   --openid-provider-proxy value             proxy for communication with the openid provider
    --scopes value                            list of scopes requested when authenticating the user
    --upstream-url value                      url for the upstream endpoint you wish to proxy [$PROXY_UPSTREAM_URL]
    --upstream-ca value                       the path to a file container a CA certificate to validate the upstream tls endpoint
@@ -62,8 +63,8 @@ GLOBAL OPTIONS:
    --enable-logging                          enable http logging of the requests (default: false)
    --enable-json-logging                     switch on json logging rather than text (default: false)
    --enable-forwarding                       enables the forwarding proxy mode, signing outbound request (default: false)
-   --enable-security-filter                  enables the security filter handler (default: false)
-   --enable-refresh-tokens                   nables the handling of the refresh tokens (default: false) [$PROXY_ENABLE_SECURITY_FILTER]
+   --enable-security-filter                  enables the security filter handler (default: false) [$PROXY_ENABLE_SECURITY_FILTER]
+   --enable-refresh-tokens                   enables the handling of the refresh tokens (default: false) [$PROXY_ENABLE_REFRESH_TOKEN]
    --enable-login-handler                    enables the handling of the refresh tokens (default: false) [$PROXY_ENABLE_LOGIN_HANDLER]
    --enable-authorization-header             adds the authorization header to the proxy request (default: true)
    --enable-https-redirection                enable the http to https redirection on the http service (default: false)
