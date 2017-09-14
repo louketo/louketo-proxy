@@ -8,14 +8,14 @@
 ### **Keycloak Proxy**
 ----
 
-  - Supports role based uri controls
-  - Web Socket connection upgrading
+  - Supports role-based URI controls
+  - WebSocket connection upgrading
   - Token claim matching for additional ACL controls
   - Custom claim injections into authenticated requests
   - Stateless offline refresh tokens with optional predefined session limits
   - TLS and mutual TLS support
   - JSON field bases access logs
-  - Custom Sign-in and access forbidden pages
+  - Custom sign-in and access forbidden pages
   - Forward Signed Proxy
   - URL Role Tokenization
   - Listen on unix sockets, proxy upstream to unix sockets
@@ -43,34 +43,34 @@ COMMANDS:
      help, h  Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
-   --config value                            path the a configuration file [$PROXY_CONFIG_FILE]
-   --listen value                            the interface the service should be listening on [$PROXY_LISTEN]
-   --listen-http value                       interface we should be listening [$PROXY_LISTEN_HTTP]
-   --discovery-url value                     discovery url to retrieve the openid configuration [$PROXY_DISCOVERY_URL]
-   --client-id value                         client id used to authenticate to the oauth service [$PROXY_CLIENT_ID]
-   --client-secret value                     client secret used to authenticate to the oauth service [$PROXY_CLIENT_SECRET]
-   --redirection-url value                   redirection url for the oauth callback url, defaults to host header is absent [$PROXY_REDIRECTION_URL]
+   --config value                            path to the configuration file [$PROXY_CONFIG_FILE]
+   --listen value                            the interface keycloak-proxy should be listening to [$PROXY_LISTEN]
+   --listen-http value                       the HTTP interface keycloak-proxy should be listening to [$PROXY_LISTEN_HTTP]
+   --discovery-url value                     discovery url used to retrieve the OpenID configuration [$PROXY_DISCOVERY_URL]
+   --client-id value                         client id used to authenticate to the OAuth service [$PROXY_CLIENT_ID]
+   --client-secret value                     client secret used to authenticate to the OAuth service [$PROXY_CLIENT_SECRET]
+   --redirection-url value                   redirection url for the OAuth callback url, defaults to host header if absent [$PROXY_REDIRECTION_URL]
    --revocation-url value                    url for the revocation endpoint to revoke refresh token [$PROXY_REVOCATION_URL]
-   --skip-openid-provider-tls-verify         skip the verification of any TLS communication with the openid provider (default: false)
+   --skip-openid-provider-tls-verify         skip the verification of any TLS communication with the OpenID provider (default: false)
    --scopes value                            list of scopes requested when authenticating the user
    --upstream-url value                      url for the upstream endpoint you wish to proxy [$PROXY_UPSTREAM_URL]
-   --upstream-ca value                       the path to a file container a CA certificate to validate the upstream tls endpoint
+   --upstream-ca value                       the path to a file containing a CA certificate to validate the upstream TLS endpoint
    --resources value                         list of resources 'uri=/admin|methods=GET,PUT|roles=role1,role2'
    --headers value                           custom headers to the upstream request, key=value
-   --enable-token-header                     enables the token authentication header X-Auth-Token to upstream (default: true)
+   --enable-token-header                     enable the token authentication header X-Auth-Token to upstream (default: true)
    --enable-encrypted-token                  enable encryption for the access tokens (default: false)
    --enable-logging                          enable http logging of the requests (default: false)
    --enable-json-logging                     switch on json logging rather than text (default: false)
-   --enable-forwarding                       enables the forwarding proxy mode, signing outbound request (default: false)
-   --enable-security-filter                  enables the security filter handler (default: false)
-   --enable-refresh-tokens                   nables the handling of the refresh tokens (default: false) [$PROXY_ENABLE_SECURITY_FILTER]
-   --enable-login-handler                    enables the handling of the refresh tokens (default: false) [$PROXY_ENABLE_LOGIN_HANDLER]
-   --enable-authorization-header             adds the authorization header to the proxy request (default: true)
+   --enable-forwarding                       enable the forwarding proxy mode, signing outbound request (default: false)
+   --enable-security-filter                  enable the security filter handler (default: false)
+   --enable-refresh-tokens                   enable the handling of the refresh tokens (default: false) [$PROXY_ENABLE_SECURITY_FILTER]
+   --enable-login-handler                    enable the handling of the refresh tokens (default: false) [$PROXY_ENABLE_LOGIN_HANDLER]
+   --enable-authorization-header             add the authorization header to the proxy request (default: true)
    --enable-https-redirection                enable the http to https redirection on the http service (default: false)
-   --enable-profiling                        switching on the golang profiling via pprof on /debug/pprof, /debug/pprof/heap etc (default: false)
+   --enable-profiling                        switch on the golang profiling via pprof on /debug/pprof, /debug/pprof/heap etc (default: false)
    --enable-metrics                          enable the prometheus metrics collector on /oauth/metrics (default: false)
    --filter-browser-xss                      enable the adds the X-XSS-Protection header with mode=block (default: false)
-   --filter-content-nosniff                  adds the X-Content-Type-Options header with the value nosniff (default: false)
+   --filter-content-nosniff                  add the X-Content-Type-Options header with the value nosniff (default: false)
    --filter-frame-deny                       enable to the frame deny header (default: false)
    --content-security-policy value           specify the content security policy
    --localhost-metrics                       enforces the metrics page can only been requested from 127.0.0.1 (default: false)
@@ -89,10 +89,10 @@ GLOBAL OPTIONS:
    --tls-client-certificate value            path to the client certificate for outbound connections in reverse and forwarding proxy modes
    --skip-upstream-tls-verify                skip the verification of any upstream TLS (default: true)
    --skip-client-id                          skip the check on the client token (default: false)
-   --cors-origins value                      origins to add to the CORE origins control (Access-Control-Allow-Origin)
+   --cors-origins value                      origins to add to the CORS origins control (Access-Control-Allow-Origin)
    --cors-methods value                      methods permitted in the access control (Access-Control-Allow-Methods)
    --cors-headers value                      set of headers to add to the CORS access control (Access-Control-Allow-Headers)
-   --cors-exposed-headers value              expose cors headers access control (Access-Control-Expose-Headers)
+   --cors-exposed-headers value              expose CORS headers access control (Access-Control-Expose-Headers)
    --cors-credentials                        credentials access control header (Access-Control-Allow-Credentials) (default: false)
    --cors-max-age value                      max age applied to cors headers (Access-Control-Max-Age) (default: 0s)
    --hostnames value                         list of hostnames the service will respond to
@@ -100,7 +100,7 @@ GLOBAL OPTIONS:
    --encryption-key value                    encryption key used to encryption the session state [$PROXY_ENCRYPTION_KEY]
    --no-redirects                            do not have back redirects when no authentication is present, 401 them (default: false)
    --skip-token-verification                 TESTING ONLY; bypass token verification, only expiration and roles enforced (default: false)
-   --upstream-keepalives                     enables or disables the keepalive connections for upstream endpoint (default: false)
+   --upstream-keepalives                     enable or disable the keepalive connections for upstream endpoint (default: false)
    --upstream-timeout value                  maximum amount of time a dial will wait for a connect to complete (default: 10s)
    --upstream-keepalive-timeout value        specifies the keep-alive period for an active network connection (default: 10s)
    --upstream-tls-handshake-timeout value    the timeout placed on the tls handshake for upstream (default: 10s)
@@ -146,7 +146,7 @@ client-secret: <CLIENT_SECRET>
 # the interface definition you wish the proxy to listen, all interfaces is specified as ':<port>', unix sockets as unix://<REL_PATH>|</ABS PATH>
 listen: 127.0.0.1:3000
 # whether to enable refresh tokens
-enable-refresh-token: true
+enable-refresh-tokens: true
 # the location of a certificate you wish the proxy to use for TLS support
 tls-cert:
 # the location of a private key for TLS
@@ -223,7 +223,7 @@ bin/keycloak-proxy \
     --client-secret=<SECRET> \
     --listen=127.0.0.1:3000 \ # unix sockets format unix://path
     --redirection-url=http://127.0.0.1:3000 \
-    --enable-refresh-token=true \
+    --enable-refresh-tokens=true \
     --encryption-key=AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j \
     --upstream-url=http://127.0.0.1:80 \
     --resources="uri=/admin*|methods=GET|roles=test1,test2" \
@@ -477,9 +477,9 @@ The proxy will automatically rotate the server certificate's if the files change
 
 #### **Refresh Tokens**
 
-Assuming a request for an access token contains a refresh token and the --enable-refresh-token is true, the proxy will automatically refresh the access token for you. The tokens themselves are kept either as an encrypted *(--encryption-key=KEY)* cookie *(cookie name: kc-state).* or a store *(still requires encryption key)*.
+Assuming a request for an access token contains a refresh token and the --enable-refresh-tokens is true, the proxy will automatically refresh the access token for you. The tokens themselves are kept either as an encrypted *(--encryption-key=KEY)* cookie *(cookie name: kc-state).* or a store *(still requires encryption key)*.
 
-At present the only store supported are[Redis](https://github.com/antirez/redis) and [Boltdb](https://github.com/boltdb/bolt). To enable a local boltdb store. --store-url boltdb:///PATH or relative path boltdb://PATH. For redis the option is redis://[USER:PASSWORD@]HOST:PORT. In both cases the refresh token is encrypted before placing into the store.
+At present the only stores supported are [Redis](https://github.com/antirez/redis) and [Boltdb](https://github.com/boltdb/bolt). To enable a local boltdb store: --store-url boltdb:///PATH or relative path boltdb://PATH. For redis the option is redis://[USER:PASSWORD@]HOST:PORT. In both cases the refresh token is encrypted before placing into the store.
 
 #### **Logout Endpoint**
 
