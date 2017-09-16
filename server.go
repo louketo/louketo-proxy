@@ -605,6 +605,18 @@ func (r *oauthProxy) newOpenIDClient() (*oidc.Client, oidc.ProviderConfig, *http
 	// step: create a idp http client
 	hc := &http.Client{
 		Transport: &http.Transport{
+			Proxy: func(_ *http.Request) (*url.URL, error) {
+				if r.config.OpenIDProviderProxy != "" {
+					idpProxyURL, err := url.Parse(r.config.OpenIDProviderProxy)
+					if err != nil {
+						r.log.Warn("invalid proxy address for open IDP provider proxy", zap.Error(err))
+						return nil, nil
+					}
+					return idpProxyURL, nil
+				} else {
+					return nil, nil
+				}
+			},
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: r.config.SkipOpenIDProviderTLSVerify,
 			},

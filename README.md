@@ -34,7 +34,7 @@ USAGE:
    keycloak-proxy [options]
 
 VERSION:
-   v2.1.0-rc3 (git+sha: 920a0a6-dirty, built: 28-08-2017)
+   v2.1.0-rc4 (git+sha: 8c31d10-dirty, built: 06-09-2017)
 
 AUTHOR:
    Rohith <gambol99@gmail.com>
@@ -52,6 +52,7 @@ GLOBAL OPTIONS:
    --redirection-url value                   redirection url for the oauth callback url, defaults to host header is absent [$PROXY_REDIRECTION_URL]
    --revocation-url value                    url for the revocation endpoint to revoke refresh token [$PROXY_REVOCATION_URL]
    --skip-openid-provider-tls-verify         skip the verification of any TLS communication with the openid provider (default: false)
+   --openid-provider-proxy value             proxy for communication with the openid provider
    --scopes value                            list of scopes requested when authenticating the user
    --upstream-url value                      url for the upstream endpoint you wish to proxy [$PROXY_UPSTREAM_URL]
    --upstream-ca value                       the path to a file container a CA certificate to validate the upstream tls endpoint
@@ -62,8 +63,8 @@ GLOBAL OPTIONS:
    --enable-logging                          enable http logging of the requests (default: false)
    --enable-json-logging                     switch on json logging rather than text (default: false)
    --enable-forwarding                       enables the forwarding proxy mode, signing outbound request (default: false)
-   --enable-security-filter                  enables the security filter handler (default: false)
-   --enable-refresh-tokens                   nables the handling of the refresh tokens (default: false) [$PROXY_ENABLE_SECURITY_FILTER]
+   --enable-security-filter                  enables the security filter handler (default: false) [$PROXY_ENABLE_SECURITY_FILTER]
+   --enable-refresh-tokens                   enables the handling of the refresh tokens (default: false) [$PROXY_ENABLE_REFRESH_TOKEN]
    --enable-login-handler                    enables the handling of the refresh tokens (default: false) [$PROXY_ENABLE_LOGIN_HANDLER]
    --enable-authorization-header             adds the authorization header to the proxy request (default: true)
    --enable-https-redirection                enable the http to https redirection on the http service (default: false)
@@ -146,7 +147,7 @@ client-secret: <CLIENT_SECRET>
 # the interface definition you wish the proxy to listen, all interfaces is specified as ':<port>', unix sockets as unix://<REL_PATH>|</ABS PATH>
 listen: 127.0.0.1:3000
 # whether to enable refresh tokens
-enable-refresh-token: true
+enable-refresh-tokens: true
 # the location of a certificate you wish the proxy to use for TLS support
 tls-cert:
 # the location of a private key for TLS
@@ -223,7 +224,7 @@ bin/keycloak-proxy \
     --client-secret=<SECRET> \
     --listen=127.0.0.1:3000 \ # unix sockets format unix://path
     --redirection-url=http://127.0.0.1:3000 \
-    --enable-refresh-token=true \
+    --enable-refresh-tokens=true \
     --encryption-key=AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j \
     --upstream-url=http://127.0.0.1:80 \
     --resources="uri=/admin*|methods=GET|roles=test1,test2" \
@@ -449,9 +450,9 @@ Depending on how the application url's are laid out, you might want protect the 
 
 ```YAML
   resources:
-  - url: /some_white_listed_url
+  - uri: /some_white_listed_url
     white-listed: true
-  - url: /*
+  - uri: /*
     methods:
       - GET
     roles:
@@ -477,13 +478,13 @@ The proxy will automatically rotate the server certificate's if the files change
 
 #### **Refresh Tokens**
 
-Assuming a request for an access token contains a refresh token and the --enable-refresh-token is true, the proxy will automatically refresh the access token for you. The tokens themselves are kept either as an encrypted *(--encryption-key=KEY)* cookie *(cookie name: kc-state).* or a store *(still requires encryption key)*.
+Assuming a request for an access token contains a refresh token and the --enable-refresh-tokens is true, the proxy will automatically refresh the access token for you. The tokens themselves are kept either as an encrypted *(--encryption-key=KEY)* cookie *(cookie name: kc-state).* or a store *(still requires encryption key)*.
 
-At present the only store supported are[Redis](https://github.com/antirez/redis) and [Boltdb](https://github.com/boltdb/bolt). To enable a local boltdb store. --store-url boltdb:///PATH or relative path boltdb://PATH. For redis the option is redis://[USER:PASSWORD@]HOST:PORT. In both cases the refresh token is encrypted before placing into the store.
+At present the only store supported are [Redis](https://github.com/antirez/redis) and [Boltdb](https://github.com/boltdb/bolt). To enable a local boltdb store. --store-url boltdb:///PATH or relative path boltdb://PATH. For redis the option is redis://[USER:PASSWORD@]HOST:PORT. In both cases the refresh token is encrypted before placing into the store.
 
 #### **Logout Endpoint**
 
-A /oauth/logout?redirect=url is provided as a helper to logout the users. Aside from dropping any sessions cookies, we also attempt to revoke access via revocation url (config revocation-url or --revocation-url) with the provider. For Keycloak the url for this would be https://keycloak.example.com/auth/realms/REALM_NAME/protocol/openid-connect/logout, for google /oauth/revoke. If the url is not specified we will attempt to grab the url from the OpenID discovery response.
+A */oauth/logout?redirect=url* is provided as a helper to logout the users. Aside from dropping any sessions cookies, we also attempt to revoke access via revocation url (config *revocation-url* or *--revocation-url*) with the provider. For Keycloak the url for this would be https://keycloak.example.com/auth/realms/REALM_NAME/protocol/openid-connect/logout, for Google https://accounts.google.com/o/oauth2/revoke. If the url is not specified we will attempt to grab the url from the OpenID discovery response.
 
 #### **Cross Origin Resource Sharing (CORS)**
 
@@ -532,7 +533,7 @@ You can control the upstream endpoint via the --upstream-url option. Both http a
 
 #### **Metrics**
 
-Assuming the --enable-metrics has been set, a Prometheus endpoint can be found on /oauth/metrics; at present the only metric being exposed is a counter per http code.
+Assuming the *--enable-metrics* has been set, a Prometheus endpoint can be found on */oauth/metrics*; at present the only metric being exposed is a counter per http code.
 
 ### **Contribution Guidelines**
 ----

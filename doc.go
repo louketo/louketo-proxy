@@ -121,6 +121,8 @@ type Config struct {
 	RevocationEndpoint string `json:"revocation-url" yaml:"revocation-url" usage:"url for the revocation endpoint to revoke refresh token" env:"REVOCATION_URL"`
 	// SkipOpenIDProviderTLSVerify skips the tls verification for openid provider communication
 	SkipOpenIDProviderTLSVerify bool `json:"skip-openid-provider-tls-verify" yaml:"skip-openid-provider-tls-verify" usage:"skip the verification of any TLS communication with the openid provider"`
+	// OpenIDProviderProxy proxy for openid provider communication
+	OpenIDProviderProxy string `json:"openid-provider-proxy" yaml:"openid-provider-proxy" usage:"proxy for communication with the openid provider"`
 	// Scopes is a list of scope we should request
 	Scopes []string `json:"scopes" yaml:"scopes" usage:"list of scopes requested when authenticating the user"`
 	// Upstream is the upstream endpoint i.e whom were proxying to
@@ -145,7 +147,7 @@ type Config struct {
 	// EnableSecurityFilter enabled the security handler
 	EnableSecurityFilter bool `json:"enable-security-filter" yaml:"enable-security-filter" usage:"enables the security filter handler" env:"ENABLE_SECURITY_FILTER"`
 	// EnableRefreshTokens indicate's you wish to ignore using refresh tokens and re-auth on expiration of access token
-	EnableRefreshTokens bool `json:"enable-refresh-tokens" yaml:"enable-refresh-tokens" usage:"Enables the handling of the refresh tokens" env:"ENABLE_REFRESH_TOKEN"`
+	EnableRefreshTokens bool `json:"enable-refresh-tokens" yaml:"enable-refresh-tokens" usage:"enables the handling of the refresh tokens" env:"ENABLE_REFRESH_TOKEN"`
 	// EnableLoginHandler indicates we want the login handler enabled
 	EnableLoginHandler bool `json:"enable-login-handler" yaml:"enable-login-handler" usage:"enables the handling of the refresh tokens" env:"ENABLE_LOGIN_HANDLER"`
 	// EnableAuthorizationHeader indicates we should pass the authorization header
