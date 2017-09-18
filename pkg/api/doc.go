@@ -15,7 +15,11 @@ limitations under the License.
 
 package api
 
-import "time"
+import (
+	"fmt"
+	"strconv"
+	"time"
+)
 
 // Resource represents a url resource to protect
 type Resource struct {
@@ -292,43 +296,4 @@ type storage interface {
 	Delete(string) error
 	// Close is used to close off any resources
 	Close() error
-}
-
-// reverseProxy is a wrapper
-type reverseProxy interface {
-	ServeHTTP(rw http.ResponseWriter, req *http.Request)
-}
-
-// userContext represents a user
-type userContext struct {
-	// the id of the user
-	id string
-	// the email associated to the user
-	email string
-	// a name of the user
-	name string
-	// the preferred name
-	preferredName string
-	// the expiration of the access token
-	expiresAt time.Time
-	// a set of roles associated
-	roles []string
-	// the audience for the token
-	audience string
-	// the access token itself
-	token jose.JWT
-	// the claims associated to the token
-	claims jose.Claims
-	// whether the context is from a session cookie or authorization header
-	bearerToken bool
-}
-
-// tokenResponse
-type tokenResponse struct {
-	TokenType    string `json:"token_type"`
-	AccessToken  string `json:"access_token"`
-	IDToken      string `json:"id_token"`
-	RefreshToken string `json:"refresh_token,omitempty"`
-	ExpiresIn    int    `json:"expires_in"`
-	Scope        string `json:"scope,omitempty"`
 }
