@@ -535,6 +535,19 @@ You can control the upstream endpoint via the --upstream-url option. Both http a
 
 Assuming the *--enable-metrics* has been set, a Prometheus endpoint can be found on */oauth/metrics*; at present the only metric being exposed is a counter per http code.
 
+### Limitations
+
+Keep in mind [browser cookie limits](http://browsercookielimits.squawky.net/), if you use access or
+refresh tokens in the browser cookie. Keycloak-proxy divides cookie automatically if your cookie
+is longer than 4093 bytes. Real size of the cookie depends on the content of the issued access token. 
+Also, encryption might add additional bytes to the cookie size. If you have large cookies (>200 KB),
+you might reach browser cookie limits. 
+
+All cookies are part of the header request, so you might find a problem with the max headers size 
+limits in your infrastructure (some load balancers have very low this value, such as 8 KB). Be 
+sure that all network devices have sufficient header size limits. Otherwise, your users won't be 
+able to obtain access token.
+
 ### **Contribution Guidelines**
 ----
 
