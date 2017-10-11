@@ -226,18 +226,16 @@ func (r *oauthProxy) createReverseProxy() error {
 			r.authenticationMiddleware(x),
 			r.admissionMiddleware(x),
 			r.headersMiddleware(r.config.AddClaims))
-		e.MethodNotAllowed(emptyHandler)
-		switch x.WhiteListed {
-		case false:
-			for _, m := range x.Methods {
+
+		for _, m := range x.Methods {
+			if !x.WhiteListed {
 				e.MethodFunc(m, x.URL, emptyHandler)
+				continue
 			}
-		default:
-			for _, m := range x.Methods {
-				engine.MethodFunc(m, x.URL, emptyHandler)
-			}
+			engine.MethodFunc(m, x.URL, emptyHandler)
 		}
 	}
+
 	for name, value := range r.config.MatchClaims {
 		r.log.Info("token must contain", zap.String("claim", name), zap.String("value", value))
 	}
