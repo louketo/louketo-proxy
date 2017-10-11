@@ -326,6 +326,30 @@ func TestOauthRequests(t *testing.T) {
 	newFakeProxy(cfg).RunTests(t, requests)
 }
 
+func TestMethodExclusions(t *testing.T) {
+	cfg := newFakeKeycloakConfig()
+	cfg.Resources = []*Resource{
+		{
+			URL:     "/post",
+			Methods: []string{http.MethodPost, http.MethodPut},
+		},
+	}
+	requests := []fakeRequest{
+		{ // we should get a 401
+			URI:          "/post",
+			Method:       http.MethodPost,
+			ExpectedCode: http.StatusUnauthorized,
+		},
+		{ // we should be permitted
+			URI:           "/post",
+			Method:        http.MethodGet,
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
+		},
+	}
+	newFakeProxy(cfg).RunTests(t, requests)
+}
+
 func TestStrangeRoutingError(t *testing.T) {
 	cfg := newFakeKeycloakConfig()
 	cfg.Resources = []*Resource{
