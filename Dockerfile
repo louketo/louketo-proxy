@@ -10,6 +10,11 @@ RUN apk add --no-cache ca-certificates
 ADD templates/ /opt/templates
 ADD bin/keycloak-proxy /opt/keycloak-proxy
 
+RUN useradd -mUrd /kcproxy kcproxy \
+    && chown -R kcproxy:kcproxy /opt
+
+USER kcproxy
+
 WORKDIR "/opt"
 
 ENTRYPOINT [ "/opt/keycloak-proxy" ]
