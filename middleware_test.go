@@ -57,7 +57,7 @@ type fakeRequest struct {
 	ExpectedCode            int
 	ExpectedContent         string
 	ExpectedContentContains string
-	ExpectedCookies         []string
+	ExpectedCookies         map[string]string
 	ExpectedHeaders         map[string]string
 	ExpectedProxyHeaders    map[string]string
 	ExpectedLocation        string
@@ -238,11 +238,14 @@ func (f *fakeProxy) RunTests(t *testing.T, requests []fakeRequest) {
 			assert.Contains(t, e, c.ExpectedContentContains, "case %d, expected content: %s, got: %s", i, c.ExpectedContentContains, e)
 		}
 		if len(c.ExpectedCookies) > 0 {
-			l := len(c.ExpectedCookies)
-			g := len(resp.Cookies())
-			assert.Equal(t, l, g, "case %d, expected %d cookies, got: %d", i, l, g)
-			for _, x := range c.ExpectedCookies {
-				assert.NotNil(t, findCookie(x, resp.Cookies()), "case %d, expected cookie %s not found", i, x)
+			for k, v := range c.ExpectedCookies {
+				cookie := findCookie(k, resp.Cookies())
+				if !assert.NotNil(t, cookie, "case %d, expected cookie %s not found", i, k) {
+					continue
+				}
+				if v != "" {
+					assert.Equal(t, cookie.Value, v, "case %d, expected cookie value: %s, got: %s", i, v, cookie.Value)
+				}
 			}
 		}
 		if c.OnResponse != nil {
@@ -883,7 +886,7 @@ func TestCheckRefreshTokens(t *testing.T) {
 			Redirects:       false,
 			ExpectedProxy:   true,
 			ExpectedCode:    http.StatusOK,
-			ExpectedCookies: []string{cfg.CookieAccessName},
+			ExpectedCookies: map[string]string{cfg.CookieAccessName: ""},
 		},
 	}
 	p.RunTests(t, requests)
