@@ -337,6 +337,11 @@ func (r *oauthProxy) headersMiddleware(custom []string) func(http.Handler) http.
 					req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", user.token.Encode()))
 				}
 
+				if !r.config.EnableAuthorizationCookies {
+					// @step: we can just overwrite the cookie
+					req.AddCookie(&http.Cookie{Name: r.config.CookieAccessName, Value: "censored"})
+					req.AddCookie(&http.Cookie{Name: r.config.CookieRefreshName, Value: "censored"})
+				}
 				// inject any custom claims
 				for claim, header := range customClaims {
 					if claim, found := user.claims[claim]; found {

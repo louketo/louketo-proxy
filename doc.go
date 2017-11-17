@@ -151,7 +151,9 @@ type Config struct {
 	// EnableLoginHandler indicates we want the login handler enabled
 	EnableLoginHandler bool `json:"enable-login-handler" yaml:"enable-login-handler" usage:"enables the handling of the refresh tokens" env:"ENABLE_LOGIN_HANDLER"`
 	// EnableAuthorizationHeader indicates we should pass the authorization header
-	EnableAuthorizationHeader bool `json:"enable-authorization-header" yaml:"enable-authorization-header" usage:"adds the authorization header to the proxy request"`
+	EnableAuthorizationHeader bool `json:"enable-authorization-header" yaml:"enable-authorization-header" usage:"adds the authorization header to the proxy request" env:"ENABLE_AUTHORIZATION_HEADER"`
+	// EnableAuthorizationCookies indicates we should pass the authorization cookies to the upstream endpoint
+	EnableAuthorizationCookies bool `json:"enable-authorization-cookies" yaml:"enable-authorization-cookies" usage:"adds the authorization cookies to the uptream proxy request" env:"ENABLE_AUTHORIZATION_COOKIES"`
 	// EnableHTTPSRedirect indicate we should redirection http -> https
 	EnableHTTPSRedirect bool `json:"enable-https-redirection" yaml:"enable-https-redirection" usage:"enable the http to https redirection on the http service"`
 	// EnableProfiling indicates if profiles is switched on
