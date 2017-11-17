@@ -327,6 +327,29 @@ func TestAuthTokenHeaderDisabled(t *testing.T) {
 	p.RunTests(t, requests)
 }
 
+func TestDisableAuthorizationCookie(t *testing.T) {
+	c := newFakeKeycloakConfig()
+	c.EnableAuthorizationCookies = false
+	p := newFakeProxy(c)
+	token := newTestToken(p.idp.getLocation())
+	signed, _ := p.idp.signToken(token.claims)
+
+	requests := []fakeRequest{
+		{
+			URI: "/auth_all/test",
+			Cookies: []*http.Cookie{
+				{Name: c.CookieAccessName, Value: signed.Encode()},
+				{Name: "mycookie", Value: "myvalue"},
+			},
+			HasToken:                true,
+			ExpectedContentContains: "kc-access=censored; mycookie=myvalue",
+			ExpectedCode:            http.StatusOK,
+			ExpectedProxy:           true,
+		},
+	}
+	p.RunTests(t, requests)
+}
+
 func newTestService() string {
 	_, _, u := newTestProxyService(nil)
 	return u
@@ -375,19 +398,20 @@ func newFakeHTTPRequest(method, path string) *http.Request {
 
 func newFakeKeycloakConfig() *Config {
 	return &Config{
-		ClientID:                  fakeClientID,
-		ClientSecret:              fakeSecret,
-		CookieAccessName:          "kc-access",
-		CookieRefreshName:         "kc-state",
-		DisableAllLogging:         true,
-		DiscoveryURL:              "127.0.0.1:0",
-		EnableAuthorizationHeader: true,
-		EnableLogging:             false,
-		EnableLoginHandler:        true,
-		EnableTokenHeader:         true,
-		Listen:                    "127.0.0.1:0",
-		Scopes:                    []string{},
-		Verbose:                   true,
+		ClientID:                   fakeClientID,
+		ClientSecret:               fakeSecret,
+		CookieAccessName:           "kc-access",
+		CookieRefreshName:          "kc-state",
+		DisableAllLogging:          true,
+		DiscoveryURL:               "127.0.0.1:0",
+		EnableAuthorizationHeader:  true,
+		EnableAuthorizationCookies: true,
+		EnableLogging:              false,
+		EnableLoginHandler:         true,
+		EnableTokenHeader:          true,
+		Listen:                     "127.0.0.1:0",
+		Scopes:                     []string{},
+		Verbose:                    true,
 		Resources: []*Resource{
 			{
 				URL:     fakeAdminRoleURL,

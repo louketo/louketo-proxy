@@ -317,6 +317,8 @@ func (r *oauthProxy) headersMiddleware(custom []string) func(http.Handler) http.
 		customClaims[x] = fmt.Sprintf("X-Auth-%s", toHeader(x))
 	}
 
+	cookieFilter := []string{r.config.CookieAccessName, r.config.CookieRefreshName}
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			scope := req.Context().Value(contextScopeName).(*RequestScope)
@@ -328,6 +330,7 @@ func (r *oauthProxy) headersMiddleware(custom []string) func(http.Handler) http.
 				req.Header.Set("X-Auth-Subject", user.id)
 				req.Header.Set("X-Auth-Userid", user.name)
 				req.Header.Set("X-Auth-Username", user.name)
+
 				// should we add the token header?
 				if r.config.EnableTokenHeader {
 					req.Header.Set("X-Auth-Token", user.token.Encode())
@@ -336,7 +339,10 @@ func (r *oauthProxy) headersMiddleware(custom []string) func(http.Handler) http.
 				if r.config.EnableAuthorizationHeader {
 					req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", user.token.Encode()))
 				}
-
+				// are we filtering out the cookies
+				if !r.config.EnableAuthorizationCookies {
+					filterCookies(req, cookieFilter)
+				}
 				// inject any custom claims
 				for claim, header := range customClaims {
 					if claim, found := user.claims[claim]; found {
