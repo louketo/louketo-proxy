@@ -134,8 +134,6 @@ type Config struct {
 	// Headers permits adding customs headers across the board
 	Headers map[string]string `json:"headers" yaml:"headers" usage:"custom headers to the upstream request, key=value"`
 
-	// EnableTokenHeader adds the JWT token to the upstream authentication headers
-	EnableTokenHeader bool `json:"enable-token-header" yaml:"enable-token-header" usage:"enables the token authentication header X-Auth-Token to upstream"`
 	// EnableEncryptedToken indicates the access token should be encoded
 	EnableEncryptedToken bool `json:"enable-encrypted-token" yaml:"enable-encrypted-token" usage:"enable encryption for the access tokens"`
 	// EnableLogging indicates if we should log all the requests
@@ -150,8 +148,12 @@ type Config struct {
 	EnableRefreshTokens bool `json:"enable-refresh-tokens" yaml:"enable-refresh-tokens" usage:"enables the handling of the refresh tokens" env:"ENABLE_REFRESH_TOKEN"`
 	// EnableLoginHandler indicates we want the login handler enabled
 	EnableLoginHandler bool `json:"enable-login-handler" yaml:"enable-login-handler" usage:"enables the handling of the refresh tokens" env:"ENABLE_LOGIN_HANDLER"`
+	// EnableTokenHeader adds the JWT token to the upstream authentication headers
+	EnableTokenHeader bool `json:"enable-token-header" yaml:"enable-token-header" usage:"enables the token authentication header X-Auth-Token to upstream"`
 	// EnableAuthorizationHeader indicates we should pass the authorization header
-	EnableAuthorizationHeader bool `json:"enable-authorization-header" yaml:"enable-authorization-header" usage:"adds the authorization header to the proxy request"`
+	EnableAuthorizationHeader bool `json:"enable-authorization-header" yaml:"enable-authorization-header" usage:"adds the authorization header to the proxy request" env:"ENABLE_AUTHORIZATION_HEADER"`
+	// EnableAuthorizationCookies indicates we should pass the authorization cookies to the upstream endpoint
+	EnableAuthorizationCookies bool `json:"enable-authorization-cookies" yaml:"enable-authorization-cookies" usage:"adds the authorization cookies to the uptream proxy request" env:"ENABLE_AUTHORIZATION_COOKIES"`
 	// EnableHTTPSRedirect indicate we should redirection http -> https
 	EnableHTTPSRedirect bool `json:"enable-https-redirection" yaml:"enable-https-redirection" usage:"enable the http to https redirection on the http service"`
 	// EnableProfiling indicates if profiles is switched on
