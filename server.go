@@ -391,6 +391,7 @@ type listenerConfig struct {
 	letsEncryptCacheDir string   // the path to cache letsencrypt certificates
 }
 
+// ErrHostNotConfigured indicates the hostname was not configured
 var ErrHostNotConfigured = errors.New("acme/autocert: host not configured")
 
 // createHTTPListener is responsible for creating a listening socket
@@ -611,9 +612,9 @@ func (r *oauthProxy) newOpenIDClient() (*oidc.Client, oidc.ProviderConfig, *http
 						return nil, nil
 					}
 					return idpProxyURL, nil
-				} else {
-					return nil, nil
 				}
+
+				return nil, nil
 			},
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: r.config.SkipOpenIDProviderTLSVerify,
