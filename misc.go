@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net/http"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/gambol99/go-oidc/jose"
@@ -39,7 +40,7 @@ func filterCookies(req *http.Request, filter []string) error {
 		var found bool
 		// @step: does this cookie match our filter?
 		for _, n := range filter {
-			if x.Name == n {
+			if strings.HasPrefix(x.Name, n) {
 				req.AddCookie(&http.Cookie{Name: x.Name, Value: "censored"})
 				found = true
 				break
