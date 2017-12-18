@@ -15,11 +15,7 @@ limitations under the License.
 
 package api
 
-import (
-	"fmt"
-	"strconv"
-	"time"
-)
+import "time"
 
 // Resource represents a url resource to protect
 type Resource struct {
@@ -264,6 +260,7 @@ type Config struct {
 	DisableAllLogging bool `json:"disable-all-logging" yaml:"disable-all-logging" usage:"disables all logging to stdout and stderr"`
 }
 
+/*
 // getVersion returns the proxy version
 func getVersion() string {
 	if version == "" {
@@ -276,24 +273,4 @@ func getVersion() string {
 
 	return version
 }
-
-// RequestScope is a request level context scope passed between middleware
-type RequestScope struct {
-	// AccessDenied indicates the request should not be proxied on
-	AccessDenied bool
-	// Identity is the user Identity of the request
-	Identity *userContext
-}
-
-// storage is used to hold the offline refresh token, assuming you don't want to use
-// the default practice of a encrypted cookie
-type storage interface {
-	// Set the token to the store
-	Set(string, string) error
-	// Get retrieves a token from the store
-	Get(string) (string, error)
-	// Delete removes a key from the store
-	Delete(string) error
-	// Close is used to close off any resources
-	Close() error
-}
+*/

@@ -291,19 +291,19 @@ func TestCallbackURL(t *testing.T) {
 		},
 		{
 			URI:              constants.OauthURL + constants.CallbackURL + "?code=fake",
-			ExpectedCookies:  []string{cfg.CookieAccessName},
+			ExpectedCookies:  map[string]string{cfg.CookieAccessName: ""},
 			ExpectedLocation: "/",
 			ExpectedCode:     http.StatusTemporaryRedirect,
 		},
 		{
 			URI:              constants.OauthURL + constants.CallbackURL + "?code=fake&state=/admin",
-			ExpectedCookies:  []string{cfg.CookieAccessName},
+			ExpectedCookies:  map[string]string{cfg.CookieAccessName: ""},
 			ExpectedLocation: "/",
 			ExpectedCode:     http.StatusTemporaryRedirect,
 		},
 		{
 			URI:              constants.OauthURL + constants.CallbackURL + "?code=fake&state=L2FkbWlu",
-			ExpectedCookies:  []string{cfg.CookieAccessName},
+			ExpectedCookies:  map[string]string{cfg.CookieAccessName: ""},
 			ExpectedLocation: "/admin",
 			ExpectedCode:     http.StatusTemporaryRedirect,
 		},

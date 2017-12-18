@@ -16,7 +16,6 @@ limitations under the License.
 package server
 
 import (
-	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -31,8 +30,6 @@ import (
 	"runtime"
 	"strings"
 	"time"
-
-	"golang.org/x/crypto/acme/autocert"
 
 	httplog "log"
 
@@ -239,10 +236,10 @@ func (r *oauthProxy) createReverseProxy() error {
 
 		for _, m := range x.Methods {
 			if !x.WhiteListed {
-				e.MethodFunc(m, x.URL, emptyHandler)
+				e.MethodFunc(m, x.URI, emptyHandler)
 				continue
 			}
-			engine.MethodFunc(m, x.URL, emptyHandler)
+			engine.MethodFunc(m, x.URI, emptyHandler)
 		}
 	}
 
@@ -401,7 +398,6 @@ type listenerConfig struct {
 	proxyProtocol       bool     // whether to enable proxy protocol on the listen
 	redirectionURL      string   // url to redirect to
 	useLetsEncrypt      bool     // whether to use lets encrypt for retrieving ssl certificates
-	letsEncryptCacheDir string   // the path to cache letsencrypt certificates
 }
 
 // ErrHostNotConfigured indicates the hostname was not configured

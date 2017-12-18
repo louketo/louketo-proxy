@@ -63,11 +63,11 @@ func (c *Config) IsValid() error {
 	if c.TLSPrivateKey != "" && c.TLSCertificate == "" {
 		return errors.New("you have not provided a certificate file")
 	}
-        if c.UseLetsEncrypt && c.LetsEncryptCacheDir == "" {
+	if c.UseLetsEncrypt && c.LetsEncryptCacheDir == "" {
 		return fmt.Errorf("the letsencrypt cache dir has not been set")
 	}
 
-	if r.EnableForwarding {
+	if c.EnableForwarding {
 		if c.ClientID == "" {
 			return errors.New("you have not specified the client id")
 		}
@@ -93,8 +93,8 @@ func (c *Config) IsValid() error {
 		if _, err := url.Parse(c.Upstream); err != nil {
 			return fmt.Errorf("the upstream endpoint is invalid, %s", err)
 		}
-		if r.SkipUpstreamTLSVerify && r.UpstreamCA != "" {
-			return fmt.Errorf("you cannot skip upstream tls and load a root ca: %s to verify it", r.UpstreamCA)
+		if c.SkipUpstreamTLSVerify && c.UpstreamCA != "" {
+			return fmt.Errorf("you cannot skip upstream tls and load a root ca: %s to verify it", c.UpstreamCA)
 		}
 
 		// step: if the skip verification is off, we need the below

@@ -114,7 +114,7 @@ func getTokenInCookie(req *http.Request, name string) (string, error) {
 
 	// add also divided cookies
 	for i := 1; i < 600; i++ {
-		cookie := findCookie(name+"-"+strconv.Itoa(i), req.Cookies())
+		cookie := utils.FindCookie(name+"-"+strconv.Itoa(i), req.Cookies())
 		if cookie == nil {
 			break
 		} else {
@@ -123,7 +123,7 @@ func getTokenInCookie(req *http.Request, name string) (string, error) {
 	}
 
 	if token.Len() == 0 {
-		return "", ErrSessionNotFound
+		return "", errors.ErrSessionNotFound
 	}
 
 	return token.String(), nil

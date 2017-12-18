@@ -26,11 +26,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gambol99/keycloak-proxy/pkg/api"
-	"github.com/gambol99/keycloak-proxy/pkg/constants"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/gambol99/go-oidc/jose"
-	"github.com/stretchr/testify/assert"
+	"github.com/gambol99/keycloak-proxy/pkg/api"
+	"github.com/gambol99/keycloak-proxy/pkg/constants"
 )
 
 const (
@@ -408,14 +408,15 @@ func newFakeKeycloakConfig() *api.Config {
 		DisableAllLogging:          true,
 		DiscoveryURL:               "127.0.0.1:0",
 		EnableAuthorizationHeader:  true,
-                EnableAuthorizationCookies: true,
+		EnableAuthorizationCookies: true,
 		EnableLogging:              false,
 		EnableLoginHandler:         true,
 		EnableTokenHeader:          true,
 		Listen:                     "127.0.0.1:0",
 		Scopes:                     []string{},
+		Upstream:                   "http://127.0.0.1:8080",
 		Verbose:                    true,
-		Resources: []*Resource{
+		Resources: []*api.Resource{
 			{
 				URI:     fakeAdminRoleURL,
 				Methods: []string{"GET"},

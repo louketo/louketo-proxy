@@ -25,15 +25,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gambol99/keycloak-proxy/pkg/api"
-	"github.com/gambol99/keycloak-proxy/pkg/constants"
-	"github.com/gambol99/keycloak-proxy/pkg/utils"
-
-	"github.com/gambol99/go-oidc/jose"
 	"github.com/go-resty/resty"
 	"github.com/rs/cors"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
+
+	"github.com/gambol99/go-oidc/jose"
+	"github.com/gambol99/keycloak-proxy/pkg/api"
+	"github.com/gambol99/keycloak-proxy/pkg/constants"
+	"github.com/gambol99/keycloak-proxy/pkg/utils"
 )
 
 type fakeRequest struct {
@@ -61,7 +61,7 @@ type fakeRequest struct {
 	ExpectedCode            int
 	ExpectedContent         string
 	ExpectedContentContains string
-	ExpectedCookies         []string
+	ExpectedCookies         map[string]string
 	ExpectedHeaders         map[string]string
 	ExpectedProxyHeaders    map[string]string
 	ExpectedLocation        string
@@ -243,7 +243,7 @@ func (f *fakeProxy) RunTests(t *testing.T, requests []fakeRequest) {
 		}
 		if len(c.ExpectedCookies) > 0 {
 			for k, v := range c.ExpectedCookies {
-				cookie := findCookie(k, resp.Cookies())
+				cookie := utils.FindCookie(k, resp.Cookies())
 				if !assert.NotNil(t, cookie, "case %d, expected cookie %s not found", i, k) {
 					continue
 				}
@@ -337,7 +337,7 @@ func TestMethodExclusions(t *testing.T) {
 	cfg := newFakeKeycloakConfig()
 	cfg.Resources = []*api.Resource{
 		{
-			URL:     "/post",
+			URI:     "/post",
 			Methods: []string{http.MethodPost, http.MethodPut},
 		},
 	}
