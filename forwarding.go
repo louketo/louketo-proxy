@@ -58,7 +58,12 @@ func (r *oauthProxy) proxyMiddleware(next http.Handler) http.Handler {
 		// and we must update the host headers
 		req.URL.Host = r.endpoint.Host
 		req.URL.Scheme = r.endpoint.Scheme
-		req.Host = r.endpoint.Host
+		if v := req.Header.Get("Host"); v != "" {
+			req.Host = v
+			req.Header.Del("Host")
+		} else {
+			req.Host = r.endpoint.Host
+		}
 
 		req.Header.Add("X-Forwarded-For", realIP(req))
 		req.Header.Set("X-Forwarded-Host", req.URL.Host)
