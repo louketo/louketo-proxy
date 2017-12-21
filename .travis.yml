@@ -16,13 +16,16 @@ install:
 - go get github.com/mattn/goveralls
 script:
 - make test
-- if ([[ ${TRAVIS_BRANCH} == "master" ]] && [[ ${TRAVIS_EVENT_TYPE} == "push" ]])
-  || [[ -n ${TRAVIS_TAG} ]]; then NAME=GOOS=windows GOARCH=amd64 go build -o bin/keycloak-proxy-windows-amd64.exe;
-  NAME=GOOS=linux GOARCH=amd64 go build -o bin/keycloak-proxy-linux-amd64; docker
-  login -u ${REGISTRY_USERNAME} -p ${REGISTRY_TOKEN} -e ${AUTHOR_EMAIL} ${REGISTRY};
-  VERSION=${TRAVIS_TAG:-latest} make docker-release; fi
-- if ([[ ${TRAVIS_BRANCH} == "master" ]] && [[ ${TRAVIS_EVENT_TYPE} == "push" ]]);
-  then go get github.com/mattn/goveralls; goveralls -service=travis-ci; make bench;
+- if ([[ ${TRAVIS_BRANCH} == "master" ]] && [[ ${TRAVIS_EVENT_TYPE} == "push" ]]) || [[ -n ${TRAVIS_TAG} ]]; then
+    NAME=GOOS=windows GOARCH=amd64 go build -o bin/keycloak-proxy-windows-amd64.exe;
+    NAME=GOOS=linux GOARCH=amd64 go build -o bin/keycloak-proxy-linux-amd64;
+    docker login -u ${REGISTRY_USERNAME} -p ${REGISTRY_TOKEN} ${REGISTRY};
+    VERSION=${TRAVIS_TAG:-latest} make docker-release;
+  fi
+- if ([[ ${TRAVIS_BRANCH} == "master" ]] && [[ ${TRAVIS_EVENT_TYPE} == "push" ]]); then
+    go get github.com/mattn/goveralls;
+    goveralls -service=travis-ci;
+    make bench;
   fi
 deploy:
   provider: releases
