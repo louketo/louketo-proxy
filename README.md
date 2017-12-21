@@ -34,7 +34,7 @@ USAGE:
    keycloak-proxy [options]
 
 VERSION:
-   v2.1.0-rc4 (git+sha: 8c31d10-dirty, built: 06-09-2017)
+   v2.1.0 (git+sha: 87f0b9c-dirty, built: 21-12-2017)
 
 AUTHOR:
    Rohith <gambol99@gmail.com>
@@ -58,7 +58,6 @@ GLOBAL OPTIONS:
    --upstream-ca value                       the path to a file container a CA certificate to validate the upstream tls endpoint
    --resources value                         list of resources 'uri=/admin|methods=GET,PUT|roles=role1,role2'
    --headers value                           custom headers to the upstream request, key=value
-   --enable-token-header                     enables the token authentication header X-Auth-Token to upstream (default: true)
    --enable-encrypted-token                  enable encryption for the access tokens (default: false)
    --enable-logging                          enable http logging of the requests (default: false)
    --enable-json-logging                     switch on json logging rather than text (default: false)
@@ -66,7 +65,9 @@ GLOBAL OPTIONS:
    --enable-security-filter                  enables the security filter handler (default: false) [$PROXY_ENABLE_SECURITY_FILTER]
    --enable-refresh-tokens                   enables the handling of the refresh tokens (default: false) [$PROXY_ENABLE_REFRESH_TOKEN]
    --enable-login-handler                    enables the handling of the refresh tokens (default: false) [$PROXY_ENABLE_LOGIN_HANDLER]
-   --enable-authorization-header             adds the authorization header to the proxy request (default: true)
+   --enable-token-header                     enables the token authentication header X-Auth-Token to upstream (default: true)
+   --enable-authorization-header             adds the authorization header to the proxy request (default: true) [$PROXY_ENABLE_AUTHORIZATION_HEADER]
+   --enable-authorization-cookies            adds the authorization cookies to the uptream proxy request (default: true) [$PROXY_ENABLE_AUTHORIZATION_COOKIES]
    --enable-https-redirection                enable the http to https redirection on the http service (default: false)
    --enable-profiling                        switching on the golang profiling via pprof on /debug/pprof, /debug/pprof/heap etc (default: false)
    --enable-metrics                          enable the prometheus metrics collector on /oauth/metrics (default: false)
@@ -539,13 +540,13 @@ Assuming the *--enable-metrics* has been set, a Prometheus endpoint can be found
 
 Keep in mind [browser cookie limits](http://browsercookielimits.squawky.net/), if you use access or
 refresh tokens in the browser cookie. Keycloak-proxy divides cookie automatically if your cookie
-is longer than 4093 bytes. Real size of the cookie depends on the content of the issued access token. 
+is longer than 4093 bytes. Real size of the cookie depends on the content of the issued access token.
 Also, encryption might add additional bytes to the cookie size. If you have large cookies (>200 KB),
-you might reach browser cookie limits. 
+you might reach browser cookie limits.
 
-All cookies are part of the header request, so you might find a problem with the max headers size 
-limits in your infrastructure (some load balancers have very low this value, such as 8 KB). Be 
-sure that all network devices have sufficient header size limits. Otherwise, your users won't be 
+All cookies are part of the header request, so you might find a problem with the max headers size
+limits in your infrastructure (some load balancers have very low this value, such as 8 KB). Be
+sure that all network devices have sufficient header size limits. Otherwise, your users won't be
 able to obtain access token.
 
 ### **Contribution Guidelines**

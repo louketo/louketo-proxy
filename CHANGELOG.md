@@ -1,4 +1,4 @@
-#### **2.1.0/master (unrealised/unstable)**
+#### **2.1.0**
 
 FIXES:
 * fixed the parsing of slices for command line arguments (i.e. --cors-origins etc)
@@ -11,6 +11,7 @@ FIXES:
 * added docker image instructions to the readme [#PR204](https://github.com/gambol99/keycloak-proxy/pull/204)
 * added unit tests for the debug handlers [#PR223](https://github.com/gambol99/keycloak-proxy/pull/223)
 * fixing the logout handler panic when revocation url is not set [#PR254](https://github.com/gambol99/keycloak-proxy/pull/254)
+* fixing the Host header on the forwarding proxy [#PR290](https://github.com/gambol99/keycloak-proxy/pull/290)
 
 FEATURES
 * changed the routing engine from gin to echo
