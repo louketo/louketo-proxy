@@ -529,6 +529,11 @@ func (t *fakeToken) setExpiration(tm time.Time) {
 	t.claims.Add("exp", float64(tm.Unix()))
 }
 
+// addGroups adds groups to then token
+func (t *fakeToken) addGroups(groups []string) {
+	t.claims.Add("groups", groups)
+}
+
 // addRealmRoles adds realms roles to token
 func (t *fakeToken) addRealmRoles(roles []string) {
 	t.claims.Add("realm_access", map[string]interface{}{

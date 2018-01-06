@@ -72,6 +72,14 @@ func TestResourceParseOk(t *testing.T) {
 			Option:   "uri=/*|methods=any",
 			Resource: &Resource{URL: "/*", Methods: allHTTPMethods},
 		},
+		{
+			Option:   "uri=/*|groups=admin,test",
+			Resource: &Resource{URL: "/*", Methods: allHTTPMethods, Groups: []string{"admin", "test"}},
+		},
+		{
+			Option:   "uri=/*|groups=admin",
+			Resource: &Resource{URL: "/*", Methods: allHTTPMethods, Groups: []string{"admin"}},
+		},
 	}
 	for i, x := range cs {
 		r, err := newResource().parse(x.Option)
