@@ -268,7 +268,10 @@ func tryUpdateConnection(req *http.Request, writer http.ResponseWriter, endpoint
 	defer tlsConn.Close()
 
 	// step: we need to hijack the underlining client connection
-	clientConn, _, err := writer.(http.Hijacker).Hijack()
+	clientConn, ok, err := writer.(http.Hijacker).Hijack()
+	if !ok {
+		return errors.New("writer does not implement http.Hijacker method")
+	}
 	if err != nil {
 		return err
 	}
