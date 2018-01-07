@@ -37,6 +37,7 @@ type fakeRequest struct {
 	Cookies                 []*http.Cookie
 	Expires                 time.Duration
 	FormValues              map[string]string
+	Groups                  []string
 	HasCookieToken          bool
 	HasLogin                bool
 	HasToken                bool
@@ -176,6 +177,9 @@ func (f *fakeProxy) RunTests(t *testing.T, requests []fakeRequest) {
 			}
 			if len(c.Roles) > 0 {
 				token.addRealmRoles(c.Roles)
+			}
+			if len(c.Groups) > 0 {
+				token.addGroups(c.Groups)
 			}
 			if c.Expires > 0 || c.Expires < 0 {
 				token.setExpiration(time.Now().Add(c.Expires))
@@ -567,6 +571,118 @@ func TestWhiteListedRequests(t *testing.T) {
 			HasToken:      true,
 			ExpectedProxy: true,
 			Roles:         []string{fakeTestRole},
+			ExpectedCode:  http.StatusOK,
+		},
+	}
+	newFakeProxy(cfg).RunTests(t, requests)
+}
+
+func TestGroupPermissionsMiddleware(t *testing.T) {
+	cfg := newFakeKeycloakConfig()
+	cfg.Resources = []*Resource{
+		{
+			URL:     "/with_role_and_group*",
+			Methods: allHTTPMethods,
+			Groups:  []string{"admin"},
+			Roles:   []string{"admin"},
+		},
+		{
+			URL:     "/with_group*",
+			Methods: allHTTPMethods,
+			Groups:  []string{"admin"},
+		},
+		{
+			URL:     "/with_many_groups*",
+			Methods: allHTTPMethods,
+			Groups:  []string{"admin", "user", "tester"},
+		},
+		{
+			URL:     "/*",
+			Methods: allHTTPMethods,
+			Roles:   []string{"user"},
+		},
+	}
+	requests := []fakeRequest{
+		{
+			URI:          "/",
+			ExpectedCode: http.StatusUnauthorized,
+		},
+		{
+			URI:          "/with_role_and_group/test",
+			HasToken:     true,
+			Roles:        []string{"admin"},
+			ExpectedCode: http.StatusForbidden,
+		},
+		{
+			URI:          "/with_role_and_group/test",
+			HasToken:     true,
+			Groups:       []string{"admin"},
+			ExpectedCode: http.StatusForbidden,
+		},
+		{
+			URI:           "/with_role_and_group/test",
+			HasToken:      true,
+			Groups:        []string{"admin"},
+			Roles:         []string{"admin"},
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
+		},
+		{
+			URI:          "/with_group/hello",
+			HasToken:     true,
+			ExpectedCode: http.StatusForbidden,
+		},
+		{
+			URI:          "/with_groupdd",
+			HasToken:     true,
+			ExpectedCode: http.StatusForbidden,
+		},
+		{
+			URI:          "/with_group/hello",
+			HasToken:     true,
+			Groups:       []string{"bad"},
+			ExpectedCode: http.StatusForbidden,
+		},
+		{
+			URI:           "/with_group/hello",
+			HasToken:      true,
+			Groups:        []string{"admin"},
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
+		},
+		{
+			URI:           "/with_group/hello",
+			HasToken:      true,
+			Groups:        []string{"test", "admin"},
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
+		},
+		{
+			URI:          "/with_many_groups/test",
+			HasToken:     true,
+			Groups:       []string{"bad"},
+			ExpectedCode: http.StatusForbidden,
+		},
+		{
+			URI:           "/with_many_groups/test",
+			HasToken:      true,
+			Groups:        []string{"user"},
+			Roles:         []string{"test"},
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
+		},
+		{
+			URI:           "/with_many_groups/test",
+			HasToken:      true,
+			Groups:        []string{"tester", "user"},
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
+		},
+		{
+			URI:           "/with_many_groups/test",
+			HasToken:      true,
+			Groups:        []string{"bad", "user"},
+			ExpectedProxy: true,
 			ExpectedCode:  http.StatusOK,
 		},
 	}

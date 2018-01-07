@@ -53,6 +53,8 @@ func (r *Resource) parse(resource string) (*Resource, error) {
 			}
 		case "roles":
 			r.Roles = strings.Split(kp[1], ",")
+		case "groups":
+			r.Groups = strings.Split(kp[1], ",")
 		case "white-listed":
 			value, err := strconv.ParseBool(kp[1])
 			if err != nil {

@@ -56,11 +56,12 @@ const (
 	tokenURL         = "/token"
 	debugURL         = "/debug/pprof"
 
-	claimPreferredName  = "preferred_username"
 	claimAudience       = "aud"
-	claimResourceAccess = "resource_access"
+	claimPreferredName  = "preferred_username"
 	claimRealmAccess    = "realm_access"
+	claimResourceAccess = "resource_access"
 	claimResourceRoles  = "roles"
+	claimGroups         = "groups"
 )
 
 const (
@@ -99,6 +100,8 @@ type Resource struct {
 	WhiteListed bool `json:"white-listed" yaml:"white-listed"`
 	// Roles the roles required to access this url
 	Roles []string `json:"roles" yaml:"roles"`
+	// Groups is a list of groups the user is in
+	Groups []string `json:"groups" yaml:"groups"`
 }
 
 // Config is the configuration for the proxy
@@ -316,28 +319,30 @@ type reverseProxy interface {
 	ServeHTTP(rw http.ResponseWriter, req *http.Request)
 }
 
-// userContext represents a user
+// userContext holds the information extracted the token
 type userContext struct {
 	// the id of the user
 	id string
-	// the email associated to the user
-	email string
-	// a name of the user
-	name string
-	// the preferred name
-	preferredName string
-	// the expiration of the access token
-	expiresAt time.Time
-	// a set of roles associated
-	roles []string
 	// the audience for the token
 	audience string
-	// the access token itself
-	token jose.JWT
-	// the claims associated to the token
-	claims jose.Claims
 	// whether the context is from a session cookie or authorization header
 	bearerToken bool
+	// the claims associated to the token
+	claims jose.Claims
+	// the email associated to the user
+	email string
+	// the expiration of the access token
+	expiresAt time.Time
+	// groups is a collection of groups the user in in
+	groups []string
+	// a name of the user
+	name string
+	// preferredName is the name of the user
+	preferredName string
+	// roles is a collection of roles the users holds
+	roles []string
+	// the access token itself
+	token jose.JWT
 }
 
 // tokenResponse

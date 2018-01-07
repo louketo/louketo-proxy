@@ -1,3 +1,9 @@
+
+#### **2.1.1 (Unreleased)**
+
+FEATURES:
+* Added the groups parameter to the resource, permitting users to use the `groups` claim in the token [#PR301](https://github.com/gambol99/keycloak-proxy/pull/301)
+
 #### **2.1.0**
 
 FIXES:

@@ -245,18 +245,28 @@ func (r *oauthProxy) admissionMiddleware(resource *Resource) func(http.Handler) 
 			}
 			user := scope.Identity
 
-			// step: we need to check the roles
-			if roles := len(resource.Roles); roles > 0 {
-				if !hasRoles(resource.Roles, user.roles) {
-					r.log.Warn("access denied, invalid roles",
-						zap.String("access", "denied"),
-						zap.String("email", user.email),
-						zap.String("resource", resource.URL),
-						zap.String("required", resource.getRoles()))
+			// @step: we need to check the roles
+			if !hasAccess(resource.Roles, user.roles, true) {
+				r.log.Warn("access denied, invalid roles",
+					zap.String("access", "denied"),
+					zap.String("email", user.email),
+					zap.String("resource", resource.URL),
+					zap.String("roles", resource.getRoles()))
 
-					next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req)))
-					return
-				}
+				next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req)))
+				return
+			}
+
+			// @step: check if we have any groups, the groups are there
+			if !hasAccess(resource.Groups, user.groups, false) {
+				r.log.Warn("access denied, invalid roles",
+					zap.String("access", "denied"),
+					zap.String("email", user.email),
+					zap.String("resource", resource.URL),
+					zap.String("groups", strings.Join(resource.Groups, ",")))
+
+				next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req)))
+				return
 			}
 
 			// step: if we have any claim matching, lets validate the tokens has the claims
@@ -326,6 +336,7 @@ func (r *oauthProxy) headersMiddleware(custom []string) func(http.Handler) http.
 				user := scope.Identity
 				req.Header.Set("X-Auth-Email", user.email)
 				req.Header.Set("X-Auth-ExpiresIn", user.expiresAt.String())
+				req.Header.Set("X-Auth-Groups", strings.Join(user.groups, ","))
 				req.Header.Set("X-Auth-Roles", strings.Join(user.roles, ","))
 				req.Header.Set("X-Auth-Subject", user.id)
 				req.Header.Set("X-Auth-Userid", user.name)

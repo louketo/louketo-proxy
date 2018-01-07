@@ -211,6 +211,9 @@ resources:
   roles:
   - client:test1
   - client:test2
+  groups:
+  - admins
+  - users
 - uri: /backend*
   roles:
   - client:test1
@@ -357,6 +360,7 @@ On protected resources the upstream endpoint will receive a number of headers ad
 id := user.(*userContext)
 cx.Request().Header.Set("X-Auth-Email", id.email)
 cx.Request().Header.Set("X-Auth-ExpiresIn", id.expiresAt.String())
+cx.Request().Header.Set("X-Auth-Groups", strings.Join(id.groups, ","))
 cx.Request().Header.Set("X-Auth-Roles", strings.Join(id.roles, ","))
 cx.Request().Header.Set("X-Auth-Subject", id.id)
 cx.Request().Header.Set("X-Auth-Token", id.token.Encode())
@@ -432,6 +436,28 @@ Another example would be limiting the email domain permitted; say you have some 
 match-claims:
   email: ^.*@example.com$
 ```
+
+#### **Groups Claims**
+
+You can match on the group claims within a token via the `groups` parameter available within the resource. Note while roles are implicitly required i.e. `roles=admin,user` the user MUST have roles 'admin' AND 'user', groups are applied with an OR operation, so `groups=users,testers` requires the user MUST be within 'users' OR 'testers'. At present the claim name is hardcoded to `groups` i.e a JWT token would look like the below.
+
+```JSON
+{
+  "iss": "https://sso.example.com",
+  "sub": "",
+  "aud": "test",
+  "exp": 1515269245,
+  "iat": 1515182845,
+  "email": "gambol99@gmail.com",
+  "groups": [
+    "group_one",
+    "group_two"
+  ],
+  "name": "Rohith"
+}
+```
+
+Note: I'm also considering changing the way groups are implemented, exchanging for how match-claims are done, such as `--match=[]groups=(a|b|c)` but would mean adding matches to URI resource first.
 
 #### **Custom Pages**
 
