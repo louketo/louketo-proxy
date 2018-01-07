@@ -51,7 +51,7 @@ func entrypointMiddleware(next http.Handler) http.Handler {
 
 		// continue the flow
 		scope := &RequestScope{}
-		resp := middleware.NewWrapResponseWriter(w, 2)
+		resp := middleware.NewWrapResponseWriter(w, 1)
 		next.ServeHTTP(resp, req.WithContext(context.WithValue(req.Context(), contextScopeName, scope)))
 
 		// place back the original uri for proxying request
