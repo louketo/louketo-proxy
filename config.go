@@ -28,6 +28,7 @@ import (
 func newDefaultConfig() *Config {
 	return &Config{
 		AccessTokenDuration:         time.Duration(720) * time.Hour,
+		AuthHeaderPrefix:            "X-Auth-",
 		CookieAccessName:            "kc-access",
 		CookieRefreshName:           "kc-state",
 		EnableAuthorizationHeader:   true,

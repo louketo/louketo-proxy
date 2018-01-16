@@ -23,8 +23,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/PuerkitoBio/purell"
 	"github.com/gambol99/go-oidc/jose"
+
+	"github.com/PuerkitoBio/purell"
 	"github.com/go-chi/chi/middleware"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/unrolled/secure"
@@ -334,17 +335,17 @@ func (r *oauthProxy) headersMiddleware(custom []string) func(http.Handler) http.
 			scope := req.Context().Value(contextScopeName).(*RequestScope)
 			if scope.Identity != nil {
 				user := scope.Identity
-				req.Header.Set("X-Auth-Email", user.email)
-				req.Header.Set("X-Auth-ExpiresIn", user.expiresAt.String())
-				req.Header.Set("X-Auth-Groups", strings.Join(user.groups, ","))
-				req.Header.Set("X-Auth-Roles", strings.Join(user.roles, ","))
-				req.Header.Set("X-Auth-Subject", user.id)
-				req.Header.Set("X-Auth-Userid", user.name)
-				req.Header.Set("X-Auth-Username", user.name)
+				req.Header.Set(fmt.Sprintf("%sEmail", r.config.AuthHeaderPrefix), user.email)
+				req.Header.Set(fmt.Sprintf("%sExpiresIn", r.config.AuthHeaderPrefix), user.expiresAt.String())
+				req.Header.Set(fmt.Sprintf("%sGroups", r.config.AuthHeaderPrefix), strings.Join(user.groups, ","))
+				req.Header.Set(fmt.Sprintf("%sRoles", r.config.AuthHeaderPrefix), strings.Join(user.roles, ","))
+				req.Header.Set(fmt.Sprintf("%sSubject", r.config.AuthHeaderPrefix), user.id)
+				req.Header.Set(fmt.Sprintf("%sUserid", r.config.AuthHeaderPrefix), user.name)
+				req.Header.Set(fmt.Sprintf("%sUsername", r.config.AuthHeaderPrefix), user.name)
 
 				// should we add the token header?
 				if r.config.EnableTokenHeader {
-					req.Header.Set("X-Auth-Token", user.token.Encode())
+					req.Header.Set(fmt.Sprintf("%sToken", r.config.AuthHeaderPrefix), user.token.Encode())
 				}
 				// add the authorization header if requested
 				if r.config.EnableAuthorizationHeader {

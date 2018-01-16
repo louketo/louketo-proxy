@@ -136,6 +136,8 @@ type Config struct {
 	Resources []*Resource `json:"resources" yaml:"resources" usage:"list of resources 'uri=/admin|methods=GET,PUT|roles=role1,role2'"`
 	// Headers permits adding customs headers across the board
 	Headers map[string]string `json:"headers" yaml:"headers" usage:"custom headers to the upstream request, key=value"`
+	// AuthHeaderPrefix is the authentication headers passed through to upstream endpoint
+	AuthHeaderPrefix string `json:"auth-header-prefix" yaml:"auth-header-prefix" usage:"the prefix added the authentication headers"`
 
 	// EnableEncryptedToken indicates the access token should be encoded
 	EnableEncryptedToken bool `json:"enable-encrypted-token" yaml:"enable-encrypted-token" usage:"enable encryption for the access tokens"`

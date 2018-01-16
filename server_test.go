@@ -398,6 +398,7 @@ func newFakeHTTPRequest(method, path string) *http.Request {
 
 func newFakeKeycloakConfig() *Config {
 	return &Config{
+		AuthHeaderPrefix:           "X-Auth-",
 		ClientID:                   fakeClientID,
 		ClientSecret:               fakeSecret,
 		CookieAccessName:           "kc-access",
