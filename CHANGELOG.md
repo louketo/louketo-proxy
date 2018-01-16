@@ -3,6 +3,7 @@
 
 FEATURES:
 * Added the groups parameter to the resource, permitting users to use the `groups` claim in the token [#PR301](https://github.com/gambol99/keycloak-proxy/pull/301)
+* Added the ability to change the header prefix on the authentication headers [#PR306](https://github.com/gambol99/keycloak-proxy/pull/306)
 
 #### **2.1.0**
 
