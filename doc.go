@@ -26,7 +26,7 @@ import (
 )
 
 var (
-	release  = "v2.1.0"
+	release  = "v2.1.1"
 	gitsha   = "no gitsha provided"
 	compiled = "0"
 	version  = ""

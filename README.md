@@ -34,7 +34,7 @@ USAGE:
    keycloak-proxy [options]
 
 VERSION:
-   v2.1.0 (git+sha: 87f0b9c-dirty, built: 21-12-2017)
+   v2.1.1 (git+sha: e92c9b2-dirty, built: 12-02-2018)
 
 AUTHOR:
    Rohith <gambol99@gmail.com>
