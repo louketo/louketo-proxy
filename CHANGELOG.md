@@ -1,8 +1,13 @@
 
-#### **2.1.1 (Unreleased)**
+#### **2.1.1**
 
 FEATURES:
 * Added the groups parameter to the resource, permitting users to use the `groups` claim in the token [#PR301](https://github.com/gambol99/keycloak-proxy/pull/301)
+* Removed the authors file [#PR299](https://github.com/gambol99/keycloak-proxy/pull/299)
+
+FIXES:
+* Fixed the custom headers when upgrading to websockets [#PR311](https://github.com/gambol99/keycloak-proxy/pull/311)
+* Fixed exception when upgrading to websockets [#PR303](https://github.com/gambol99/keycloak-proxy/pull/303)
 
 #### **2.1.0**
 
