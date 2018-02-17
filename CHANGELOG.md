@@ -1,4 +1,9 @@
 
+#### **2.1.2 (Unreleased)**
+
+FEATURES:
+* Updated the docker base image alpine 3.7 [#PR313](https://github.com/gambol99/keycloak-proxy/pull/313)
+
 #### **2.1.1**
 
 FEATURES:
