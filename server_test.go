@@ -404,6 +404,7 @@ func newFakeKeycloakConfig() *Config {
 		CookieRefreshName:          "kc-state",
 		DisableAllLogging:          true,
 		DiscoveryURL:               "127.0.0.1:0",
+		OpenIDProviderTimeout:      time.Second * 5,
 		EnableAuthorizationHeader:  true,
 		EnableAuthorizationCookies: true,
 		EnableLogging:              false,

@@ -126,6 +126,8 @@ type Config struct {
 	SkipOpenIDProviderTLSVerify bool `json:"skip-openid-provider-tls-verify" yaml:"skip-openid-provider-tls-verify" usage:"skip the verification of any TLS communication with the openid provider"`
 	// OpenIDProviderProxy proxy for openid provider communication
 	OpenIDProviderProxy string `json:"openid-provider-proxy" yaml:"openid-provider-proxy" usage:"proxy for communication with the openid provider"`
+	// OpenIDProviderTimeout is the timeout used to pulling the openid configuration from the provider
+	OpenIDProviderTimeout time.Duration `json:"openid-provider-timeout" yaml:"openid-provider-timeout" usage:"timeout for openid configuration on .well-known/openid-configuration"`
 	// Scopes is a list of scope we should request
 	Scopes []string `json:"scopes" yaml:"scopes" usage:"list of scopes requested when authenticating the user"`
 	// Upstream is the upstream endpoint i.e whom were proxying to
