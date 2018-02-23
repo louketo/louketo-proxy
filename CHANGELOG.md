@@ -3,6 +3,7 @@
 
 FEATURES:
 * Updated the docker base image alpine 3.7 [#PR313](https://github.com/gambol99/keycloak-proxy/pull/313)
+* Added the ability to control the timeout on the initial openid configuration from .well-known/openid-configuration [#PR314](https://github.com/gambol99/keycloak-proxy/pull/314)
 
 #### **2.1.1**
 

@@ -627,7 +627,9 @@ func (r *oauthProxy) newOpenIDClient() (*oidc.Client, oidc.ProviderConfig, *http
 	completeCh := make(chan bool)
 	go func() {
 		for {
-			r.log.Info("attempting to retrieve configuration discovery url", zap.String("url", r.config.DiscoveryURL))
+			r.log.Info("attempting to retrieve configuration discovery url",
+				zap.String("url", r.config.DiscoveryURL),
+				zap.String("timeout", r.config.OpenIDProviderTimeout.String()))
 			if config, err = oidc.FetchProviderConfig(hc, r.config.DiscoveryURL); err == nil {
 				break // break and complete
 			}
@@ -638,7 +640,7 @@ func (r *oauthProxy) newOpenIDClient() (*oidc.Client, oidc.ProviderConfig, *http
 	}()
 	// wait for timeout or successful retrieval
 	select {
-	case <-time.After(30 * time.Second):
+	case <-time.After(r.config.OpenIDProviderTimeout):
 		return nil, config, nil, errors.New("failed to retrieve the provider configuration from discovery url")
 	case <-completeCh:
 		r.log.Info("successfully retrieved openid configuration from the discovery")
