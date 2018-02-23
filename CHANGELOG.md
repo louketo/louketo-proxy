@@ -3,8 +3,8 @@
 
 FEATURES:
 * Updated the docker base image alpine 3.7 [#PR313](https://github.com/gambol99/keycloak-proxy/pull/313)
-* Added the ability to control the timeout on the initial openid configuration from .well-known/openid-configuration [#PR314](https://github.com/gambol99/keycloak-proxy/pull/314)
-* Updated to Golang version 1.10 [#PR315](https://github.com/gambol99/keycloak-proxy/pull/315)
+* Added the ability to control the timeout on the initial openid configuration from .well-known/openid-configuration [#PR315](https://github.com/gambol99/keycloak-proxy/pull/315)
+* Updated to Golang version 1.10 [#PR316](https://github.com/gambol99/keycloak-proxy/pull/316)
 
 #### **2.1.1**
 
