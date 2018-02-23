@@ -10,7 +10,7 @@ services:
 - docker
 language: go
 go:
-- 1.9
+- "1.10"
 install:
 - go get github.com/Masterminds/glide
 - go get github.com/mattn/goveralls
