@@ -147,6 +147,24 @@ func TestForbiddenTemplate(t *testing.T) {
 	newFakeProxy(cfg).RunTests(t, requests)
 }
 
+func TestAudienceHeader(t *testing.T) {
+	c := newFakeKeycloakConfig()
+	c.NoRedirects = false
+	requests := []fakeRequest{
+		{
+			URI:           "/auth_all/test",
+			HasLogin:      true,
+			ExpectedProxy: true,
+			Redirects:     true,
+			ExpectedProxyHeaders: map[string]string{
+				"X-Auth-Audience": "test",
+			},
+			ExpectedCode: http.StatusOK,
+		},
+	}
+	newFakeProxy(c).RunTests(t, requests)
+}
+
 func TestAuthorizationTemplate(t *testing.T) {
 	cfg := newFakeKeycloakConfig()
 	cfg.SignInPage = "templates/sign_in.html.tmpl"
