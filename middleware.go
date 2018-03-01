@@ -334,6 +334,7 @@ func (r *oauthProxy) headersMiddleware(custom []string) func(http.Handler) http.
 			scope := req.Context().Value(contextScopeName).(*RequestScope)
 			if scope.Identity != nil {
 				user := scope.Identity
+				req.Header.Set("X-Auth-Audience", user.audience)
 				req.Header.Set("X-Auth-Email", user.email)
 				req.Header.Set("X-Auth-ExpiresIn", user.expiresAt.String())
 				req.Header.Set("X-Auth-Groups", strings.Join(user.groups, ","))
