@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/gambol99/go-oidc/jose"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
@@ -71,6 +72,36 @@ const (
 	headerXForwardedSsl      = "X-Forwarded-Ssl"
 	headerXRealIP            = "X-Real-IP"
 	headerXRequestID         = "X-Request-ID"
+)
+
+var (
+	oauthTokensMetric = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "proxy_oauth_tokens_total",
+			Help: "A summary of the tokens issuesd, renewed or failed logins",
+		},
+		[]string{"action"},
+	)
+	oauthLatencyMetric = prometheus.NewSummaryVec(
+		prometheus.SummaryOpts{
+			Name: "proxy_oauth_request_latency_sec",
+			Help: "A summary of the request latancy for requests against the openid provider",
+		},
+		[]string{"action"},
+	)
+	latencyMetric = prometheus.NewSummary(
+		prometheus.SummaryOpts{
+			Name: "proxy_request_duration_sec",
+			Help: "A summary of the http request latency for proxy requests",
+		},
+	)
+	statusMetric = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "proxy_request_status_total",
+			Help: "The HTTP requests partitioned by status code",
+		},
+		[]string{"code", "method"},
+	)
 )
 
 var (
