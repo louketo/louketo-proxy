@@ -458,8 +458,7 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 
 			getCertificate = m.GetCertificate
 		} else {
-			r.log.Info("tls support enabled",
-				zap.String("certificate", config.certificate), zap.String("private_key", config.privateKey))
+			r.log.Info("tls support enabled", zap.String("certificate", config.certificate), zap.String("private_key", config.privateKey))
 			// creating a certificate rotation
 			rotate, err := newCertificateRotator(config.certificate, config.privateKey, r.log)
 			if err != nil {
@@ -552,8 +551,8 @@ func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) error {
 	proxy.Logger = httplog.New(ioutil.Discard, "", 0)
 	r.upstream = proxy
 
-	// create the http transport
-	tp := &http.Transport{
+	// update the tls configuration of the reverse proxy
+	r.upstream.(*goproxy.ProxyHttpServer).Tr = &http.Transport{
 		Dial:                  dialer,
 		DisableKeepAlives:     !r.config.UpstreamKeepalives,
 		ExpectContinueTimeout: r.config.UpstreamExpectContinueTimeout,
@@ -561,9 +560,6 @@ func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) error {
 		TLSClientConfig:       tlsConfig,
 		TLSHandshakeTimeout:   r.config.UpstreamTLSHandshakeTimeout,
 	}
-
-	// update the tls configuration of the reverse proxy
-	r.upstream.(*goproxy.ProxyHttpServer).Tr = tp
 
 	return nil
 }
