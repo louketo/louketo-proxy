@@ -217,7 +217,7 @@ func (r *oauthProxy) createReverseProxy() error {
 			r.log.Warn("the resource url is not a prefix",
 				zap.String("resource", x.URL),
 				zap.String("change", x.URL),
-				zap.String("ammended", strings.TrimRight(x.URL, "/")))
+				zap.String("amended", strings.TrimRight(x.URL, "/")))
 		}
 		if x.URL == "/*" && r.config.EnableDefaultDeny {
 			switch x.WhiteListed {

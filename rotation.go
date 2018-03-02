@@ -95,7 +95,7 @@ func (c *certificationRotation) watch() error {
 					c.log.Info("replacing the server certifacte with updated version")
 				}
 			case err := <-watcher.Errors:
-				c.log.Error("recieved an error from the file watcher", zap.Error(err))
+				c.log.Error("received an error from the file watcher", zap.Error(err))
 			}
 		}
 	}()

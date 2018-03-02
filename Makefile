@@ -133,6 +133,13 @@ cover:
 	@echo "--> Running go cover"
 	@go test --cover
 
+spelling:
+	@echo "--> Chekcing the spelling"
+	@which misspell 2>/dev/null ; if [ $$? -eq 1 ]; then \
+		go get -u github.com/client9/misspell/cmd/misspell; \
+	fi
+	@misspell -error *.go
+
 test:
 	@echo "--> Running the tests"
 	@if [ ! -d "vendor" ]; then \
@@ -141,6 +148,7 @@ test:
 	@go test -v
 	@$(MAKE) golang
 	@$(MAKE) gofmt
+	@$(MAKE) spelling
 	@$(MAKE) vet
 	@$(MAKE) cover
 
