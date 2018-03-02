@@ -14,6 +14,7 @@ go:
 install:
 - go get github.com/Masterminds/glide
 - go get github.com/mattn/goveralls
+- go get -u github.com/client9/misspell/cmd/misspell
 script:
 - make test
 - if ([[ ${TRAVIS_BRANCH} == "master" ]] && [[ ${TRAVIS_EVENT_TYPE} == "push" ]]) || [[ -n ${TRAVIS_TAG} ]]; then
