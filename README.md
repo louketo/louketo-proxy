@@ -241,7 +241,7 @@ bin/keycloak-proxy \
     --resources="uri=/public/*|white-listed=true"
 ```
 
-The **recommended** deployment to use a default denial to all requests via `--enable-default-deny=true` or `--resources="uri=/*"` and to then explicityly allow you throw bypassed.
+The **recommended** deployment to use a default denial to all requests via `--enable-default-deny=true` or `--resources="uri=/*"` and to then explicityly allow what you want through.
 
 #### **HTTP Routing**
 
