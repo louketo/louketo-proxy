@@ -165,6 +165,31 @@ func TestAudienceHeader(t *testing.T) {
 	newFakeProxy(c).RunTests(t, requests)
 }
 
+func TestDefaultDenial(t *testing.T) {
+	config := newFakeKeycloakConfig()
+	config.EnableDefaultDeny = true
+	config.Resources = []*Resource{
+		{
+			URL:         "/public/*",
+			Methods:     allHTTPMethods,
+			WhiteListed: true,
+		},
+	}
+	requests := []fakeRequest{
+		{
+			URI:           "/public/allowed",
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
+		},
+		{
+			URI:          "/not_permited",
+			Redirects:    false,
+			ExpectedCode: http.StatusUnauthorized,
+		},
+	}
+	newFakeProxy(config).RunTests(t, requests)
+}
+
 func TestAuthorizationTemplate(t *testing.T) {
 	cfg := newFakeKeycloakConfig()
 	cfg.SignInPage = "templates/sign_in.html.tmpl"

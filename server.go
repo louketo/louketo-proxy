@@ -211,6 +211,7 @@ func (r *oauthProxy) createReverseProxy() error {
 		return err
 	}
 	// step: provision in the protected resources
+	enableDefaultDeny := r.config.EnableDefaultDeny
 	for _, x := range r.config.Resources {
 		if x.URL[len(x.URL)-1:] == "/" {
 			r.log.Warn("the resource url is not a prefix",
@@ -218,6 +219,19 @@ func (r *oauthProxy) createReverseProxy() error {
 				zap.String("change", x.URL),
 				zap.String("ammended", strings.TrimRight(x.URL, "/")))
 		}
+		if x.URL == "/*" && r.config.EnableDefaultDeny {
+			switch x.WhiteListed {
+			case true:
+				return errors.New("you've asked for a default denial but whitelisted everything")
+			default:
+				enableDefaultDeny = false
+			}
+		}
+	}
+
+	if enableDefaultDeny {
+		r.log.Info("adding a default denial into the protected resources")
+		r.config.Resources = append(r.config.Resources, &Resource{URL: "/*", Methods: allHTTPMethods})
 	}
 
 	for _, x := range r.config.Resources {
