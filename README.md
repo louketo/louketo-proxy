@@ -34,7 +34,7 @@ USAGE:
    keycloak-proxy [options]
 
 VERSION:
-   v2.1.1 (git+sha: e92c9b2-dirty, built: 12-02-2018)
+   v2.1.1 (git+sha: 35e834a, built: 02-03-2018)
 
 AUTHOR:
    Rohith <gambol99@gmail.com>
@@ -53,11 +53,13 @@ GLOBAL OPTIONS:
    --revocation-url value                    url for the revocation endpoint to revoke refresh token [$PROXY_REVOCATION_URL]
    --skip-openid-provider-tls-verify         skip the verification of any TLS communication with the openid provider (default: false)
    --openid-provider-proxy value             proxy for communication with the openid provider
+   --openid-provider-timeout value           timeout for openid configuration on .well-known/openid-configuration (default: 30s)
    --scopes value                            list of scopes requested when authenticating the user
    --upstream-url value                      url for the upstream endpoint you wish to proxy [$PROXY_UPSTREAM_URL]
    --upstream-ca value                       the path to a file container a CA certificate to validate the upstream tls endpoint
    --resources value                         list of resources 'uri=/admin|methods=GET,PUT|roles=role1,role2'
    --headers value                           custom headers to the upstream request, key=value
+   --enable-default-deny                     enables a default denial on all requests, you have to explicitly say what is permitted (recommended) (default: false)
    --enable-encrypted-token                  enable encryption for the access tokens (default: false)
    --enable-logging                          enable http logging of the requests (default: false)
    --enable-json-logging                     switch on json logging rather than text (default: false)
@@ -102,7 +104,7 @@ GLOBAL OPTIONS:
    --encryption-key value                    encryption key used to encryption the session state [$PROXY_ENCRYPTION_KEY]
    --no-redirects                            do not have back redirects when no authentication is present, 401 them (default: false)
    --skip-token-verification                 TESTING ONLY; bypass token verification, only expiration and roles enforced (default: false)
-   --upstream-keepalives                     enables or disables the keepalive connections for upstream endpoint (default: false)
+   --upstream-keepalives                     enables or disables the keepalive connections for upstream endpoint (default: true)
    --upstream-timeout value                  maximum amount of time a dial will wait for a connect to complete (default: 10s)
    --upstream-keepalive-timeout value        specifies the keep-alive period for an active network connection (default: 10s)
    --upstream-tls-handshake-timeout value    the timeout placed on the tls handshake for upstream (default: 10s)
@@ -231,9 +233,15 @@ bin/keycloak-proxy \
     --enable-refresh-tokens=true \
     --encryption-key=AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j \
     --upstream-url=http://127.0.0.1:80 \
-    --resources="uri=/admin*|methods=GET|roles=test1,test2" \
-    --resources="uri=/backend*|roles=test1"
+    --enable-default-deny=true \
+    --resources="uri=/admin*|roles=test1,test2" \
+    --resources="uri=/backend*|roles=test1" \
+    --resources="uri=/css/*|white-listed=true" \
+    --resources="uri=/img/*|white-listed=true" \
+    --resources="uri=/public/*|white-listed=true"
 ```
+
+The **recommended** deployment to use a default denial to all requests via `--enable-default-deny=true` or `--resources="uri=/*"` and to then explicityly allow you throw bypassed.
 
 #### **HTTP Routing**
 

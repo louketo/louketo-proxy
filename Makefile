@@ -139,6 +139,7 @@ spelling:
 		go get -u github.com/client9/misspell/cmd/misspell; \
 	fi
 	@misspell -error *.go
+	@misspell -error *.md
 
 test:
 	@echo "--> Running the tests"
