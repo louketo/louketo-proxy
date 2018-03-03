@@ -194,17 +194,17 @@ Assuming you have some web service you wish protected by Keycloak;
 * Grab the client id and client secret.
 * Create the various roles under the client or existing clients for authorization purposes.
 
-##### **- The default config**
+##### **- A configuration**
 
 ```YAML
-discovery-url: https://keycloak.example.com/auth/realms/<REALM_NAME>
 client-id: <CLIENT_ID>
 client-secret: <CLIENT_SECRET> # require for access_type: confidential
-listen: 127.0.0.1:3000
-# Note the redirection-url is optional, it will default to the X-Forwarded-Proto / X-Forwarded-Host
-# or the URL scheme and host not found
-redirection-url: http://127.0.0.1:3000
+# Note the redirection-url is optional, it will default to the X-Forwarded-Proto / X-Forwarded-Host r the URL scheme and host not found
+discovery-url: https://keycloak.example.com/auth/realms/<REALM_NAME>
+enable-default-deny: true
 encryption_key: AgXa7xRcoClDEU0ZDSH4X0XhL5Qy2Z2j
+listen: 127.0.0.1:3000
+redirection-url: http://127.0.0.1:3000
 upstream-url: http://127.0.0.1:80
 resources:
 - uri: /admin*
@@ -219,6 +219,14 @@ resources:
 - uri: /backend*
   roles:
   - client:test1
+- uri: /public/*
+  white-listed: true
+- uri: /favicon
+  white-listed: true
+- uri: /css/*
+  white-listed: true
+- uri: /img/*
+  white-listed: true
 ```
 
 Note, anything defined in the configuration file can also be configured as command line options, so the above would be reflected as;
