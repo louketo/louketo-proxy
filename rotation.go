@@ -89,6 +89,8 @@ func (c *certificationRotation) watch() error {
 							zap.String("filename", event.Name),
 							zap.Error(err))
 					}
+					// @metric inform of the rotation
+					certificateRotationMetric.Inc()
 					// step: load the new certificate
 					c.storeCertificate(certificate)
 					// step: print a debug message for us

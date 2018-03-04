@@ -75,6 +75,12 @@ const (
 )
 
 var (
+	certificateRotationMetric = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "proxy_certificate_rotation_total",
+			Help: "The total amount of times the certificate has been rotated",
+		},
+	)
 	oauthTokensMetric = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "proxy_oauth_tokens_total",
