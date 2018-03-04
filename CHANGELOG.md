@@ -3,8 +3,10 @@
 
 FEATURES:
 * Added a --enable-default-deny option to make denial by default [#PR320](https://github.com/gambol99/keycloak-proxy/pull/320)
+* Added spelling check to the tests [#PR322](https://github.com/gambol99/keycloak-proxy/pull/322)
 * Added the X-Auth-Audience to the upstream headers [#PR319](https://github.com/gambol99/keycloak-proxy/pull/319)
 * Added the ability to control the timeout on the initial openid configuration from .well-known/openid-configuration [#PR315](https://github.com/gambol99/keycloak-proxy/pull/315)
+* Adding additional metrics covering provider request latency, token breakdown [#PR324](https://github.com/gambol99/keycloak-proxy/pull/324)
 * Changed the upstream-keepalive to default to true [#PR321](https://github.com/gambol99/keycloak-proxy/pull/321)
 * Updated the docker base image alpine 3.7 [#PR313](https://github.com/gambol99/keycloak-proxy/pull/313)
 * Updated to Golang version 1.10 [#PR316](https://github.com/gambol99/keycloak-proxy/pull/316)

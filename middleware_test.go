@@ -298,7 +298,7 @@ func TestMetricsMiddleware(t *testing.T) {
 		{
 			URI:                     oauthURL + metricsURL,
 			ExpectedCode:            http.StatusOK,
-			ExpectedContentContains: "http_request_total",
+			ExpectedContentContains: "proxy_request_status_total",
 		},
 		{
 			URI: oauthURL + metricsURL,

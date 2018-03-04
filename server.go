@@ -36,7 +36,7 @@ import (
 
 	httplog "log"
 
-	"github.com/armon/go-proxyproto"
+	proxyproto "github.com/armon/go-proxyproto"
 	"github.com/gambol99/go-oidc/oidc"
 	"github.com/gambol99/goproxy"
 	"github.com/pressly/chi"
@@ -65,6 +65,11 @@ type oauthProxy struct {
 func init() {
 	time.LoadLocation("UTC")             // ensure all time is in UTC
 	runtime.GOMAXPROCS(runtime.NumCPU()) // set the core
+	// @step: register the instrumentation
+	prometheus.MustRegister(latencyMetric)
+	prometheus.MustRegister(oauthLatencyMetric)
+	prometheus.MustRegister(oauthTokensMetric)
+	prometheus.MustRegister(statusMetric)
 }
 
 // newProxy create's a new proxy from configuration
@@ -161,9 +166,6 @@ func (r *oauthProxy) createReverseProxy() error {
 	if r.config.EnableLogging {
 		engine.Use(r.loggingMiddleware)
 	}
-	if r.config.EnableMetrics {
-		engine.Use(r.metricsMiddleware)
-	}
 	if r.config.EnableSecurityFilter {
 		engine.Use(r.securityMiddleware)
 	}
@@ -194,6 +196,7 @@ func (r *oauthProxy) createReverseProxy() error {
 		e.Get(tokenURL, r.tokenHandler)
 		e.Post(loginURL, r.loginHandler)
 		if r.config.EnableMetrics {
+			r.log.Info("enabled the service metrics middleware, available on", zap.String("path", fmt.Sprintf("%s%s", oauthURL, metricsURL)))
 			e.Get(metricsURL, r.proxyMetricsHandler)
 		}
 	})

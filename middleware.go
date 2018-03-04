@@ -26,7 +26,6 @@ import (
 	"github.com/PuerkitoBio/purell"
 	"github.com/gambol99/go-oidc/jose"
 	"github.com/go-chi/chi/middleware"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/unrolled/secure"
 	"go.uber.org/zap"
 )
@@ -49,10 +48,15 @@ func entrypointMiddleware(next http.Handler) http.Handler {
 		req.RequestURI = req.URL.RawPath
 		req.URL.RawPath = req.URL.Path
 
-		// continue the flow
+		// @step: create a context for the request
 		scope := &RequestScope{}
 		resp := middleware.NewWrapResponseWriter(w, 1)
+		start := time.Now()
 		next.ServeHTTP(resp, req.WithContext(context.WithValue(req.Context(), contextScopeName, scope)))
+
+		// @metric record the time taken then response code
+		latencyMetric.Observe(time.Since(start).Seconds())
+		statusMetric.WithLabelValues(fmt.Sprintf("%d", resp.Status()), req.Method).Inc()
 
 		// place back the original uri for proxying request
 		req.URL.Path = keep
@@ -75,27 +79,6 @@ func (r *oauthProxy) loggingMiddleware(next http.Handler) http.Handler {
 			zap.String("client_ip", addr),
 			zap.String("method", req.Method),
 			zap.String("path", req.URL.Path))
-	})
-}
-
-// metricsMiddleware is responsible for collecting metrics
-func (r *oauthProxy) metricsMiddleware(next http.Handler) http.Handler {
-	r.log.Info("enabled the service metrics middleware, available on", zap.String("path", fmt.Sprintf("%s%s", oauthURL, metricsURL)))
-
-	statusMetrics := prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "http_request_total",
-			Help: "The HTTP requests partitioned by status code",
-		},
-		[]string{"code", "method"},
-	)
-	prometheus.MustRegister(statusMetrics)
-
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		resp := w.(middleware.WrapResponseWriter)
-		statusMetrics.WithLabelValues(fmt.Sprintf("%d", resp.Status()), req.Method).Inc()
-
-		next.ServeHTTP(w, req)
 	})
 }
 
