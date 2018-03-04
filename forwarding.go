@@ -205,8 +205,8 @@ func (r *oauthProxy) forwardProxyHandler() func(*http.Request, *http.Response) {
 		req.URL.Host = hostname
 		// is the host being signed?
 		if len(r.config.ForwardingDomains) == 0 || containsSubString(hostname, r.config.ForwardingDomains) {
-			req.Header.Set("X-Forwarded-Agent", prog)
 			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", state.token.Encode()))
+			req.Header.Set("X-Forwarded-Agent", prog)
 		}
 	}
 }

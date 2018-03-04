@@ -66,6 +66,7 @@ func init() {
 	time.LoadLocation("UTC")             // ensure all time is in UTC
 	runtime.GOMAXPROCS(runtime.NumCPU()) // set the core
 	// @step: register the instrumentation
+	prometheus.MustRegister(certificateRotationMetric)
 	prometheus.MustRegister(latencyMetric)
 	prometheus.MustRegister(oauthLatencyMetric)
 	prometheus.MustRegister(oauthTokensMetric)
@@ -308,6 +309,7 @@ func (r *oauthProxy) createForwardingProxy() error {
 		if resp != nil && r.config.EnableLogging {
 			start := ctx.UserData.(time.Time)
 			latency := time.Since(start)
+			latencyMetric.Observe(latency.Seconds())
 			r.log.Info("client request",
 				zap.String("method", resp.Request.Method),
 				zap.String("path", resp.Request.URL.Path),
