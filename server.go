@@ -187,7 +187,7 @@ func (r *oauthProxy) createReverseProxy() error {
 	r.router = engine
 
 	// step: add the routing for oauth
-	engine.With(proxyDenyMiddleware).Route(oauthURL, func(e chi.Router) {
+	engine.With(proxyDenyMiddleware).Route(r.config.OAuthURI, func(e chi.Router) {
 		e.MethodNotAllowed(methodNotAllowHandlder)
 		e.Get(authorizationURL, r.oauthAuthorizationHandler)
 		e.Get(callbackURL, r.oauthCallbackHandler)
@@ -197,7 +197,7 @@ func (r *oauthProxy) createReverseProxy() error {
 		e.Get(tokenURL, r.tokenHandler)
 		e.Post(loginURL, r.loginHandler)
 		if r.config.EnableMetrics {
-			r.log.Info("enabled the service metrics middleware, available on", zap.String("path", fmt.Sprintf("%s%s", oauthURL, metricsURL)))
+			r.log.Info("enabled the service metrics middleware", zap.String("path", r.config.WithOAuthURI(metricsURL)))
 			e.Get(metricsURL, r.proxyMetricsHandler)
 		}
 	})

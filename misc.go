@@ -104,7 +104,7 @@ func (r *oauthProxy) redirectToAuthorization(w http.ResponseWriter, req *http.Re
 		w.WriteHeader(http.StatusForbidden)
 		return r.revokeProxy(w, req)
 	}
-	r.redirectToURL(oauthURL+authorizationURL+authQuery, w, req)
+	r.redirectToURL(r.config.WithOAuthURI(authorizationURL+authQuery), w, req)
 
 	return r.revokeProxy(w, req)
 }

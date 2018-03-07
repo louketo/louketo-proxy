@@ -77,9 +77,6 @@ func (r *Resource) valid() error {
 	if r.Roles == nil {
 		r.Roles = make([]string, 0)
 	}
-	if strings.HasPrefix(r.URL, oauthURL) {
-		return errors.New("this is used by the oauth handlers")
-	}
 	if r.URL == "" {
 		return errors.New("resource does not have url")
 	}
