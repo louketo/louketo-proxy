@@ -315,6 +315,16 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 	}
 	revocationURL := defaultTo(r.config.RevocationEndpoint, revokeDefault)
 
+	// @check if we should redirect to the provider
+	if r.config.EnableLogoutRedirect {
+		redirectURL := fmt.Sprintf("%s/protocol/openid-connect/logout?redirect_uri=%s",
+			strings.TrimSuffix(r.config.DiscoveryURL, "/.well-known/openid-configuration"), redirectURL)
+
+		r.redirectToURL(redirectURL, w, req)
+
+		return
+	}
+
 	// step: do we have a revocation endpoint?
 	if revocationURL != "" {
 		client, err := r.client.OAuthClient()
