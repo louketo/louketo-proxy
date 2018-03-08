@@ -176,6 +176,8 @@ type Config struct {
 	// Headers permits adding customs headers across the board
 	Headers map[string]string `json:"headers" yaml:"headers" usage:"custom headers to the upstream request, key=value"`
 
+	// EnableLogoutRedirect indicates we should redirect to the identity provider for logging out
+	EnableLogoutRedirect bool `json:"enable-logout-redirect" yaml:"enable-logout-redirect" usage:"indicates we should redirect to the identity provider for logging out"`
 	// EnableDefaultDeny indicates we should deny by default all requests
 	EnableDefaultDeny bool `json:"enable-default-deny" yaml:"enable-default-deny" usage:"enables a default denial on all requests, you have to explicitly say what is permitted (recommended)"`
 	// EnableEncryptedToken indicates the access token should be encoded

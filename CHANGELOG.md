@@ -2,11 +2,12 @@
 #### **2.1.2 (Unreleased)**
 
 FEATURES:
-* Added a --enable-default-deny option to make denial by default [#PR320](https://github.com/gambol99/keycloak-proxy/pull/320)
+* Added a --enable-default-deny option to make denial by default [#PR320](https://github.com/gambol99/keycloak-proxy/pull/320)
 * Added metrics latency metrics for the forwarding proxy and the certificate rotation [#PR325](https://github.com/gambol99/keycloak-proxy/pull/325)
 * Added spelling check to the tests [#PR322](https://github.com/gambol99/keycloak-proxy/pull/322)
 * Added the X-Auth-Audience to the upstream headers [#PR319](https://github.com/gambol99/keycloak-proxy/pull/319)
 * Added the ability to control the timeout on the initial openid configuration from .well-known/openid-configuration [#PR315](https://github.com/gambol99/keycloak-proxy/pull/315)
+* Added a `enable-logout-redirect` which redirects the /oauth/logout to the provider [#PR327](https://github.com/gambol99/keycloak-proxy/pull/327)
 * Adding additional metrics covering provider request latency, token breakdown [#PR324](https://github.com/gambol99/keycloak-proxy/pull/324)
 * Added environment variables alternatives for the forwarding username and password [#PR329]https://github.com/gambol99/keycloak-proxy/pull/329)
 * Changed the upstream-keepalive to default to true [#PR321](https://github.com/gambol99/keycloak-proxy/pull/321)
@@ -133,7 +134,7 @@ FIXES:
  * Fixed the --headers and --tags command line options, had a typo on the mergeMaps method [#PR142](https://github.com/gambol99/keycloak-proxy/pull/142)
  * Cleaned up how the cli command line options are processed [#PR164](https://github.com/gambol99/keycloak-proxy/pull/164)
  * Cleaned up the option checking for forwarding proxy tls setting [#PR163](https://github.com/gambol99/keycloak-proxy/pull/163)
- * Using timeout rather than muliple attempts for discovery url [#PR153](https://github.com/gambol99/keycloak-proxy/pull/153)
+ * Using timeout rather than multiple attempts for discovery url [#PR153](https://github.com/gambol99/keycloak-proxy/pull/153)
  * Updated the go-oidc library with various fixes [#PR159](https://github.com/gambol99/keycloak-proxy/pull/159)
 
 BREAKING CHANGES:
@@ -202,7 +203,7 @@ CHANGES:
  * Updated the godeps for codegangsta cli to it's renamed version
 
 FIXES:
- * Fixed the environment variable command line options, the IsSet in cli does not check enviroment
+ * Fixed the environment variable command line options, the IsSet in cli does not check environment
    variable setters
 
 #### **1.2.2**
@@ -287,7 +288,7 @@ BREAKING CHANGES:
 #### **1.0.2 (April 22th, 2016)**
 
 FIXES:
- * Cleaned up a lot of code base to make this simplier
+ * Cleaned up a lot of code base to make this simpler
  * Fixed elements in the refresh tokens and simplified the controller
  * Removed of the code out from methods into functions to reduce the dependencies (unit testing is easier as well)
  * Fixed how the refresh tokens are implemented, i was somewhat confused between refresh token and offline token
