@@ -134,7 +134,7 @@ FIXES:
  * Fixed the --headers and --tags command line options, had a typo on the mergeMaps method [#PR142](https://github.com/gambol99/keycloak-proxy/pull/142)
  * Cleaned up how the cli command line options are processed [#PR164](https://github.com/gambol99/keycloak-proxy/pull/164)
  * Cleaned up the option checking for forwarding proxy tls setting [#PR163](https://github.com/gambol99/keycloak-proxy/pull/163)
- * Using timeout rather than muliple attempts for discovery url [#PR153](https://github.com/gambol99/keycloak-proxy/pull/153)
+ * Using timeout rather than multiple attempts for discovery url [#PR153](https://github.com/gambol99/keycloak-proxy/pull/153)
  * Updated the go-oidc library with various fixes [#PR159](https://github.com/gambol99/keycloak-proxy/pull/159)
 
 BREAKING CHANGES:
@@ -203,7 +203,7 @@ CHANGES:
  * Updated the godeps for codegangsta cli to it's renamed version
 
 FIXES:
- * Fixed the environment variable command line options, the IsSet in cli does not check enviroment
+ * Fixed the environment variable command line options, the IsSet in cli does not check environment
    variable setters
 
 #### **1.2.2**
@@ -288,7 +288,7 @@ BREAKING CHANGES:
 #### **1.0.2 (April 22th, 2016)**
 
 FIXES:
- * Cleaned up a lot of code base to make this simplier
+ * Cleaned up a lot of code base to make this simpler
  * Fixed elements in the refresh tokens and simplified the controller
  * Removed of the code out from methods into functions to reduce the dependencies (unit testing is easier as well)
  * Fixed how the refresh tokens are implemented, i was somewhat confused between refresh token and offline token
