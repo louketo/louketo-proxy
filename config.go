@@ -37,6 +37,7 @@ func newDefaultConfig() *Config {
 		LetsEncryptCacheDir:         "./cache/",
 		MatchClaims:                 make(map[string]string),
 		OpenIDProviderTimeout:       30 * time.Second,
+		PreserveHost:                false,
 		SecureCookie:                true,
 		ServerIdleTimeout:           120 * time.Second,
 		ServerReadTimeout:           5 * time.Second,

@@ -59,6 +59,7 @@ GLOBAL OPTIONS:
    --upstream-ca value                       the path to a file container a CA certificate to validate the upstream tls endpoint
    --resources value                         list of resources 'uri=/admin|methods=GET,PUT|roles=role1,role2'
    --headers value                           custom headers to the upstream request, key=value
+   --preserve-host                           preserve the host header of the proxied request in the upstream request (default: false)
    --enable-default-deny                     enables a default denial on all requests, you have to explicitly say what is permitted (recommended) (default: false)
    --enable-encrypted-token                  enable encryption for the access tokens (default: false)
    --enable-logging                          enable http logging of the requests (default: false)
