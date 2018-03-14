@@ -36,6 +36,7 @@ func newDefaultConfig() *Config {
 		Headers:                     make(map[string]string),
 		LetsEncryptCacheDir:         "./cache/",
 		MatchClaims:                 make(map[string]string),
+		OAuthURI:                    "/oauth",
 		OpenIDProviderTimeout:       30 * time.Second,
 		SecureCookie:                true,
 		ServerIdleTimeout:           120 * time.Second,
@@ -52,6 +53,11 @@ func newDefaultConfig() *Config {
 		UpstreamTimeout:               10 * time.Second,
 		UseLetsEncrypt:                false,
 	}
+}
+
+// WithOAuthURI returns the oauth uri
+func (r *Config) WithOAuthURI(uri string) string {
+	return fmt.Sprintf("%s/%s", r.OAuthURI, uri)
 }
 
 // isValid validates if the config is valid

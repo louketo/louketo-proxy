@@ -55,7 +55,7 @@ func (r *oauthProxy) getRedirectionURL(w http.ResponseWriter, req *http.Request)
 		redirect = r.config.RedirectionURL
 	}
 
-	return fmt.Sprintf("%s/oauth/callback", redirect)
+	return fmt.Sprintf("%s%s", redirect, r.config.WithOAuthURI("callback"))
 }
 
 // oauthAuthorizationHandler is responsible for performing the redirection to oauth provider

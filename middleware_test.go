@@ -296,12 +296,12 @@ func TestMetricsMiddleware(t *testing.T) {
 	cfg.LocalhostMetrics = true
 	requests := []fakeRequest{
 		{
-			URI:                     oauthURL + metricsURL,
+			URI:                     cfg.WithOAuthURI(metricsURL),
 			ExpectedCode:            http.StatusOK,
 			ExpectedContentContains: "proxy_request_status_total",
 		},
 		{
-			URI: oauthURL + metricsURL,
+			URI: cfg.WithOAuthURI(metricsURL),
 			Headers: map[string]string{
 				"X-Forwarded-For": "10.0.0.1",
 			},
