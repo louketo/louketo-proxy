@@ -39,6 +39,11 @@ func (r *oauthProxy) proxyMiddleware(next http.Handler) http.Handler {
 			}
 		}
 
+		// @step: add the proxy forwarding headers
+		req.Header.Add("X-Forwarded-For", realIP(req))
+		req.Header.Set("X-Forwarded-Host", req.URL.Host)
+		req.Header.Set("X-Forwarded-Proto", req.Header.Get("X-Forwarded-Proto"))
+
 		// @step: add any custom headers to the request
 		for k, v := range r.config.Headers {
 			req.Header.Set(k, v)
@@ -53,11 +58,6 @@ func (r *oauthProxy) proxyMiddleware(next http.Handler) http.Handler {
 		} else {
 			req.Host = r.endpoint.Host
 		}
-
-		// @step: add the proxy forwarding headers
-		req.Header.Add("X-Forwarded-For", realIP(req))
-		req.Header.Set("X-Forwarded-Host", req.URL.Host)
-		req.Header.Set("X-Forwarded-Proto", req.Header.Get("X-Forwarded-Proto"))
 
 		if isUpgradedConnection(req) {
 			r.log.Debug("upgrading the connnection", zap.String("client_ip", req.RemoteAddr))
