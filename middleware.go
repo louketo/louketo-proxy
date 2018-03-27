@@ -83,10 +83,10 @@ func (r *oauthProxy) loggingMiddleware(next http.Handler) http.Handler {
 }
 
 const (
-	responseTypeServe = 0
+	responseTypeServe                  = 0
 	responseTypeRedirectAuthentication = 1
-	responseTypeAccessForbidden = 2
-	responseTypeError = 3
+	responseTypeAccessForbidden        = 2
+	responseTypeError                  = 3
 )
 
 func (r *oauthProxy) authenticateRequest(w http.ResponseWriter, req *http.Request) (int, context.Context) {
