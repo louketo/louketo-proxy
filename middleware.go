@@ -95,7 +95,7 @@ func (r *oauthProxy) authenticateRequest(w http.ResponseWriter, req *http.Reques
 	user, err := r.getIdentity(req)
 	if err != nil {
 		r.log.Error("no session found in request, redirecting for authorization", zap.Error(err))
-		return responseTypeRedirectAuthentication, nil
+		return responseTypeRedirectAuthentication, req.Context()
 	}
 	// create the request scope
 	scope := req.Context().Value(contextScopeName).(*RequestScope)
@@ -214,7 +214,9 @@ func (r *oauthProxy) authenticationMiddleware(resource *Resource) func(http.Hand
 			if resource.WhiteListed {
 				switch responseType {
 				case responseTypeServe:
+					fallthrough
 				case responseTypeRedirectAuthentication:
+					fallthrough
 				case responseTypeAccessForbidden:
 					next.ServeHTTP(w, req.WithContext(ctx))
 					return
