@@ -82,131 +82,162 @@ func (r *oauthProxy) loggingMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+const (
+	responseTypeServe = 0
+	responseTypeRedirectAuthentication = 1
+	responseTypeAccessForbidden = 2
+	responseTypeError = 3
+)
+
+func (r *oauthProxy) authenticateRequest(w http.ResponseWriter, req *http.Request) (int, context.Context) {
+	clientIP := req.RemoteAddr
+	// grab the user identity from the request
+	user, err := r.getIdentity(req)
+	if err != nil {
+		r.log.Error("no session found in request, redirecting for authorization", zap.Error(err))
+		return responseTypeRedirectAuthentication, nil
+	}
+	// create the request scope
+	scope := req.Context().Value(contextScopeName).(*RequestScope)
+	scope.Identity = user
+	ctx := context.WithValue(req.Context(), contextScopeName, scope)
+
+	// step: skip if we are running skip-token-verification
+	if r.config.SkipTokenVerification {
+		r.log.Warn("skip token verification enabled, skipping verification - TESTING ONLY")
+		if user.isExpired() {
+			r.log.Error("the session has expired and verification switch off",
+				zap.String("client_ip", clientIP),
+				zap.String("username", user.name),
+				zap.String("expired_on", user.expiresAt.String()))
+
+			return responseTypeRedirectAuthentication, ctx
+		}
+	} else {
+		if err := verifyToken(r.client, user.token); err != nil {
+			// step: if the error post verification is anything other than a token
+			// expired error we immediately throw an access forbidden - as there is
+			// something messed up in the token
+			if err != ErrAccessTokenExpired {
+				r.log.Error("access token failed verification",
+					zap.String("client_ip", clientIP),
+					zap.Error(err))
+
+				return responseTypeAccessForbidden, ctx
+			}
+
+			// step: check if we are refreshing the access tokens and if not re-auth
+			if !r.config.EnableRefreshTokens {
+				r.log.Error("session expired and access token refreshing is disabled",
+					zap.String("client_ip", clientIP),
+					zap.String("email", user.name),
+					zap.String("expired_on", user.expiresAt.String()))
+
+				return responseTypeRedirectAuthentication, ctx
+			}
+
+			r.log.Info("accces token for user has expired, attemping to refresh the token",
+				zap.String("client_ip", clientIP),
+				zap.String("email", user.email))
+
+			// step: check if the user has refresh token
+			refresh, encrypted, err := r.retrieveRefreshToken(req.WithContext(ctx), user)
+			if err != nil {
+				r.log.Error("unable to find a refresh token for user",
+					zap.String("client_ip", clientIP),
+					zap.String("email", user.email),
+					zap.Error(err))
+
+				return responseTypeRedirectAuthentication, ctx
+			}
+
+			// attempt to refresh the access token
+			token, exp, err := getRefreshedToken(r.client, refresh)
+			if err != nil {
+				switch err {
+				case ErrRefreshTokenExpired:
+					r.log.Warn("refresh token has expired, cannot retrieve access token",
+						zap.String("client_ip", clientIP),
+						zap.String("email", user.email))
+
+					r.clearAllCookies(req.WithContext(ctx), w)
+				default:
+					r.log.Error("failed to refresh the access token", zap.Error(err))
+				}
+
+				return responseTypeRedirectAuthentication, ctx
+			}
+			// get the expiration of the new access token
+			expiresIn := r.getAccessCookieExpiration(token, refresh)
+
+			r.log.Info("injecting the refreshed access token cookie",
+				zap.String("client_ip", clientIP),
+				zap.String("cookie_name", r.config.CookieAccessName),
+				zap.String("email", user.email),
+				zap.Duration("expires_in", time.Until(exp)))
+
+			accessToken := token.Encode()
+			if r.config.EnableEncryptedToken {
+				if accessToken, err = encodeText(accessToken, r.config.EncryptionKey); err != nil {
+					r.log.Error("unable to encode the access token", zap.Error(err))
+					return responseTypeError, ctx
+				}
+			}
+			// step: inject the refreshed access token
+			r.dropAccessTokenCookie(req.WithContext(ctx), w, accessToken, expiresIn)
+
+			if r.useStore() {
+				go func(old, new jose.JWT, encrypted string) {
+					if err := r.DeleteRefreshToken(old); err != nil {
+						r.log.Error("failed to remove old token", zap.Error(err))
+					}
+					if err := r.StoreRefreshToken(new, encrypted); err != nil {
+						r.log.Error("failed to store refresh token", zap.Error(err))
+						return
+					}
+				}(user.token, token, encrypted)
+			}
+			// update the with the new access token and inject into the context
+			user.token = token
+			ctx = context.WithValue(req.Context(), contextScopeName, scope)
+		}
+	}
+
+	return responseTypeServe, ctx
+}
+
 // authenticationMiddleware is responsible for verifying the access token
 func (r *oauthProxy) authenticationMiddleware(resource *Resource) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			clientIP := req.RemoteAddr
-			// grab the user identity from the request
-			user, err := r.getIdentity(req)
-			if err != nil {
-				r.log.Error("no session found in request, redirecting for authorization", zap.Error(err))
-				next.ServeHTTP(w, req.WithContext(r.redirectToAuthorization(w, req)))
-				return
-			}
-			// create the request scope
-			scope := req.Context().Value(contextScopeName).(*RequestScope)
-			scope.Identity = user
-			ctx := context.WithValue(req.Context(), contextScopeName, scope)
-
-			// step: skip if we are running skip-token-verification
-			if r.config.SkipTokenVerification {
-				r.log.Warn("skip token verification enabled, skipping verification - TESTING ONLY")
-				if user.isExpired() {
-					r.log.Error("the session has expired and verification switch off",
-						zap.String("client_ip", clientIP),
-						zap.String("username", user.name),
-						zap.String("expired_on", user.expiresAt.String()))
-
-					next.ServeHTTP(w, req.WithContext(r.redirectToAuthorization(w, req)))
+			responseType, ctx := r.authenticateRequest(w, req)
+			if resource.WhiteListed {
+				switch responseType {
+				case responseTypeServe:
+				case responseTypeRedirectAuthentication:
+				case responseTypeAccessForbidden:
+					next.ServeHTTP(w, req.WithContext(ctx))
+					return
+				default:
+					w.WriteHeader(http.StatusInternalServerError)
 					return
 				}
 			} else {
-				if err := verifyToken(r.client, user.token); err != nil {
-					// step: if the error post verification is anything other than a token
-					// expired error we immediately throw an access forbidden - as there is
-					// something messed up in the token
-					if err != ErrAccessTokenExpired {
-						r.log.Error("access token failed verification",
-							zap.String("client_ip", clientIP),
-							zap.Error(err))
-
-						next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req)))
-						return
-					}
-
-					// step: check if we are refreshing the access tokens and if not re-auth
-					if !r.config.EnableRefreshTokens {
-						r.log.Error("session expired and access token refreshing is disabled",
-							zap.String("client_ip", clientIP),
-							zap.String("email", user.name),
-							zap.String("expired_on", user.expiresAt.String()))
-
-						next.ServeHTTP(w, req.WithContext(r.redirectToAuthorization(w, req)))
-						return
-					}
-
-					r.log.Info("accces token for user has expired, attemping to refresh the token",
-						zap.String("client_ip", clientIP),
-						zap.String("email", user.email))
-
-					// step: check if the user has refresh token
-					refresh, encrypted, err := r.retrieveRefreshToken(req.WithContext(ctx), user)
-					if err != nil {
-						r.log.Error("unable to find a refresh token for user",
-							zap.String("client_ip", clientIP),
-							zap.String("email", user.email),
-							zap.Error(err))
-
-						next.ServeHTTP(w, req.WithContext(r.redirectToAuthorization(w, req)))
-						return
-					}
-
-					// attempt to refresh the access token
-					token, exp, err := getRefreshedToken(r.client, refresh)
-					if err != nil {
-						switch err {
-						case ErrRefreshTokenExpired:
-							r.log.Warn("refresh token has expired, cannot retrieve access token",
-								zap.String("client_ip", clientIP),
-								zap.String("email", user.email))
-
-							r.clearAllCookies(req.WithContext(ctx), w)
-						default:
-							r.log.Error("failed to refresh the access token", zap.Error(err))
-						}
-						next.ServeHTTP(w, req.WithContext(r.redirectToAuthorization(w, req)))
-
-						return
-					}
-					// get the expiration of the new access token
-					expiresIn := r.getAccessCookieExpiration(token, refresh)
-
-					r.log.Info("injecting the refreshed access token cookie",
-						zap.String("client_ip", clientIP),
-						zap.String("cookie_name", r.config.CookieAccessName),
-						zap.String("email", user.email),
-						zap.Duration("expires_in", time.Until(exp)))
-
-					accessToken := token.Encode()
-					if r.config.EnableEncryptedToken {
-						if accessToken, err = encodeText(accessToken, r.config.EncryptionKey); err != nil {
-							r.log.Error("unable to encode the access token", zap.Error(err))
-							w.WriteHeader(http.StatusInternalServerError)
-							return
-						}
-					}
-					// step: inject the refreshed access token
-					r.dropAccessTokenCookie(req.WithContext(ctx), w, accessToken, expiresIn)
-
-					if r.useStore() {
-						go func(old, new jose.JWT, encrypted string) {
-							if err := r.DeleteRefreshToken(old); err != nil {
-								r.log.Error("failed to remove old token", zap.Error(err))
-							}
-							if err := r.StoreRefreshToken(new, encrypted); err != nil {
-								r.log.Error("failed to store refresh token", zap.Error(err))
-								return
-							}
-						}(user.token, token, encrypted)
-					}
-					// update the with the new access token and inject into the context
-					user.token = token
-					ctx = context.WithValue(req.Context(), contextScopeName, scope)
+				switch responseType {
+				case responseTypeServe:
+					next.ServeHTTP(w, req.WithContext(ctx))
+					return
+				case responseTypeRedirectAuthentication:
+					next.ServeHTTP(w, req.WithContext(r.redirectToAuthorization(w, req)))
+					return
+				case responseTypeAccessForbidden:
+					next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req)))
+					return
+				default:
+					w.WriteHeader(http.StatusInternalServerError)
+					return
 				}
 			}
-
-			next.ServeHTTP(w, req.WithContext(ctx))
 		})
 	}
 }

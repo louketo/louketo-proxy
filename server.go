@@ -244,13 +244,16 @@ func (r *oauthProxy) createReverseProxy() error {
 			r.authenticationMiddleware(x),
 			r.admissionMiddleware(x),
 			r.headersMiddleware(r.config.AddClaims))
+		eWhiteListed := engine.With(
+			r.authenticationMiddleware(x),
+			r.headersMiddleware(r.config.AddClaims))
 
 		for _, m := range x.Methods {
-			if !x.WhiteListed {
+			if x.WhiteListed {
+				eWhiteListed.MethodFunc(m, x.URL, emptyHandler)
+			} else {
 				e.MethodFunc(m, x.URL, emptyHandler)
-				continue
 			}
-			engine.MethodFunc(m, x.URL, emptyHandler)
 		}
 	}
 
