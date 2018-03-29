@@ -102,6 +102,12 @@ func TestIsValid(t *testing.T) {
 			Ok:       true,
 		},
 		{
+			Resource: &Resource{URL: "/", Methods: allHTTPMethods},
+		},
+		{
+			Resource: &Resource{URL: "/admin/", Methods: allHTTPMethods},
+		},
+		{
 			Resource: &Resource{},
 		},
 		{
