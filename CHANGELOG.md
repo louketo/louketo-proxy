@@ -16,6 +16,9 @@ FEATURES:
 * Updated the docker base image alpine 3.7 [#PR313](https://github.com/gambol99/keycloak-proxy/pull/313)
 * Updated to Golang version 1.10 [#PR316](https://github.com/gambol99/keycloak-proxy/pull/316)
 
+FIXES:
+* Fixed a redirection bug [#PR337](https://github.com/gambol99/keycloak-proxy/pull/337)
+
 #### **2.1.1**
 
 FEATURES:
