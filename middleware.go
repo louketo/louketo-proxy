@@ -361,6 +361,7 @@ func (r *oauthProxy) securityMiddleware(next http.Handler) http.Handler {
 		ContentTypeNosniff:    r.config.EnableContentNoSniff,
 		FrameDeny:             r.config.EnableFrameDeny,
 		SSLRedirect:           r.config.EnableHTTPSRedirect,
+		SSLProxyHeaders:       map[string]string{"X-Forwarded-Proto": "https"},
 	})
 
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
