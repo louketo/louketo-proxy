@@ -173,7 +173,7 @@ type Config struct {
 	// UpstreamCA is the path to a CA certificate in PEM format to validate the upstream certificate
 	UpstreamCA string `json:"upstream-ca" yaml:"upstream-ca" usage:"the path to a file container a CA certificate to validate the upstream tls endpoint"`
 	// Resources is a list of protected resources
-	Resources []*Resource `json:"resources" yaml:"resources" usage:"list of resources 'uri=/admin|methods=GET,PUT|roles=role1,role2'"`
+	Resources []*Resource `json:"resources" yaml:"resources" usage:"list of resources 'uri=/admin*|methods=GET,PUT|roles=role1,role2'"`
 	// Headers permits adding customs headers across the board
 	Headers map[string]string `json:"headers" yaml:"headers" usage:"custom headers to the upstream request, key=value"`
 
