@@ -57,7 +57,7 @@ GLOBAL OPTIONS:
    --scopes value                            list of scopes requested when authenticating the user
    --upstream-url value                      url for the upstream endpoint you wish to proxy [$PROXY_UPSTREAM_URL]
    --upstream-ca value                       the path to a file container a CA certificate to validate the upstream tls endpoint
-   --resources value                         list of resources 'uri=/admin|methods=GET,PUT|roles=role1,role2'
+   --resources value                         list of resources 'uri=/admin*|methods=GET,PUT|roles=role1,role2'
    --headers value                           custom headers to the upstream request, key=value
    --enable-default-deny                     enables a default denial on all requests, you have to explicitly say what is permitted (recommended) (default: false)
    --enable-encrypted-token                  enable encryption for the access tokens (default: false)
@@ -508,7 +508,7 @@ Or on the command line
 ```shell
   --resources "uri=/some_white_listed_url|white-listed=true"
   --resources "uri=/*"  # requires authentication on the rest
-  --resources "uri=/admin|roles=admin,superuser|methods=POST,DELETE
+  --resources "uri=/admin*|roles=admin,superuser|methods=POST,DELETE
 ```
 
 #### **Mutual TLS**
