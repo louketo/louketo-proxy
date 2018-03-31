@@ -422,12 +422,6 @@ X-Auth-Name: Rohith Jayawardene
 
 In order to remain stateless and not have to rely on a central cache to persist the 'refresh_tokens', the refresh token is encrypted and added as a cookie using *crypto/aes*. Naturally the key must be the same if your running behind a load balancer etc. The key length should either 16 or 32 bytes depending or whether you want AES-128 or AES-256.
 
-#### **ClientID & Secret**
-
-Note, the client secret is optional and only required for setups where the oauth provider is using access_type = confidential; if the provider is 'public' simple add the client id.
-Alternatively, you might not need the proxy to perform the oauth authentication flow and instead simply verify the identity token (and potential role permissions), in which case, again
-just drop the client secret and use the client id and discovery-url.
-
 #### **Claim Matching**
 
 The proxy supports adding a variable list of claim matches against the presented tokens for additional access control. So for example you can match the 'iss' or 'aud' to the token or custom attributes; note each of the matches are regex's. Examples,  --match-claims 'aud=sso.*' --claim iss=https://.*' or via the configuration file. Note, each of matches are regex's.
