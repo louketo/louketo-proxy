@@ -18,6 +18,7 @@ FEATURES:
 
 FIXES:
 * Fixed a redirection bug [#PR337](https://github.com/gambol99/keycloak-proxy/pull/337)
+* Updated the go-oidc to fix the cache header [issues](https://github.com/gambol99/keycloak-proxy/issues/340)[#PR339](https://github.com/gambol99/keycloak-proxy/pull/339)
 
 #### **2.1.1**
 
