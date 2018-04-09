@@ -279,10 +279,19 @@ func emptyHandler(w http.ResponseWriter, req *http.Request) {}
 //  - if the user has a refresh token, the token is invalidated by the provider
 //  - optionally, the user can be redirected by to a url
 func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
-	// the user can specify a url to redirect the back
-	redirectURL := req.URL.Query().Get("redirect")
+	// @check if the redirection is there
+	var redirectURL string
+	for k := range req.URL.Query() {
+		if k == "redirect" {
+			redirectURL = req.URL.Query().Get("redirect")
+			if redirectURL == "" {
+				// than we can default to redirection url
+				redirectURL = strings.TrimSuffix(r.config.RedirectionURL, "/oauth/callback")
+			}
+		}
+	}
 
-	// step: drop the access token
+	// @step: drop the access token
 	user, err := r.getIdentity(req)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -317,10 +326,10 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 
 	// @check if we should redirect to the provider
 	if r.config.EnableLogoutRedirect {
-		redirectURL := fmt.Sprintf("%s/protocol/openid-connect/logout?redirect_uri=%s",
+		sendTo := fmt.Sprintf("%s/protocol/openid-connect/logout?redirect_uri=%s",
 			strings.TrimSuffix(r.config.DiscoveryURL, "/.well-known/openid-configuration"), redirectURL)
 
-		r.redirectToURL(redirectURL, w, req)
+		r.redirectToURL(sendTo, w, req)
 
 		return
 	}
