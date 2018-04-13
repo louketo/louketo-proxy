@@ -23,10 +23,11 @@ import (
 	"time"
 
 	"github.com/gambol99/go-oidc/jose"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
-	release  = "v2.1.0-rc3"
+	release  = "v2.1.1"
 	gitsha   = "no gitsha provided"
 	compiled = "0"
 	version  = ""
@@ -45,7 +46,6 @@ const (
 	httpSchema          = "http"
 	versionHeader       = "X-Auth-Proxy-Version"
 
-	oauthURL         = "/oauth"
 	authorizationURL = "/authorize"
 	callbackURL      = "/callback"
 	expiredURL       = "/expired"
@@ -56,11 +56,12 @@ const (
 	tokenURL         = "/token"
 	debugURL         = "/debug/pprof"
 
-	claimPreferredName  = "preferred_username"
 	claimAudience       = "aud"
-	claimResourceAccess = "resource_access"
+	claimPreferredName  = "preferred_username"
 	claimRealmAccess    = "realm_access"
+	claimResourceAccess = "resource_access"
 	claimResourceRoles  = "roles"
+	claimGroups         = "groups"
 )
 
 const (
@@ -70,6 +71,42 @@ const (
 	headerXForwardedSsl      = "X-Forwarded-Ssl"
 	headerXRealIP            = "X-Real-IP"
 	headerXRequestID         = "X-Request-ID"
+)
+
+var (
+	certificateRotationMetric = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "proxy_certificate_rotation_total",
+			Help: "The total amount of times the certificate has been rotated",
+		},
+	)
+	oauthTokensMetric = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "proxy_oauth_tokens_total",
+			Help: "A summary of the tokens issuesd, renewed or failed logins",
+		},
+		[]string{"action"},
+	)
+	oauthLatencyMetric = prometheus.NewSummaryVec(
+		prometheus.SummaryOpts{
+			Name: "proxy_oauth_request_latency_sec",
+			Help: "A summary of the request latancy for requests against the openid provider",
+		},
+		[]string{"action"},
+	)
+	latencyMetric = prometheus.NewSummary(
+		prometheus.SummaryOpts{
+			Name: "proxy_request_duration_sec",
+			Help: "A summary of the http request latency for proxy requests",
+		},
+	)
+	statusMetric = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "proxy_request_status_total",
+			Help: "The HTTP requests partitioned by status code",
+		},
+		[]string{"code", "method"},
+	)
 )
 
 var (
@@ -99,6 +136,8 @@ type Resource struct {
 	WhiteListed bool `json:"white-listed" yaml:"white-listed"`
 	// Roles the roles required to access this url
 	Roles []string `json:"roles" yaml:"roles"`
+	// Groups is a list of groups the user is in
+	Groups []string `json:"groups" yaml:"groups"`
 }
 
 // Config is the configuration for the proxy
@@ -121,6 +160,12 @@ type Config struct {
 	RevocationEndpoint string `json:"revocation-url" yaml:"revocation-url" usage:"url for the revocation endpoint to revoke refresh token" env:"REVOCATION_URL"`
 	// SkipOpenIDProviderTLSVerify skips the tls verification for openid provider communication
 	SkipOpenIDProviderTLSVerify bool `json:"skip-openid-provider-tls-verify" yaml:"skip-openid-provider-tls-verify" usage:"skip the verification of any TLS communication with the openid provider"`
+	// OpenIDProviderProxy proxy for openid provider communication
+	OpenIDProviderProxy string `json:"openid-provider-proxy" yaml:"openid-provider-proxy" usage:"proxy for communication with the openid provider"`
+	// OpenIDProviderTimeout is the timeout used to pulling the openid configuration from the provider
+	OpenIDProviderTimeout time.Duration `json:"openid-provider-timeout" yaml:"openid-provider-timeout" usage:"timeout for openid configuration on .well-known/openid-configuration"`
+	// OAuthURI is the uri for the oauth endpoints for the proxy
+	OAuthURI string `json:"oauth-uri" yaml:"oauth-uri" usage:"the uri for proxy oauth endpoints" env:"OAUTH_URI"`
 	// Scopes is a list of scope we should request
 	Scopes []string `json:"scopes" yaml:"scopes" usage:"list of scopes requested when authenticating the user"`
 	// Upstream is the upstream endpoint i.e whom were proxying to
@@ -128,12 +173,14 @@ type Config struct {
 	// UpstreamCA is the path to a CA certificate in PEM format to validate the upstream certificate
 	UpstreamCA string `json:"upstream-ca" yaml:"upstream-ca" usage:"the path to a file container a CA certificate to validate the upstream tls endpoint"`
 	// Resources is a list of protected resources
-	Resources []*Resource `json:"resources" yaml:"resources" usage:"list of resources 'uri=/admin|methods=GET,PUT|roles=role1,role2'"`
+	Resources []*Resource `json:"resources" yaml:"resources" usage:"list of resources 'uri=/admin*|methods=GET,PUT|roles=role1,role2'"`
 	// Headers permits adding customs headers across the board
 	Headers map[string]string `json:"headers" yaml:"headers" usage:"custom headers to the upstream request, key=value"`
 
-	// EnableTokenHeader adds the JWT token to the upstream authentication headers
-	EnableTokenHeader bool `json:"enable-token-header" yaml:"enable-token-header" usage:"enables the token authentication header X-Auth-Token to upstream"`
+	// EnableLogoutRedirect indicates we should redirect to the identity provider for logging out
+	EnableLogoutRedirect bool `json:"enable-logout-redirect" yaml:"enable-logout-redirect" usage:"indicates we should redirect to the identity provider for logging out"`
+	// EnableDefaultDeny indicates we should deny by default all requests
+	EnableDefaultDeny bool `json:"enable-default-deny" yaml:"enable-default-deny" usage:"enables a default denial on all requests, you have to explicitly say what is permitted (recommended)"`
 	// EnableEncryptedToken indicates the access token should be encoded
 	EnableEncryptedToken bool `json:"enable-encrypted-token" yaml:"enable-encrypted-token" usage:"enable encryption for the access tokens"`
 	// EnableLogging indicates if we should log all the requests
@@ -143,13 +190,17 @@ type Config struct {
 	// EnableForwarding enables the forwarding proxy
 	EnableForwarding bool `json:"enable-forwarding" yaml:"enable-forwarding" usage:"enables the forwarding proxy mode, signing outbound request"`
 	// EnableSecurityFilter enabled the security handler
-	EnableSecurityFilter bool `json:"enable-security-filter" yaml:"enable-security-filter" usage:"enables the security filter handler"`
+	EnableSecurityFilter bool `json:"enable-security-filter" yaml:"enable-security-filter" usage:"enables the security filter handler" env:"ENABLE_SECURITY_FILTER"`
 	// EnableRefreshTokens indicate's you wish to ignore using refresh tokens and re-auth on expiration of access token
-	EnableRefreshTokens bool `json:"enable-refresh-tokens" yaml:"enable-refresh-tokens" usage:"nables the handling of the refresh tokens" env:"ENABLE_SECURITY_FILTER"`
+	EnableRefreshTokens bool `json:"enable-refresh-tokens" yaml:"enable-refresh-tokens" usage:"enables the handling of the refresh tokens" env:"ENABLE_REFRESH_TOKEN"`
 	// EnableLoginHandler indicates we want the login handler enabled
 	EnableLoginHandler bool `json:"enable-login-handler" yaml:"enable-login-handler" usage:"enables the handling of the refresh tokens" env:"ENABLE_LOGIN_HANDLER"`
+	// EnableTokenHeader adds the JWT token to the upstream authentication headers
+	EnableTokenHeader bool `json:"enable-token-header" yaml:"enable-token-header" usage:"enables the token authentication header X-Auth-Token to upstream"`
 	// EnableAuthorizationHeader indicates we should pass the authorization header
-	EnableAuthorizationHeader bool `json:"enable-authorization-header" yaml:"enable-authorization-header" usage:"adds the authorization header to the proxy request"`
+	EnableAuthorizationHeader bool `json:"enable-authorization-header" yaml:"enable-authorization-header" usage:"adds the authorization header to the proxy request" env:"ENABLE_AUTHORIZATION_HEADER"`
+	// EnableAuthorizationCookies indicates we should pass the authorization cookies to the upstream endpoint
+	EnableAuthorizationCookies bool `json:"enable-authorization-cookies" yaml:"enable-authorization-cookies" usage:"adds the authorization cookies to the uptream proxy request" env:"ENABLE_AUTHORIZATION_COOKIES"`
 	// EnableHTTPSRedirect indicate we should redirection http -> https
 	EnableHTTPSRedirect bool `json:"enable-https-redirection" yaml:"enable-https-redirection" usage:"enable the http to https redirection on the http service"`
 	// EnableProfiling indicates if profiles is switched on
@@ -229,12 +280,25 @@ type Config struct {
 	UpstreamKeepalives bool `json:"upstream-keepalives" yaml:"upstream-keepalives" usage:"enables or disables the keepalive connections for upstream endpoint"`
 	// UpstreamTimeout is the maximum amount of time a dial will wait for a connect to complete
 	UpstreamTimeout time.Duration `json:"upstream-timeout" yaml:"upstream-timeout" usage:"maximum amount of time a dial will wait for a connect to complete"`
-	// UpstreamKeepaliveTimeout
+	// UpstreamKeepaliveTimeout is the upstream keepalive timeout
 	UpstreamKeepaliveTimeout time.Duration `json:"upstream-keepalive-timeout" yaml:"upstream-keepalive-timeout" usage:"specifies the keep-alive period for an active network connection"`
+	// UpstreamTLSHandshakeTimeout is the timeout for upstream to tls handshake
+	UpstreamTLSHandshakeTimeout time.Duration `json:"upstream-tls-handshake-timeout" yaml:"upstream-tls-handshake-timeout" usage:"the timeout placed on the tls handshake for upstream"`
+	// UpstreamResponseHeaderTimeout is the timeout for upstream header response
+	UpstreamResponseHeaderTimeout time.Duration `json:"upstream-response-header-timeout" yaml:"upstream-response-header-timeout" usage:"the timeout placed on the response header for upstream"`
+	// UpstreamExpectContinueTimeout is the timeout expect continue for upstream
+	UpstreamExpectContinueTimeout time.Duration `json:"upstream-expect-continue-timeout" yaml:"upstream-expect-continue-timeout" usage:"the timeout placed on the expect continue for upstream"`
+
 	// Verbose switches on debug logging
 	Verbose bool `json:"verbose" yaml:"verbose" usage:"switch on debug / verbose logging"`
 	// EnableProxyProtocol controls the proxy protocol
 	EnableProxyProtocol bool `json:"enabled-proxy-protocol" yaml:"enabled-proxy-protocol" usage:"enable proxy protocol"`
+	// ServerReadTimeout is the read timeout on the http server
+	ServerReadTimeout time.Duration `json:"server-read-timeout" yaml:"server-read-timeout" usage:"the server read timeout on the http server"`
+	// ServerWriteTimeout is the write timeout on the http server
+	ServerWriteTimeout time.Duration `json:"server-write-timeout" yaml:"server-write-timeout" usage:"the server write timeout on the http server"`
+	// ServerIdleTimeout is the idle timeout on the http server
+	ServerIdleTimeout time.Duration `json:"server-idle-timeout" yaml:"server-idle-timeout" usage:"the server idle timeout on the http server"`
 
 	// UseLetsEncrypt controls if we should use letsencrypt to retrieve certificates
 	UseLetsEncrypt bool `json:"use-letsencrypt" yaml:"use-letsencrypt" usage:"use letsencrypt for certificates"`
@@ -250,9 +314,9 @@ type Config struct {
 	Tags map[string]string `json:"tags" yaml:"tags" usage:"keypairs passed to the templates at render,e.g title=Page"`
 
 	// ForwardingUsername is the username to login to the oauth service
-	ForwardingUsername string `json:"forwarding-username" yaml:"forwarding-username" usage:"username to use when logging into the openid provider"`
+	ForwardingUsername string `json:"forwarding-username" yaml:"forwarding-username" usage:"username to use when logging into the openid provider" env:"FORWARDING_USERNAME"`
 	// ForwardingPassword is the password to use for the above
-	ForwardingPassword string `json:"forwarding-password" yaml:"forwarding-password" usage:"password to use when logging into the openid provider"`
+	ForwardingPassword string `json:"forwarding-password" yaml:"forwarding-password" usage:"password to use when logging into the openid provider" env:"FORWARDING_PASSWORD"`
 	// ForwardingDomains is a collection of domains to signs
 	ForwardingDomains []string `json:"forwarding-domains" yaml:"forwarding-domains" usage:"list of domains which should be signed; everything else is relayed unsigned"`
 
@@ -299,28 +363,30 @@ type reverseProxy interface {
 	ServeHTTP(rw http.ResponseWriter, req *http.Request)
 }
 
-// userContext represents a user
+// userContext holds the information extracted the token
 type userContext struct {
 	// the id of the user
 	id string
-	// the email associated to the user
-	email string
-	// a name of the user
-	name string
-	// the preferred name
-	preferredName string
-	// the expiration of the access token
-	expiresAt time.Time
-	// a set of roles associated
-	roles []string
 	// the audience for the token
 	audience string
-	// the access token itself
-	token jose.JWT
-	// the claims associated to the token
-	claims jose.Claims
 	// whether the context is from a session cookie or authorization header
 	bearerToken bool
+	// the claims associated to the token
+	claims jose.Claims
+	// the email associated to the user
+	email string
+	// the expiration of the access token
+	expiresAt time.Time
+	// groups is a collection of groups the user in in
+	groups []string
+	// a name of the user
+	name string
+	// preferredName is the name of the user
+	preferredName string
+	// roles is a collection of roles the users holds
+	roles []string
+	// the access token itself
+	token jose.JWT
 }
 
 // tokenResponse

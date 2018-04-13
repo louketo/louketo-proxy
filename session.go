@@ -16,7 +16,9 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gambol99/go-oidc/jose"
@@ -100,8 +102,25 @@ func getTokenInBearer(req *http.Request) (string, error) {
 
 // getTokenInCookie retrieves the access token from the request cookies
 func getTokenInCookie(req *http.Request, name string) (string, error) {
+	var token bytes.Buffer
+
 	if cookie := findCookie(name, req.Cookies()); cookie != nil {
-		return cookie.Value, nil
+		token.WriteString(cookie.Value)
 	}
-	return "", ErrSessionNotFound
+
+	// add also divided cookies
+	for i := 1; i < 600; i++ {
+		cookie := findCookie(name+"-"+strconv.Itoa(i), req.Cookies())
+		if cookie == nil {
+			break
+		} else {
+			token.WriteString(cookie.Value)
+		}
+	}
+
+	if token.Len() == 0 {
+		return "", ErrSessionNotFound
+	}
+
+	return token.String(), nil
 }

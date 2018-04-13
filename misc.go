@@ -27,6 +27,32 @@ import (
 	"go.uber.org/zap"
 )
 
+// filterCookies is responsible for censoring any cookies we don't want sent
+func filterCookies(req *http.Request, filter []string) error {
+	// @NOTE: there doesn't appear to be a way of removing a cookie from the http.Request as
+	// AddCookie() just append
+	cookies := req.Cookies()
+	// @step: empty the current cookies
+	req.Header.Set("Cookie", "")
+	// @step: iterate the cookies and filter out anything we
+	for _, x := range cookies {
+		var found bool
+		// @step: does this cookie match our filter?
+		for _, n := range filter {
+			if x.Name == n {
+				req.AddCookie(&http.Cookie{Name: x.Name, Value: "censored"})
+				found = true
+				break
+			}
+		}
+		if !found {
+			req.AddCookie(x)
+		}
+	}
+
+	return nil
+}
+
 // revokeProxy is responsible to stopping the middleware from proxying the request
 func (r *oauthProxy) revokeProxy(w http.ResponseWriter, req *http.Request) context.Context {
 	var scope *RequestScope
@@ -78,7 +104,7 @@ func (r *oauthProxy) redirectToAuthorization(w http.ResponseWriter, req *http.Re
 		w.WriteHeader(http.StatusForbidden)
 		return r.revokeProxy(w, req)
 	}
-	r.redirectToURL(oauthURL+authorizationURL+authQuery, w, req)
+	r.redirectToURL(r.config.WithOAuthURI(authorizationURL+authQuery), w, req)
 
 	return r.revokeProxy(w, req)
 }

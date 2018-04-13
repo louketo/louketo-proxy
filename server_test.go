@@ -147,6 +147,49 @@ func TestForbiddenTemplate(t *testing.T) {
 	newFakeProxy(cfg).RunTests(t, requests)
 }
 
+func TestAudienceHeader(t *testing.T) {
+	c := newFakeKeycloakConfig()
+	c.NoRedirects = false
+	requests := []fakeRequest{
+		{
+			URI:           "/auth_all/test",
+			HasLogin:      true,
+			ExpectedProxy: true,
+			Redirects:     true,
+			ExpectedProxyHeaders: map[string]string{
+				"X-Auth-Audience": "test",
+			},
+			ExpectedCode: http.StatusOK,
+		},
+	}
+	newFakeProxy(c).RunTests(t, requests)
+}
+
+func TestDefaultDenial(t *testing.T) {
+	config := newFakeKeycloakConfig()
+	config.EnableDefaultDeny = true
+	config.Resources = []*Resource{
+		{
+			URL:         "/public/*",
+			Methods:     allHTTPMethods,
+			WhiteListed: true,
+		},
+	}
+	requests := []fakeRequest{
+		{
+			URI:           "/public/allowed",
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
+		},
+		{
+			URI:          "/not_permited",
+			Redirects:    false,
+			ExpectedCode: http.StatusUnauthorized,
+		},
+	}
+	newFakeProxy(config).RunTests(t, requests)
+}
+
 func TestAuthorizationTemplate(t *testing.T) {
 	cfg := newFakeKeycloakConfig()
 	cfg.SignInPage = "templates/sign_in.html.tmpl"
@@ -159,7 +202,7 @@ func TestAuthorizationTemplate(t *testing.T) {
 	}
 	requests := []fakeRequest{
 		{
-			URI:                     oauthURL + authorizationURL,
+			URI:                     cfg.WithOAuthURI(authorizationURL),
 			Redirects:               true,
 			ExpectedCode:            http.StatusOK,
 			ExpectedContentContains: "Sign In",
@@ -327,6 +370,29 @@ func TestAuthTokenHeaderDisabled(t *testing.T) {
 	p.RunTests(t, requests)
 }
 
+func TestDisableAuthorizationCookie(t *testing.T) {
+	c := newFakeKeycloakConfig()
+	c.EnableAuthorizationCookies = false
+	p := newFakeProxy(c)
+	token := newTestToken(p.idp.getLocation())
+	signed, _ := p.idp.signToken(token.claims)
+
+	requests := []fakeRequest{
+		{
+			URI: "/auth_all/test",
+			Cookies: []*http.Cookie{
+				{Name: c.CookieAccessName, Value: signed.Encode()},
+				{Name: "mycookie", Value: "myvalue"},
+			},
+			HasToken:                true,
+			ExpectedContentContains: "kc-access=censored; mycookie=myvalue",
+			ExpectedCode:            http.StatusOK,
+			ExpectedProxy:           true,
+		},
+	}
+	p.RunTests(t, requests)
+}
+
 func newTestService() string {
 	_, _, u := newTestProxyService(nil)
 	return u
@@ -375,19 +441,22 @@ func newFakeHTTPRequest(method, path string) *http.Request {
 
 func newFakeKeycloakConfig() *Config {
 	return &Config{
-		ClientID:                  fakeClientID,
-		ClientSecret:              fakeSecret,
-		CookieAccessName:          "kc-access",
-		CookieRefreshName:         "kc-state",
-		DisableAllLogging:         true,
-		DiscoveryURL:              "127.0.0.1:0",
-		EnableAuthorizationHeader: true,
-		EnableLogging:             false,
-		EnableLoginHandler:        true,
-		EnableTokenHeader:         true,
-		Listen:                    "127.0.0.1:0",
-		Scopes:                    []string{},
-		Verbose:                   true,
+		ClientID:                   fakeClientID,
+		ClientSecret:               fakeSecret,
+		CookieAccessName:           "kc-access",
+		CookieRefreshName:          "kc-state",
+		DisableAllLogging:          true,
+		DiscoveryURL:               "127.0.0.1:0",
+		EnableAuthorizationCookies: true,
+		EnableAuthorizationHeader:  true,
+		EnableLogging:              false,
+		EnableLoginHandler:         true,
+		EnableTokenHeader:          true,
+		Listen:                     "127.0.0.1:0",
+		OAuthURI:                   "/oauth",
+		OpenIDProviderTimeout:      time.Second * 5,
+		Scopes:                     []string{},
+		Verbose:                    false,
 		Resources: []*Resource{
 			{
 				URL:     fakeAdminRoleURL,
@@ -503,6 +572,11 @@ func (t *fakeToken) getToken() jose.JWT {
 // setExpiration sets the expiration of the token
 func (t *fakeToken) setExpiration(tm time.Time) {
 	t.claims.Add("exp", float64(tm.Unix()))
+}
+
+// addGroups adds groups to then token
+func (t *fakeToken) addGroups(groups []string) {
+	t.claims.Add("groups", groups)
 }
 
 // addRealmRoles adds realms roles to token

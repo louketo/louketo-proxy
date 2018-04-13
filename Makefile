@@ -2,7 +2,7 @@ NAME=keycloak-proxy
 AUTHOR=gambol99
 AUTHOR_EMAIL=gambol99@gmail.com
 REGISTRY=quay.io
-GOVERSION ?= 1.8.3
+GOVERSION ?= 1.10
 ROOT_DIR=${PWD}
 HARDWARE=$(shell uname -m)
 GIT_SHA=$(shell git --no-pager describe --always --dirty)
@@ -133,6 +133,14 @@ cover:
 	@echo "--> Running go cover"
 	@go test --cover
 
+spelling:
+	@echo "--> Chekcing the spelling"
+	@which misspell 2>/dev/null ; if [ $$? -eq 1 ]; then \
+		go get -u github.com/client9/misspell/cmd/misspell; \
+	fi
+	@misspell -error *.go
+	@misspell -error *.md
+
 test:
 	@echo "--> Running the tests"
 	@if [ ! -d "vendor" ]; then \
@@ -141,6 +149,7 @@ test:
 	@go test -v
 	@$(MAKE) golang
 	@$(MAKE) gofmt
+	@$(MAKE) spelling
 	@$(MAKE) vet
 	@$(MAKE) cover
 

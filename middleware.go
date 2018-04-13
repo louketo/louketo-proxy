@@ -26,7 +26,6 @@ import (
 	"github.com/PuerkitoBio/purell"
 	"github.com/gambol99/go-oidc/jose"
 	"github.com/go-chi/chi/middleware"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/unrolled/secure"
 	"go.uber.org/zap"
 )
@@ -49,10 +48,15 @@ func entrypointMiddleware(next http.Handler) http.Handler {
 		req.RequestURI = req.URL.RawPath
 		req.URL.RawPath = req.URL.Path
 
-		// continue the flow
+		// @step: create a context for the request
 		scope := &RequestScope{}
-		resp := middleware.NewWrapResponseWriter(w, 2)
+		resp := middleware.NewWrapResponseWriter(w, 1)
+		start := time.Now()
 		next.ServeHTTP(resp, req.WithContext(context.WithValue(req.Context(), contextScopeName, scope)))
+
+		// @metric record the time taken then response code
+		latencyMetric.Observe(time.Since(start).Seconds())
+		statusMetric.WithLabelValues(fmt.Sprintf("%d", resp.Status()), req.Method).Inc()
 
 		// place back the original uri for proxying request
 		req.URL.Path = keep
@@ -75,27 +79,6 @@ func (r *oauthProxy) loggingMiddleware(next http.Handler) http.Handler {
 			zap.String("client_ip", addr),
 			zap.String("method", req.Method),
 			zap.String("path", req.URL.Path))
-	})
-}
-
-// metricsMiddleware is responsible for collecting metrics
-func (r *oauthProxy) metricsMiddleware(next http.Handler) http.Handler {
-	r.log.Info("enabled the service metrics middleware, available on", zap.String("path", fmt.Sprintf("%s%s", oauthURL, metricsURL)))
-
-	statusMetrics := prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "http_request_total",
-			Help: "The HTTP requests partitioned by status code",
-		},
-		[]string{"code", "method"},
-	)
-	prometheus.MustRegister(statusMetrics)
-
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		resp := w.(middleware.WrapResponseWriter)
-		statusMetrics.WithLabelValues(fmt.Sprintf("%d", resp.Status()), req.Method).Inc()
-
-		next.ServeHTTP(w, req)
 	})
 }
 
@@ -245,18 +228,28 @@ func (r *oauthProxy) admissionMiddleware(resource *Resource) func(http.Handler) 
 			}
 			user := scope.Identity
 
-			// step: we need to check the roles
-			if roles := len(resource.Roles); roles > 0 {
-				if !hasRoles(resource.Roles, user.roles) {
-					r.log.Warn("access denied, invalid roles",
-						zap.String("access", "denied"),
-						zap.String("email", user.email),
-						zap.String("resource", resource.URL),
-						zap.String("required", resource.getRoles()))
+			// @step: we need to check the roles
+			if !hasAccess(resource.Roles, user.roles, true) {
+				r.log.Warn("access denied, invalid roles",
+					zap.String("access", "denied"),
+					zap.String("email", user.email),
+					zap.String("resource", resource.URL),
+					zap.String("roles", resource.getRoles()))
 
-					next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req)))
-					return
-				}
+				next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req)))
+				return
+			}
+
+			// @step: check if we have any groups, the groups are there
+			if !hasAccess(resource.Groups, user.groups, false) {
+				r.log.Warn("access denied, invalid roles",
+					zap.String("access", "denied"),
+					zap.String("email", user.email),
+					zap.String("resource", resource.URL),
+					zap.String("groups", strings.Join(resource.Groups, ",")))
+
+				next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req)))
+				return
 			}
 
 			// step: if we have any claim matching, lets validate the tokens has the claims
@@ -317,17 +310,22 @@ func (r *oauthProxy) headersMiddleware(custom []string) func(http.Handler) http.
 		customClaims[x] = fmt.Sprintf("X-Auth-%s", toHeader(x))
 	}
 
+	cookieFilter := []string{r.config.CookieAccessName, r.config.CookieRefreshName}
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			scope := req.Context().Value(contextScopeName).(*RequestScope)
 			if scope.Identity != nil {
 				user := scope.Identity
+				req.Header.Set("X-Auth-Audience", user.audience)
 				req.Header.Set("X-Auth-Email", user.email)
 				req.Header.Set("X-Auth-ExpiresIn", user.expiresAt.String())
+				req.Header.Set("X-Auth-Groups", strings.Join(user.groups, ","))
 				req.Header.Set("X-Auth-Roles", strings.Join(user.roles, ","))
 				req.Header.Set("X-Auth-Subject", user.id)
 				req.Header.Set("X-Auth-Userid", user.name)
 				req.Header.Set("X-Auth-Username", user.name)
+
 				// should we add the token header?
 				if r.config.EnableTokenHeader {
 					req.Header.Set("X-Auth-Token", user.token.Encode())
@@ -336,7 +334,10 @@ func (r *oauthProxy) headersMiddleware(custom []string) func(http.Handler) http.
 				if r.config.EnableAuthorizationHeader {
 					req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", user.token.Encode()))
 				}
-
+				// are we filtering out the cookies
+				if !r.config.EnableAuthorizationCookies {
+					filterCookies(req, cookieFilter)
+				}
 				// inject any custom claims
 				for claim, header := range customClaims {
 					if claim, found := user.claims[claim]; found {
@@ -359,6 +360,7 @@ func (r *oauthProxy) securityMiddleware(next http.Handler) http.Handler {
 		ContentSecurityPolicy: r.config.ContentSecurityPolicy,
 		ContentTypeNosniff:    r.config.EnableContentNoSniff,
 		FrameDeny:             r.config.EnableFrameDeny,
+		SSLProxyHeaders:       map[string]string{"X-Forwarded-Proto": "https"},
 		SSLRedirect:           r.config.EnableHTTPSRedirect,
 	})
 

@@ -36,7 +36,7 @@ import (
 
 	httplog "log"
 
-	"github.com/armon/go-proxyproto"
+	proxyproto "github.com/armon/go-proxyproto"
 	"github.com/gambol99/go-oidc/oidc"
 	"github.com/gambol99/goproxy"
 	"github.com/pressly/chi"
@@ -65,6 +65,12 @@ type oauthProxy struct {
 func init() {
 	time.LoadLocation("UTC")             // ensure all time is in UTC
 	runtime.GOMAXPROCS(runtime.NumCPU()) // set the core
+	// @step: register the instrumentation
+	prometheus.MustRegister(certificateRotationMetric)
+	prometheus.MustRegister(latencyMetric)
+	prometheus.MustRegister(oauthLatencyMetric)
+	prometheus.MustRegister(oauthTokensMetric)
+	prometheus.MustRegister(statusMetric)
 }
 
 // newProxy create's a new proxy from configuration
@@ -161,9 +167,6 @@ func (r *oauthProxy) createReverseProxy() error {
 	if r.config.EnableLogging {
 		engine.Use(r.loggingMiddleware)
 	}
-	if r.config.EnableMetrics {
-		engine.Use(r.metricsMiddleware)
-	}
 	if r.config.EnableSecurityFilter {
 		engine.Use(r.securityMiddleware)
 	}
@@ -184,7 +187,7 @@ func (r *oauthProxy) createReverseProxy() error {
 	r.router = engine
 
 	// step: add the routing for oauth
-	engine.With(proxyDenyMiddleware).Route(oauthURL, func(e chi.Router) {
+	engine.With(proxyDenyMiddleware).Route(r.config.OAuthURI, func(e chi.Router) {
 		e.MethodNotAllowed(methodNotAllowHandlder)
 		e.Get(authorizationURL, r.oauthAuthorizationHandler)
 		e.Get(callbackURL, r.oauthCallbackHandler)
@@ -194,6 +197,7 @@ func (r *oauthProxy) createReverseProxy() error {
 		e.Get(tokenURL, r.tokenHandler)
 		e.Post(loginURL, r.loginHandler)
 		if r.config.EnableMetrics {
+			r.log.Info("enabled the service metrics middleware", zap.String("path", r.config.WithOAuthURI(metricsURL)))
 			e.Get(metricsURL, r.proxyMetricsHandler)
 		}
 	})
@@ -211,13 +215,27 @@ func (r *oauthProxy) createReverseProxy() error {
 		return err
 	}
 	// step: provision in the protected resources
+	enableDefaultDeny := r.config.EnableDefaultDeny
 	for _, x := range r.config.Resources {
 		if x.URL[len(x.URL)-1:] == "/" {
 			r.log.Warn("the resource url is not a prefix",
 				zap.String("resource", x.URL),
 				zap.String("change", x.URL),
-				zap.String("ammended", strings.TrimRight(x.URL, "/")))
+				zap.String("amended", strings.TrimRight(x.URL, "/")))
 		}
+		if x.URL == "/*" && r.config.EnableDefaultDeny {
+			switch x.WhiteListed {
+			case true:
+				return errors.New("you've asked for a default denial but whitelisted everything")
+			default:
+				enableDefaultDeny = false
+			}
+		}
+	}
+
+	if enableDefaultDeny {
+		r.log.Info("adding a default denial into the protected resources")
+		r.config.Resources = append(r.config.Resources, &Resource{URL: "/*", Methods: allHTTPMethods})
 	}
 
 	for _, x := range r.config.Resources {
@@ -226,18 +244,16 @@ func (r *oauthProxy) createReverseProxy() error {
 			r.authenticationMiddleware(x),
 			r.admissionMiddleware(x),
 			r.headersMiddleware(r.config.AddClaims))
-		e.MethodNotAllowed(emptyHandler)
-		switch x.WhiteListed {
-		case false:
-			for _, m := range x.Methods {
+
+		for _, m := range x.Methods {
+			if !x.WhiteListed {
 				e.MethodFunc(m, x.URL, emptyHandler)
+				continue
 			}
-		default:
-			for _, m := range x.Methods {
-				engine.MethodFunc(m, x.URL, emptyHandler)
-			}
+			engine.MethodFunc(m, x.URL, emptyHandler)
 		}
 	}
+
 	for name, value := range r.config.MatchClaims {
 		r.log.Info("token must contain", zap.String("claim", name), zap.String("value", value))
 	}
@@ -293,6 +309,7 @@ func (r *oauthProxy) createForwardingProxy() error {
 		if resp != nil && r.config.EnableLogging {
 			start := ctx.UserData.(time.Time)
 			latency := time.Since(start)
+			latencyMetric.Observe(latency.Seconds())
 			r.log.Info("client request",
 				zap.String("method", resp.Request.Method),
 				zap.String("path", resp.Request.URL.Path),
@@ -334,9 +351,11 @@ func (r *oauthProxy) Run() error {
 	}
 	// step: create the http server
 	server := &http.Server{
-		Addr:        r.config.Listen,
-		Handler:     r.router,
-		IdleTimeout: 120 * time.Second,
+		Addr:         r.config.Listen,
+		Handler:      r.router,
+		ReadTimeout:  r.config.ServerReadTimeout,
+		WriteTimeout: r.config.ServerWriteTimeout,
+		IdleTimeout:  r.config.ServerIdleTimeout,
 	}
 	r.server = server
 	r.listener = listener
@@ -361,8 +380,11 @@ func (r *oauthProxy) Run() error {
 			return err
 		}
 		httpsvc := &http.Server{
-			Addr:    r.config.ListenHTTP,
-			Handler: r.router,
+			Addr:         r.config.ListenHTTP,
+			Handler:      r.router,
+			ReadTimeout:  r.config.ServerReadTimeout,
+			WriteTimeout: r.config.ServerWriteTimeout,
+			IdleTimeout:  r.config.ServerIdleTimeout,
 		}
 		go func() {
 			if err := httpsvc.Serve(httpListener); err != nil {
@@ -388,6 +410,7 @@ type listenerConfig struct {
 	letsEncryptCacheDir string   // the path to cache letsencrypt certificates
 }
 
+// ErrHostNotConfigured indicates the hostname was not configured
 var ErrHostNotConfigured = errors.New("acme/autocert: host not configured")
 
 // createHTTPListener is responsible for creating a listening socket
@@ -454,8 +477,7 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 
 			getCertificate = m.GetCertificate
 		} else {
-			r.log.Info("tls support enabled",
-				zap.String("certificate", config.certificate), zap.String("private_key", config.privateKey))
+			r.log.Info("tls support enabled", zap.String("certificate", config.certificate), zap.String("private_key", config.privateKey))
 			// creating a certificate rotation
 			rotate, err := newCertificateRotator(config.certificate, config.privateKey, r.log)
 			if err != nil {
@@ -550,9 +572,12 @@ func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) error {
 
 	// update the tls configuration of the reverse proxy
 	r.upstream.(*goproxy.ProxyHttpServer).Tr = &http.Transport{
-		Dial:              dialer,
-		TLSClientConfig:   tlsConfig,
-		DisableKeepAlives: !r.config.UpstreamKeepalives,
+		Dial:                  dialer,
+		DisableKeepAlives:     !r.config.UpstreamKeepalives,
+		ExpectContinueTimeout: r.config.UpstreamExpectContinueTimeout,
+		ResponseHeaderTimeout: r.config.UpstreamResponseHeaderTimeout,
+		TLSClientConfig:       tlsConfig,
+		TLSHandshakeTimeout:   r.config.UpstreamTLSHandshakeTimeout,
 	}
 
 	return nil
@@ -594,6 +619,18 @@ func (r *oauthProxy) newOpenIDClient() (*oidc.Client, oidc.ProviderConfig, *http
 	// step: create a idp http client
 	hc := &http.Client{
 		Transport: &http.Transport{
+			Proxy: func(_ *http.Request) (*url.URL, error) {
+				if r.config.OpenIDProviderProxy != "" {
+					idpProxyURL, err := url.Parse(r.config.OpenIDProviderProxy)
+					if err != nil {
+						r.log.Warn("invalid proxy address for open IDP provider proxy", zap.Error(err))
+						return nil, nil
+					}
+					return idpProxyURL, nil
+				}
+
+				return nil, nil
+			},
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: r.config.SkipOpenIDProviderTLSVerify,
 			},
@@ -605,7 +642,9 @@ func (r *oauthProxy) newOpenIDClient() (*oidc.Client, oidc.ProviderConfig, *http
 	completeCh := make(chan bool)
 	go func() {
 		for {
-			r.log.Info("attempting to retrieve configuration discovery url", zap.String("url", r.config.DiscoveryURL))
+			r.log.Info("attempting to retrieve configuration discovery url",
+				zap.String("url", r.config.DiscoveryURL),
+				zap.String("timeout", r.config.OpenIDProviderTimeout.String()))
 			if config, err = oidc.FetchProviderConfig(hc, r.config.DiscoveryURL); err == nil {
 				break // break and complete
 			}
@@ -616,7 +655,7 @@ func (r *oauthProxy) newOpenIDClient() (*oidc.Client, oidc.ProviderConfig, *http
 	}()
 	// wait for timeout or successful retrieval
 	select {
-	case <-time.After(30 * time.Second):
+	case <-time.After(r.config.OpenIDProviderTimeout):
 		return nil, config, nil, errors.New("failed to retrieve the provider configuration from discovery url")
 	case <-completeCh:
 		r.log.Info("successfully retrieved openid configuration from the discovery")

@@ -225,32 +225,91 @@ func TestDecryptDataBlock(t *testing.T) {
 
 }
 
-func TestHasRoles(t *testing.T) {
-	testCases := []struct {
-		Roles    []string
-		Required []string
-		Ok       bool
+func TestHasAccessOK(t *testing.T) {
+	cs := []struct {
+		Have     []string
+		Need     []string
+		Required bool
+	}{
+		{},
+		{
+			Have: []string{"a", "b"},
+		},
+		{
+			Have:     []string{"a", "b", "c"},
+			Need:     []string{"a", "b"},
+			Required: true,
+		},
+		{
+			Have: []string{"a", "b", "c"},
+			Need: []string{"a", "c"},
+		},
+		{
+			Have: []string{"a", "b", "c"},
+			Need: []string{"c"},
+		},
+		{
+			Have: []string{"a", "b", "c"},
+			Need: []string{"b"},
+		},
+		{
+			Have: []string{"a", "b", "c"},
+			Need: []string{"b"},
+		},
+		{
+			Have: []string{"a", "b"},
+			Need: []string{"a"},
+		},
+		{
+			Have:     []string{"a", "b"},
+			Need:     []string{"a"},
+			Required: true,
+		},
+		{
+			Have:     []string{"b", "a"},
+			Need:     []string{"a"},
+			Required: true,
+		},
+	}
+	for i, x := range cs {
+		assert.True(t, hasAccess(x.Need, x.Have, x.Required), "case: %d should be true, have: %v, need: %v, require: %t ", i, x.Have, x.Need, x.Required)
+	}
+}
+
+func TestHasAccessBad(t *testing.T) {
+	cs := []struct {
+		Have     []string
+		Need     []string
+		Required bool
 	}{
 		{
-			Roles:    []string{"a", "b", "c"},
-			Required: []string{"a", "b"},
-			Ok:       true,
+			Have: []string{"a", "b"},
+			Need: []string{"c"},
 		},
 		{
-			Roles:    []string{"a", "b"},
-			Required: []string{"a", "b"},
-			Ok:       true,
+			Have:     []string{"a", "b"},
+			Need:     []string{"c"},
+			Required: true,
 		},
 		{
-			Roles:    []string{"a", "b", "c"},
-			Required: []string{"a", "d"},
+			Have:     []string{"a", "c"},
+			Need:     []string{"a", "b"},
+			Required: true,
+		},
+		{
+			Have:     []string{"a", "b", "c"},
+			Need:     []string{"b", "j"},
+			Required: true,
+		},
+		{
+			Have:     []string{"a", "b", "c"},
+			Need:     []string{"a", "d"},
+			Required: true,
 		},
 	}
 
-	for i, test := range testCases {
-		if !hasRoles(test.Required, test.Roles) && test.Ok {
-			assert.Fail(t, "test case: %i should have ok, %s, %s", i, test.Roles, test.Required)
-		}
+	for i, x := range cs {
+		assert.False(t, hasAccess(x.Need, x.Have, x.Required), "case: %d should be false, have: %v, need: %v, require: %t ", i, x.Have, x.Need, x.Required)
 	}
 }
 

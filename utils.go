@@ -187,15 +187,29 @@ func fileExists(filename string) bool {
 	return true
 }
 
-// hasRoles checks the scopes are the same
-func hasRoles(required, issued []string) bool {
-	for _, role := range required {
-		if !containedIn(role, issued) {
-			return false
+// hasAccess checks we have all or any of the needed items in the list
+func hasAccess(need, have []string, all bool) bool {
+	if len(need) == 0 {
+		return true
+	}
+
+	var matched int
+	for _, x := range need {
+		found := containedIn(x, have)
+		switch found {
+		case true:
+			if !all {
+				return true
+			}
+			matched++
+		default:
+			if all {
+				return false
+			}
 		}
 	}
 
-	return true
+	return matched > 0
 }
 
 // containedIn checks if a value in a list of a strings

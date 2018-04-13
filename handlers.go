@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"github.com/gambol99/go-oidc/oauth2"
+
 	"github.com/pressly/chi"
 	"go.uber.org/zap"
 )
@@ -54,7 +55,7 @@ func (r *oauthProxy) getRedirectionURL(w http.ResponseWriter, req *http.Request)
 		redirect = r.config.RedirectionURL
 	}
 
-	return fmt.Sprintf("%s/oauth/callback", redirect)
+	return fmt.Sprintf("%s%s", redirect, r.config.WithOAuthURI("callback"))
 }
 
 // oauthAuthorizationHandler is responsible for performing the redirection to oauth provider
@@ -161,6 +162,9 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 		zap.String("expires", identity.ExpiresAt.Format(time.RFC3339)),
 		zap.String("duration", time.Until(identity.ExpiresAt).String()))
 
+	// @metric a token has beeb issued
+	oauthTokensMetric.WithLabelValues("issued").Inc()
+
 	// step: does the response has a refresh token and we are NOT ignore refresh tokens?
 	if r.config.EnableRefreshTokens && resp.RefreshToken != "" {
 		var encrypted string
@@ -224,6 +228,7 @@ func (r *oauthProxy) loginHandler(w http.ResponseWriter, req *http.Request) {
 			return "unable to create the oauth client for user_credentials request", http.StatusInternalServerError, err
 		}
 
+		start := time.Now()
 		token, err := client.UserCredsToken(username, password)
 		if err != nil {
 			if strings.HasPrefix(err.Error(), oauth2.ErrorInvalidGrant) {
@@ -231,6 +236,8 @@ func (r *oauthProxy) loginHandler(w http.ResponseWriter, req *http.Request) {
 			}
 			return "unable to request the access token via grant_type 'password'", http.StatusInternalServerError, err
 		}
+		// @metric observe the time taken for a login request
+		oauthLatencyMetric.WithLabelValues("login").Observe(time.Since(start).Seconds())
 
 		_, identity, err := parseToken(token.AccessToken)
 		if err != nil {
@@ -238,6 +245,9 @@ func (r *oauthProxy) loginHandler(w http.ResponseWriter, req *http.Request) {
 		}
 
 		r.dropAccessTokenCookie(req, w, token.AccessToken, time.Until(identity.ExpiresAt))
+
+		// @metric a token has been issued
+		oauthTokensMetric.WithLabelValues("login").Inc()
 
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(tokenResponse{
@@ -269,10 +279,19 @@ func emptyHandler(w http.ResponseWriter, req *http.Request) {}
 //  - if the user has a refresh token, the token is invalidated by the provider
 //  - optionally, the user can be redirected by to a url
 func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
-	// the user can specify a url to redirect the back
-	redirectURL := req.URL.Query().Get("redirect")
+	// @check if the redirection is there
+	var redirectURL string
+	for k := range req.URL.Query() {
+		if k == "redirect" {
+			redirectURL = req.URL.Query().Get("redirect")
+			if redirectURL == "" {
+				// than we can default to redirection url
+				redirectURL = strings.TrimSuffix(r.config.RedirectionURL, "/oauth/callback")
+			}
+		}
+	}
 
-	// step: drop the access token
+	// @step: drop the access token
 	user, err := r.getIdentity(req)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -285,6 +304,9 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 		identityToken = refresh
 	}
 	r.clearAllCookies(req, w)
+
+	// @metric increment the logout counter
+	oauthTokensMetric.WithLabelValues("logout").Inc()
 
 	// step: check if the user has a state session and if so revoke it
 	if r.useStore() {
@@ -301,6 +323,16 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 		revokeDefault = r.idp.EndSessionEndpoint.String()
 	}
 	revocationURL := defaultTo(r.config.RevocationEndpoint, revokeDefault)
+
+	// @check if we should redirect to the provider
+	if r.config.EnableLogoutRedirect {
+		sendTo := fmt.Sprintf("%s/protocol/openid-connect/logout?redirect_uri=%s",
+			strings.TrimSuffix(r.config.DiscoveryURL, "/.well-known/openid-configuration"), redirectURL)
+
+		r.redirectToURL(sendTo, w, req)
+
+		return
+	}
 
 	// step: do we have a revocation endpoint?
 	if revocationURL != "" {
@@ -322,15 +354,18 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+
 		// step: add the authentication headers and content-type
 		request.SetBasicAuth(encodedID, encodedSecret)
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
+		start := time.Now()
 		response, err := client.HttpClient().Do(request)
 		if err != nil {
 			r.log.Error("unable to post to revocation endpoint", zap.Error(err))
 			return
 		}
+		oauthLatencyMetric.WithLabelValues("revocation").Observe(time.Since(start).Seconds())
 
 		// step: check the response
 		switch response.StatusCode {

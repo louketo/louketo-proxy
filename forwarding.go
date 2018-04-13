@@ -30,13 +30,33 @@ func (r *oauthProxy) proxyMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		next.ServeHTTP(w, req)
 
-		// step: retrieve the request scope
+		// @step: retrieve the request scope
 		scope := req.Context().Value(contextScopeName)
 		if scope != nil {
 			sc := scope.(*RequestScope)
 			if sc.AccessDenied {
 				return
 			}
+		}
+
+		// @step: add the proxy forwarding headers
+		req.Header.Add("X-Forwarded-For", realIP(req))
+		req.Header.Set("X-Forwarded-Host", req.URL.Host)
+		req.Header.Set("X-Forwarded-Proto", req.Header.Get("X-Forwarded-Proto"))
+
+		// @step: add any custom headers to the request
+		for k, v := range r.config.Headers {
+			req.Header.Set(k, v)
+		}
+
+		// @note: by default goproxy only provides a forwarding proxy, thus all requests have to be absolute and we must update the host headers
+		req.URL.Host = r.endpoint.Host
+		req.URL.Scheme = r.endpoint.Scheme
+		if v := req.Header.Get("Host"); v != "" {
+			req.Host = v
+			req.Header.Del("Host")
+		} else {
+			req.Host = r.endpoint.Host
 		}
 
 		if isUpgradedConnection(req) {
@@ -48,21 +68,6 @@ func (r *oauthProxy) proxyMiddleware(next http.Handler) http.Handler {
 			}
 			return
 		}
-
-		// add any custom headers to the request
-		for k, v := range r.config.Headers {
-			req.Header.Set(k, v)
-		}
-
-		// By default goproxy only provides a forwarding proxy, thus all requests have to be absolute
-		// and we must update the host headers
-		req.URL.Host = r.endpoint.Host
-		req.URL.Scheme = r.endpoint.Scheme
-		req.Host = r.endpoint.Host
-
-		req.Header.Add("X-Forwarded-For", realIP(req))
-		req.Header.Set("X-Forwarded-Host", req.URL.Host)
-		req.Header.Set("X-Forwarded-Proto", req.Header.Get("X-Forwarded-Proto"))
 
 		r.upstream.ServeHTTP(w, req)
 	})
@@ -200,8 +205,8 @@ func (r *oauthProxy) forwardProxyHandler() func(*http.Request, *http.Response) {
 		req.URL.Host = hostname
 		// is the host being signed?
 		if len(r.config.ForwardingDomains) == 0 || containsSubString(hostname, r.config.ForwardingDomains) {
-			req.Header.Set("X-Forwarded-Agent", prog)
 			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", state.token.Encode()))
+			req.Header.Set("X-Forwarded-Agent", prog)
 		}
 	}
 }
