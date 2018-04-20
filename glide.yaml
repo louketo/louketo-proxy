@@ -4,7 +4,7 @@ import:
 - package: github.com/armon/go-proxyproto
 - package: github.com/boltdb/bolt
 - package: github.com/fsnotify/fsnotify
-- package: github.com/gambol99/go-oidc
+- package: github.com/coreos/go-oidc
   subpackages:
   - jose
   - oauth2
