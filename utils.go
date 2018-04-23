@@ -18,8 +18,8 @@ package main
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/md5"
 	"crypto/rand"
+	sha "crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
@@ -382,7 +382,7 @@ func getWithin(expires time.Time, within float64) time.Duration {
 
 // getHashKey returns a hash of the encodes jwt token
 func getHashKey(token *jose.JWT) string {
-	hash := md5.Sum([]byte(token.Encode()))
+	hash := sha.Sum256([]byte(token.Encode()))
 	return base64.RawStdEncoding.EncodeToString(hash[:])
 }
 
