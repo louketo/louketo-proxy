@@ -1,5 +1,5 @@
-hash: f6bf634e96842367a387aa5cc9bfadc78ea32060c513c04ae050412f205a2ddb
-updated: 2017-07-11T17:24:26.212477004+02:00
+hash: 409211d06c46fb5877cfaa7bcd36d348d4e250283386651d864dde05b6c16074
+updated: 2018-04-23T12:57:25.621998769-03:00
 imports:
 - name: github.com/armon/go-proxyproto
   version: 609d6338d3a76ec26ac3fe7045a164d9a58436e7
@@ -15,6 +15,8 @@ imports:
   - health
   - httputil
   - timeutil
+- name: github.com/elazarl/goproxy
+  version: a96fa3a318260eab29abaf32f7128c9eb07fb073
 - name: github.com/fsnotify/fsnotify
   version: fd9ec7deca8bf46ecd2a795baaacf2b3a9be1197
 - name: github.com/gambol99/go-oidc
@@ -72,7 +74,7 @@ imports:
 - name: github.com/urfave/cli
   version: 0bdeddeeb0f650497d603c4ad7b20cfe685682f6
 - name: go.uber.org/atomic
-  version: 4e336646b2ef9fc6e47be8e21594178f98e5ebcf
+  version: 8474b86a5a6f79c443ce4b2992817ff32cf208b8
 - name: go.uber.org/zap
   version: 54371c67da1bc746325e5582e48521a5db5d64ca
   subpackages:

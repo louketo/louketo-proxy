@@ -9,7 +9,7 @@ import:
   - jose
   - oauth2
   - oidc
-- package: github.com/gambol99/goproxy
+- package: github.com/elazarl/goproxy
 - package: github.com/go-chi/chi
   subpackages:
   - middleware
