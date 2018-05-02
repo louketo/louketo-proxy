@@ -65,12 +65,8 @@ const (
 )
 
 const (
-	headerXForwardedFor      = "X-Forwarded-For"
-	headerXForwardedProto    = "X-Forwarded-Proto"
-	headerXForwardedProtocol = "X-Forwarded-Protocol"
-	headerXForwardedSsl      = "X-Forwarded-Ssl"
-	headerXRealIP            = "X-Real-IP"
-	headerXRequestID         = "X-Request-ID"
+	headerXForwardedFor = "X-Forwarded-For"
+	headerXRealIP       = "X-Real-IP"
 )
 
 var (
