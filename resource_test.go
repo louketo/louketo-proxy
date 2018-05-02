@@ -23,8 +23,7 @@ import (
 
 func TestDecodeResourceBad(t *testing.T) {
 	cs := []struct {
-		Option   string
-		Resource *Resource
+		Option string
 	}{
 		{Option: "unknown=bad"},
 		{Option: "uri=/|unknown=bad"},
