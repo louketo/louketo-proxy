@@ -32,7 +32,6 @@ import (
 	"github.com/gambol99/go-oidc/oauth2"
 	"github.com/pressly/chi"
 	"github.com/pressly/chi/middleware"
-	"github.com/stretchr/testify/assert"
 )
 
 type fakeAuthServer struct {
@@ -273,15 +272,6 @@ func (r *fakeAuthServer) tokenHandler(w http.ResponseWriter, req *http.Request) 
 	default:
 		w.WriteHeader(http.StatusBadRequest)
 	}
-}
-
-func TestGetUserinfo(t *testing.T) {
-	px, idp, _ := newTestProxyService(nil)
-	token := newTestToken(idp.getLocation()).getToken()
-	client, _ := px.client.OAuthClient()
-	claims, err := getUserinfo(client, px.idp.UserInfoEndpoint.String(), token.Encode())
-	assert.NoError(t, err)
-	assert.NotEmpty(t, claims)
 }
 
 func TestTokenExpired(t *testing.T) {
