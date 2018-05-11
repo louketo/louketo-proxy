@@ -16,11 +16,6 @@ limitations under the License.
 package main
 
 import (
-	"encoding/json"
-	"errors"
-	"fmt"
-	"io/ioutil"
-	"net/http"
 	"strings"
 	"time"
 
@@ -81,33 +76,6 @@ func getRefreshedToken(client *oidc.Client, t string) (jose.JWT, time.Time, erro
 // exchangeAuthenticationCode exchanges the authentication code with the oauth server for a access token
 func exchangeAuthenticationCode(client *oauth2.Client, code string) (oauth2.TokenResponse, error) {
 	return getToken(client, oauth2.GrantTypeAuthCode, code)
-}
-
-// getUserinfo is responsible for getting the userinfo from the IDPD
-func getUserinfo(client *oauth2.Client, endpoint string, token string) (jose.Claims, error) {
-	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set(authorizationHeader, fmt.Sprintf("Bearer %s", token))
-
-	resp, err := client.HttpClient().Do(req)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, errors.New("token not validate by userinfo endpoint")
-	}
-	content, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	var claims jose.Claims
-	if err := json.Unmarshal(content, &claims); err != nil {
-		return nil, err
-	}
-
-	return claims, nil
 }
 
 // getToken retrieves a code from the provider, extracts and verified the token
