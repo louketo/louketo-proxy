@@ -15,10 +15,20 @@ FEATURES:
 * Force configuration to use the wildcard [#PR338](https://github.com/gambol99/keycloak-proxy/pull/338)
 * Updated the docker base image alpine 3.7 [#PR313](https://github.com/gambol99/keycloak-proxy/pull/313)
 * Updated to Golang version 1.10 [#PR316](https://github.com/gambol99/keycloak-proxy/pull/316)
+* Adding the `--enable-session-cookies` to enable session only cookies [#PR357](https://github.com/gambol99/keycloak-proxy/pull/357)
+* Imported the fix to the cache headers from upstream go-oidc [#PR341](https://github.com/gambol99/keycloak-proxy/pull/341)
+* Switching to using SHA256 from MD5 for the token hash [#PR350](https://github.com/gambol99/keycloak-proxy/pull/350)
 
 FIXES:
 * Fixed a redirection bug [#PR337](https://github.com/gambol99/keycloak-proxy/pull/337)
 * Updated the go-oidc to fix the cache header [issues](https://github.com/gambol99/keycloak-proxy/issues/340)[#PR339](https://github.com/gambol99/keycloak-proxy/pull/339)
+* Fixed up the readme indicating we can run without client secret [#PR342](https://github.com/gambol99/keycloak-proxy/pull/342)
+* Fixed up the redirect url in the logout handler [#PR345](https://github.com/gambol99/keycloak-proxy/pull/345)
+* Switched to using the upstream stream goproxy [#PR349](https://github.com/gambol99/keycloak-proxy/pull/349)
+* Removing the unused code [#PR352](https://github.com/gambol99/keycloak-proxy/pull/352)
+* Reducing the aggressive timeouts on the upstream [#PR354](https://github.com/gambol99/keycloak-proxy/pull/354)
+* Fixed the issue with a zero exp claim [#PR355](https://github.com/gambol99/keycloak-proxy/pull/355)
+* Added a method check for the hijacker [#PR302](https://github.com/gambol99/keycloak-proxy/pull/302)
 
 #### **2.1.1**
 
