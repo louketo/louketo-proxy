@@ -210,6 +210,10 @@ func (r *oauthProxy) createReverseProxy() error {
 		})
 	}
 
+	if r.config.EnableSessionCookies {
+		r.log.Info("using session cookies only for access and refresh tokens")
+	}
+
 	// step: load the templates if any
 	if err := r.createTemplates(); err != nil {
 		return err

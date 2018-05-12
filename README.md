@@ -34,7 +34,7 @@ USAGE:
    keycloak-proxy [options]
 
 VERSION:
-   v2.1.1 (git+sha: 35e834a, built: 02-03-2018)
+   v2.1.1 (git+sha: c1e8399-dirty, built: 12-05-2018)
 
 AUTHOR:
    Rohith <gambol99@gmail.com>
@@ -54,11 +54,13 @@ GLOBAL OPTIONS:
    --skip-openid-provider-tls-verify         skip the verification of any TLS communication with the openid provider (default: false)
    --openid-provider-proxy value             proxy for communication with the openid provider
    --openid-provider-timeout value           timeout for openid configuration on .well-known/openid-configuration (default: 30s)
+   --oauth-uri value                         the uri for proxy oauth endpoints (default: "/oauth") [$PROXY_OAUTH_URI]
    --scopes value                            list of scopes requested when authenticating the user
    --upstream-url value                      url for the upstream endpoint you wish to proxy [$PROXY_UPSTREAM_URL]
    --upstream-ca value                       the path to a file container a CA certificate to validate the upstream tls endpoint
    --resources value                         list of resources 'uri=/admin*|methods=GET,PUT|roles=role1,role2'
    --headers value                           custom headers to the upstream request, key=value
+   --enable-logout-redirect                  indicates we should redirect to the identity provider for logging out (default: false)
    --enable-default-deny                     enables a default denial on all requests, you have to explicitly say what is permitted (recommended) (default: false)
    --enable-encrypted-token                  enable encryption for the access tokens (default: false)
    --enable-logging                          enable http logging of the requests (default: false)
@@ -66,6 +68,7 @@ GLOBAL OPTIONS:
    --enable-forwarding                       enables the forwarding proxy mode, signing outbound request (default: false)
    --enable-security-filter                  enables the security filter handler (default: false) [$PROXY_ENABLE_SECURITY_FILTER]
    --enable-refresh-tokens                   enables the handling of the refresh tokens (default: false) [$PROXY_ENABLE_REFRESH_TOKEN]
+   --enable-session-cookies                  access and refresh tokens are session only i.e. removed browser close (default: false)
    --enable-login-handler                    enables the handling of the refresh tokens (default: false) [$PROXY_ENABLE_LOGIN_HANDLER]
    --enable-token-header                     enables the token authentication header X-Auth-Token to upstream (default: true)
    --enable-authorization-header             adds the authorization header to the proxy request (default: true) [$PROXY_ENABLE_AUTHORIZATION_HEADER]
@@ -108,11 +111,11 @@ GLOBAL OPTIONS:
    --upstream-timeout value                  maximum amount of time a dial will wait for a connect to complete (default: 10s)
    --upstream-keepalive-timeout value        specifies the keep-alive period for an active network connection (default: 10s)
    --upstream-tls-handshake-timeout value    the timeout placed on the tls handshake for upstream (default: 10s)
-   --upstream-response-header-timeout value  the timeout placed on the response header for upstream (default: 1s)
+   --upstream-response-header-timeout value  the timeout placed on the response header for upstream (default: 10s)
    --upstream-expect-continue-timeout value  the timeout placed on the expect continue for upstream (default: 10s)
    --verbose                                 switch on debug / verbose logging (default: false)
    --enabled-proxy-protocol                  enable proxy protocol (default: false)
-   --server-read-timeout value               the server read timeout on the http server (default: 5s)
+   --server-read-timeout value               the server read timeout on the http server (default: 10s)
    --server-write-timeout value              the server write timeout on the http server (default: 10s)
    --server-idle-timeout value               the server idle timeout on the http server (default: 2m0s)
    --use-letsencrypt                         use letsencrypt for certificates (default: false)
@@ -120,8 +123,8 @@ GLOBAL OPTIONS:
    --sign-in-page value                      path to custom template displayed for signin
    --forbidden-page value                    path to custom template used for access forbidden
    --tags value                              keypairs passed to the templates at render,e.g title=Page
-   --forwarding-username value               username to use when logging into the openid provider
-   --forwarding-password value               password to use when logging into the openid provider
+   --forwarding-username value               username to use when logging into the openid provider [$PROXY_FORWARDING_USERNAME]
+   --forwarding-password value               password to use when logging into the openid provider [$PROXY_FORWARDING_PASSWORD]
    --forwarding-domains value                list of domains which should be signed; everything else is relayed unsigned
    --disable-all-logging                     disables all logging to stdout and stderr (default: false)
    --help, -h                                show help

@@ -186,7 +186,7 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 			// notes: not all idp refresh tokens are readable, google for example, so we attempt to decode into
 			// a jwt and if possible extract the expiration, else we default to 10 days
 			if _, ident, err := parseToken(resp.RefreshToken); err != nil {
-				r.dropRefreshTokenCookie(req, w, encrypted, time.Duration(240)*time.Hour)
+				r.dropRefreshTokenCookie(req, w, encrypted, 0)
 			} else {
 				r.dropRefreshTokenCookie(req, w, encrypted, time.Until(ident.ExpiresAt))
 			}
