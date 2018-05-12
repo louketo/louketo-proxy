@@ -1,5 +1,5 @@
-hash: c1c869f5b725bd212bddce15aeb6e436f0bdb9a4ec41b08842a79ce54f18f578
-updated: 2018-05-25T15:52:26.57095014+01:00
+hash: f2205edbf0530db6b2a560e450db24c7ceac943400a4258001b4c9a99aefeda5
+updated: 2018-05-28T14:02:51.337129882-03:00
 imports:
 - name: github.com/armon/go-proxyproto
   version: 609d6338d3a76ec26ac3fe7045a164d9a58436e7
@@ -92,8 +92,14 @@ imports:
 - name: golang.org/x/net
   version: 1c05540f6879653db88113bc4a2b70aec4bd491f
   subpackages:
+  - context
+  - context/ctxhttp
   - idna
   - publicsuffix
+- name: golang.org/x/oauth2
+  version: 6881fee410a5daf86371371f9ad451b95e168b71
+  subpackages:
+  - internal
 - name: golang.org/x/sys
   version: 95c6576299259db960f6c5b9b69ea52422860fce
   subpackages:
@@ -106,6 +112,16 @@ imports:
   - unicode/bidi
   - unicode/norm
   - width
+- name: google.golang.org/appengine
+  version: 0a24098c0ec68416ec050f567f75df563d6b231e
+  subpackages:
+  - internal
+  - internal/base
+  - internal/datastore
+  - internal/log
+  - internal/remote_api
+  - internal/urlfetch
+  - urlfetch
 - name: gopkg.in/bsm/ratelimit.v1
   version: db14e161995a5177acef654cb0dd785e8ee8bc22
 - name: gopkg.in/redis.v4

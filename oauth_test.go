@@ -25,14 +25,11 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
-	"testing"
 	"time"
 
 	"github.com/gambol99/go-oidc/jose"
-	"github.com/gambol99/go-oidc/oauth2"
 	"github.com/pressly/chi"
 	"github.com/pressly/chi/middleware"
-	"github.com/stretchr/testify/assert"
 )
 
 type fakeAuthServer struct {
@@ -241,7 +238,7 @@ func (r *fakeAuthServer) tokenHandler(w http.ResponseWriter, req *http.Request) 
 	}
 
 	switch req.FormValue("grant_type") {
-	case oauth2.GrantTypeUserCreds:
+	case GrantTypeUserCreds:
 		username := req.FormValue("username")
 		password := req.FormValue("password")
 		if username == "" || password == "" {
@@ -261,9 +258,9 @@ func (r *fakeAuthServer) tokenHandler(w http.ResponseWriter, req *http.Request) 
 			"error":             "invalid_grant",
 			"error_description": "Invalid user credentials",
 		})
-	case oauth2.GrantTypeRefreshToken:
+	case GrantTypeRefreshToken:
 		fallthrough
-	case oauth2.GrantTypeAuthCode:
+	case GrantTypeAuthCode:
 		renderJSON(http.StatusOK, w, req, tokenResponse{
 			IDToken:      token.Encode(),
 			AccessToken:  token.Encode(),
@@ -272,47 +269,6 @@ func (r *fakeAuthServer) tokenHandler(w http.ResponseWriter, req *http.Request) 
 		})
 	default:
 		w.WriteHeader(http.StatusBadRequest)
-	}
-}
-
-func TestGetUserinfo(t *testing.T) {
-	px, idp, _ := newTestProxyService(nil)
-	token := newTestToken(idp.getLocation()).getToken()
-	client, _ := px.client.OAuthClient()
-	claims, err := getUserinfo(client, px.idp.UserInfoEndpoint.String(), token.Encode())
-	assert.NoError(t, err)
-	assert.NotEmpty(t, claims)
-}
-
-func TestTokenExpired(t *testing.T) {
-	px, idp, _ := newTestProxyService(nil)
-	token := newTestToken(idp.getLocation())
-	cs := []struct {
-		Expire time.Duration
-		OK     bool
-	}{
-		{
-			Expire: time.Duration(1 * time.Hour),
-			OK:     true,
-		},
-		{
-			Expire: time.Duration(-5 * time.Hour),
-		},
-	}
-	for i, x := range cs {
-		token.setExpiration(time.Now().Add(x.Expire))
-		signed, err := idp.signToken(token.claims)
-		if err != nil {
-			t.Errorf("case %d unable to sign the token, error: %s", i, err)
-			continue
-		}
-		err = verifyToken(px.client, *signed)
-		if x.OK && err != nil {
-			t.Errorf("case %d, expected: %t got error: %s", i, x.OK, err)
-		}
-		if !x.OK && err == nil {
-			t.Errorf("case %d, expected: %t got no error", i, x.OK)
-		}
 	}
 }
 

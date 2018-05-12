@@ -154,7 +154,8 @@ func (r *oauthProxy) authenticationMiddleware(resource *Resource) func(http.Hand
 					}
 
 					// attempt to refresh the access token
-					token, exp, err := getRefreshedToken(r.client, refresh)
+					config := getOAuthConfig(r, r.getRedirectionURL(w, req))
+					token, exp, err := getRefreshedToken(config, refresh)
 					if err != nil {
 						switch err {
 						case ErrRefreshTokenExpired:

@@ -17,6 +17,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -30,10 +31,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gambol99/go-oidc/oauth2"
-
 	"github.com/pressly/chi"
 	"go.uber.org/zap"
+
+	"golang.org/x/oauth2"
 )
 
 // getRedirectionURL returns the redirectionURL for the oauth flow
@@ -64,22 +65,18 @@ func (r *oauthProxy) oauthAuthorizationHandler(w http.ResponseWriter, req *http.
 		w.WriteHeader(http.StatusNotAcceptable)
 		return
 	}
-	client, err := r.getOAuthClient(r.getRedirectionURL(w, req))
-	if err != nil {
-		r.log.Error("failed to retrieve the oauth client for authorization", zap.Error(err))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+
+	config := getOAuthConfig(r, r.getRedirectionURL(w, req))
 
 	// step: set the access type of the session
-	var accessType string
+	var accessType oauth2.AuthCodeOption = oauth2.AccessTypeOnline
 	if containedIn("offline", r.config.Scopes) {
-		accessType = "offline"
+		accessType = oauth2.AccessTypeOffline
 	}
 
-	authURL := client.AuthCodeURL(req.URL.Query().Get("state"), accessType, "")
+	authURL := config.AuthCodeURL(req.URL.Query().Get("state"), accessType)
 	r.log.Debug("incoming authorization request from client address",
-		zap.String("access_type", accessType),
+		zap.Any("access_type", accessType),
 		zap.String("auth_url", authURL),
 		zap.String("client_ip", req.RemoteAddr))
 
@@ -92,12 +89,13 @@ func (r *oauthProxy) oauthAuthorizationHandler(w http.ResponseWriter, req *http.
 
 		return
 	}
-
-	r.redirectToURL(authURL, w, req)
+	http.Redirect(w, req, authURL, http.StatusTemporaryRedirect)
 }
 
 // oauthCallbackHandler is responsible for handling the response from oauth service
 func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Request) {
+	ctx := context.Background()
+
 	if r.config.SkipTokenVerification {
 		w.WriteHeader(http.StatusNotAcceptable)
 		return
@@ -108,25 +106,21 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
-	client, err := r.getOAuthClient(r.getRedirectionURL(w, req))
-	if err != nil {
-		r.log.Error("unable to create a oauth2 client", zap.Error(err))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	resp, err := exchangeAuthenticationCode(client, code)
+	config := getOAuthConfig(r, r.getRedirectionURL(w, req))
+	resp, err := config.Exchange(ctx, req.URL.Query().Get("code"))
 	if err != nil {
 		r.log.Error("unable to exchange code for access token", zap.Error(err))
 		r.accessForbidden(w, req)
 		return
 	}
-
+	rawIDToken, ok := resp.Extra("id_token").(string)
+	if !ok {
+		r.log.Error("unable to obtain id_token")
+	}
 	// Flow: once we exchange the authorization code we parse the ID Token; we then check for a access token,
 	// if a access token is present and we can decode it, we use that as the session token, otherwise we default
 	// to the ID Token.
-	token, identity, err := parseToken(resp.IDToken)
+	token, identity, err := parseToken(rawIDToken)
 	if err != nil {
 		r.log.Error("unable to parse id token for identity", zap.Error(err))
 		r.accessForbidden(w, req)
@@ -214,6 +208,7 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 // loginHandler provide's a generic endpoint for clients to perform a user_credentials login to the provider
 func (r *oauthProxy) loginHandler(w http.ResponseWriter, req *http.Request) {
 	errorMsg, code, err := func() (string, int, error) {
+		ctx := context.Background()
 		if !r.config.EnableLoginHandler {
 			return "attempt to login when login handler is disabled", http.StatusNotImplemented, errors.New("login handler disabled")
 		}
@@ -223,19 +218,22 @@ func (r *oauthProxy) loginHandler(w http.ResponseWriter, req *http.Request) {
 			return "request does not have both username and password", http.StatusBadRequest, errors.New("no credentials")
 		}
 
-		client, err := r.client.OAuthClient()
-		if err != nil {
-			return "unable to create the oauth client for user_credentials request", http.StatusInternalServerError, err
-		}
-
 		start := time.Now()
-		token, err := client.UserCredsToken(username, password)
+
+		config := getOAuthConfig(r, r.getRedirectionURL(w, req))
+		token, err := config.PasswordCredentialsToken(ctx, username, password)
 		if err != nil {
-			if strings.HasPrefix(err.Error(), oauth2.ErrorInvalidGrant) {
+			if strings.Contains(err.Error(), http.StatusText(http.StatusUnauthorized)) {
 				return "invalid user credentials provided", http.StatusUnauthorized, err
 			}
 			return "unable to request the access token via grant_type 'password'", http.StatusInternalServerError, err
 		}
+
+		rawIDToken, ok := token.Extra("id_token").(string)
+		if !ok {
+			r.log.Error("unable to obtain id_token")
+		}
+
 		// @metric observe the time taken for a login request
 		oauthLatencyMetric.WithLabelValues("login").Observe(time.Since(start).Seconds())
 
@@ -251,11 +249,10 @@ func (r *oauthProxy) loginHandler(w http.ResponseWriter, req *http.Request) {
 
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(tokenResponse{
-			IDToken:      token.IDToken,
+			IDToken:      rawIDToken,
 			AccessToken:  token.AccessToken,
 			RefreshToken: token.RefreshToken,
-			ExpiresIn:    token.Expires,
-			Scope:        token.Scope,
+			ExpiresIn:    token.Expiry.Second(),
 		}); err != nil {
 			return "", http.StatusInternalServerError, err
 		}
