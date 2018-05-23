@@ -2,7 +2,7 @@
 #### **2.1.2 (Unreleased)**
 
 FEATURES:
-* Added a --enable-default-deny option to make denial by default [#PR320](https://github.com/gambol99/keycloak-proxy/pull/320)
+* Added a `--enable-default-deny` option to make denial by default [#PR320](https://github.com/gambol99/keycloak-proxy/pull/320)
 * Added a `enable-logout-redirect` which redirects the /oauth/logout to the provider [#PR327](https://github.com/gambol99/keycloak-proxy/pull/327)
 * Added environment variables alternatives for the forwarding username and password [#PR329]https://github.com/gambol99/keycloak-proxy/pull/329)
 * Added metrics latency metrics for the forwarding proxy and the certificate rotation [#PR325](https://github.com/gambol99/keycloak-proxy/pull/325)
