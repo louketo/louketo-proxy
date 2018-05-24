@@ -1,4 +1,36 @@
-#### **2.1.0/master (unrealised/unstable)**
+
+#### **2.1.2 (Unreleased)**
+
+FEATURES:
+* Added a --enable-default-deny option to make denial by default [#PR320](https://github.com/gambol99/keycloak-proxy/pull/320)
+* Added a `enable-logout-redirect` which redirects the /oauth/logout to the provider [#PR327](https://github.com/gambol99/keycloak-proxy/pull/327)
+* Added environment variables alternatives for the forwarding username and password [#PR329]https://github.com/gambol99/keycloak-proxy/pull/329)
+* Added metrics latency metrics for the forwarding proxy and the certificate rotation [#PR325](https://github.com/gambol99/keycloak-proxy/pull/325)
+* Added spelling check to the tests [#PR322](https://github.com/gambol99/keycloak-proxy/pull/322)
+* Added the X-Auth-Audience to the upstream headers [#PR319](https://github.com/gambol99/keycloak-proxy/pull/319)
+* Added the ability to control the timeout on the initial openid configuration from .well-known/openid-configuration [#PR315](https://github.com/gambol99/keycloak-proxy/pull/315)
+* Added the feature to customize the oauth prefix (defaults to /oauth) [#PR326](https://github.com/gambol99/keycloak-proxy/pull/326)
+* Adding additional metrics covering provider request latency, token breakdown [#PR324](https://github.com/gambol99/keycloak-proxy/pull/324)
+* Changed the upstream-keepalive to default to true [#PR321](https://github.com/gambol99/keycloak-proxy/pull/321)
+* Force configuration to use the wildcard [#PR338](https://github.com/gambol99/keycloak-proxy/pull/338)
+* Updated the docker base image alpine 3.7 [#PR313](https://github.com/gambol99/keycloak-proxy/pull/313)
+* Updated to Golang version 1.10 [#PR316](https://github.com/gambol99/keycloak-proxy/pull/316)
+
+FIXES:
+* Fixed a redirection bug [#PR337](https://github.com/gambol99/keycloak-proxy/pull/337)
+* Updated the go-oidc to fix the cache header [issues](https://github.com/gambol99/keycloak-proxy/issues/340)[#PR339](https://github.com/gambol99/keycloak-proxy/pull/339)
+
+#### **2.1.1**
+
+FEATURES:
+* Added the groups parameter to the resource, permitting users to use the `groups` claim in the token [#PR301](https://github.com/gambol99/keycloak-proxy/pull/301)
+* Removed the authors file [#PR299](https://github.com/gambol99/keycloak-proxy/pull/299)
+
+FIXES:
+* Fixed the custom headers when upgrading to websockets [#PR311](https://github.com/gambol99/keycloak-proxy/pull/311)
+* Fixed exception when upgrading to websockets [#PR303](https://github.com/gambol99/keycloak-proxy/pull/303)
+
+#### **2.1.0**
 
 FIXES:
 * fixed the parsing of slices for command line arguments (i.e. --cors-origins etc)
@@ -11,6 +43,7 @@ FIXES:
 * added docker image instructions to the readme [#PR204](https://github.com/gambol99/keycloak-proxy/pull/204)
 * added unit tests for the debug handlers [#PR223](https://github.com/gambol99/keycloak-proxy/pull/223)
 * fixing the logout handler panic when revocation url is not set [#PR254](https://github.com/gambol99/keycloak-proxy/pull/254)
+* fixing the Host header on the forwarding proxy [#PR290](https://github.com/gambol99/keycloak-proxy/pull/290)
 
 FEATURES
 * changed the routing engine from gin to echo
@@ -29,6 +62,8 @@ FEATURES
 * moved to use zap for the logging [#PR237](https://github.com/gambol99/keycloak-proxy/pull/237)
 * making the X-Auth-Token optional in the upstream headers via the --enable-token-header [#PR247](https://github.com/gambol99/keycloak-proxy/pull/247)
 * adding the ability to load a CA authority to provide trust on upstream endpoint [#PR248](https://github.com/gambol99/keycloak-proxy/pull/248)
+* adding the ability to set various http server and upstream timeout [#PR268](https://github.com/gambol99/keycloak-proxy/pull/268)
+* adding the `--enable-authorization-cookies` command line option to control upstream cookies [$PR287](https://github.com/gambol99/keycloak-proxy/pull/287)
 
 BREAKING CHANGES:
 * the proxy no longer uses prefixes for resources, if you wish to use wildcard urls you need
@@ -105,7 +140,7 @@ FIXES:
  * Fixed the --headers and --tags command line options, had a typo on the mergeMaps method [#PR142](https://github.com/gambol99/keycloak-proxy/pull/142)
  * Cleaned up how the cli command line options are processed [#PR164](https://github.com/gambol99/keycloak-proxy/pull/164)
  * Cleaned up the option checking for forwarding proxy tls setting [#PR163](https://github.com/gambol99/keycloak-proxy/pull/163)
- * Using timeout rather than muliple attempts for discovery url [#PR153](https://github.com/gambol99/keycloak-proxy/pull/153)
+ * Using timeout rather than multiple attempts for discovery url [#PR153](https://github.com/gambol99/keycloak-proxy/pull/153)
  * Updated the go-oidc library with various fixes [#PR159](https://github.com/gambol99/keycloak-proxy/pull/159)
 
 BREAKING CHANGES:
@@ -174,7 +209,7 @@ CHANGES:
  * Updated the godeps for codegangsta cli to it's renamed version
 
 FIXES:
- * Fixed the environment variable command line options, the IsSet in cli does not check enviroment
+ * Fixed the environment variable command line options, the IsSet in cli does not check environment
    variable setters
 
 #### **1.2.2**
@@ -259,7 +294,7 @@ BREAKING CHANGES:
 #### **1.0.2 (April 22th, 2016)**
 
 FIXES:
- * Cleaned up a lot of code base to make this simplier
+ * Cleaned up a lot of code base to make this simpler
  * Fixed elements in the refresh tokens and simplified the controller
  * Removed of the code out from methods into functions to reduce the dependencies (unit testing is easier as well)
  * Fixed how the refresh tokens are implemented, i was somewhat confused between refresh token and offline token

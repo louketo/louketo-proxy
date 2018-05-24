@@ -112,7 +112,22 @@ func getUserinfo(client *oauth2.Client, endpoint string, token string) (jose.Cla
 
 // getToken retrieves a code from the provider, extracts and verified the token
 func getToken(client *oauth2.Client, grantType, code string) (oauth2.TokenResponse, error) {
-	return client.RequestToken(grantType, code)
+	start := time.Now()
+	token, err := client.RequestToken(grantType, code)
+	if err != nil {
+		return token, err
+	}
+	taken := time.Since(start).Seconds()
+	switch grantType {
+	case oauth2.GrantTypeAuthCode:
+		oauthTokensMetric.WithLabelValues("exchange").Inc()
+		oauthLatencyMetric.WithLabelValues("exchange").Observe(taken)
+	case oauth2.GrantTypeRefreshToken:
+		oauthTokensMetric.WithLabelValues("renew").Inc()
+		oauthLatencyMetric.WithLabelValues("renew").Observe(taken)
+	}
+
+	return token, err
 }
 
 // parseToken retrieve the user identity from the token

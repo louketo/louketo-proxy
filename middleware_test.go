@@ -37,6 +37,7 @@ type fakeRequest struct {
 	Cookies                 []*http.Cookie
 	Expires                 time.Duration
 	FormValues              map[string]string
+	Groups                  []string
 	HasCookieToken          bool
 	HasLogin                bool
 	HasToken                bool
@@ -57,7 +58,7 @@ type fakeRequest struct {
 	ExpectedCode            int
 	ExpectedContent         string
 	ExpectedContentContains string
-	ExpectedCookies         []string
+	ExpectedCookies         map[string]string
 	ExpectedHeaders         map[string]string
 	ExpectedProxyHeaders    map[string]string
 	ExpectedLocation        string
@@ -177,6 +178,9 @@ func (f *fakeProxy) RunTests(t *testing.T, requests []fakeRequest) {
 			if len(c.Roles) > 0 {
 				token.addRealmRoles(c.Roles)
 			}
+			if len(c.Groups) > 0 {
+				token.addGroups(c.Groups)
+			}
 			if c.Expires > 0 || c.Expires < 0 {
 				token.setExpiration(time.Now().Add(c.Expires))
 			}
@@ -238,11 +242,14 @@ func (f *fakeProxy) RunTests(t *testing.T, requests []fakeRequest) {
 			assert.Contains(t, e, c.ExpectedContentContains, "case %d, expected content: %s, got: %s", i, c.ExpectedContentContains, e)
 		}
 		if len(c.ExpectedCookies) > 0 {
-			l := len(c.ExpectedCookies)
-			g := len(resp.Cookies())
-			assert.Equal(t, l, g, "case %d, expected %d cookies, got: %d", i, l, g)
-			for _, x := range c.ExpectedCookies {
-				assert.NotNil(t, findCookie(x, resp.Cookies()), "case %d, expected cookie %s not found", i, x)
+			for k, v := range c.ExpectedCookies {
+				cookie := findCookie(k, resp.Cookies())
+				if !assert.NotNil(t, cookie, "case %d, expected cookie %s not found", i, k) {
+					continue
+				}
+				if v != "" {
+					assert.Equal(t, cookie.Value, v, "case %d, expected cookie value: %s, got: %s", i, v, cookie.Value)
+				}
 			}
 		}
 		if c.OnResponse != nil {
@@ -289,12 +296,12 @@ func TestMetricsMiddleware(t *testing.T) {
 	cfg.LocalhostMetrics = true
 	requests := []fakeRequest{
 		{
-			URI:                     oauthURL + metricsURL,
+			URI:                     cfg.WithOAuthURI(metricsURL),
 			ExpectedCode:            http.StatusOK,
-			ExpectedContentContains: "http_request_total",
+			ExpectedContentContains: "proxy_request_status_total",
 		},
 		{
-			URI: oauthURL + metricsURL,
+			URI: cfg.WithOAuthURI(metricsURL),
 			Headers: map[string]string{
 				"X-Forwarded-For": "10.0.0.1",
 			},
@@ -321,6 +328,30 @@ func TestOauthRequests(t *testing.T) {
 			URI:          "/oauth/health",
 			Redirects:    true,
 			ExpectedCode: http.StatusOK,
+		},
+	}
+	newFakeProxy(cfg).RunTests(t, requests)
+}
+
+func TestMethodExclusions(t *testing.T) {
+	cfg := newFakeKeycloakConfig()
+	cfg.Resources = []*Resource{
+		{
+			URL:     "/post",
+			Methods: []string{http.MethodPost, http.MethodPut},
+		},
+	}
+	requests := []fakeRequest{
+		{ // we should get a 401
+			URI:          "/post",
+			Method:       http.MethodPost,
+			ExpectedCode: http.StatusUnauthorized,
+		},
+		{ // we should be permitted
+			URI:           "/post",
+			Method:        http.MethodGet,
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
 		},
 	}
 	newFakeProxy(cfg).RunTests(t, requests)
@@ -540,6 +571,118 @@ func TestWhiteListedRequests(t *testing.T) {
 			HasToken:      true,
 			ExpectedProxy: true,
 			Roles:         []string{fakeTestRole},
+			ExpectedCode:  http.StatusOK,
+		},
+	}
+	newFakeProxy(cfg).RunTests(t, requests)
+}
+
+func TestGroupPermissionsMiddleware(t *testing.T) {
+	cfg := newFakeKeycloakConfig()
+	cfg.Resources = []*Resource{
+		{
+			URL:     "/with_role_and_group*",
+			Methods: allHTTPMethods,
+			Groups:  []string{"admin"},
+			Roles:   []string{"admin"},
+		},
+		{
+			URL:     "/with_group*",
+			Methods: allHTTPMethods,
+			Groups:  []string{"admin"},
+		},
+		{
+			URL:     "/with_many_groups*",
+			Methods: allHTTPMethods,
+			Groups:  []string{"admin", "user", "tester"},
+		},
+		{
+			URL:     "/*",
+			Methods: allHTTPMethods,
+			Roles:   []string{"user"},
+		},
+	}
+	requests := []fakeRequest{
+		{
+			URI:          "/",
+			ExpectedCode: http.StatusUnauthorized,
+		},
+		{
+			URI:          "/with_role_and_group/test",
+			HasToken:     true,
+			Roles:        []string{"admin"},
+			ExpectedCode: http.StatusForbidden,
+		},
+		{
+			URI:          "/with_role_and_group/test",
+			HasToken:     true,
+			Groups:       []string{"admin"},
+			ExpectedCode: http.StatusForbidden,
+		},
+		{
+			URI:           "/with_role_and_group/test",
+			HasToken:      true,
+			Groups:        []string{"admin"},
+			Roles:         []string{"admin"},
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
+		},
+		{
+			URI:          "/with_group/hello",
+			HasToken:     true,
+			ExpectedCode: http.StatusForbidden,
+		},
+		{
+			URI:          "/with_groupdd",
+			HasToken:     true,
+			ExpectedCode: http.StatusForbidden,
+		},
+		{
+			URI:          "/with_group/hello",
+			HasToken:     true,
+			Groups:       []string{"bad"},
+			ExpectedCode: http.StatusForbidden,
+		},
+		{
+			URI:           "/with_group/hello",
+			HasToken:      true,
+			Groups:        []string{"admin"},
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
+		},
+		{
+			URI:           "/with_group/hello",
+			HasToken:      true,
+			Groups:        []string{"test", "admin"},
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
+		},
+		{
+			URI:          "/with_many_groups/test",
+			HasToken:     true,
+			Groups:       []string{"bad"},
+			ExpectedCode: http.StatusForbidden,
+		},
+		{
+			URI:           "/with_many_groups/test",
+			HasToken:      true,
+			Groups:        []string{"user"},
+			Roles:         []string{"test"},
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
+		},
+		{
+			URI:           "/with_many_groups/test",
+			HasToken:      true,
+			Groups:        []string{"tester", "user"},
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
+		},
+		{
+			URI:           "/with_many_groups/test",
+			HasToken:      true,
+			Groups:        []string{"bad", "user"},
+			ExpectedProxy: true,
 			ExpectedCode:  http.StatusOK,
 		},
 	}
@@ -859,7 +1002,7 @@ func TestCheckRefreshTokens(t *testing.T) {
 			Redirects:       false,
 			ExpectedProxy:   true,
 			ExpectedCode:    http.StatusOK,
-			ExpectedCookies: []string{cfg.CookieAccessName},
+			ExpectedCookies: map[string]string{cfg.CookieAccessName: ""},
 		},
 	}
 	p.RunTests(t, requests)

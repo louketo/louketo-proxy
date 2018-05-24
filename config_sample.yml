@@ -57,7 +57,7 @@ add-claims:
 - name
 # a collection of resource i.e. urls that you wish to protect
 resources:
-- uri: /admin/test
+- uri: /admin/test*
   # the methods on this url that should be protected, if missing, we assuming all
   methods:
   - GET

@@ -34,7 +34,8 @@ func extractIdentity(token jose.JWT) (*userContext, error) {
 	if err != nil {
 		return nil, err
 	}
-	// step: ensure we have and can extract the preferred name of the user, if not, we set to the ID
+
+	// @step: ensure we have and can extract the preferred name of the user, if not, we set to the ID
 	preferredName, found, err := claims.StringClaim(claimPreferredName)
 	if err != nil || !found {
 		preferredName = identity.Email
@@ -43,38 +44,46 @@ func extractIdentity(token jose.JWT) (*userContext, error) {
 	if err != nil || !found {
 		return nil, ErrNoTokenAudience
 	}
-	// step: extract the realm roles
-	var list []string
+
+	// @step: extract the realm roles
+	var roleList []string
 	if realmRoles, found := claims[claimRealmAccess].(map[string]interface{}); found {
 		if roles, found := realmRoles[claimResourceRoles]; found {
 			for _, r := range roles.([]interface{}) {
-				list = append(list, fmt.Sprintf("%s", r))
+				roleList = append(roleList, fmt.Sprintf("%s", r))
 			}
 		}
 	}
 
-	// step: extract the client roles from the access token
+	// @step: extract the client roles from the access token
 	if accesses, found := claims[claimResourceAccess].(map[string]interface{}); found {
-		for roleName, roleList := range accesses {
-			scopes := roleList.(map[string]interface{})
+		for name, list := range accesses {
+			scopes := list.(map[string]interface{})
 			if roles, found := scopes[claimResourceRoles]; found {
 				for _, r := range roles.([]interface{}) {
-					list = append(list, fmt.Sprintf("%s:%s", roleName, r))
+					roleList = append(roleList, fmt.Sprintf("%s:%s", name, r))
 				}
 			}
 		}
 	}
 
+	// @step: extract any group information from the tokens
+	groups, _, err := claims.StringsClaim(claimGroups)
+	if err != nil {
+		return nil, err
+	}
+
 	return &userContext{
-		id:            identity.ID,
-		name:          preferredName,
 		audience:      audience,
-		preferredName: preferredName,
+		claims:        claims,
 		email:         identity.Email,
 		expiresAt:     identity.ExpiresAt,
-		roles:         list,
+		groups:        groups,
+		id:            identity.ID,
+		name:          preferredName,
+		preferredName: preferredName,
+		roles:         roleList,
 		token:         token,
-		claims:        claims,
 	}, nil
 }
 

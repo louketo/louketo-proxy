@@ -41,7 +41,8 @@ func TestDebugHandler(t *testing.T) {
 }
 
 func TestExpirationHandler(t *testing.T) {
-	uri := oauthURL + expiredURL
+	cfg := newFakeKeycloakConfig()
+	uri := cfg.WithOAuthURI(expiredURL)
 	requests := []fakeRequest{
 		{
 			URI:          uri,
@@ -78,8 +79,8 @@ func TestLoginHandlerDisabled(t *testing.T) {
 	c := newFakeKeycloakConfig()
 	c.EnableLoginHandler = false
 	requests := []fakeRequest{
-		{URI: oauthURL + loginURL, Method: http.MethodPost, ExpectedCode: http.StatusNotImplemented},
-		{URI: oauthURL + loginURL, ExpectedCode: http.StatusMethodNotAllowed},
+		{URI: c.WithOAuthURI(loginURL), Method: http.MethodPost, ExpectedCode: http.StatusNotImplemented},
+		{URI: c.WithOAuthURI(loginURL), ExpectedCode: http.StatusMethodNotAllowed},
 	}
 	newFakeProxy(c).RunTests(t, requests)
 }
@@ -94,7 +95,7 @@ func TestLoginHandlerNotDisabled(t *testing.T) {
 }
 
 func TestLoginHandler(t *testing.T) {
-	uri := oauthURL + loginURL
+	uri := newFakeKeycloakConfig().WithOAuthURI(loginURL)
 	requests := []fakeRequest{
 		{
 			URI:          uri,
@@ -137,25 +138,26 @@ func TestLoginHandler(t *testing.T) {
 
 func TestLogoutHandlerBadRequest(t *testing.T) {
 	requests := []fakeRequest{
-		{URI: oauthURL + logoutURL, ExpectedCode: http.StatusBadRequest},
+		{URI: newFakeKeycloakConfig().WithOAuthURI(logoutURL), ExpectedCode: http.StatusBadRequest},
 	}
 	newFakeProxy(nil).RunTests(t, requests)
 }
 
 func TestLogoutHandlerBadToken(t *testing.T) {
+	c := newFakeKeycloakConfig()
 	requests := []fakeRequest{
 		{
-			URI:          oauthURL + logoutURL,
+			URI:          c.WithOAuthURI(logoutURL),
 			ExpectedCode: http.StatusBadRequest,
 		},
 		{
-			URI:            oauthURL + logoutURL,
+			URI:            c.WithOAuthURI(logoutURL),
 			HasCookieToken: true,
 			RawToken:       "this.is.a.bad.token",
 			ExpectedCode:   http.StatusBadRequest,
 		},
 		{
-			URI:          oauthURL + logoutURL,
+			URI:          c.WithOAuthURI(logoutURL),
 			RawToken:     "this.is.a.bad.token",
 			ExpectedCode: http.StatusBadRequest,
 		},
@@ -164,14 +166,15 @@ func TestLogoutHandlerBadToken(t *testing.T) {
 }
 
 func TestLogoutHandlerGood(t *testing.T) {
+	c := newFakeKeycloakConfig()
 	requests := []fakeRequest{
 		{
-			URI:          oauthURL + logoutURL,
+			URI:          c.WithOAuthURI(logoutURL),
 			HasToken:     true,
 			ExpectedCode: http.StatusOK,
 		},
 		{
-			URI:              oauthURL + logoutURL + "?redirect=http://example.com",
+			URI:              c.WithOAuthURI(logoutURL) + "?redirect=http://example.com",
 			HasToken:         true,
 			ExpectedCode:     http.StatusTemporaryRedirect,
 			ExpectedLocation: "http://example.com",
@@ -181,7 +184,7 @@ func TestLogoutHandlerGood(t *testing.T) {
 }
 
 func TestTokenHandler(t *testing.T) {
-	uri := oauthURL + tokenURL
+	uri := newFakeKeycloakConfig().WithOAuthURI(tokenURL)
 	requests := []fakeRequest{
 		{
 			URI:          uri,
@@ -228,7 +231,7 @@ func TestAuthorizationURLWithSkipToken(t *testing.T) {
 	c.SkipTokenVerification = true
 	newFakeProxy(c).RunTests(t, []fakeRequest{
 		{
-			URI:          oauthURL + authorizationURL,
+			URI:          c.WithOAuthURI(authorizationURL),
 			ExpectedCode: http.StatusNotAcceptable,
 		},
 	})
@@ -278,29 +281,29 @@ func TestCallbackURL(t *testing.T) {
 	cfg := newFakeKeycloakConfig()
 	requests := []fakeRequest{
 		{
-			URI:          oauthURL + callbackURL,
+			URI:          cfg.WithOAuthURI(callbackURL),
 			Method:       http.MethodPost,
 			ExpectedCode: http.StatusMethodNotAllowed,
 		},
 		{
-			URI:          oauthURL + callbackURL,
+			URI:          cfg.WithOAuthURI(callbackURL),
 			ExpectedCode: http.StatusBadRequest,
 		},
 		{
-			URI:              oauthURL + callbackURL + "?code=fake",
-			ExpectedCookies:  []string{cfg.CookieAccessName},
+			URI:              cfg.WithOAuthURI(callbackURL) + "?code=fake",
+			ExpectedCookies:  map[string]string{cfg.CookieAccessName: ""},
 			ExpectedLocation: "/",
 			ExpectedCode:     http.StatusTemporaryRedirect,
 		},
 		{
-			URI:              oauthURL + callbackURL + "?code=fake&state=/admin",
-			ExpectedCookies:  []string{cfg.CookieAccessName},
+			URI:              cfg.WithOAuthURI(callbackURL) + "?code=fake&state=/admin",
+			ExpectedCookies:  map[string]string{cfg.CookieAccessName: ""},
 			ExpectedLocation: "/",
 			ExpectedCode:     http.StatusTemporaryRedirect,
 		},
 		{
-			URI:              oauthURL + callbackURL + "?code=fake&state=L2FkbWlu",
-			ExpectedCookies:  []string{cfg.CookieAccessName},
+			URI:              cfg.WithOAuthURI(callbackURL) + "?code=fake&state=L2FkbWlu",
+			ExpectedCookies:  map[string]string{cfg.CookieAccessName: ""},
 			ExpectedLocation: "/admin",
 			ExpectedCode:     http.StatusTemporaryRedirect,
 		},
@@ -309,14 +312,15 @@ func TestCallbackURL(t *testing.T) {
 }
 
 func TestHealthHandler(t *testing.T) {
+	c := newFakeKeycloakConfig()
 	requests := []fakeRequest{
 		{
-			URI:             oauthURL + healthURL,
+			URI:             c.WithOAuthURI(healthURL),
 			ExpectedCode:    http.StatusOK,
 			ExpectedContent: "OK\n",
 		},
 		{
-			URI:          oauthURL + healthURL,
+			URI:          c.WithOAuthURI(healthURL),
 			Method:       http.MethodHead,
 			ExpectedCode: http.StatusMethodNotAllowed,
 		},

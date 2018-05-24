@@ -28,21 +28,36 @@ import (
 func newDefaultConfig() *Config {
 	return &Config{
 		AccessTokenDuration:         time.Duration(720) * time.Hour,
-		Tags:                        make(map[string]string),
-		MatchClaims:                 make(map[string]string),
-		Headers:                     make(map[string]string),
-		UpstreamTimeout:             time.Duration(10) * time.Second,
-		UpstreamKeepaliveTimeout:    time.Duration(10) * time.Second,
-		EnableAuthorizationHeader:   true,
-		EnableTokenHeader:           true,
 		CookieAccessName:            "kc-access",
 		CookieRefreshName:           "kc-state",
-		SecureCookie:                true,
-		SkipUpstreamTLSVerify:       true,
-		SkipOpenIDProviderTLSVerify: false,
-		UseLetsEncrypt:              false,
+		EnableAuthorizationCookies:  true,
+		EnableAuthorizationHeader:   true,
+		EnableTokenHeader:           true,
+		Headers:                     make(map[string]string),
 		LetsEncryptCacheDir:         "./cache/",
+		MatchClaims:                 make(map[string]string),
+		OAuthURI:                    "/oauth",
+		OpenIDProviderTimeout:       30 * time.Second,
+		SecureCookie:                true,
+		ServerIdleTimeout:           120 * time.Second,
+		ServerReadTimeout:           5 * time.Second,
+		ServerWriteTimeout:          10 * time.Second,
+		SkipOpenIDProviderTLSVerify: false,
+		SkipUpstreamTLSVerify:       true,
+		Tags: make(map[string]string, 0),
+		UpstreamExpectContinueTimeout: 10 * time.Second,
+		UpstreamKeepaliveTimeout:      10 * time.Second,
+		UpstreamKeepalives:            true,
+		UpstreamResponseHeaderTimeout: 1 * time.Second,
+		UpstreamTLSHandshakeTimeout:   10 * time.Second,
+		UpstreamTimeout:               10 * time.Second,
+		UseLetsEncrypt:                false,
 	}
+}
+
+// WithOAuthURI returns the oauth uri
+func (r *Config) WithOAuthURI(uri string) string {
+	return fmt.Sprintf("%s/%s", r.OAuthURI, uri)
 }
 
 // isValid validates if the config is valid
