@@ -1049,6 +1049,7 @@ func TestRolesAdmissionHandlerClaims(t *testing.T) {
 		Matches map[string]string
 		Request fakeRequest
 	}{
+		// jose.StringClaim test
 		{
 			Matches: map[string]string{"cal": "test"},
 			Request: fakeRequest{
@@ -1122,6 +1123,54 @@ func TestRolesAdmissionHandlerClaims(t *testing.T) {
 				URI:           uri,
 				HasToken:      true,
 				TokenClaims:   jose.Claims{"item": "test"},
+				ExpectedProxy: true,
+				ExpectedCode:  http.StatusOK,
+			},
+		},
+		// jose.StringsClaim test
+		{
+			Matches: map[string]string{"item": "^t.*t"},
+			Request: fakeRequest{
+				URI:           uri,
+				HasToken:      true,
+				TokenClaims:   jose.Claims{"item": []string{"nonMatchingClaim", "test", "anotherNonMatching"}},
+				ExpectedProxy: true,
+				ExpectedCode:  http.StatusOK,
+			},
+		},
+		{
+			Matches: map[string]string{"item": "^t.*t"},
+			Request: fakeRequest{
+				URI:           uri,
+				HasToken:      true,
+				TokenClaims:   jose.Claims{"item": []string{"1test", "2test", "3test"}},
+				ExpectedProxy: false,
+				ExpectedCode:  http.StatusForbidden,
+			},
+		},
+		{
+			Matches: map[string]string{"item": "^t.*t"},
+			Request: fakeRequest{
+				URI:           uri,
+				HasToken:      true,
+				TokenClaims:   jose.Claims{"item": []string{}},
+				ExpectedProxy: false,
+				ExpectedCode:  http.StatusForbidden,
+			},
+		},
+		{
+			Matches: map[string]string{
+				"item1": "^t.*t",
+				"item2": "^another",
+			},
+			Request: fakeRequest{
+				URI:      uri,
+				HasToken: true,
+				TokenClaims: jose.Claims{
+					"item1": []string{"randomItem", "test"},
+					"item2": []string{"randomItem", "anotherItem"},
+					"item3": []string{"randomItem2", "anotherItem3"},
+				},
 				ExpectedProxy: true,
 				ExpectedCode:  http.StatusOK,
 			},
