@@ -1,10 +1,10 @@
-hash: 409211d06c46fb5877cfaa7bcd36d348d4e250283386651d864dde05b6c16074
-updated: 2018-04-23T12:57:25.621998769-03:00
+hash: c1c869f5b725bd212bddce15aeb6e436f0bdb9a4ec41b08842a79ce54f18f578
+updated: 2018-05-25T15:52:26.57095014+01:00
 imports:
 - name: github.com/armon/go-proxyproto
   version: 609d6338d3a76ec26ac3fe7045a164d9a58436e7
 - name: github.com/beorn7/perks
-  version: 3ac7bf7a47d159a033b107610db8a1b6575507a4
+  version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
   subpackages:
   - quantile
 - name: github.com/boltdb/bolt
@@ -15,10 +15,8 @@ imports:
   - health
   - httputil
   - timeutil
-- name: github.com/elazarl/goproxy
-  version: a96fa3a318260eab29abaf32f7128c9eb07fb073
 - name: github.com/fsnotify/fsnotify
-  version: fd9ec7deca8bf46ecd2a795baaacf2b3a9be1197
+  version: c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9
 - name: github.com/gambol99/go-oidc
   version: 87948fe50989333a6a3f970e48f8dec844361fa1
   subpackages:
@@ -34,13 +32,13 @@ imports:
   subpackages:
   - middleware
 - name: github.com/golang/protobuf
-  version: 0c1f6d65b5a189c2250d10e71a5506f06f9fa0a0
+  version: 1643683e1b54a9e88ad26d98f81400c8c9d9f4f9
   subpackages:
   - proto
 - name: github.com/jonboulle/clockwork
   version: ed104f61ea4877bea08af6f759805674861e968d
 - name: github.com/matttproud/golang_protobuf_extensions
-  version: c12348ce28de40eed0136aa2b644d0ee0650e56c
+  version: fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a
   subpackages:
   - pbutil
 - name: github.com/pressly/chi
@@ -48,21 +46,23 @@ imports:
   subpackages:
   - middleware
 - name: github.com/prometheus/client_golang
-  version: 488edd04dc224ba64c401747cd0a4b5f05dfb234
+  version: c3324c1198cf3374996e9d3098edd46a6b55afc9
   subpackages:
   - prometheus
 - name: github.com/prometheus/client_model
-  version: fa8ad6fec33561be4280a8f0514318c79d7f6cb6
+  version: 99fa1f4be8e564e8a6b613da7fa6f46c9edafc6c
   subpackages:
   - go
 - name: github.com/prometheus/common
-  version: 3a184ff7dfd46b9091030bf2e56c71112b0ddb0e
+  version: 13ba4ddd0caa9c28ca7b7bffe1dfa9ed8d5ef207
   subpackages:
   - expfmt
   - internal/bitbucket.org/ww/goautoneg
   - model
 - name: github.com/prometheus/procfs
-  version: abf152e5f3e97f2fafac028d2cc06c1feb87ffa5
+  version: 65c1f6f8f0fc1e2185eb9863a3bc751496404259
+  subpackages:
+  - xfs
 - name: github.com/PuerkitoBio/purell
   version: 0bcb03f4b4d0a9428594752bd2a3b9aa0a9d4bd4
 - name: github.com/PuerkitoBio/urlesc
@@ -72,9 +72,9 @@ imports:
 - name: github.com/unrolled/secure
   version: 4b41e52ab568cbfd31eda3612d98192da1575c77
 - name: github.com/urfave/cli
-  version: 0bdeddeeb0f650497d603c4ad7b20cfe685682f6
+  version: 8e01ec4cd3e2d84ab2fe90d8210528ffbb06d8ff
 - name: go.uber.org/atomic
-  version: 8474b86a5a6f79c443ce4b2992817ff32cf208b8
+  version: 1ea20fb1cbb1cc08cbd0d913a96dead89aa18289
 - name: go.uber.org/zap
   version: 54371c67da1bc746325e5582e48521a5db5d64ca
   subpackages:
@@ -85,23 +85,25 @@ imports:
   - internal/multierror
   - zapcore
 - name: golang.org/x/crypto
-  version: dd85ac7e6a88fc6ca420478e934de5f1a42dd3c6
+  version: 49796115aa4b964c318aad4f3084fdb41e9aa067
   subpackages:
   - acme
   - acme/autocert
 - name: golang.org/x/net
-  version: bc3663df0ac92f928d419e31e0d2af22e683a5a2
+  version: 1c05540f6879653db88113bc4a2b70aec4bd491f
   subpackages:
   - idna
   - publicsuffix
 - name: golang.org/x/sys
-  version: 833a04a10549a95dc34458c195cbad61bbb6cb4d
+  version: 95c6576299259db960f6c5b9b69ea52422860fce
   subpackages:
   - unix
 - name: golang.org/x/text
-  version: f28f36722d5ef2f9655ad3de1f248e3e52ad5ebd
+  version: b19bf474d317b857955b12035d2c5acb57ce8b01
   subpackages:
+  - secure/bidirule
   - transform
+  - unicode/bidi
   - unicode/norm
   - width
 - name: gopkg.in/bsm/ratelimit.v1
@@ -114,10 +116,10 @@ imports:
   - internal/hashtag
   - internal/pool
 - name: gopkg.in/yaml.v2
-  version: 49c95bdc21843256fb6c4e0d370a05f24a0bf213
+  version: 670d4cfef0544295bc27a114dbac37980d83185a
 testImports:
 - name: github.com/davecgh/go-spew
-  version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9
+  version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
   subpackages:
   - spew
 - name: github.com/go-resty/resty
@@ -127,7 +129,7 @@ testImports:
   subpackages:
   - difflib
 - name: github.com/stretchr/testify
-  version: f6abca593680b2315d2075e0f5e2a9751e3f431a
+  version: d77da356e56a7428ad25149ca77381849a6a5232
   subpackages:
   - assert
   - require
