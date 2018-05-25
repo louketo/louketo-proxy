@@ -221,6 +221,11 @@ func (r *oauthProxy) checkClaim(user *userContext, claimName string, match *rege
 		zap.String("resource", resourceURL),
 	}
 
+	if _, found := user.claims[claimName]; !found {
+		r.log.Warn("the token does not have the claim", errFields...)
+		return false
+	}
+
 	// Check string claim.
 	valueStr, foundStr, errStr := user.claims.StringClaim(claimName)
 	// We have found string claim, so let's check whether it matches.
@@ -262,7 +267,7 @@ func (r *oauthProxy) checkClaim(user *userContext, claimName string, match *rege
 		return false
 	}
 
-	r.log.Warn("the token does not have the claim", errFields...)
+	r.log.Warn("unexpected error", errFields...)
 	return false
 }
 

@@ -447,6 +447,23 @@ match-claims:
   email: ^.*@example.com$
 ```
 
+Proxy supports matching on multivalue Strings claims. In this case the match will succeed if it matches one of the claim values. For example:
+
+```YAML
+match-claims:
+  perms: perm1
+```
+
+will successfully match
+
+```JSON
+{
+  "iss": "https://sso.example.com",
+  "sub": "",
+  "perms": ["perm1", "perm2"]
+}
+```
+
 #### **Groups Claims**
 
 You can match on the group claims within a token via the `groups` parameter available within the resource. Note while roles are implicitly required i.e. `roles=admin,user` the user MUST have roles 'admin' AND 'user', groups are applied with an OR operation, so `groups=users,testers` requires the user MUST be within 'users' OR 'testers'. At present the claim name is hardcoded to `groups` i.e a JWT token would look like the below.
