@@ -447,7 +447,7 @@ match-claims:
   email: ^.*@example.com$
 ```
 
-Proxy supports matching on multivalue Strings claims. In this case the match will succeed if it matches one of the claim values. For example:
+The proxy supports matching on multivalue Strings claims. The match will succeed if one of the values matches, for example:
 
 ```YAML
 match-claims:
