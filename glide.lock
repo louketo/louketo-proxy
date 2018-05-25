@@ -1,5 +1,5 @@
-hash: c1c869f5b725bd212bddce15aeb6e436f0bdb9a4ec41b08842a79ce54f18f578
-updated: 2018-05-25T15:52:26.57095014+01:00
+hash: 8fcb846a770bf51db026590e55253741efeb6855cca5d8566b237245a64088d9
+updated: 2018-05-25T16:03:54.201025948+01:00
 imports:
 - name: github.com/armon/go-proxyproto
   version: 609d6338d3a76ec26ac3fe7045a164d9a58436e7
@@ -15,6 +15,8 @@ imports:
   - health
   - httputil
   - timeutil
+- name: github.com/elazarl/goproxy
+  version: a96fa3a318260eab29abaf32f7128c9eb07fb073
 - name: github.com/fsnotify/fsnotify
   version: c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9
 - name: github.com/gambol99/go-oidc
@@ -25,8 +27,6 @@ imports:
   - key
   - oauth2
   - oidc
-- name: github.com/gambol99/goproxy
-  version: e713e5909438245be49ef559e74dd904833ebe90
 - name: github.com/go-chi/chi
   version: 18d990c0d1c023b05a3652d322ae36d8bdb62e07
   subpackages:
