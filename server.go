@@ -208,6 +208,10 @@ func (r *oauthProxy) createReverseProxy() error {
 			e.Get("/{name}", r.debugHandler)
 			e.Post("/{name}", r.debugHandler)
 		})
+		// @check if the server write-timeout is still set and throw a warning
+		if r.config.ServerWriteTimeout > 0 {
+			r.log.Warn("you must disable the server write timeout (--server-write-timeout) when using pprof profiling")
+		}
 	}
 
 	if r.config.EnableSessionCookies {
