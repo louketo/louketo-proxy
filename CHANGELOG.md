@@ -1,5 +1,5 @@
 
-#### **2.1.2 (Unreleased)**
+#### **2.2.0 (Unreleased)**
 
 FEATURES:
 * Added a `--enable-default-deny` option to make denial by default [#PR320](https://github.com/gambol99/keycloak-proxy/pull/320)
@@ -32,6 +32,9 @@ FIXES:
 * Reducing the aggressive timeouts on the upstream [#PR354](https://github.com/gambol99/keycloak-proxy/pull/354)
 * Fixed the issue with a zero exp claim [#PR355](https://github.com/gambol99/keycloak-proxy/pull/355)
 * Added a method check for the hijacker [#PR302](https://github.com/gambol99/keycloak-proxy/pull/302)
+
+BREAKING CHANGES:
+* Making the cookies session only by default and turning the default denial on [#PR368](https://github.com/gambol99/keycloak-proxy/pull/368)
 
 #### **2.1.1**
 

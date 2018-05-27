@@ -32,6 +32,8 @@ func newDefaultConfig() *Config {
 		CookieRefreshName:           "kc-state",
 		EnableAuthorizationCookies:  true,
 		EnableAuthorizationHeader:   true,
+		EnableDefaultDeny:           true,
+		EnableSessionCookies:        true,
 		EnableTokenHeader:           true,
 		Headers:                     make(map[string]string),
 		LetsEncryptCacheDir:         "./cache/",

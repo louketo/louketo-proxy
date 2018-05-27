@@ -22,6 +22,7 @@
   - Let's Encrypt support
 
 ----
+> **Note**: since v2.2.0 session-only cookies and default denial is switched on by default; though both of these can be altered on the command line or config.
 
 Keycloak-proxy is a proxy service which at the risk of stating the obvious integrates with the [Keycloak](https://github.com/keycloak/keycloak) authentication service. Although technically the service has no dependency on Keycloak itself and would quite happily work with any OpenID provider. The service supports both access tokens in browser cookie or bearer tokens.
 
@@ -34,7 +35,7 @@ USAGE:
    keycloak-proxy [options]
 
 VERSION:
-   v2.1.1 (git+sha: c1e8399-dirty, built: 12-05-2018)
+   v2.2.0 (git+sha: 72a3646-dirty, built: 25-05-2018)
 
 AUTHOR:
    Rohith <gambol99@gmail.com>
@@ -252,7 +253,7 @@ bin/keycloak-proxy \
     --resources="uri=/public/*|white-listed=true"
 ```
 
-The **recommended** deployment to use a default denial to all requests via `--enable-default-deny=true` or `--resources="uri=/*"` and to then explicityly allow what you want through.
+Note from release 2.2.0 the `--enable-default-deny` is true by default and should explicityly allow what you want through.
 
 #### **HTTP Routing**
 
@@ -285,6 +286,10 @@ DEBU[0002] resource access permitted: /                  access=permitted bearer
 DEBU[0002] resource access permitted: /favicon.ico       access=permitted bearer=false expires=57m51.144004098s resource=/ username=gambol99@gmail.com
 2016-02-06 13:59:01.856716 I | http: proxy error: dial tcp 127.0.0.1:8081: getsockopt: connection refused
 ```
+
+#### **Session Only Cookies**
+
+By default the access and refresh cookies are session only and disposed of on broswer close; you can disable this feature via the `--enable-session-cookies` option.
 
 #### **Forward Signing Proxy**
 
