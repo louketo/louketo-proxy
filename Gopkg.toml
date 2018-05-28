@@ -39,7 +39,7 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/gambol99/goproxy"
+  name = "github.com/elazarl/goproxy"
 
 [[constraint]]
   name = "github.com/rs/cors"
