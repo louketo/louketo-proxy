@@ -24,7 +24,6 @@ FEATURES:
 * Added a warning messaage to indicate disabling the write-timeout when using pprof [#PR370](https://github.com/gambol99/keycloak-proxy/pull/370)
 
 FIXES:
-* Fixed up the redirect_uri to the logout [#PR365](https://github.com/gambol99/keycloak-proxy/pull/365)
 * Fixed a redirection bug [#PR337](https://github.com/gambol99/keycloak-proxy/pull/337)
 * Updated the go-oidc to fix the cache header [issues](https://github.com/gambol99/keycloak-proxy/issues/340)[#PR339](https://github.com/gambol99/keycloak-proxy/pull/339)
 * Fixed up the readme indicating we can run without client secret [#PR342](https://github.com/gambol99/keycloak-proxy/pull/342)
