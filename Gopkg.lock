@@ -42,6 +42,12 @@
   revision = "5215b55f46b2b919f50a1df0eaa5886afe4e3b3d"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/elazarl/goproxy"
+  packages = ["."]
+  revision = "a96fa3a318260eab29abaf32f7128c9eb07fb073"
+
+[[projects]]
   name = "github.com/fsnotify/fsnotify"
   packages = ["."]
   revision = "c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9"
@@ -58,12 +64,6 @@
     "oidc"
   ]
   revision = "87948fe50989333a6a3f970e48f8dec844361fa1"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/gambol99/goproxy"
-  packages = ["."]
-  revision = "e713e5909438245be49ef559e74dd904833ebe90"
 
 [[projects]]
   name = "github.com/go-chi/chi"
