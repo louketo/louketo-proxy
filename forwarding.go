@@ -16,6 +16,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -75,10 +76,8 @@ func (r *oauthProxy) proxyMiddleware(next http.Handler) http.Handler {
 
 // forwardProxyHandler is responsible for signing outbound requests
 func (r *oauthProxy) forwardProxyHandler() func(*http.Request, *http.Response) {
-	client, err := r.client.OAuthClient()
-	if err != nil {
-		r.log.Fatal("failed to create oauth client", zap.Error(err))
-	}
+	ctx := context.Background()
+	config := getOAuthConfig(r, r.config.RedirectionURL)
 	// the loop state
 	var state struct {
 		// the access token
@@ -107,16 +106,15 @@ func (r *oauthProxy) forwardProxyHandler() func(*http.Request, *http.Response) {
 					zap.String("username", r.config.ForwardingUsername))
 
 				// step: login into the service
-				resp, err := client.UserCredsToken(r.config.ForwardingUsername, r.config.ForwardingPassword)
+				_token, err := config.PasswordCredentialsToken(ctx, r.config.ForwardingUsername, r.config.ForwardingPassword)
 				if err != nil {
 					r.log.Error("failed to login to authentication service", zap.Error(err))
 					// step: back-off and reschedule
 					<-time.After(time.Duration(5) * time.Second)
 					continue
 				}
-
 				// step: parse the token
-				token, identity, err := parseToken(resp.AccessToken)
+				token, identity, err := parseToken(_token.AccessToken)
 				if err != nil {
 					r.log.Error("failed to parse the access token", zap.Error(err))
 					// step: we should probably hope and reschedule here
@@ -130,7 +128,7 @@ func (r *oauthProxy) forwardProxyHandler() func(*http.Request, *http.Response) {
 				state.expiration = identity.ExpiresAt
 				state.wait = true
 				state.login = false
-				state.refresh = resp.RefreshToken
+				state.refresh = _token.RefreshToken
 
 				r.log.Info("successfully retrieved access token for subject",
 					zap.String("subject", state.identity.ID),
@@ -150,7 +148,7 @@ func (r *oauthProxy) forwardProxyHandler() func(*http.Request, *http.Response) {
 						zap.String("expires", state.expiration.Format(time.RFC3339)))
 
 					// step: attempt to refresh the access
-					token, expiration, err := getRefreshedToken(r.client, state.refresh)
+					token, expiration, err := getRefreshedToken(config, state.refresh)
 					if err != nil {
 						state.login = true
 						switch err {
