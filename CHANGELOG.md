@@ -19,6 +19,7 @@ FEATURES:
 * Adding a ability to match string arrays claims [#PR364](https://github.com/gambol99/keycloak-proxy/pull/364)
 * Imported the fix to the cache headers from upstream go-oidc [#PR341](https://github.com/gambol99/keycloak-proxy/pull/341)
 * Switching to using SHA256 from MD5 for the token hash [#PR350](https://github.com/gambol99/keycloak-proxy/pull/350)
+* Switched to using golang v1.10.2 [#PR374](https://github.com/gambol99/keycloak-proxy/pull/374)
 * Added a warning messaage to indicate disabling the write-timeout when using pprof [#PR370](https://github.com/gambol99/keycloak-proxy/pull/370)
 
 FIXES:
