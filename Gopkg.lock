@@ -20,7 +20,7 @@
 [[projects]]
   name = "github.com/beorn7/perks"
   packages = ["quantile"]
-  revision = "3ac7bf7a47d159a033b107610db8a1b6575507a4"
+  revision = "4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9"
 
 [[projects]]
   name = "github.com/boltdb/bolt"
@@ -39,12 +39,13 @@
 [[projects]]
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
-  revision = "04cdfd42973bb9c8589fd6a731800cf222fde1a9"
+  revision = "5215b55f46b2b919f50a1df0eaa5886afe4e3b3d"
 
 [[projects]]
   name = "github.com/fsnotify/fsnotify"
   packages = ["."]
-  revision = "fd9ec7deca8bf46ecd2a795baaacf2b3a9be1197"
+  revision = "c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9"
+  version = "v1.4.7"
 
 [[projects]]
   branch = "master"
@@ -80,7 +81,7 @@
 [[projects]]
   name = "github.com/golang/protobuf"
   packages = ["proto"]
-  revision = "0c1f6d65b5a189c2250d10e71a5506f06f9fa0a0"
+  revision = "1643683e1b54a9e88ad26d98f81400c8c9d9f4f9"
 
 [[projects]]
   name = "github.com/jonboulle/clockwork"
@@ -88,10 +89,9 @@
   revision = "ed104f61ea4877bea08af6f759805674861e968d"
 
 [[projects]]
-  branch = "master"
   name = "github.com/matttproud/golang_protobuf_extensions"
   packages = ["pbutil"]
-  revision = "c12348ce28de40eed0136aa2b644d0ee0650e56c"
+  revision = "fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a"
 
 [[projects]]
   name = "github.com/pmezard/go-difflib"
@@ -109,12 +109,13 @@
 [[projects]]
   name = "github.com/prometheus/client_golang"
   packages = ["prometheus"]
-  revision = "488edd04dc224ba64c401747cd0a4b5f05dfb234"
+  revision = "c3324c1198cf3374996e9d3098edd46a6b55afc9"
 
 [[projects]]
+  branch = "master"
   name = "github.com/prometheus/client_model"
   packages = ["go"]
-  revision = "fa8ad6fec33561be4280a8f0514318c79d7f6cb6"
+  revision = "99fa1f4be8e564e8a6b613da7fa6f46c9edafc6c"
 
 [[projects]]
   name = "github.com/prometheus/common"
@@ -123,12 +124,15 @@
     "internal/bitbucket.org/ww/goautoneg",
     "model"
   ]
-  revision = "3a184ff7dfd46b9091030bf2e56c71112b0ddb0e"
+  revision = "13ba4ddd0caa9c28ca7b7bffe1dfa9ed8d5ef207"
 
 [[projects]]
   name = "github.com/prometheus/procfs"
-  packages = ["."]
-  revision = "abf152e5f3e97f2fafac028d2cc06c1feb87ffa5"
+  packages = [
+    ".",
+    "xfs"
+  ]
+  revision = "65c1f6f8f0fc1e2185eb9863a3bc751496404259"
 
 [[projects]]
   name = "github.com/rs/cors"
@@ -142,7 +146,7 @@
     "assert",
     "require"
   ]
-  revision = "f6abca593680b2315d2075e0f5e2a9751e3f431a"
+  revision = "d77da356e56a7428ad25149ca77381849a6a5232"
 
 [[projects]]
   name = "github.com/unrolled/secure"
@@ -150,16 +154,16 @@
   revision = "4b41e52ab568cbfd31eda3612d98192da1575c77"
 
 [[projects]]
+  branch = "master"
   name = "github.com/urfave/cli"
   packages = ["."]
-  revision = "0bdeddeeb0f650497d603c4ad7b20cfe685682f6"
-  version = "v1.19.1"
+  revision = "8e01ec4cd3e2d84ab2fe90d8210528ffbb06d8ff"
 
 [[projects]]
   name = "go.uber.org/atomic"
   packages = ["."]
-  revision = "4e336646b2ef9fc6e47be8e21594178f98e5ebcf"
-  version = "v1.2.0"
+  revision = "1ea20fb1cbb1cc08cbd0d913a96dead89aa18289"
+  version = "v1.3.2"
 
 [[projects]]
   name = "go.uber.org/zap"
@@ -180,7 +184,7 @@
     "acme",
     "acme/autocert"
   ]
-  revision = "dd85ac7e6a88fc6ca420478e934de5f1a42dd3c6"
+  revision = "49796115aa4b964c318aad4f3084fdb41e9aa067"
 
 [[projects]]
   name = "golang.org/x/net"
@@ -188,12 +192,12 @@
     "idna",
     "publicsuffix"
   ]
-  revision = "bc3663df0ac92f928d419e31e0d2af22e683a5a2"
+  revision = "1c05540f6879653db88113bc4a2b70aec4bd491f"
 
 [[projects]]
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "833a04a10549a95dc34458c195cbad61bbb6cb4d"
+  revision = "95c6576299259db960f6c5b9b69ea52422860fce"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -201,12 +205,15 @@
     "internal/gen",
     "internal/triegen",
     "internal/ucd",
+    "secure/bidirule",
     "transform",
+    "unicode/bidi",
     "unicode/cldr",
     "unicode/norm",
+    "unicode/rangetable",
     "width"
   ]
-  revision = "f28f36722d5ef2f9655ad3de1f248e3e52ad5ebd"
+  revision = "b19bf474d317b857955b12035d2c5acb57ce8b01"
 
 [[projects]]
   branch = "v1"
@@ -228,11 +235,11 @@
 [[projects]]
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "49c95bdc21843256fb6c4e0d370a05f24a0bf213"
+  revision = "670d4cfef0544295bc27a114dbac37980d83185a"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c731e73c56216624b467f82b845e5edd2b6d179aab515cabb1d7929054708aec"
+  inputs-digest = "b139b3100a36c39eb42630da4afe77e4f69afef6fbf7b03c7f12e5608d317b04"
   solver-name = "gps-cdcl"
   solver-version = 1
