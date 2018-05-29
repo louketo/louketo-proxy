@@ -12,7 +12,7 @@ language: go
 go:
 - "1.10"
 install:
-- go get github.com/Masterminds/glide
+- go get -u github.com/golang/dep/cmd/dep
 - go get github.com/mattn/goveralls
 - go get -u github.com/client9/misspell/cmd/misspell
 script:

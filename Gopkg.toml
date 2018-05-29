@@ -1,6 +1,6 @@
 # Gopkg.toml example
 #
-# Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
+# Refer to https://golang.github.io/dep/docs/Gopkg.toml.html
 # for detailed Gopkg.toml documentation.
 #
 # required = ["github.com/user/thing/cmd/thing"]
@@ -30,6 +30,10 @@
   version = "1.1.0"
 
 [[constraint]]
+  name = "github.com/fsnotify/fsnotify"
+  version = "1.4.7"
+
+[[constraint]]
   branch = "master"
   name = "github.com/gambol99/go-oidc"
 
@@ -42,8 +46,8 @@
   version = "1.1.0"
 
 [[constraint]]
+  branch = "master"
   name = "github.com/urfave/cli"
-  version = "1.19.1"
 
 [prune]
   go-tests = true
