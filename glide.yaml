@@ -27,7 +27,6 @@ import:
 - package: golang.org/x/crypto
   subpackages:
   - acme/autocert
-- package: github.com/gambol99/goproxy
 testImport:
 - package: github.com/go-resty/resty
 - package: github.com/stretchr/testify
