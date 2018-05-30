@@ -1,5 +1,5 @@
 
-#### **2.2.0 (Unreleased)**
+#### **2.2.0**
 
 FEATURES:
 * Added a `--enable-default-deny` option to make denial by default [#PR320](https://github.com/gambol99/keycloak-proxy/pull/320)
