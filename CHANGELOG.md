@@ -1,4 +1,9 @@
 
+#### **2.2.1**
+
+FIX
+- a minor fix to the logout handler, when logout redirection is enable if no redirect param is given we default to the hostname [#PR375](https://github.com/gambol99/keycloak-proxy/pull/375)
+
 #### **2.2.0**
 
 FEATURES:
