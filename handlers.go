@@ -121,7 +121,7 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 	// Flow: once we exchange the authorization code we parse the ID Token; we then check for a access token,
 	// if a access token is present and we can decode it, we use that as the session token, otherwise we default
 	// to the ID Token.
-	token, identity, err := parseToken(resp.IDToken)
+	token, identity, err := parseToken(rawIDToken)
 	if err != nil {
 		r.log.Error("unable to parse id token for identity", zap.Error(err))
 		r.accessForbidden(w, req)
