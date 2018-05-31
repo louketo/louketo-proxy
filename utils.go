@@ -62,6 +62,21 @@ var (
 	symbolsFilter = regexp.MustCompilePOSIX("[_$><\\[\\].,\\+-/'%^&*()!\\\\]+")
 )
 
+// getRequestHostURL returns the hostname from the request
+func getRequestHostURL(r *http.Request) string {
+	hostname := r.Host
+	if r.Header.Get("X-Forwarded-Host") != "" {
+		hostname = r.Header.Get("X-Forwarded-Host")
+	}
+
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+
+	return fmt.Sprintf("%s://%s", scheme, hostname)
+}
+
 // readConfigFile reads and parses the configuration file
 func readConfigFile(filename string, config *Config) error {
 	content, err := ioutil.ReadFile(filename)
