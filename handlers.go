@@ -324,9 +324,15 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 	// @check if we should redirect to the provider
 	if r.config.EnableLogoutRedirect {
 		sendTo := fmt.Sprintf("%s/protocol/openid-connect/logout", strings.TrimSuffix(r.config.DiscoveryURL, "/.well-known/openid-configuration"))
-		// @step: if not redirect uri is set we default back to the hostname
+
+		// @step: if no redirect uri is set
 		if redirectURL == "" {
-			redirectURL = getRequestHostURL(req)
+			// @step: we first check for a redirection-url and then host header
+			if r.config.RedirectionURL != "" {
+				redirectURL = r.config.RedirectionURL
+			} else {
+				redirectURL = getRequestHostURL(req)
+			}
 		}
 
 		r.redirectToURL(fmt.Sprintf("%s?redirect_uri=%s", sendTo, url.QueryEscape(redirectURL)), w, req)
