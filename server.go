@@ -102,7 +102,7 @@ func newProxy(config *Config) (*oauthProxy, error) {
 
 	// initialize the openid client
 	if !config.SkipTokenVerification {
-		if svc.client, svc.idp, svc.idpClient, err = svc.newOpenIDClient(); err != nil {
+		if svc.client, svc.idp, err = svc.newOpenIDClient(); err != nil {
 			return nil, err
 		}
 	} else {
@@ -615,7 +615,7 @@ func (r *oauthProxy) createTemplates() error {
 
 // newOpenIDClient initializes the openID configuration, note: the redirection url is deliberately left blank
 // in order to retrieve it from the host header on request
-func (r *oauthProxy) newOpenIDClient() (*oidc.Client, oidc.ProviderConfig, *http.Client, error) {
+func (r *oauthProxy) newOpenIDClient() (*oidc.Client, oidc.ProviderConfig, error) {
 	var err error
 	var config oidc.ProviderConfig
 
@@ -664,7 +664,7 @@ func (r *oauthProxy) newOpenIDClient() (*oidc.Client, oidc.ProviderConfig, *http
 	// wait for timeout or successful retrieval
 	select {
 	case <-time.After(r.config.OpenIDProviderTimeout):
-		return nil, config, nil, errors.New("failed to retrieve the provider configuration from discovery url")
+		return nil, config, errors.New("failed to retrieve the provider configuration from discovery url")
 	case <-completeCh:
 		r.log.Info("successfully retrieved openid configuration from the discovery")
 	}
@@ -674,19 +674,18 @@ func (r *oauthProxy) newOpenIDClient() (*oidc.Client, oidc.ProviderConfig, *http
 			ID:     r.config.ClientID,
 			Secret: r.config.ClientSecret,
 		},
-		HTTPClient:        hc,
 		RedirectURL:       fmt.Sprintf("%s/oauth/callback", r.config.RedirectionURL),
 		ProviderConfig:    config,
 		Scope:             append(r.config.Scopes, oidc.DefaultScope...),
 		SkipClientIDCheck: r.config.SkipClientID,
 	})
 	if err != nil {
-		return nil, config, hc, err
+		return nil, config, err
 	}
 	// start the provider sync for key rotation
 	client.SyncProviderConfig(r.config.DiscoveryURL)
 
-	return client, config, hc, nil
+	return client, config, nil
 }
 
 // Render implements the echo Render interface
