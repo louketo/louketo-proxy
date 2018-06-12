@@ -428,7 +428,7 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 
 	// are we create a unix socket or tcp listener?
 	if strings.HasPrefix(config.listen, "unix://") {
-		socket := strings.Trim(config.listen, "unix://")
+		socket := config.listen[7:]
 		if exists := fileExists(socket); exists {
 			if err = os.Remove(socket); err != nil {
 				return nil, err
