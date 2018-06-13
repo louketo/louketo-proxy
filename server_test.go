@@ -457,7 +457,7 @@ func newTestProxyService(config *Config) (*oauthProxy, *fakeAuthServer, string) 
 	config.RedirectionURL = service.URL
 
 	// step: we need to update the client config
-	if proxy.client, proxy.idp, proxy.idpClient, err = proxy.newOpenIDClient(); err != nil {
+	if proxy.client, proxy.idp, err = proxy.newOpenIDClient(); err != nil {
 		panic("failed to recreate the openid client, error: " + err.Error())
 	}
 
