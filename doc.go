@@ -270,6 +270,8 @@ type Config struct {
 	// EncryptionKey is the encryption key used to encrypt the refresh token
 	EncryptionKey string `json:"encryption-key" yaml:"encryption-key" usage:"encryption key used to encryption the session state" env:"ENCRYPTION_KEY"`
 
+	// InvalidAuthRedirectsWith303 will make requests with invalid auth headers redirect using HTTP 303 instead of HTTP 307.  See github.com/gambol99/keycloak-proxy/issues/292 for context.
+	InvalidAuthRedirectsWith303 bool `json:"invalid-auth-redirects-with-303" yaml:"invalid-auth-redirects-with-303" usage:"use HTTP 303 redirects instead of 307 for invalid auth tokens"`
 	// NoRedirects informs we should hand back a 401 not a redirect
 	NoRedirects bool `json:"no-redirects" yaml:"no-redirects" usage:"do not have back redirects when no authentication is present, 401 them"`
 	// SkipTokenVerification tells the service to skipp verifying the access token - for testing purposes
