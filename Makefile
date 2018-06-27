@@ -2,7 +2,7 @@ NAME=keycloak-proxy
 AUTHOR=gambol99
 AUTHOR_EMAIL=gambol99@gmail.com
 REGISTRY=quay.io
-GOVERSION ?= 1.10
+GOVERSION ?= 1.10.2
 ROOT_DIR=${PWD}
 HARDWARE=$(shell uname -m)
 GIT_SHA=$(shell git --no-pager describe --always --dirty)
@@ -80,14 +80,14 @@ authors:
 	@echo "--> Updating the AUTHORS"
 	git log --format='%aN <%aE>' | sort -u > AUTHORS
 
-glide-install:
+dep-install:
 	@echo "--> Installing dependencies"
-	@glide install
+	@dep ensure
 
 deps:
 	@echo "--> Installing build dependencies"
-	@go get github.com/Masterminds/glide
-	@$(MAKE) glide-install
+	@go get -u github.com/golang/dep/cmd/dep
+	@$(MAKE) dep-install
 
 vet:
 	@echo "--> Running go vet $(VETARGS) ."
@@ -144,7 +144,7 @@ spelling:
 test:
 	@echo "--> Running the tests"
 	@if [ ! -d "vendor" ]; then \
-		make glide-install; \
+		make dep-install; \
   fi
 	@go test -v
 	@$(MAKE) golang

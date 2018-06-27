@@ -27,7 +27,7 @@ import (
 )
 
 var (
-	release  = "v2.1.1"
+	release  = "v2.2.1"
 	gitsha   = "no gitsha provided"
 	compiled = "0"
 	version  = ""
@@ -46,7 +46,6 @@ const (
 	httpSchema          = "http"
 	versionHeader       = "X-Auth-Proxy-Version"
 
-	oauthURL         = "/oauth"
 	authorizationURL = "/authorize"
 	callbackURL      = "/callback"
 	expiredURL       = "/expired"
@@ -66,12 +65,8 @@ const (
 )
 
 const (
-	headerXForwardedFor      = "X-Forwarded-For"
-	headerXForwardedProto    = "X-Forwarded-Proto"
-	headerXForwardedProtocol = "X-Forwarded-Protocol"
-	headerXForwardedSsl      = "X-Forwarded-Ssl"
-	headerXRealIP            = "X-Real-IP"
-	headerXRequestID         = "X-Request-ID"
+	headerXForwardedFor = "X-Forwarded-For"
+	headerXRealIP       = "X-Real-IP"
 )
 
 var (
@@ -165,6 +160,8 @@ type Config struct {
 	OpenIDProviderProxy string `json:"openid-provider-proxy" yaml:"openid-provider-proxy" usage:"proxy for communication with the openid provider"`
 	// OpenIDProviderTimeout is the timeout used to pulling the openid configuration from the provider
 	OpenIDProviderTimeout time.Duration `json:"openid-provider-timeout" yaml:"openid-provider-timeout" usage:"timeout for openid configuration on .well-known/openid-configuration"`
+	// OAuthURI is the uri for the oauth endpoints for the proxy
+	OAuthURI string `json:"oauth-uri" yaml:"oauth-uri" usage:"the uri for proxy oauth endpoints" env:"OAUTH_URI"`
 	// Scopes is a list of scope we should request
 	Scopes []string `json:"scopes" yaml:"scopes" usage:"list of scopes requested when authenticating the user"`
 	// Upstream is the upstream endpoint i.e whom were proxying to
@@ -172,7 +169,7 @@ type Config struct {
 	// UpstreamCA is the path to a CA certificate in PEM format to validate the upstream certificate
 	UpstreamCA string `json:"upstream-ca" yaml:"upstream-ca" usage:"the path to a file container a CA certificate to validate the upstream tls endpoint"`
 	// Resources is a list of protected resources
-	Resources []*Resource `json:"resources" yaml:"resources" usage:"list of resources 'uri=/admin|methods=GET,PUT|roles=role1,role2'"`
+	Resources []*Resource `json:"resources" yaml:"resources" usage:"list of resources 'uri=/admin*|methods=GET,PUT|roles=role1,role2'"`
 	// Headers permits adding customs headers across the board
 	Headers map[string]string `json:"headers" yaml:"headers" usage:"custom headers to the upstream request, key=value"`
 	// PreserveHost preserves the host header of the proxied request in the upstream request
@@ -194,6 +191,8 @@ type Config struct {
 	EnableSecurityFilter bool `json:"enable-security-filter" yaml:"enable-security-filter" usage:"enables the security filter handler" env:"ENABLE_SECURITY_FILTER"`
 	// EnableRefreshTokens indicate's you wish to ignore using refresh tokens and re-auth on expiration of access token
 	EnableRefreshTokens bool `json:"enable-refresh-tokens" yaml:"enable-refresh-tokens" usage:"enables the handling of the refresh tokens" env:"ENABLE_REFRESH_TOKEN"`
+	// EnableSessionCookies indicates the cookies, both token and refresh should not be persisted
+	EnableSessionCookies bool `json:"enable-session-cookies" yaml:"enable-session-cookies" usage:"access and refresh tokens are session only i.e. removed browser close"`
 	// EnableLoginHandler indicates we want the login handler enabled
 	EnableLoginHandler bool `json:"enable-login-handler" yaml:"enable-login-handler" usage:"enables the handling of the refresh tokens" env:"ENABLE_LOGIN_HANDLER"`
 	// EnableTokenHeader adds the JWT token to the upstream authentication headers
@@ -273,6 +272,8 @@ type Config struct {
 	// EncryptionKey is the encryption key used to encrypt the refresh token
 	EncryptionKey string `json:"encryption-key" yaml:"encryption-key" usage:"encryption key used to encryption the session state" env:"ENCRYPTION_KEY"`
 
+	// InvalidAuthRedirectsWith303 will make requests with invalid auth headers redirect using HTTP 303 instead of HTTP 307.  See github.com/gambol99/keycloak-proxy/issues/292 for context.
+	InvalidAuthRedirectsWith303 bool `json:"invalid-auth-redirects-with-303" yaml:"invalid-auth-redirects-with-303" usage:"use HTTP 303 redirects instead of 307 for invalid auth tokens"`
 	// NoRedirects informs we should hand back a 401 not a redirect
 	NoRedirects bool `json:"no-redirects" yaml:"no-redirects" usage:"do not have back redirects when no authentication is present, 401 them"`
 	// SkipTokenVerification tells the service to skipp verifying the access token - for testing purposes

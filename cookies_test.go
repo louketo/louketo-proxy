@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -101,6 +102,19 @@ func TestDropRefreshCookie(t *testing.T) {
 
 	assert.Equal(t, resp.Header().Get("Set-Cookie"),
 		"kc-state=test; Path=/; Domain=127.0.0.1",
+		"we have not set the cookie, headers: %v", resp.Header())
+}
+
+func TestSessionOnlyCookie(t *testing.T) {
+	p, _, _ := newTestProxyService(nil)
+	p.config.EnableSessionCookies = true
+
+	req := newFakeHTTPRequest("GET", "/admin")
+	resp := httptest.NewRecorder()
+	p.dropCookie(resp, req.Host, "test-cookie", "test-value", 1*time.Hour)
+
+	assert.Equal(t, resp.Header().Get("Set-Cookie"),
+		"test-cookie=test-value; Path=/; Domain=127.0.0.1",
 		"we have not set the cookie, headers: %v", resp.Header())
 }
 

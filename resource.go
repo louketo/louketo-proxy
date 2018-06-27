@@ -77,12 +77,13 @@ func (r *Resource) valid() error {
 	if r.Roles == nil {
 		r.Roles = make([]string, 0)
 	}
-	if strings.HasPrefix(r.URL, oauthURL) {
-		return errors.New("this is used by the oauth handlers")
-	}
 	if r.URL == "" {
 		return errors.New("resource does not have url")
 	}
+	if strings.HasSuffix(r.URL, "/") && !r.WhiteListed {
+		return fmt.Errorf("you need a wildcard on the url resource to cover all request i.e. --resources=uri=%s*", r.URL)
+	}
+
 	// step: add any of no methods
 	if len(r.Methods) <= 0 {
 		r.Methods = allHTTPMethods

@@ -28,6 +28,7 @@ import (
 	"github.com/go-chi/chi/middleware"
 	"github.com/unrolled/secure"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 const (
@@ -211,6 +212,65 @@ func (r *oauthProxy) authenticationMiddleware(resource *Resource) func(http.Hand
 	}
 }
 
+// checkClaim checks whether claim in userContext matches claimName, match. It can be String or Strings claim.
+func (r *oauthProxy) checkClaim(user *userContext, claimName string, match *regexp.Regexp, resourceURL string) bool {
+	errFields := []zapcore.Field{
+		zap.String("claim", claimName),
+		zap.String("access", "denied"),
+		zap.String("email", user.email),
+		zap.String("resource", resourceURL),
+	}
+
+	if _, found := user.claims[claimName]; !found {
+		r.log.Warn("the token does not have the claim", errFields...)
+		return false
+	}
+
+	// Check string claim.
+	valueStr, foundStr, errStr := user.claims.StringClaim(claimName)
+	// We have found string claim, so let's check whether it matches.
+	if foundStr {
+		if match.MatchString(valueStr) {
+			return true
+		}
+		r.log.Warn("claim requirement does not match claim in token", append(errFields,
+			zap.String("issued", valueStr),
+			zap.String("required", match.String()),
+		)...)
+
+		return false
+	}
+
+	// Check strings claim.
+	valueStrs, foundStrs, errStrs := user.claims.StringsClaim(claimName)
+	// We have found strings claim, so let's check whether it matches.
+	if foundStrs {
+		for _, value := range valueStrs {
+			if match.MatchString(value) {
+				return true
+			}
+		}
+		r.log.Warn("claim requirement does not match any element claim group in token", append(errFields,
+			zap.String("issued", fmt.Sprintf("%v", valueStrs)),
+			zap.String("required", match.String()),
+		)...)
+
+		return false
+	}
+
+	// If this fails, the claim is probably float or int.
+	if errStr != nil && errStrs != nil {
+		r.log.Error("unable to extract the claim from token (tried string and strings)", append(errFields,
+			zap.Error(errStr),
+			zap.Error(errStrs),
+		)...)
+		return false
+	}
+
+	r.log.Warn("unexpected error", errFields...)
+	return false
+}
+
 // admissionMiddleware is responsible checking the access token against the protected resource
 func (r *oauthProxy) admissionMiddleware(resource *Resource) func(http.Handler) http.Handler {
 	claimMatches := make(map[string]*regexp.Regexp)
@@ -254,39 +314,7 @@ func (r *oauthProxy) admissionMiddleware(resource *Resource) func(http.Handler) 
 
 			// step: if we have any claim matching, lets validate the tokens has the claims
 			for claimName, match := range claimMatches {
-				value, found, err := user.claims.StringClaim(claimName)
-				if err != nil {
-					r.log.Error("unable to extract the claim from token",
-						zap.String("access", "denied"),
-						zap.String("email", user.email),
-						zap.String("resource", resource.URL),
-						zap.Error(err))
-
-					next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req)))
-					return
-				}
-
-				if !found {
-					r.log.Warn("the token does not have the claim",
-						zap.String("access", "denied"),
-						zap.String("claim", claimName),
-						zap.String("email", user.email),
-						zap.String("resource", resource.URL))
-
-					next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req)))
-					return
-				}
-
-				// step: check the claim is the same
-				if !match.MatchString(value) {
-					r.log.Warn("the token claims does not match claim requirement",
-						zap.String("access", "denied"),
-						zap.String("claim", claimName),
-						zap.String("email", user.email),
-						zap.String("issued", value),
-						zap.String("required", match.String()),
-						zap.String("resource", resource.URL))
-
+				if !r.checkClaim(user, claimName, match, resource.URL) {
 					next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req)))
 					return
 				}
@@ -360,6 +388,7 @@ func (r *oauthProxy) securityMiddleware(next http.Handler) http.Handler {
 		ContentSecurityPolicy: r.config.ContentSecurityPolicy,
 		ContentTypeNosniff:    r.config.EnableContentNoSniff,
 		FrameDeny:             r.config.EnableFrameDeny,
+		SSLProxyHeaders:       map[string]string{"X-Forwarded-Proto": "https"},
 		SSLRedirect:           r.config.EnableHTTPSRedirect,
 	})
 

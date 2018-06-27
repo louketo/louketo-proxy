@@ -202,7 +202,7 @@ func TestAuthorizationTemplate(t *testing.T) {
 	}
 	requests := []fakeRequest{
 		{
-			URI:                     oauthURL + authorizationURL,
+			URI:                     cfg.WithOAuthURI(authorizationURL),
 			Redirects:               true,
 			ExpectedCode:            http.StatusOK,
 			ExpectedContentContains: "Sign In",
@@ -447,15 +447,16 @@ func newFakeKeycloakConfig() *Config {
 		CookieRefreshName:          "kc-state",
 		DisableAllLogging:          true,
 		DiscoveryURL:               "127.0.0.1:0",
-		OpenIDProviderTimeout:      time.Second * 5,
-		EnableAuthorizationHeader:  true,
 		EnableAuthorizationCookies: true,
+		EnableAuthorizationHeader:  true,
 		EnableLogging:              false,
 		EnableLoginHandler:         true,
 		EnableTokenHeader:          true,
 		Listen:                     "127.0.0.1:0",
+		OAuthURI:                   "/oauth",
+		OpenIDProviderTimeout:      time.Second * 5,
 		Scopes:                     []string{},
-		Verbose:                    true,
+		Verbose:                    false,
 		Resources: []*Resource{
 			{
 				URL:     fakeAdminRoleURL,

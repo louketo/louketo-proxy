@@ -83,8 +83,8 @@ func (r *oauthProxy) accessForbidden(w http.ResponseWriter, req *http.Request) c
 }
 
 // redirectToURL redirects the user and aborts the context
-func (r *oauthProxy) redirectToURL(url string, w http.ResponseWriter, req *http.Request) context.Context {
-	http.Redirect(w, req, url, http.StatusTemporaryRedirect)
+func (r *oauthProxy) redirectToURL(url string, w http.ResponseWriter, req *http.Request, statusCode int) context.Context {
+	http.Redirect(w, req, url, statusCode)
 
 	return r.revokeProxy(w, req)
 }
@@ -104,7 +104,11 @@ func (r *oauthProxy) redirectToAuthorization(w http.ResponseWriter, req *http.Re
 		w.WriteHeader(http.StatusForbidden)
 		return r.revokeProxy(w, req)
 	}
-	r.redirectToURL(oauthURL+authorizationURL+authQuery, w, req)
+	if r.config.InvalidAuthRedirectsWith303 {
+		r.redirectToURL(r.config.WithOAuthURI(authorizationURL+authQuery), w, req, http.StatusSeeOther)
+	} else {
+		r.redirectToURL(r.config.WithOAuthURI(authorizationURL+authQuery), w, req, http.StatusTemporaryRedirect)
+	}
 
 	return r.revokeProxy(w, req)
 }
@@ -116,7 +120,10 @@ func (r *oauthProxy) getAccessCookieExpiration(token jose.JWT, refresh string) t
 	// refresh token
 	duration := r.config.AccessTokenDuration
 	if _, ident, err := parseToken(refresh); err == nil {
-		duration = time.Until(ident.ExpiresAt)
+		delta := time.Until(ident.ExpiresAt)
+		if delta > 0 {
+			duration = delta
+		}
 	}
 
 	return duration

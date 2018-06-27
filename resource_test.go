@@ -23,8 +23,7 @@ import (
 
 func TestDecodeResourceBad(t *testing.T) {
 	cs := []struct {
-		Option   string
-		Resource *Resource
+		Option string
 	}{
 		{Option: "unknown=bad"},
 		{Option: "uri=/|unknown=bad"},
@@ -100,6 +99,12 @@ func TestIsValid(t *testing.T) {
 		{
 			Resource: &Resource{URL: "/test", Methods: []string{"GET"}},
 			Ok:       true,
+		},
+		{
+			Resource: &Resource{URL: "/", Methods: allHTTPMethods},
+		},
+		{
+			Resource: &Resource{URL: "/admin/", Methods: allHTTPMethods},
 		},
 		{
 			Resource: &Resource{},

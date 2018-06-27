@@ -1,19 +1,48 @@
 
-#### **2.1.2 (Unreleased)**
+#### **2.2.1**
+
+FIX
+- a minor fix to the logout handler, when logout redirection is enable if no redirect param is given we default to the hostname [#PR375](https://github.com/gambol99/keycloak-proxy/pull/375)
+
+#### **2.2.0**
 
 FEATURES:
-* Added a --enable-default-deny option to make denial by default [#PR320](https://github.com/gambol99/keycloak-proxy/pull/320)
+* Added a `--enable-default-deny` option to make denial by default [#PR320](https://github.com/gambol99/keycloak-proxy/pull/320)
+* Added a `enable-logout-redirect` which redirects the /oauth/logout to the provider [#PR327](https://github.com/gambol99/keycloak-proxy/pull/327)
+* Added environment variables alternatives for the forwarding username and password [#PR329](https://github.com/gambol99/keycloak-proxy/pull/329)
 * Added metrics latency metrics for the forwarding proxy and the certificate rotation [#PR325](https://github.com/gambol99/keycloak-proxy/pull/325)
 * Added spelling check to the tests [#PR322](https://github.com/gambol99/keycloak-proxy/pull/322)
 * Added the X-Auth-Audience to the upstream headers [#PR319](https://github.com/gambol99/keycloak-proxy/pull/319)
 * Added the ability to control the timeout on the initial openid configuration from .well-known/openid-configuration [#PR315](https://github.com/gambol99/keycloak-proxy/pull/315)
-* Added a `enable-logout-redirect` which redirects the /oauth/logout to the provider [#PR327](https://github.com/gambol99/keycloak-proxy/pull/327)
 * Added a --preserve-host option to preserve the host header of the proxied request in the upstream request [#PR328](https://github.com/gambol99/keycloak-proxy/pull/328)
+* Added the feature to customize the oauth prefix (defaults to /oauth) [#PR326](https://github.com/gambol99/keycloak-proxy/pull/326)
 * Adding additional metrics covering provider request latency, token breakdown [#PR324](https://github.com/gambol99/keycloak-proxy/pull/324)
-* Added environment variables alternatives for the forwarding username and password [#PR329]https://github.com/gambol99/keycloak-proxy/pull/329)
 * Changed the upstream-keepalive to default to true [#PR321](https://github.com/gambol99/keycloak-proxy/pull/321)
+* Force configuration to use the wildcard [#PR338](https://github.com/gambol99/keycloak-proxy/pull/338)
 * Updated the docker base image alpine 3.7 [#PR313](https://github.com/gambol99/keycloak-proxy/pull/313)
 * Updated to Golang version 1.10 [#PR316](https://github.com/gambol99/keycloak-proxy/pull/316)
+* Adding the `--enable-session-cookies` to enable session only cookies [#PR357](https://github.com/gambol99/keycloak-proxy/pull/357)
+* Adding a ability to match string arrays claims [#PR364](https://github.com/gambol99/keycloak-proxy/pull/364)
+* Imported the fix to the cache headers from upstream go-oidc [#PR341](https://github.com/gambol99/keycloak-proxy/pull/341)
+* Switched from glide to dep lib tool [#PR373](https://github.com/gambol99/keycloak-proxy/pull/373)
+* Switched to using SHA256 from MD5 for the token hash [#PR350](https://github.com/gambol99/keycloak-proxy/pull/350)
+* Switched to using golang v1.10.2 [#PR374](https://github.com/gambol99/keycloak-proxy/pull/374)
+* Added a warning messaage to indicate disabling the write-timeout when using pprof [#PR370](https://github.com/gambol99/keycloak-proxy/pull/370)
+
+FIXES:
+* Fixed up the redirect_uri to the logout [#PR365](https://github.com/gambol99/keycloak-proxy/pull/365)
+* Fixed a redirection bug [#PR337](https://github.com/gambol99/keycloak-proxy/pull/337)
+* Updated the go-oidc to fix the cache header [issues](https://github.com/gambol99/keycloak-proxy/issues/340)[#PR339](https://github.com/gambol99/keycloak-proxy/pull/339)
+* Fixed up the readme indicating we can run without client secret [#PR342](https://github.com/gambol99/keycloak-proxy/pull/342)
+* Fixed up the redirect url in the logout handler [#PR345](https://github.com/gambol99/keycloak-proxy/pull/345)
+* Switched to using the upstream stream goproxy [#PR349](https://github.com/gambol99/keycloak-proxy/pull/349)
+* Removing the unused code [#PR352](https://github.com/gambol99/keycloak-proxy/pull/352)
+* Reducing the aggressive timeouts on the upstream [#PR354](https://github.com/gambol99/keycloak-proxy/pull/354)
+* Fixed the issue with a zero exp claim [#PR355](https://github.com/gambol99/keycloak-proxy/pull/355)
+* Added a method check for the hijacker [#PR302](https://github.com/gambol99/keycloak-proxy/pull/302)
+
+BREAKING CHANGES:
+* Making the cookies session only by default and turning the default denial on [#PR368](https://github.com/gambol99/keycloak-proxy/pull/368)
 
 #### **2.1.1**
 

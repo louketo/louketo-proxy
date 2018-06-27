@@ -187,9 +187,9 @@ func (r *oauthProxy) createReverseProxy() error {
 	r.router = engine
 
 	// step: add the routing for oauth
-	engine.With(proxyDenyMiddleware).Route(oauthURL, func(e chi.Router) {
+	engine.With(proxyDenyMiddleware).Route(r.config.OAuthURI, func(e chi.Router) {
 		e.MethodNotAllowed(methodNotAllowHandlder)
-		e.Get(authorizationURL, r.oauthAuthorizationHandler)
+		e.HandleFunc(authorizationURL, r.oauthAuthorizationHandler)
 		e.Get(callbackURL, r.oauthCallbackHandler)
 		e.Get(expiredURL, r.expirationHandler)
 		e.Get(healthURL, r.healthHandler)
@@ -197,7 +197,7 @@ func (r *oauthProxy) createReverseProxy() error {
 		e.Get(tokenURL, r.tokenHandler)
 		e.Post(loginURL, r.loginHandler)
 		if r.config.EnableMetrics {
-			r.log.Info("enabled the service metrics middleware, available on", zap.String("path", fmt.Sprintf("%s%s", oauthURL, metricsURL)))
+			r.log.Info("enabled the service metrics middleware", zap.String("path", r.config.WithOAuthURI(metricsURL)))
 			e.Get(metricsURL, r.proxyMetricsHandler)
 		}
 	})
@@ -208,6 +208,14 @@ func (r *oauthProxy) createReverseProxy() error {
 			e.Get("/{name}", r.debugHandler)
 			e.Post("/{name}", r.debugHandler)
 		})
+		// @check if the server write-timeout is still set and throw a warning
+		if r.config.ServerWriteTimeout > 0 {
+			r.log.Warn("you must disable the server write timeout (--server-write-timeout) when using pprof profiling")
+		}
+	}
+
+	if r.config.EnableSessionCookies {
+		r.log.Info("using session cookies only for access and refresh tokens")
 	}
 
 	// step: load the templates if any
@@ -420,7 +428,7 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 
 	// are we create a unix socket or tcp listener?
 	if strings.HasPrefix(config.listen, "unix://") {
-		socket := strings.Trim(config.listen, "unix://")
+		socket := config.listen[7:]
 		if exists := fileExists(socket); exists {
 			if err = os.Remove(socket); err != nil {
 				return nil, err

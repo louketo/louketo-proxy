@@ -55,7 +55,7 @@ func (r *oauthProxy) getRedirectionURL(w http.ResponseWriter, req *http.Request)
 		redirect = r.config.RedirectionURL
 	}
 
-	return fmt.Sprintf("%s/oauth/callback", redirect)
+	return fmt.Sprintf("%s%s", redirect, r.config.WithOAuthURI("callback"))
 }
 
 // oauthAuthorizationHandler is responsible for performing the redirection to oauth provider
@@ -93,7 +93,7 @@ func (r *oauthProxy) oauthAuthorizationHandler(w http.ResponseWriter, req *http.
 		return
 	}
 
-	r.redirectToURL(authURL, w, req)
+	r.redirectToURL(authURL, w, req, http.StatusTemporaryRedirect)
 }
 
 // oauthCallbackHandler is responsible for handling the response from oauth service
@@ -186,7 +186,7 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 			// notes: not all idp refresh tokens are readable, google for example, so we attempt to decode into
 			// a jwt and if possible extract the expiration, else we default to 10 days
 			if _, ident, err := parseToken(resp.RefreshToken); err != nil {
-				r.dropRefreshTokenCookie(req, w, encrypted, time.Duration(240)*time.Hour)
+				r.dropRefreshTokenCookie(req, w, encrypted, 0)
 			} else {
 				r.dropRefreshTokenCookie(req, w, encrypted, time.Until(ident.ExpiresAt))
 			}
@@ -208,7 +208,7 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 		}
 	}
 
-	r.redirectToURL(state, w, req)
+	r.redirectToURL(state, w, req, http.StatusTemporaryRedirect)
 }
 
 // loginHandler provide's a generic endpoint for clients to perform a user_credentials login to the provider
@@ -279,10 +279,19 @@ func emptyHandler(w http.ResponseWriter, req *http.Request) {}
 //  - if the user has a refresh token, the token is invalidated by the provider
 //  - optionally, the user can be redirected by to a url
 func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
-	// the user can specify a url to redirect the back
-	redirectURL := req.URL.Query().Get("redirect")
+	// @check if the redirection is there
+	var redirectURL string
+	for k := range req.URL.Query() {
+		if k == "redirect" {
+			redirectURL = req.URL.Query().Get("redirect")
+			if redirectURL == "" {
+				// than we can default to redirection url
+				redirectURL = strings.TrimSuffix(r.config.RedirectionURL, "/oauth/callback")
+			}
+		}
+	}
 
-	// step: drop the access token
+	// @step: drop the access token
 	user, err := r.getIdentity(req)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -317,10 +326,19 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 
 	// @check if we should redirect to the provider
 	if r.config.EnableLogoutRedirect {
-		redirectURL := fmt.Sprintf("%s/protocol/openid-connect/logout?redirect_uri=%s",
-			strings.TrimSuffix(r.config.DiscoveryURL, "/.well-known/openid-configuration"), redirectURL)
+		sendTo := fmt.Sprintf("%s/protocol/openid-connect/logout", strings.TrimSuffix(r.config.DiscoveryURL, "/.well-known/openid-configuration"))
 
-		r.redirectToURL(redirectURL, w, req)
+		// @step: if no redirect uri is set
+		if redirectURL == "" {
+			// @step: we first check for a redirection-url and then host header
+			if r.config.RedirectionURL != "" {
+				redirectURL = r.config.RedirectionURL
+			} else {
+				redirectURL = getRequestHostURL(req)
+			}
+		}
+
+		r.redirectToURL(fmt.Sprintf("%s?redirect_uri=%s", sendTo, url.QueryEscape(redirectURL)), w, req, http.StatusTemporaryRedirect)
 
 		return
 	}
@@ -371,7 +389,7 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 	}
 	// step: should we redirect the user
 	if redirectURL != "" {
-		r.redirectToURL(redirectURL, w, req)
+		r.redirectToURL(redirectURL, w, req, http.StatusTemporaryRedirect)
 	}
 }
 

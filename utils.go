@@ -18,8 +18,8 @@ package main
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/md5"
 	"crypto/rand"
+	sha "crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
@@ -61,6 +61,21 @@ var (
 var (
 	symbolsFilter = regexp.MustCompilePOSIX("[_$><\\[\\].,\\+-/'%^&*()!\\\\]+")
 )
+
+// getRequestHostURL returns the hostname from the request
+func getRequestHostURL(r *http.Request) string {
+	hostname := r.Host
+	if r.Header.Get("X-Forwarded-Host") != "" {
+		hostname = r.Header.Get("X-Forwarded-Host")
+	}
+
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+
+	return fmt.Sprintf("%s://%s", scheme, hostname)
+}
 
 // readConfigFile reads and parses the configuration file
 func readConfigFile(filename string, config *Config) error {
@@ -261,29 +276,34 @@ func transferBytes(src io.Reader, dest io.Writer, wg *sync.WaitGroup) (int64, er
 // tryUpdateConnection attempt to upgrade the connection to a http pdy stream
 func tryUpdateConnection(req *http.Request, writer http.ResponseWriter, endpoint *url.URL) error {
 	// step: dial the endpoint
-	tlsConn, err := tryDialEndpoint(endpoint)
+	server, err := tryDialEndpoint(endpoint)
 	if err != nil {
 		return err
 	}
-	defer tlsConn.Close()
+	defer server.Close()
 
-	// step: we need to hijack the underlining client connection
-	clientConn, _, err := writer.(http.Hijacker).Hijack()
+	// @check the the response writer implements the Hijack method
+	if _, ok := writer.(http.Hijacker); !ok {
+		return errors.New("writer does not implement http.Hijacker method")
+	}
+
+	// @step: get the client connection object
+	client, _, err := writer.(http.Hijacker).Hijack()
 	if err != nil {
 		return err
 	}
-	defer clientConn.Close()
+	defer client.Close()
 
 	// step: write the request to upstream
-	if err = req.Write(tlsConn); err != nil {
+	if err = req.Write(server); err != nil {
 		return err
 	}
 
-	// step: copy the date between client and upstream endpoint
+	// @step: copy the data between client and upstream endpoint
 	var wg sync.WaitGroup
 	wg.Add(2)
-	go transferBytes(tlsConn, clientConn, &wg)
-	go transferBytes(clientConn, tlsConn, &wg)
+	go transferBytes(server, client, &wg)
+	go transferBytes(client, server, &wg)
 	wg.Wait()
 
 	return nil
@@ -382,7 +402,7 @@ func getWithin(expires time.Time, within float64) time.Duration {
 
 // getHashKey returns a hash of the encodes jwt token
 func getHashKey(token *jose.JWT) string {
-	hash := md5.Sum([]byte(token.Encode()))
+	hash := sha.Sum256([]byte(token.Encode()))
 	return base64.RawStdEncoding.EncodeToString(hash[:])
 }
 

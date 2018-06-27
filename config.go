@@ -32,15 +32,18 @@ func newDefaultConfig() *Config {
 		CookieRefreshName:           "kc-state",
 		EnableAuthorizationCookies:  true,
 		EnableAuthorizationHeader:   true,
+		EnableDefaultDeny:           true,
+		EnableSessionCookies:        true,
 		EnableTokenHeader:           true,
 		Headers:                     make(map[string]string),
 		LetsEncryptCacheDir:         "./cache/",
 		MatchClaims:                 make(map[string]string),
+		OAuthURI:                    "/oauth",
 		OpenIDProviderTimeout:       30 * time.Second,
 		PreserveHost:                false,
 		SecureCookie:                true,
 		ServerIdleTimeout:           120 * time.Second,
-		ServerReadTimeout:           5 * time.Second,
+		ServerReadTimeout:           10 * time.Second,
 		ServerWriteTimeout:          10 * time.Second,
 		SkipOpenIDProviderTLSVerify: false,
 		SkipUpstreamTLSVerify:       true,
@@ -48,11 +51,16 @@ func newDefaultConfig() *Config {
 		UpstreamExpectContinueTimeout: 10 * time.Second,
 		UpstreamKeepaliveTimeout:      10 * time.Second,
 		UpstreamKeepalives:            true,
-		UpstreamResponseHeaderTimeout: 1 * time.Second,
+		UpstreamResponseHeaderTimeout: 10 * time.Second,
 		UpstreamTLSHandshakeTimeout:   10 * time.Second,
 		UpstreamTimeout:               10 * time.Second,
 		UseLetsEncrypt:                false,
 	}
+}
+
+// WithOAuthURI returns the oauth uri
+func (r *Config) WithOAuthURI(uri string) string {
+	return fmt.Sprintf("%s/%s", r.OAuthURI, uri)
 }
 
 // isValid validates if the config is valid
