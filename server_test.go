@@ -266,6 +266,28 @@ func TestTokenEncryption(t *testing.T) {
 	newFakeProxy(c).RunTests(t, requests)
 }
 
+func TestCustomResponseHeaders(t *testing.T) {
+	c := newFakeKeycloakConfig()
+	c.ResponseHeaders = map[string]string{
+		"CustomReponseHeader": "True",
+	}
+	p := newFakeProxy(c)
+
+	requests := []fakeRequest{
+		{
+			URI:       "/auth_all/test",
+			HasLogin:  true,
+			Redirects: true,
+			ExpectedHeaders: map[string]string{
+				"CustomReponseHeader": "True",
+			},
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
+		},
+	}
+	p.RunTests(t, requests)
+}
+
 func TestSkipClientIDDisabled(t *testing.T) {
 	c := newFakeKeycloakConfig()
 	p := newFakeProxy(c)
