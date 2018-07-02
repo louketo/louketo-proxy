@@ -1,4 +1,9 @@
 
+#### **2.2.2 (Unreleased)**
+
+FEATURES:
+* Added the ability to the add response headers via `--response-headers` [#PR386](https://github.com/gambol99/keycloak-proxy/pull/386)
+
 #### **2.2.1**
 
 FIX
