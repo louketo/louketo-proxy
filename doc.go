@@ -131,7 +131,7 @@ type Resource struct {
 	// WhiteListed permits the prefix through
 	WhiteListed bool `json:"white-listed" yaml:"white-listed"`
 	// RequireAnyRole indicates that ANY of the roles are required, the default is all
-	RequireAnyRole bool `json:"require-any-role yaml:"require-any-role"`
+	RequireAnyRole bool `json:"require-any-role" yaml:"require-any-role"`
 	// Roles the roles required to access this url
 	Roles []string `json:"roles" yaml:"roles"`
 	// Groups is a list of groups the user is in
