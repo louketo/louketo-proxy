@@ -217,6 +217,7 @@ resources:
   roles:
   - client:test1
   - client:test2
+  require-any-role: true
   groups:
   - admins
   - users
@@ -253,7 +254,9 @@ bin/keycloak-proxy \
     --resources="uri=/public/*|white-listed=true"
 ```
 
-Note from release 2.2.0 the `--enable-default-deny` is true by default and should explicityly allow what you want through.
+Note from release 2.2.0 the `--enable-default-deny` is true by default and should explicitly allow what you want through.
+
+By default the roles defined on a resource perform a logical `AND` so all roles specified must be present in the claims, this behavior can be altered by the `require-any-role` option however so as long as one role is present the permission is granted.
 
 #### **HTTP Routing**
 
