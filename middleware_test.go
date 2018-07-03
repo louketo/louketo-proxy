@@ -577,6 +577,38 @@ func TestWhiteListedRequests(t *testing.T) {
 	newFakeProxy(cfg).RunTests(t, requests)
 }
 
+func TestRequireAnyRoles(t *testing.T) {
+	cfg := newFakeKeycloakConfig()
+	cfg.Resources = []*Resource{
+		{
+			URL:            "/require_any_role/*",
+			Methods:        allHTTPMethods,
+			RequireAnyRole: true,
+			Roles:          []string{"admin", "guest"},
+		},
+	}
+	requests := []fakeRequest{
+		{
+			URI:          "/require_any_role/test",
+			ExpectedCode: http.StatusUnauthorized,
+		},
+		{
+			URI:           "/require_any_role/test",
+			HasToken:      true,
+			Roles:         []string{"guest"},
+			ExpectedCode:  http.StatusOK,
+			ExpectedProxy: true,
+		},
+		{
+			URI:          "/require_any_role/test",
+			HasToken:     true,
+			Roles:        []string{"guest1"},
+			ExpectedCode: http.StatusForbidden,
+		},
+	}
+	newFakeProxy(cfg).RunTests(t, requests)
+}
+
 func TestGroupPermissionsMiddleware(t *testing.T) {
 	cfg := newFakeKeycloakConfig()
 	cfg.Resources = []*Resource{

@@ -289,7 +289,7 @@ func (r *oauthProxy) admissionMiddleware(resource *Resource) func(http.Handler) 
 			user := scope.Identity
 
 			// @step: we need to check the roles
-			if !hasAccess(resource.Roles, user.roles, true) {
+			if !hasAccess(resource.Roles, user.roles, !resource.RequireAnyRole) {
 				r.log.Warn("access denied, invalid roles",
 					zap.String("access", "denied"),
 					zap.String("email", user.email),
