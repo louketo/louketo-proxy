@@ -173,7 +173,7 @@ type Config struct {
 	// Headers permits adding customs headers across the board
 	Headers map[string]string `json:"headers" yaml:"headers" usage:"custom headers to the upstream request, key=value"`
 	// ResponseHeader is a map of response headers to add to the response
-	ResponseHeaders map[string]string `json:"response-headers" yaml:"response-headers" usage:"custom headers to addt to the resposne key=value"`
+	ResponseHeaders map[string]string `json:"response-headers" yaml:"response-headers" usage:"custom headers to added to the http response key=value"`
 
 	// EnableLogoutRedirect indicates we should redirect to the identity provider for logging out
 	EnableLogoutRedirect bool `json:"enable-logout-redirect" yaml:"enable-logout-redirect" usage:"indicates we should redirect to the identity provider for logging out"`
