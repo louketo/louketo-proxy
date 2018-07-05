@@ -174,6 +174,8 @@ type Config struct {
 	Resources []*Resource `json:"resources" yaml:"resources" usage:"list of resources 'uri=/admin*|methods=GET,PUT|roles=role1,role2'"`
 	// Headers permits adding customs headers across the board
 	Headers map[string]string `json:"headers" yaml:"headers" usage:"custom headers to the upstream request, key=value"`
+	// PreserveHost preserves the host header of the proxied request in the upstream request
+	PreserveHost bool `json:"preserve-host" yaml:"preserve-host" usage:"preserve the host header of the proxied request in the upstream request"`
 	// ResponseHeader is a map of response headers to add to the response
 	ResponseHeaders map[string]string `json:"response-headers" yaml:"response-headers" usage:"custom headers to added to the http response key=value"`
 

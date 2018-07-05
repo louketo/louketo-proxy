@@ -40,6 +40,7 @@ func newDefaultConfig() *Config {
 		MatchClaims:                 make(map[string]string),
 		OAuthURI:                    "/oauth",
 		OpenIDProviderTimeout:       30 * time.Second,
+		PreserveHost:                false,
 		ResponseHeaders:             make(map[string]string),
 		SecureCookie:                true,
 		ServerIdleTimeout:           120 * time.Second,

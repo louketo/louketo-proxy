@@ -24,6 +24,7 @@ FEATURES:
 * Added spelling check to the tests [#PR322](https://github.com/gambol99/keycloak-proxy/pull/322)
 * Added the X-Auth-Audience to the upstream headers [#PR319](https://github.com/gambol99/keycloak-proxy/pull/319)
 * Added the ability to control the timeout on the initial openid configuration from .well-known/openid-configuration [#PR315](https://github.com/gambol99/keycloak-proxy/pull/315)
+* Added a --preserve-host option to preserve the host header of the proxied request in the upstream request [#PR328](https://github.com/gambol99/keycloak-proxy/pull/328)
 * Added the feature to customize the oauth prefix (defaults to /oauth) [#PR326](https://github.com/gambol99/keycloak-proxy/pull/326)
 * Adding additional metrics covering provider request latency, token breakdown [#PR324](https://github.com/gambol99/keycloak-proxy/pull/324)
 * Changed the upstream-keepalive to default to true [#PR321](https://github.com/gambol99/keycloak-proxy/pull/321)

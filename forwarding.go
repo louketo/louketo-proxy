@@ -55,7 +55,7 @@ func (r *oauthProxy) proxyMiddleware(next http.Handler) http.Handler {
 		if v := req.Header.Get("Host"); v != "" {
 			req.Host = v
 			req.Header.Del("Host")
-		} else {
+		} else if !r.config.PreserveHost {
 			req.Host = r.endpoint.Host
 		}
 
