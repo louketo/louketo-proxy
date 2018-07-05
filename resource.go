@@ -51,6 +51,12 @@ func (r *Resource) parse(resource string) (*Resource, error) {
 					r.Methods = allHTTPMethods
 				}
 			}
+		case "require-any-role":
+			v, err := strconv.ParseBool(kp[1])
+			if err != nil {
+				return nil, err
+			}
+			r.RequireAnyRole = v
 		case "roles":
 			r.Roles = strings.Split(kp[1], ",")
 		case "groups":

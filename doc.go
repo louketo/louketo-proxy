@@ -27,7 +27,7 @@ import (
 )
 
 var (
-	release  = "v2.2.1"
+	release  = "v2.2.2"
 	gitsha   = "no gitsha provided"
 	compiled = "0"
 	version  = ""
@@ -130,6 +130,8 @@ type Resource struct {
 	Methods []string `json:"methods" yaml:"methods"`
 	// WhiteListed permits the prefix through
 	WhiteListed bool `json:"white-listed" yaml:"white-listed"`
+	// RequireAnyRole indicates that ANY of the roles are required, the default is all
+	RequireAnyRole bool `json:"require-any-role" yaml:"require-any-role"`
 	// Roles the roles required to access this url
 	Roles []string `json:"roles" yaml:"roles"`
 	// Groups is a list of groups the user is in
@@ -174,6 +176,8 @@ type Config struct {
 	Headers map[string]string `json:"headers" yaml:"headers" usage:"custom headers to the upstream request, key=value"`
 	// PreserveHost preserves the host header of the proxied request in the upstream request
 	PreserveHost bool `json:"preserve-host" yaml:"preserve-host" usage:"preserve the host header of the proxied request in the upstream request"`
+	// ResponseHeader is a map of response headers to add to the response
+	ResponseHeaders map[string]string `json:"response-headers" yaml:"response-headers" usage:"custom headers to added to the http response key=value"`
 
 	// EnableLogoutRedirect indicates we should redirect to the identity provider for logging out
 	EnableLogoutRedirect bool `json:"enable-logout-redirect" yaml:"enable-logout-redirect" usage:"indicates we should redirect to the identity provider for logging out"`

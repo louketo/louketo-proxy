@@ -41,6 +41,7 @@ func newDefaultConfig() *Config {
 		OAuthURI:                    "/oauth",
 		OpenIDProviderTimeout:       30 * time.Second,
 		PreserveHost:                false,
+		ResponseHeaders:             make(map[string]string),
 		SecureCookie:                true,
 		ServerIdleTimeout:           120 * time.Second,
 		ServerReadTimeout:           10 * time.Second,
