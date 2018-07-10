@@ -1,4 +1,14 @@
 
+#### **2.2.3 (Unreleased)**
+
+FEATURES:
+* Added the ability to use a "any" operation on the roles rather then just "and" with the inclusion of a `require-any-role` [#PR389](https://github.com/gambol99/keycloak-proxy/pull/389)
+
+#### **2.2.2**
+
+FEATURES:
+* Added the ability to the add response headers via `--response-headers` [#PR386](https://github.com/gambol99/keycloak-proxy/pull/386)
+
 #### **2.2.1**
 
 FIX
@@ -14,6 +24,7 @@ FEATURES:
 * Added spelling check to the tests [#PR322](https://github.com/gambol99/keycloak-proxy/pull/322)
 * Added the X-Auth-Audience to the upstream headers [#PR319](https://github.com/gambol99/keycloak-proxy/pull/319)
 * Added the ability to control the timeout on the initial openid configuration from .well-known/openid-configuration [#PR315](https://github.com/gambol99/keycloak-proxy/pull/315)
+* Added a --preserve-host option to preserve the host header of the proxied request in the upstream request [#PR328](https://github.com/gambol99/keycloak-proxy/pull/328)
 * Added the feature to customize the oauth prefix (defaults to /oauth) [#PR326](https://github.com/gambol99/keycloak-proxy/pull/326)
 * Adding additional metrics covering provider request latency, token breakdown [#PR324](https://github.com/gambol99/keycloak-proxy/pull/324)
 * Changed the upstream-keepalive to default to true [#PR321](https://github.com/gambol99/keycloak-proxy/pull/321)
@@ -29,6 +40,7 @@ FEATURES:
 * Added a warning messaage to indicate disabling the write-timeout when using pprof [#PR370](https://github.com/gambol99/keycloak-proxy/pull/370)
 
 FIXES:
+* Fixed up the redirect_uri to the logout [#PR365](https://github.com/gambol99/keycloak-proxy/pull/365)
 * Fixed a redirection bug [#PR337](https://github.com/gambol99/keycloak-proxy/pull/337)
 * Updated the go-oidc to fix the cache header [issues](https://github.com/gambol99/keycloak-proxy/issues/340)[#PR339](https://github.com/gambol99/keycloak-proxy/pull/339)
 * Fixed up the readme indicating we can run without client secret [#PR342](https://github.com/gambol99/keycloak-proxy/pull/342)

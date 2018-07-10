@@ -27,7 +27,7 @@ import (
 )
 
 var (
-	release  = "v2.2.1"
+	release  = "v2.2.2"
 	gitsha   = "no gitsha provided"
 	compiled = "0"
 	version  = ""
@@ -130,6 +130,8 @@ type Resource struct {
 	Methods []string `json:"methods" yaml:"methods"`
 	// WhiteListed permits the prefix through
 	WhiteListed bool `json:"white-listed" yaml:"white-listed"`
+	// RequireAnyRole indicates that ANY of the roles are required, the default is all
+	RequireAnyRole bool `json:"require-any-role" yaml:"require-any-role"`
 	// Roles the roles required to access this url
 	Roles []string `json:"roles" yaml:"roles"`
 	// Groups is a list of groups the user is in
@@ -172,6 +174,10 @@ type Config struct {
 	Resources []*Resource `json:"resources" yaml:"resources" usage:"list of resources 'uri=/admin*|methods=GET,PUT|roles=role1,role2'"`
 	// Headers permits adding customs headers across the board
 	Headers map[string]string `json:"headers" yaml:"headers" usage:"custom headers to the upstream request, key=value"`
+	// PreserveHost preserves the host header of the proxied request in the upstream request
+	PreserveHost bool `json:"preserve-host" yaml:"preserve-host" usage:"preserve the host header of the proxied request in the upstream request"`
+	// ResponseHeader is a map of response headers to add to the response
+	ResponseHeaders map[string]string `json:"response-headers" yaml:"response-headers" usage:"custom headers to added to the http response key=value"`
 
 	// EnableLogoutRedirect indicates we should redirect to the identity provider for logging out
 	EnableLogoutRedirect bool `json:"enable-logout-redirect" yaml:"enable-logout-redirect" usage:"indicates we should redirect to the identity provider for logging out"`
@@ -270,6 +276,8 @@ type Config struct {
 	// EncryptionKey is the encryption key used to encrypt the refresh token
 	EncryptionKey string `json:"encryption-key" yaml:"encryption-key" usage:"encryption key used to encryption the session state" env:"ENCRYPTION_KEY"`
 
+	// InvalidAuthRedirectsWith303 will make requests with invalid auth headers redirect using HTTP 303 instead of HTTP 307.  See github.com/gambol99/keycloak-proxy/issues/292 for context.
+	InvalidAuthRedirectsWith303 bool `json:"invalid-auth-redirects-with-303" yaml:"invalid-auth-redirects-with-303" usage:"use HTTP 303 redirects instead of 307 for invalid auth tokens"`
 	// NoRedirects informs we should hand back a 401 not a redirect
 	NoRedirects bool `json:"no-redirects" yaml:"no-redirects" usage:"do not have back redirects when no authentication is present, 401 them"`
 	// SkipTokenVerification tells the service to skipp verifying the access token - for testing purposes

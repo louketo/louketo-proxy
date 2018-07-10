@@ -61,6 +61,7 @@ GLOBAL OPTIONS:
    --upstream-ca value                       the path to a file container a CA certificate to validate the upstream tls endpoint
    --resources value                         list of resources 'uri=/admin*|methods=GET,PUT|roles=role1,role2'
    --headers value                           custom headers to the upstream request, key=value
+   --preserve-host                           preserve the host header of the proxied request in the upstream request (default: false)
    --enable-logout-redirect                  indicates we should redirect to the identity provider for logging out (default: false)
    --enable-default-deny                     enables a default denial on all requests, you have to explicitly say what is permitted (recommended) (default: false)
    --enable-encrypted-token                  enable encryption for the access tokens (default: false)
@@ -217,6 +218,7 @@ resources:
   roles:
   - client:test1
   - client:test2
+  require-any-role: true
   groups:
   - admins
   - users
@@ -253,7 +255,9 @@ bin/keycloak-proxy \
     --resources="uri=/public/*|white-listed=true"
 ```
 
-Note from release 2.2.0 the `--enable-default-deny` is true by default and should explicityly allow what you want through.
+Note from release 2.2.0 the `--enable-default-deny` is true by default and should explicitly allow what you want through.
+
+By default the roles defined on a resource perform a logical `AND` so all roles specified must be present in the claims, this behavior can be altered by the `require-any-role` option however so as long as one role is present the permission is granted.
 
 #### **HTTP Routing**
 

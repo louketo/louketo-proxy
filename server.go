@@ -186,6 +186,10 @@ func (r *oauthProxy) createReverseProxy() error {
 	engine.Use(r.proxyMiddleware)
 	r.router = engine
 
+	if len(r.config.ResponseHeaders) > 0 {
+		engine.Use(r.responseHeaderMiddleware(r.config.ResponseHeaders))
+	}
+
 	// step: add the routing for oauth
 	engine.With(proxyDenyMiddleware).Route(r.config.OAuthURI, func(e chi.Router) {
 		e.MethodNotAllowed(methodNotAllowHandlder)
@@ -251,7 +255,7 @@ func (r *oauthProxy) createReverseProxy() error {
 		e := engine.With(
 			r.authenticationMiddleware(x),
 			r.admissionMiddleware(x),
-			r.headersMiddleware(r.config.AddClaims))
+			r.identityHeadersMiddleware(r.config.AddClaims))
 
 		for _, m := range x.Methods {
 			if !x.WhiteListed {
