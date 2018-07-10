@@ -207,6 +207,10 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 			state = string(decoded)
 		}
 	}
+	if r.config.BaseURI != "" {
+		// assuming state starts with slash
+		state = r.config.BaseURI + state
+	}
 
 	r.redirectToURL(state, w, req, http.StatusTemporaryRedirect)
 }
