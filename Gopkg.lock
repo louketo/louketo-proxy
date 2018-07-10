@@ -84,6 +84,12 @@
   revision = "1643683e1b54a9e88ad26d98f81400c8c9d9f4f9"
 
 [[projects]]
+  name = "github.com/google/uuid"
+  packages = ["."]
+  revision = "064e2069ce9c359c118179501254f67d7d37ba24"
+  version = "0.2"
+
+[[projects]]
   name = "github.com/jonboulle/clockwork"
   packages = ["."]
   revision = "ed104f61ea4877bea08af6f759805674861e968d"
@@ -240,6 +246,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b139b3100a36c39eb42630da4afe77e4f69afef6fbf7b03c7f12e5608d317b04"
+  inputs-digest = "417f80c4b978ef6044e98c07cae1c0a72869108028ea5bc22305a8c1e7312acb"
   solver-name = "gps-cdcl"
   solver-version = 1

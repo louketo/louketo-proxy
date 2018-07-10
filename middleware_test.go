@@ -60,9 +60,10 @@ type fakeRequest struct {
 	ExpectedContentContains string
 	ExpectedCookies         map[string]string
 	ExpectedHeaders         map[string]string
-	ExpectedProxyHeaders    map[string]string
 	ExpectedLocation        string
+	ExpectedNoProxyHeaders  []string
 	ExpectedProxy           bool
+	ExpectedProxyHeaders    map[string]string
 }
 
 type fakeProxy struct {
@@ -230,9 +231,20 @@ func (f *fakeProxy) RunTests(t *testing.T, requests []fakeRequest) {
 		if c.ExpectedProxyHeaders != nil && len(c.ExpectedProxyHeaders) > 0 {
 			for k, v := range c.ExpectedProxyHeaders {
 				headers := upstream.Headers
-				assert.Equal(t, v, headers.Get(k), "case %d, expected proxy header %s=%s, got: %s", i, k, v, headers.Get(k))
+				switch v {
+				case "":
+					assert.NotEmpty(t, headers.Get(k), "case %d, expected the proxy header: %s to exist", i, k)
+				default:
+					assert.Equal(t, v, headers.Get(k), "case %d, expected proxy header %s=%s, got: %s", i, k, v, headers.Get(k))
+				}
 			}
 		}
+		if len(c.ExpectedNoProxyHeaders) > 0 {
+			for _, k := range c.ExpectedNoProxyHeaders {
+				assert.Empty(t, upstream.Headers.Get(k), "case %d, header: %s was not expected to exist", i, k)
+			}
+		}
+
 		if c.ExpectedContent != "" {
 			e := string(resp.Body())
 			assert.Equal(t, c.ExpectedContent, e, "case %d, expected content: %s, got: %s", i, c.ExpectedContent, e)

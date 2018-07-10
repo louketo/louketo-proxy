@@ -3,6 +3,7 @@
 
 FEATURES:
 * Added the ability to use a "any" operation on the roles rather then just "and" with the inclusion of a `require-any-role` [#PR389](https://github.com/gambol99/keycloak-proxy/pull/389)
+* Added a `--enable-request-id` option to inject a request id into the upstream request [#PR392](https://github.com/gambol99/keycloak-proxy/pull/392)
 
 #### **2.2.2**
 

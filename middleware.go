@@ -66,6 +66,19 @@ func entrypointMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+// requestIDMiddleware is responsible for adding a request id if none found
+func (r *oauthProxy) requestIDMiddleware(header string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			if v := req.Header.Get(header); v == "" {
+				req.Header.Set(header, randomUUID())
+			}
+
+			next.ServeHTTP(w, req)
+		})
+	}
+}
+
 // loggingMiddleware is a custom http logger
 func (r *oauthProxy) loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {

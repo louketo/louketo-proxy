@@ -147,6 +147,43 @@ func TestForbiddenTemplate(t *testing.T) {
 	newFakeProxy(cfg).RunTests(t, requests)
 }
 
+func TestRequestIDHeader(t *testing.T) {
+	c := newFakeKeycloakConfig()
+	c.EnableRequestID = true
+	requests := []fakeRequest{
+		{
+			URI:           "/auth_all/test",
+			HasLogin:      true,
+			ExpectedProxy: true,
+			Redirects:     true,
+			ExpectedHeaders: map[string]string{
+				"X-Request-ID": "",
+			},
+			ExpectedCode: http.StatusOK,
+		},
+	}
+	newFakeProxy(c).RunTests(t, requests)
+}
+
+func TestAuthTokenHeaderDisabled(t *testing.T) {
+	c := newFakeKeycloakConfig()
+	c.EnableTokenHeader = false
+	p := newFakeProxy(c)
+	token := newTestToken(p.idp.getLocation())
+	signed, _ := p.idp.signToken(token.claims)
+
+	requests := []fakeRequest{
+		{
+			URI:                    "/auth_all/test",
+			RawToken:               signed.Encode(),
+			ExpectedNoProxyHeaders: []string{"X-Auth-Token"},
+			ExpectedProxy:          true,
+			ExpectedCode:           http.StatusOK,
+		},
+	}
+	p.RunTests(t, requests)
+}
+
 func TestAudienceHeader(t *testing.T) {
 	c := newFakeKeycloakConfig()
 	c.NoRedirects = false
@@ -363,27 +400,6 @@ func TestAuthTokenHeaderEnabled(t *testing.T) {
 			RawToken: signed.Encode(),
 			ExpectedProxyHeaders: map[string]string{
 				"X-Auth-Token": signed.Encode(),
-			},
-			ExpectedProxy: true,
-			ExpectedCode:  http.StatusOK,
-		},
-	}
-	p.RunTests(t, requests)
-}
-
-func TestAuthTokenHeaderDisabled(t *testing.T) {
-	c := newFakeKeycloakConfig()
-	c.EnableTokenHeader = false
-	p := newFakeProxy(c)
-	token := newTestToken(p.idp.getLocation())
-	signed, _ := p.idp.signToken(token.claims)
-
-	requests := []fakeRequest{
-		{
-			URI:      "/auth_all/test",
-			RawToken: signed.Encode(),
-			ExpectedProxyHeaders: map[string]string{
-				"X-Auth-Token": "",
 			},
 			ExpectedProxy: true,
 			ExpectedCode:  http.StatusOK,

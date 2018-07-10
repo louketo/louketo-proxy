@@ -122,7 +122,7 @@ format:
 
 bench:
 	@echo "--> Running go bench"
-	@go test -bench=.
+	@go test -bench=. -benchmem
 
 coverage:
 	@echo "--> Running go coverage"
@@ -134,7 +134,7 @@ cover:
 	@go test --cover
 
 spelling:
-	@echo "--> Chekcing the spelling"
+	@echo "--> Checking the spelling"
 	@which misspell 2>/dev/null ; if [ $$? -eq 1 ]; then \
 		go get -u github.com/client9/misspell/cmd/misspell; \
 	fi
