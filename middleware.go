@@ -26,6 +26,7 @@ import (
 	"github.com/PuerkitoBio/purell"
 	"github.com/gambol99/go-oidc/jose"
 	"github.com/go-chi/chi/middleware"
+	uuid "github.com/satori/go.uuid"
 	"github.com/unrolled/secure"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -64,6 +65,19 @@ func entrypointMiddleware(next http.Handler) http.Handler {
 		req.URL.RawPath = keep
 		req.RequestURI = keep
 	})
+}
+
+// requestIDMiddleware is responsible for adding a request id if none found
+func (r *oauthProxy) requestIDMiddleware(header string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			if v := req.Header.Get(header); v == "" {
+				req.Header.Set(header, uuid.NewV1().String())
+			}
+
+			next.ServeHTTP(w, req)
+		})
+	}
 }
 
 // loggingMiddleware is a custom http logger

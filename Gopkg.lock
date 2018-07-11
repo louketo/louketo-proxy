@@ -141,6 +141,12 @@
   version = "v1.1"
 
 [[projects]]
+  name = "github.com/satori/go.uuid"
+  packages = ["."]
+  revision = "f58768cc1a7a7e77a3bd49e98cdd21419399b6a3"
+  version = "v1.2.0"
+
+[[projects]]
   name = "github.com/stretchr/testify"
   packages = [
     "assert",
@@ -240,6 +246,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b139b3100a36c39eb42630da4afe77e4f69afef6fbf7b03c7f12e5608d317b04"
+  inputs-digest = "c239d30032133a01b89a8a62bd3abecf47284348176c0e9e2f295f9d65f46f55"
   solver-name = "gps-cdcl"
   solver-version = 1

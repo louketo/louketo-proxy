@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -61,6 +62,13 @@ func TestDecodeKeyPairs(t *testing.T) {
 		if !reflect.DeepEqual(kp, c.KeyPairs) {
 			t.Errorf("test case %d are not equal %v <-> %v", i, kp, c.KeyPairs)
 		}
+	}
+}
+
+func BenchmarkUUID(b *testing.B) {
+	for n := 0; n < b.N; n++ {
+		s := uuid.NewV1()
+		s.String()
 	}
 }
 

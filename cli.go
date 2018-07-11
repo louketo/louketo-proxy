@@ -128,6 +128,12 @@ func getCommandLineOptions() []cli.Flag {
 				Name:  optName,
 				Usage: usage,
 			})
+		case reflect.Int:
+			flags = append(flags, cli.IntFlag{
+				Name:   optName,
+				Usage:  usage,
+				EnvVar: envName,
+			})
 		case reflect.Int64:
 			switch t.String() {
 			case "time.Duration":
@@ -170,6 +176,8 @@ func parseCLIOptions(cx *cli.Context, config *Config) (err error) {
 				reflect.ValueOf(config).Elem().FieldByName(field.Name).SetString(cx.String(name))
 			case reflect.Slice:
 				reflect.ValueOf(config).Elem().FieldByName(field.Name).Set(reflect.ValueOf(cx.StringSlice(name)))
+			case reflect.Int:
+				reflect.ValueOf(config).Elem().FieldByName(field.Name).Set(reflect.ValueOf(cx.Int(name)))
 			case reflect.Int64:
 				switch field.Type.String() {
 				case "time.Duration":

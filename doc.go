@@ -178,9 +178,13 @@ type Config struct {
 	Headers map[string]string `json:"headers" yaml:"headers" usage:"custom headers to the upstream request, key=value"`
 	// PreserveHost preserves the host header of the proxied request in the upstream request
 	PreserveHost bool `json:"preserve-host" yaml:"preserve-host" usage:"preserve the host header of the proxied request in the upstream request"`
+	// RequestIDHeader is the header name for request ids
+	RequestIDHeader string `json:"request-id-header" yaml:"request-id-header" usage:"the http header name for request id" env:"REQUEST_ID_HEADER"`
 	// ResponseHeader is a map of response headers to add to the response
 	ResponseHeaders map[string]string `json:"response-headers" yaml:"response-headers" usage:"custom headers to added to the http response key=value"`
 
+	// EnableRequestID indicates the proxy should add request id if none if found
+	EnableRequestID bool `json:"enable-request-id" yaml:"enable-request-id" usage:"indicates we should add a request id if none found" env:"ENABLE_REQUEST_ID"`
 	// EnableLogoutRedirect indicates we should redirect to the identity provider for logging out
 	EnableLogoutRedirect bool `json:"enable-logout-redirect" yaml:"enable-logout-redirect" usage:"indicates we should redirect to the identity provider for logging out"`
 	// EnableDefaultDeny indicates we should deny by default all requests
