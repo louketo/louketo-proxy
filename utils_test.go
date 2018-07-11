@@ -67,7 +67,7 @@ func TestDecodeKeyPairs(t *testing.T) {
 
 func BenchmarkUUID(b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		s, _ := uuid.NewV1()
+		s := uuid.NewV1()
 		s.String()
 	}
 }

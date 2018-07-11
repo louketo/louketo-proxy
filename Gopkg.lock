@@ -84,12 +84,6 @@
   revision = "1643683e1b54a9e88ad26d98f81400c8c9d9f4f9"
 
 [[projects]]
-  name = "github.com/google/uuid"
-  packages = ["."]
-  revision = "064e2069ce9c359c118179501254f67d7d37ba24"
-  version = "0.2"
-
-[[projects]]
   name = "github.com/jonboulle/clockwork"
   packages = ["."]
   revision = "ed104f61ea4877bea08af6f759805674861e968d"
@@ -145,6 +139,12 @@
   packages = ["."]
   revision = "8dd4211afb5d08dbb39a533b9bb9e4b486351df6"
   version = "v1.1"
+
+[[projects]]
+  name = "github.com/satori/go.uuid"
+  packages = ["."]
+  revision = "f58768cc1a7a7e77a3bd49e98cdd21419399b6a3"
+  version = "v1.2.0"
 
 [[projects]]
   name = "github.com/stretchr/testify"
@@ -246,6 +246,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "417f80c4b978ef6044e98c07cae1c0a72869108028ea5bc22305a8c1e7312acb"
+  inputs-digest = "c239d30032133a01b89a8a62bd3abecf47284348176c0e9e2f295f9d65f46f55"
   solver-name = "gps-cdcl"
   solver-version = 1
