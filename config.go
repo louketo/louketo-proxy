@@ -63,9 +63,9 @@ func newDefaultConfig() *Config {
 func (r *Config) WithOAuthURI(uri string) string {
 	if r.BaseURI != "" {
 		return fmt.Sprintf("%s/%s/%s", r.BaseURI, r.OAuthURI, uri)
-	} else {
-		return fmt.Sprintf("%s/%s", r.OAuthURI, uri)
 	}
+
+	return fmt.Sprintf("%s/%s", r.OAuthURI, uri)
 }
 
 // isValid validates if the config is valid
