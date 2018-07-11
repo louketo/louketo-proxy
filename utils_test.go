@@ -26,7 +26,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
+	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -65,45 +65,10 @@ func TestDecodeKeyPairs(t *testing.T) {
 	}
 }
 
-func TestRandom(t *testing.T) {
-	s := randomBytes(6)
-	assert.NotEmpty(t, s)
-	assert.Equal(t, 6, len(s))
-}
-
-func TestRandomString(t *testing.T) {
-	s := randomString(6)
-	assert.NotEmpty(t, s)
-	assert.Equal(t, 6, len(s))
-}
-
-func TestRandomUUID(t *testing.T) {
-	s := randomUUID()
-	assert.NotEmpty(t, s)
-	assert.Equal(t, 36, len(s))
-}
-
-func BenchmarkRandomBytes36(b *testing.B) {
-	for n := 0; n < b.N; n++ {
-		randomString(36)
-	}
-}
-
-func BenchmarkRandomString36(b *testing.B) {
-	for n := 0; n < b.N; n++ {
-		randomString(36)
-	}
-}
-
 func BenchmarkUUID(b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		uuid.New()
-	}
-}
-
-func BenchmarkRandomUUID(b *testing.B) {
-	for n := 0; n < b.N; n++ {
-		randomUUID()
+		s, _ := uuid.NewV1()
+		s.String()
 	}
 }
 

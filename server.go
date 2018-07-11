@@ -164,6 +164,7 @@ func (r *oauthProxy) createReverseProxy() error {
 	engine.Use(middleware.Recoverer)
 	// @check if the request tracking id middleware is enabled
 	if r.config.EnableRequestID {
+		r.log.Info("enabled the correlation request id middlware")
 		engine.Use(r.requestIDMiddleware(r.config.RequestIDHeader))
 	}
 	// @step: enable the entrypoint middleware

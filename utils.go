@@ -28,7 +28,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	mrand "math/rand"
 	"net"
 	"net/http"
 	"net/url"
@@ -76,55 +75,6 @@ func getRequestHostURL(r *http.Request) string {
 	}
 
 	return fmt.Sprintf("%s://%s", scheme, hostname)
-}
-
-const (
-	letterBytes   = "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz0123456789"
-	letterIdxBits = 6
-	letterIdxMask = 1<<letterIdxBits - 1
-	letterIdxMax  = 63 / letterIdxBits
-)
-
-var randomSource = mrand.NewSource(time.Now().UnixNano())
-
-// randomBytes returns a random array of bytes
-// @note: code taken from https://stackoverflow.com/questions/22892120/how-to-generate-a-random-string-of-a-fixed-length-in-golang
-func randomBytes(n int) []byte {
-	b := make([]byte, n)
-	for i, cache, remain := n-1, randomSource.Int63(), letterIdxMax; i >= 0; {
-		if remain == 0 {
-			cache, remain = randomSource.Int63(), letterIdxMax
-		}
-		if idx := int(cache & letterIdxMask); idx < len(letterBytes) {
-			b[i] = letterBytes[idx]
-			i--
-		}
-		cache >>= letterIdxBits
-		remain--
-	}
-
-	return b
-}
-
-// randomString returns a random string of x length
-func randomString(length int) string {
-	return string(randomBytes(length))
-}
-
-// randomUUID returns a uuid from the random string
-func randomUUID() string {
-	uuid := make([]byte, 36)
-	r := randomBytes(32)
-	i := 0
-	for x := range []int{8, 4, 4, 4, 12} {
-		copy(uuid, r[i:i+x])
-		if x != 12 {
-			copy(uuid, []byte("-"))
-			i = i + x
-		}
-	}
-
-	return string(uuid)
 }
 
 // readConfigFile reads and parses the configuration file
