@@ -455,9 +455,9 @@ X-Auth-Given-Name: Rohith
 X-Auth-Name: Rohith Jayawardene
 ```
 
-#### **Self Signed Certificate**
+#### **Self Signed Certificates**
 
-The proxy can be instructed to generate it's on self-signed certificate which are rotated on a user-defined expiration. Add the `--enable-self-signed-tls=true` option to the config or command line and if required you can configure the hostnames and expiration via the `--self-signed-tls-hostnames` and `--self-signed-tls-expiration`
+The proxy can be instructed to generate it's own self-signed certificates which can rotated on a user-defined duration Simply add the `--enable-self-signed-tls=true` option to the config or command line and if required you can configure the hostnames and expiration via the `--self-signed-tls-hostnames` and `--self-signed-tls-expiration`.
 
 #### **Encryption Key**
 
