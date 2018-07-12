@@ -44,7 +44,7 @@ func newCertificateRotator(cert, key string, log *zap.Logger) (*certificationRot
 	if err != nil {
 		return nil, err
 	}
-	// step: are we watching the files for changes?
+	// @step: are we watching the files for changes?
 	return &certificationRotation{
 		certificate:     certificate,
 		certificateFile: cert,

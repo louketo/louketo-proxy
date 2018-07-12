@@ -17,6 +17,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -62,6 +63,51 @@ func TestDecodeKeyPairs(t *testing.T) {
 		if !reflect.DeepEqual(kp, c.KeyPairs) {
 			t.Errorf("test case %d are not equal %v <-> %v", i, kp, c.KeyPairs)
 		}
+	}
+}
+
+func TestGetRequestHostURL(t *testing.T) {
+	cs := []struct {
+		Expected   string
+		HostHeader string
+		Hostname   string
+		TLS        *tls.ConnectionState
+	}{
+		{
+			Expected: "http://www.test.com",
+			Hostname: "www.test.com",
+		},
+		{
+			Expected: "http://",
+		},
+		{
+			Expected:   "http://www.override.com",
+			HostHeader: "www.override.com",
+			Hostname:   "www.test.com",
+		},
+		{
+			Expected: "https://www.test.com",
+			Hostname: "www.test.com",
+			TLS:      &tls.ConnectionState{},
+		},
+		{
+			Expected:   "https://www.override.com",
+			HostHeader: "www.override.com",
+			Hostname:   "www.test.com",
+			TLS:        &tls.ConnectionState{},
+		},
+	}
+	for i, c := range cs {
+		request := &http.Request{
+			Method: http.MethodGet,
+			Host:   c.Hostname,
+			TLS:    c.TLS,
+		}
+		if c.HostHeader != "" {
+			request.Header = make(http.Header, 0)
+			request.Header.Set("X-Forwarded-Host", c.HostHeader)
+		}
+		assert.Equal(t, c.Expected, getRequestHostURL(request), "case %d, expected: %s, got: %s", i, c.Expected, getRequestHostURL(request))
 	}
 }
 

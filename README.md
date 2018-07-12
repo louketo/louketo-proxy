@@ -27,7 +27,7 @@
 Keycloak-proxy is a proxy service which at the risk of stating the obvious integrates with the [Keycloak](https://github.com/keycloak/keycloak) authentication service. Although technically the service has no dependency on Keycloak itself and would quite happily work with any OpenID provider. The service supports both access tokens in browser cookie or bearer tokens.
 
 ```shell
-$ bin/keycloak-proxy help
+$ bin/keycloak-proxy --help
 NAME:
    keycloak-proxy - is a proxy using the keycloak service for auth and authorization
 
@@ -35,7 +35,7 @@ USAGE:
    keycloak-proxy [options]
 
 VERSION:
-   v2.2.0 (git+sha: 72a3646-dirty, built: 25-05-2018)
+   v2.2.2 (git+sha: c4d677a-dirty, built: 12-07-2018)
 
 AUTHOR:
    Rohith <gambol99@gmail.com>
@@ -55,6 +55,7 @@ GLOBAL OPTIONS:
    --skip-openid-provider-tls-verify         skip the verification of any TLS communication with the openid provider (default: false)
    --openid-provider-proxy value             proxy for communication with the openid provider
    --openid-provider-timeout value           timeout for openid configuration on .well-known/openid-configuration (default: 30s)
+   --base-uri value                          common prefix for all URIs [$PROXY_BASE_URI]
    --oauth-uri value                         the uri for proxy oauth endpoints (default: "/oauth") [$PROXY_OAUTH_URI]
    --scopes value                            list of scopes requested when authenticating the user
    --upstream-url value                      url for the upstream endpoint you wish to proxy [$PROXY_UPSTREAM_URL]
@@ -62,15 +63,21 @@ GLOBAL OPTIONS:
    --resources value                         list of resources 'uri=/admin*|methods=GET,PUT|roles=role1,role2'
    --headers value                           custom headers to the upstream request, key=value
    --preserve-host                           preserve the host header of the proxied request in the upstream request (default: false)
+   --request-id-header value                 the http header name for request id (default: "X-Request-ID") [$PROXY_REQUEST_ID_HEADER]
+   --response-headers value                  custom headers to added to the http response key=value
+   --enable-self-signed-tls                  create self signed certificates for the proxy (default: false) [$PROXY_ENABLE_SELF_SIGNED_TLS]
+   --self-signed-tls-hostnames value         a list of hostnames to place on the self-signed certificate
+   --self-signed-tls-expiration value        the expiration of the certificate before rotation (default: 3h0m0s)
+   --enable-request-id                       indicates we should add a request id if none found (default: false) [$PROXY_ENABLE_REQUEST_ID]
    --enable-logout-redirect                  indicates we should redirect to the identity provider for logging out (default: false)
-   --enable-default-deny                     enables a default denial on all requests, you have to explicitly say what is permitted (recommended) (default: false)
+   --enable-default-deny                     enables a default denial on all requests, you have to explicitly say what is permitted (recommended) (default: true)
    --enable-encrypted-token                  enable encryption for the access tokens (default: false)
    --enable-logging                          enable http logging of the requests (default: false)
    --enable-json-logging                     switch on json logging rather than text (default: false)
    --enable-forwarding                       enables the forwarding proxy mode, signing outbound request (default: false)
    --enable-security-filter                  enables the security filter handler (default: false) [$PROXY_ENABLE_SECURITY_FILTER]
    --enable-refresh-tokens                   enables the handling of the refresh tokens (default: false) [$PROXY_ENABLE_REFRESH_TOKEN]
-   --enable-session-cookies                  access and refresh tokens are session only i.e. removed browser close (default: false)
+   --enable-session-cookies                  access and refresh tokens are session only i.e. removed browser close (default: true)
    --enable-login-handler                    enables the handling of the refresh tokens (default: false) [$PROXY_ENABLE_LOGIN_HANDLER]
    --enable-token-header                     enables the token authentication header X-Auth-Token to upstream (default: true)
    --enable-authorization-header             adds the authorization header to the proxy request (default: true) [$PROXY_ENABLE_AUTHORIZATION_HEADER]
@@ -107,6 +114,7 @@ GLOBAL OPTIONS:
    --hostnames value                         list of hostnames the service will respond to
    --store-url value                         url for the storage subsystem, e.g redis://127.0.0.1:6379, file:///etc/tokens.file
    --encryption-key value                    encryption key used to encryption the session state [$PROXY_ENCRYPTION_KEY]
+   --invalid-auth-redirects-with-303         use HTTP 303 redirects instead of 307 for invalid auth tokens (default: false)
    --no-redirects                            do not have back redirects when no authentication is present, 401 them (default: false)
    --skip-token-verification                 TESTING ONLY; bypass token verification, only expiration and roles enforced (default: false)
    --upstream-keepalives                     enables or disables the keepalive connections for upstream endpoint (default: true)
@@ -138,8 +146,8 @@ GLOBAL OPTIONS:
 Assuming you have make + go, simply run make (or 'make static' for static linking). You can also build via docker container: make docker-build
 
 #### **Docker image**
-Docker image is available at [https://quay.io/repository/gambol99/keycloak-proxy](https://quay.io/repository/gambol99/keycloak-proxy)
 
+Docker image is available at [https://quay.io/repository/gambol99/keycloak-proxy](https://quay.io/repository/gambol99/keycloak-proxy)
 
 #### **Configuration**
 
@@ -268,6 +276,23 @@ By default all requests will be proxyed on to the upstream, if you wish to ensur
 ```
 
 Note the HTTP routing rules following the guidelines from [chi](https://github.com/go-chi/chi#router-design). Its also worth nothing the ordering of the resource do not matter, the router will handle that for you.
+
+#### **Resources**
+
+The resources defined either on the command line as `--resources` or via a configuration file defines a collection of enrtypoints and the requirement for access.
+
+```YAML
+resources:
+- uri: /admin/*
+  roles:
+  - admin
+  - superuser
+  # will work with either 'admin' or 'superuser' the default is false and requires both roles present
+  require-any-role: true
+- uri: /public/*
+  # indicates we permit access regardless
+  white-listed: true
+```
 
 #### **Google OAuth**
 
@@ -429,6 +454,10 @@ X-Auth-Family-Name: Jayawardene
 X-Auth-Given-Name: Rohith
 X-Auth-Name: Rohith Jayawardene
 ```
+
+#### **Self Signed Certificate**
+
+The proxy can be instructed to generate it's on self-signed certificate which are rotated on a user-defined expiration. Add the `--enable-self-signed-tls=true` option to the config or command line and if required you can configure the hostnames and expiration via the `--self-signed-tls-hostnames` and `--self-signed-tls-expiration`
 
 #### **Encryption Key**
 

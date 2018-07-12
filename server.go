@@ -65,7 +65,6 @@ type oauthProxy struct {
 func init() {
 	time.LoadLocation("UTC")             // ensure all time is in UTC
 	runtime.GOMAXPROCS(runtime.NumCPU()) // set the core
-	// @step: register the instrumentation
 	prometheus.MustRegister(certificateRotationMetric)
 	prometheus.MustRegister(latencyMetric)
 	prometheus.MustRegister(oauthLatencyMetric)
@@ -352,16 +351,18 @@ func (r *oauthProxy) createForwardingProxy() error {
 // Run starts the proxy service
 func (r *oauthProxy) Run() error {
 	listener, err := r.createHTTPListener(listenerConfig{
-		listen:              r.config.Listen,
-		certificate:         r.config.TLSCertificate,
-		privateKey:          r.config.TLSPrivateKey,
 		ca:                  r.config.TLSCaCertificate,
+		certificate:         r.config.TLSCertificate,
 		clientCert:          r.config.TLSClientCertificate,
-		proxyProtocol:       r.config.EnableProxyProtocol,
-		useLetsEncrypt:      r.config.UseLetsEncrypt,
-		letsEncryptCacheDir: r.config.LetsEncryptCacheDir,
 		hostnames:           r.config.Hostnames,
+		letsEncryptCacheDir: r.config.LetsEncryptCacheDir,
+		listen:              r.config.Listen,
+		privateKey:          r.config.TLSPrivateKey,
+		proxyProtocol:       r.config.EnableProxyProtocol,
 		redirectionURL:      r.config.RedirectionURL,
+		useFileTLS:          r.config.TLSPrivateKey != "" && r.config.TLSCertificate != "",
+		useLetsEncryptTLS:   r.config.UseLetsEncrypt,
+		useSelfSignedTLS:    r.config.EnabledSelfSignedTLS,
 	})
 
 	if err != nil {
@@ -416,16 +417,18 @@ func (r *oauthProxy) Run() error {
 
 // listenerConfig encapsulate listener options
 type listenerConfig struct {
-	listen              string   // the interface to bind the listener to
-	certificate         string   // the path to the certificate if any
-	privateKey          string   // the path to the private key if any
 	ca                  string   // the path to a certificate authority
+	certificate         string   // the path to the certificate if any
 	clientCert          string   // the path to a client certificate to use for mutual tls
-	proxyProtocol       bool     // whether to enable proxy protocol on the listen
 	hostnames           []string // list of hostnames the service will respond to
-	redirectionURL      string   // url to redirect to
-	useLetsEncrypt      bool     // whether to use lets encrypt for retrieving ssl certificates
 	letsEncryptCacheDir string   // the path to cache letsencrypt certificates
+	listen              string   // the interface to bind the listener to
+	privateKey          string   // the path to the private key if any
+	proxyProtocol       bool     // whether to enable proxy protocol on the listen
+	redirectionURL      string   // url to redirect to
+	useFileTLS          bool     // indicates we are using certificates from files
+	useLetsEncryptTLS   bool     // indicates we are using letsencrypt
+	useSelfSignedTLS    bool     // indicates we are using the self-signed tls
 }
 
 // ErrHostNotConfigured indicates the hostname was not configured
@@ -460,13 +463,15 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 		listener = &proxyproto.Listener{Listener: listener}
 	}
 
-	// does the socket require TLS?
-	if (config.certificate != "" && config.privateKey != "") || config.useLetsEncrypt {
+	// @check if the socket requires TLS
+	if config.useSelfSignedTLS || config.useLetsEncryptTLS || config.useFileTLS {
 		getCertificate := func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
 			return nil, errors.New("Not configured")
 		}
 
-		if config.useLetsEncrypt {
+		if config.useLetsEncryptTLS {
+			r.log.Info("enabling letsencrypt tls support")
+
 			m := autocert.Manager{
 				Prompt: autocert.AcceptTOS,
 				Cache:  autocert.DirCache(config.letsEncryptCacheDir),
@@ -494,9 +499,21 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 			}
 
 			getCertificate = m.GetCertificate
-		} else {
+		}
+
+		if config.useSelfSignedTLS {
+			r.log.Info("enabling self-signed tls support", zap.Duration("expiration", r.config.SelfSignedTLSExpiration))
+
+			rotate, err := newSelfSignedCertificate(r.config.SelfSignedTLSHostnames, r.config.SelfSignedTLSExpiration, r.log)
+			if err != nil {
+				return nil, err
+			}
+			getCertificate = rotate.GetCertificate
+
+		}
+
+		if config.useFileTLS {
 			r.log.Info("tls support enabled", zap.String("certificate", config.certificate), zap.String("private_key", config.privateKey))
-			// creating a certificate rotation
 			rotate, err := newCertificateRotator(config.certificate, config.privateKey, r.log)
 			if err != nil {
 				return nil, err
@@ -510,13 +527,13 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 		}
 
 		tlsConfig := &tls.Config{
-			PreferServerCipherSuites: true,
 			GetCertificate:           getCertificate,
+			PreferServerCipherSuites: true,
 		}
 
 		listener = tls.NewListener(listener, tlsConfig)
 
-		// are we doing mutual tls?
+		// @check if we doing mutual tls
 		if config.clientCert != "" {
 			caCert, err := ioutil.ReadFile(config.clientCert)
 			if err != nil {

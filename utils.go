@@ -19,15 +19,19 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"crypto/rsa"
 	sha "crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/big"
 	"net"
 	"net/http"
 	"net/url"
@@ -61,6 +65,52 @@ var (
 var (
 	symbolsFilter = regexp.MustCompilePOSIX("[_$><\\[\\].,\\+-/'%^&*()!\\\\]+")
 )
+
+// createCertificate is responsible for creating a certificate
+func createCertificate(key *rsa.PrivateKey, hostnames []string, expire time.Duration) (tls.Certificate, error) {
+	// @step: create a serial for the certificate
+	serial, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+
+	template := x509.Certificate{
+		BasicConstraintsValid: true,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		IsCA:                  false,
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		NotAfter:              time.Now().Add(expire),
+		NotBefore:             time.Now().Add(-30 * time.Second),
+		PublicKeyAlgorithm:    x509.ECDSA,
+		SerialNumber:          serial,
+		SignatureAlgorithm:    x509.SHA512WithRSA,
+		Subject: pkix.Name{
+			CommonName:   hostnames[0],
+			Organization: []string{"Keycloak Proxy"},
+		},
+	}
+
+	// @step: add the hostnames to the certificate template
+	if len(hostnames) > 1 {
+		for _, x := range hostnames[1:] {
+			if ip := net.ParseIP(x); ip != nil {
+				template.IPAddresses = append(template.IPAddresses, ip)
+			} else {
+				template.DNSNames = append(template.DNSNames, x)
+			}
+		}
+	}
+
+	// @step: create the certificate
+	cert, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert})
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
+
+	return tls.X509KeyPair(certPEM, keyPEM)
+}
 
 // getRequestHostURL returns the hostname from the request
 func getRequestHostURL(r *http.Request) string {
