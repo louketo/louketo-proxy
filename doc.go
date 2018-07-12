@@ -35,7 +35,7 @@ var (
 
 const (
 	prog        = "keycloak-proxy"
-	author      = "Rohith"
+	author      = "Rohith Jayawardene"
 	email       = "gambol99@gmail.com"
 	description = "is a proxy using the keycloak service for auth and authorization"
 
@@ -182,6 +182,13 @@ type Config struct {
 	RequestIDHeader string `json:"request-id-header" yaml:"request-id-header" usage:"the http header name for request id" env:"REQUEST_ID_HEADER"`
 	// ResponseHeader is a map of response headers to add to the response
 	ResponseHeaders map[string]string `json:"response-headers" yaml:"response-headers" usage:"custom headers to added to the http response key=value"`
+
+	// EnableSelfSignedTLS indicates we should create a self-signed ceritificate for the service
+	EnabledSelfSignedTLS bool `json:"enable-self-signed-tls" yaml:"enable-self-signed-tls" usage:"create self signed certificates for the proxy" env:"ENABLE_SELF_SIGNED_TLS"`
+	// SelfSignedTLSHostnames is the list of hostnames to place on the certificate
+	SelfSignedTLSHostnames []string `json:"self-signed-tls-hostnames" yaml:"self-signed-tls-hostnames" usage:"a list of hostnames to place on the self-signed certificate"`
+	// SelfSignedTLSExpiration is the expiration time of the tls certificate before rotation occurs
+	SelfSignedTLSExpiration time.Duration `json:"self-signed-tls-expiration" yaml:"self-signed-tls-expiration" usage:"the expiration of the certificate before rotation"`
 
 	// EnableRequestID indicates the proxy should add request id if none if found
 	EnableRequestID bool `json:"enable-request-id" yaml:"enable-request-id" usage:"indicates we should add a request id if none found" env:"ENABLE_REQUEST_ID"`

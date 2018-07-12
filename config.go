@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -26,6 +27,12 @@ import (
 
 // newDefaultConfig returns a initialized config
 func newDefaultConfig() *Config {
+	var hostnames []string
+	if name, err := os.Hostname(); err == nil {
+		hostnames = append(hostnames, name)
+	}
+	hostnames = append(hostnames, []string{"localhost", "127.0.0.1"}...)
+
 	return &Config{
 		AccessTokenDuration:         time.Duration(720) * time.Hour,
 		CookieAccessName:            "kc-access",
@@ -35,6 +42,8 @@ func newDefaultConfig() *Config {
 		EnableDefaultDeny:           true,
 		EnableSessionCookies:        true,
 		EnableTokenHeader:           true,
+		SelfSignedTLSHostnames:      hostnames,
+		SelfSignedTLSExpiration:     3 * time.Hour,
 		Headers:                     make(map[string]string),
 		LetsEncryptCacheDir:         "./cache/",
 		MatchClaims:                 make(map[string]string),
