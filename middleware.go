@@ -374,7 +374,7 @@ func (r *oauthProxy) identityHeadersMiddleware(custom []string) func(http.Handle
 			scope := req.Context().Value(contextScopeName).(*RequestScope)
 			if scope.Identity != nil {
 				user := scope.Identity
-				req.Header.Set("X-Auth-Audience", user.audience)
+				req.Header.Set("X-Auth-Audience", strings.Join(user.audiences, ","))
 				req.Header.Set("X-Auth-Email", user.email)
 				req.Header.Set("X-Auth-ExpiresIn", user.expiresAt.String())
 				req.Header.Set("X-Auth-Groups", strings.Join(user.groups, ","))
