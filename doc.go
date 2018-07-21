@@ -387,7 +387,7 @@ type userContext struct {
 	// the id of the user
 	id string
 	// the audience for the token
-	audience string
+	audiences []string
 	// whether the context is from a session cookie or authorization header
 	bearerToken bool
 	// the claims associated to the token

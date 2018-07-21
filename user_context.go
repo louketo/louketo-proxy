@@ -40,9 +40,17 @@ func extractIdentity(token jose.JWT) (*userContext, error) {
 	if err != nil || !found {
 		preferredName = identity.Email
 	}
-	audience, found, err := claims.StringClaim(claimAudience)
-	if err != nil || !found {
-		return nil, ErrNoTokenAudience
+
+	var audiences []string
+	aud, found, err := claims.StringClaim(claimAudience)
+	if err == nil && found {
+		audiences = append(audiences, aud)
+	} else {
+		if aud, found, err := claims.StringsClaim(claimAudience); err != nil || !found {
+			return nil, ErrNoTokenAudience
+		} else {
+			audiences = aud
+		}
 	}
 
 	// @step: extract the realm roles
@@ -74,7 +82,7 @@ func extractIdentity(token jose.JWT) (*userContext, error) {
 	}
 
 	return &userContext{
-		audience:      audience,
+		audiences:     audiences,
 		claims:        claims,
 		email:         identity.Email,
 		expiresAt:     identity.ExpiresAt,
@@ -87,9 +95,20 @@ func extractIdentity(token jose.JWT) (*userContext, error) {
 	}, nil
 }
 
+// backported from https://github.com/gambol99/go-oidc/blob/master/oidc/verification.go#L28-L37
+// I'll raise another PR to make it public in the go-oidc package so we can just use `oidc.ContainsString()`
+func containsString(needle string, haystack []string) bool {
+	for _, v := range haystack {
+		if v == needle {
+			return true
+		}
+	}
+	return false
+}
+
 // isAudience checks the audience
 func (r *userContext) isAudience(aud string) bool {
-	return r.audience == aud
+	return containsString(aud, r.audiences)
 }
 
 // getRoles returns a list of roles

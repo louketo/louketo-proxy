@@ -24,13 +24,16 @@ import (
 
 func TestIsAudience(t *testing.T) {
 	user := &userContext{
-		audience: "test",
+		audiences: []string{"test", "test2"},
 	}
 	if !user.isAudience("test") {
 		t.Error("return should not have been false")
 	}
 	if user.isAudience("test1") {
 		t.Error("return should not have been true")
+	}
+	if !user.isAudience("test2") {
+		t.Error("return should not have been false")
 	}
 }
 
