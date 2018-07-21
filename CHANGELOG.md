@@ -5,6 +5,7 @@ FEATURES:
 * Added the ability to use a "any" operation on the roles rather then just "and" with the inclusion of a `require-any-role` [#PR389](https://github.com/gambol99/keycloak-proxy/pull/389)
 * Added a `--enable-request-id` option to inject a request id into the upstream request [#PR392](https://github.com/gambol99/keycloak-proxy/pull/392)
 * Added the ability for the proxy to generate self-signed certificates for use via the `--enable-self-signed-tls` [#PR394](https://github.com/gambol99/keycloak-proxy/pull/394)
+* Added support for token with multiple audiences in the claims [#PR401](https://github.com/gambol99/keycloak-proxy/pull/401)
 
 BREAK CHANGES
 * Added the http-cookie-only option as default true [#PR397](https://github.com/gambol99/keycloak-proxy/pull/397)
