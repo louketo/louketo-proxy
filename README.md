@@ -124,6 +124,8 @@ GLOBAL OPTIONS:
    --upstream-response-header-timeout value  the timeout placed on the response header for upstream (default: 10s)
    --upstream-expect-continue-timeout value  the timeout placed on the expect continue for upstream (default: 10s)
    --verbose                                 switch on debug / verbose logging (default: false)
+   --max-idle-connections                    max idle upstream / keycloak connections to keep alive, ready for reuse (default: 100)
+   --max-idle-connections-per-host           limits the number of idle connections maintained per host (default: 50)
    --enabled-proxy-protocol                  enable proxy protocol (default: false)
    --server-read-timeout value               the server read timeout on the http server (default: 10s)
    --server-write-timeout value              the server write timeout on the http server (default: 10s)

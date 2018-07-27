@@ -613,6 +613,8 @@ func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) error {
 		ResponseHeaderTimeout: r.config.UpstreamResponseHeaderTimeout,
 		TLSClientConfig:       tlsConfig,
 		TLSHandshakeTimeout:   r.config.UpstreamTLSHandshakeTimeout,
+		MaxIdleConns:          r.config.MaxIdleConns,
+		MaxIdleConnsPerHost:   r.config.MaxIdleConnsPerHost,
 	}
 
 	return nil

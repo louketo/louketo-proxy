@@ -6,6 +6,7 @@ FEATURES:
 * Added a `--enable-request-id` option to inject a request id into the upstream request [#PR392](https://github.com/gambol99/keycloak-proxy/pull/392)
 * Added the ability for the proxy to generate self-signed certificates for use via the `--enable-self-signed-tls` [#PR394](https://github.com/gambol99/keycloak-proxy/pull/394)
 * Added support for token with multiple audiences in the claims [#PR401](https://github.com/gambol99/keycloak-proxy/pull/401)
+* Added `--max-idle-connections` and `--max-idle-connections-per-host` settings to support tuning the http connection pool size for performance needs [#PR405](https://github.com/gambol99/keycloak-proxy/pull/405)
 
 BREAK CHANGES
 * Added the http-cookie-only option as default true [#PR397](https://github.com/gambol99/keycloak-proxy/pull/397)

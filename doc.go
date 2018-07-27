@@ -312,6 +312,12 @@ type Config struct {
 	Verbose bool `json:"verbose" yaml:"verbose" usage:"switch on debug / verbose logging"`
 	// EnableProxyProtocol controls the proxy protocol
 	EnableProxyProtocol bool `json:"enabled-proxy-protocol" yaml:"enabled-proxy-protocol" usage:"enable proxy protocol"`
+
+	// MaxIdleConns is the max idle connections to keep alive, ready for reuse
+	MaxIdleConns int `json:"max-idle-connections" yaml:"max-idle-connections" usage:"max idle upstream / keycloak connections to keep alive, ready for reuse"`
+	// MaxIdleConnsPerHost limits the number of idle connections maintained per host
+	MaxIdleConnsPerHost int `json:"max-idle-connections-per-host" yaml:"max-idle-connections-per-host" usage:"limits the number of idle connections maintained per host"`
+
 	// ServerReadTimeout is the read timeout on the http server
 	ServerReadTimeout time.Duration `json:"server-read-timeout" yaml:"server-read-timeout" usage:"the server read timeout on the http server"`
 	// ServerWriteTimeout is the write timeout on the http server
