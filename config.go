@@ -46,6 +46,8 @@ func newDefaultConfig() *Config {
 		Headers:                     make(map[string]string),
 		LetsEncryptCacheDir:         "./cache/",
 		MatchClaims:                 make(map[string]string),
+		MaxIdleConns:                100,
+		MaxIdleConnsPerHost:         50,
 		OAuthURI:                    "/oauth",
 		OpenIDProviderTimeout:       30 * time.Second,
 		PreserveHost:                false,
@@ -83,6 +85,12 @@ func (r *Config) WithOAuthURI(uri string) string {
 func (r *Config) isValid() error {
 	if r.Listen == "" {
 		return errors.New("you have not specified the listening interface")
+	}
+	if r.MaxIdleConns <= 0 {
+		return errors.New("max-idle-connections must be a number > 0")
+	}
+	if r.MaxIdleConnsPerHost < 0 || r.MaxIdleConnsPerHost > r.MaxIdleConns {
+		return errors.New("maxi-idle-connections-per-host must be a number > 0 and <= max-idle-connections")
 	}
 	if r.TLSCertificate != "" && r.TLSPrivateKey == "" {
 		return errors.New("you have not provided a private key")
