@@ -20,8 +20,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gambol99/go-oidc/jose"
-	"github.com/gambol99/go-oidc/oidc"
+	"github.com/coreos/go-oidc/jose"
+	"github.com/coreos/go-oidc/oidc"
 )
 
 // extractIdentity parse the jwt token and extracts the various elements is order to construct
@@ -95,7 +95,7 @@ func extractIdentity(token jose.JWT) (*userContext, error) {
 	}, nil
 }
 
-// backported from https://github.com/gambol99/go-oidc/blob/master/oidc/verification.go#L28-L37
+// backported from https://github.com/coreos/go-oidc/blob/master/oidc/verification.go#L28-L37
 // I'll raise another PR to make it public in the go-oidc package so we can just use `oidc.ContainsString()`
 func containsString(needle string, haystack []string) bool {
 	for _, v := range haystack {

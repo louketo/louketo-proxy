@@ -44,7 +44,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/gambol99/go-oidc/jose"
+	"github.com/coreos/go-oidc/jose"
 	"github.com/urfave/cli"
 	"gopkg.in/yaml.v2"
 )
