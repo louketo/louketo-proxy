@@ -1,5 +1,5 @@
 
-#### **2.3.0 (Unreleased)**
+#### **2.3.0**
 
 FEATURES:
 * Added the ability to use a "any" operation on the roles rather then just "and" with the inclusion of a `require-any-role` [#PR389](https://github.com/gambol99/keycloak-proxy/pull/389)
