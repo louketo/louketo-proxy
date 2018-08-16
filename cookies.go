@@ -47,7 +47,7 @@ func (r *oauthProxy) dropCookie(w http.ResponseWriter, host, name, value string,
 // dropAccessTokenCookie drops a access token cookie into the response
 func (r *oauthProxy) dropAccessTokenCookie(req *http.Request, w http.ResponseWriter, value string, duration time.Duration) {
 	// also cookie name is included in the cookie length; cookie name suffix "-xxx"
-	maxCookieLength := 4089 - len(r.config.CookieAccessName)
+	maxCookieLength := 4000 - len(r.config.CookieAccessName)
 
 	if len(value) <= maxCookieLength {
 		r.dropCookie(w, req.Host, r.config.CookieAccessName, value, duration)
@@ -67,7 +67,7 @@ func (r *oauthProxy) dropAccessTokenCookie(req *http.Request, w http.ResponseWri
 // dropRefreshTokenCookie drops a refresh token cookie into the response
 func (r *oauthProxy) dropRefreshTokenCookie(req *http.Request, w http.ResponseWriter, value string, duration time.Duration) {
 	// also cookie name is included in the cookie length; cookie name suffix "-xxx"
-	maxCookieLength := 4089 - len(r.config.CookieRefreshName)
+	maxCookieLength := 4000 - len(r.config.CookieRefreshName)
 
 	if len(value) <= maxCookieLength {
 		r.dropCookie(w, req.Host, r.config.CookieRefreshName, value, duration)
