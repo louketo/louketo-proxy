@@ -632,6 +632,48 @@ You can control the upstream endpoint via the --upstream-url option. Both http a
 
 Assuming the *--enable-metrics* has been set, a Prometheus endpoint can be found on */oauth/metrics*; at present the only metric being exposed is a counter per http code.
 
+#### **HTTP Response Security Headers**
+
+You can add HTTP Response Headers which will be send to the End-User in every response to increase Browser-Security. The example settings here are very relaxed and can be tightened:
+
+```YAML
+# required for some settings
+enable-security-filter: true
+# x-xss-protection:"1; mode=block"
+filter-browser-xss: true
+# X-Content-Type-Options:"nosniff"
+filter-content-nosniff: true
+# X-Frame-Options:"DENY"
+filter-frame-deny: false
+# Content Security Policy Level 3, might need some additional configuration
+content-security-policy:
+  default-src 'self' 'unsafe-inline';
+  img-src 'self';
+  script-src 'self' 'unsafe-inline';
+  frame-ancestors 'self';
+  block-all-mixed-content;
+  upgrade-insecure-requests;
+  form-action 'self';
+# custom headers - Key: 'value'
+response-headers:
+  Strict-Transport-Security: 'max-age=31536000'
+  Referrer-Policy: 'same-origin'
+  X-Permitted-Cross-Domains: 'none'
+  X-Frame-Options: 'SAMEORIGIN'
+  Cache-Control: 'no-cache, no-store, must-revalidate'
+  Pragma: 'no-cache'
+  Expires: '0'
+```
+
+Also you can increase cookie security:
+
+```YAML
+# Only transfer cookies via HTTPS
+secure-cookie: true
+# Disable JavaScript API for cookies - prevent XSS
+http-only-cookie: true
+```
+
 ### Limitations
 
 Keep in mind [browser cookie limits](http://browsercookielimits.squawky.net/), if you use access or
