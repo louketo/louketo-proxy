@@ -34,12 +34,12 @@
   version = "1.4.7"
 
 [[constraint]]
-  branch = "master"
-  name = "github.com/gambol99/go-oidc"
+  branch = "v1"
+  name = "github.com/coreos/go-oidc"
 
 [[constraint]]
   branch = "master"
-  name = "github.com/gambol99/goproxy"
+  name = "github.com/elazarl/goproxy"
 
 [[constraint]]
   name = "github.com/rs/cors"

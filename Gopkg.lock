@@ -28,6 +28,18 @@
   revision = "144418e1475d8bf7abbdc48583500f1a20c62ea7"
 
 [[projects]]
+  branch = "v1"
+  name = "github.com/coreos/go-oidc"
+  packages = [
+    "http",
+    "jose",
+    "key",
+    "oauth2",
+    "oidc"
+  ]
+  revision = "e860bd55bfa7d7cb35d30d26a167982584f616b0"
+
+[[projects]]
   name = "github.com/coreos/pkg"
   packages = [
     "health",
@@ -42,28 +54,16 @@
   revision = "5215b55f46b2b919f50a1df0eaa5886afe4e3b3d"
 
 [[projects]]
+  name = "github.com/elazarl/goproxy"
+  packages = ["."]
+  revision = "947c36da3153ff334e74d9d980de341d25f358ba"
+  version = "v1.1"
+
+[[projects]]
   name = "github.com/fsnotify/fsnotify"
   packages = ["."]
   revision = "c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9"
   version = "v1.4.7"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/gambol99/go-oidc"
-  packages = [
-    "http",
-    "jose",
-    "key",
-    "oauth2",
-    "oidc"
-  ]
-  revision = "87948fe50989333a6a3f970e48f8dec844361fa1"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/gambol99/goproxy"
-  packages = ["."]
-  revision = "e713e5909438245be49ef559e74dd904833ebe90"
 
 [[projects]]
   name = "github.com/go-chi/chi"
@@ -246,6 +246,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c239d30032133a01b89a8a62bd3abecf47284348176c0e9e2f295f9d65f46f55"
+  inputs-digest = "e7823fe27d5dc0e30e738df7a74ac04cd05bfd6e27f585e547312b6eac9fde9c"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -28,8 +28,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gambol99/go-oidc/jose"
-	"github.com/gambol99/go-oidc/oauth2"
+	"github.com/coreos/go-oidc/jose"
+	"github.com/coreos/go-oidc/oauth2"
 	"github.com/pressly/chi"
 	"github.com/pressly/chi/middleware"
 	"github.com/stretchr/testify/assert"

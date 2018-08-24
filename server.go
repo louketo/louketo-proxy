@@ -37,8 +37,8 @@ import (
 	httplog "log"
 
 	proxyproto "github.com/armon/go-proxyproto"
-	"github.com/gambol99/go-oidc/oidc"
-	"github.com/gambol99/goproxy"
+	"github.com/coreos/go-oidc/oidc"
+	"github.com/elazarl/goproxy"
 	"github.com/pressly/chi"
 	"github.com/pressly/chi/middleware"
 	"github.com/prometheus/client_golang/prometheus"
@@ -703,11 +703,10 @@ func (r *oauthProxy) newOpenIDClient() (*oidc.Client, oidc.ProviderConfig, *http
 			ID:     r.config.ClientID,
 			Secret: r.config.ClientSecret,
 		},
-		HTTPClient:        hc,
-		RedirectURL:       fmt.Sprintf("%s/oauth/callback", r.config.RedirectionURL),
-		ProviderConfig:    config,
-		Scope:             append(r.config.Scopes, oidc.DefaultScope...),
-		SkipClientIDCheck: r.config.SkipClientID,
+		HTTPClient:     hc,
+		RedirectURL:    fmt.Sprintf("%s/oauth/callback", r.config.RedirectionURL),
+		ProviderConfig: config,
+		Scope:          append(r.config.Scopes, oidc.DefaultScope...),
 	})
 	if err != nil {
 		return nil, config, hc, err

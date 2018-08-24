@@ -23,7 +23,7 @@ import (
 	"path"
 	"time"
 
-	"github.com/gambol99/go-oidc/jose"
+	"github.com/coreos/go-oidc/jose"
 	"go.uber.org/zap"
 )
 
