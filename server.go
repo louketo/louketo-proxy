@@ -60,6 +60,7 @@ type oauthProxy struct {
 	store          storage
 	templates      *template.Template
 	upstream       reverseProxy
+	autocertMgr    *autocert.Manager
 }
 
 func init() {
@@ -85,6 +86,34 @@ func newProxy(config *Config) (*oauthProxy, error) {
 		config:         config,
 		log:            log,
 		metricsHandler: prometheus.Handler(),
+	}
+
+	if config.UseLetsEncrypt {
+		svc.autocertMgr = &autocert.Manager{
+			Prompt: autocert.AcceptTOS,
+			Cache:  autocert.DirCache(config.LetsEncryptCacheDir),
+			HostPolicy: func(_ context.Context, host string) error {
+				if len(config.Hostnames) > 0 {
+					found := false
+
+					for _, h := range config.Hostnames {
+						found = found || (h == host)
+					}
+
+					if !found {
+						return ErrHostNotConfigured
+					}
+				} else if config.RedirectionURL != "" {
+					if u, err := url.Parse(config.RedirectionURL); err != nil {
+						return err
+					} else if u.Host != host {
+						return ErrHostNotConfigured
+					}
+				}
+
+				return nil
+			},
+		}
 	}
 
 	// parse the upstream endpoint
@@ -398,9 +427,16 @@ func (r *oauthProxy) Run() error {
 		if err != nil {
 			return err
 		}
+
+		handler := r.router
+		if r.config.UseLetsEncrypt {
+			r.log.Info("enabling letsencrypt HTTP support")
+			handler = r.autocertMgr.HTTPHandler(handler)
+		}
+
 		httpsvc := &http.Server{
 			Addr:         r.config.ListenHTTP,
-			Handler:      r.router,
+			Handler:      handler,
 			ReadTimeout:  r.config.ServerReadTimeout,
 			WriteTimeout: r.config.ServerWriteTimeout,
 			IdleTimeout:  r.config.ServerIdleTimeout,
@@ -472,33 +508,7 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 		if config.useLetsEncryptTLS {
 			r.log.Info("enabling letsencrypt tls support")
 
-			m := autocert.Manager{
-				Prompt: autocert.AcceptTOS,
-				Cache:  autocert.DirCache(config.letsEncryptCacheDir),
-				HostPolicy: func(_ context.Context, host string) error {
-					if len(config.hostnames) > 0 {
-						found := false
-
-						for _, h := range config.hostnames {
-							found = found || (h == host)
-						}
-
-						if !found {
-							return ErrHostNotConfigured
-						}
-					} else if config.redirectionURL != "" {
-						if u, err := url.Parse(config.redirectionURL); err != nil {
-							return err
-						} else if u.Host != host {
-							return ErrHostNotConfigured
-						}
-					}
-
-					return nil
-				},
-			}
-
-			getCertificate = m.GetCertificate
+			getCertificate = r.autocertMgr.GetCertificate
 		}
 
 		if config.useSelfSignedTLS {

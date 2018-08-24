@@ -391,6 +391,7 @@ Example of required configuration for Let's Encrypt support:
 
 ```YAML
 listen: 0.0.0.0:443
+listen-http: 0.0.0.0:80
 enable-https-redirection: true
 enable-security-filter: true
 use-letsencrypt: true
@@ -400,7 +401,7 @@ hostnames:
   - domain.tld
 ```
 
-Note: listening on the port 443 is mandatory requirement
+Note: listening on the port 80,443 is mandatory requirement
 
 #### **Access Token Encryption**
 
