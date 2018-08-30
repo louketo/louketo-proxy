@@ -169,3 +169,22 @@ func TestClearAllCookies(t *testing.T) {
 		"kc-access=; Path=/; Domain=127.0.0.1; Expires=",
 		"we have not cleared the, headers: %v", resp.Header())
 }
+
+func TestGetMaxCookieChunkLength(t *testing.T) {
+	p, _, _ := newTestProxyService(nil)
+	req := newFakeHTTPRequest("GET", "/admin")
+
+	p.config.HTTPOnlyCookie = true
+	p.config.EnableSessionCookies = true
+	p.config.SecureCookie = true
+	p.config.CookieDomain = "1234567890"
+	assert.Equal(t, p.getMaxCookieChunkLength(req, "1234567890"), 4033,
+		"cookie chunk calculation is not correct")
+
+	p.config.HTTPOnlyCookie = false
+	p.config.EnableSessionCookies = false
+	p.config.SecureCookie = false
+	p.config.CookieDomain = ""
+	assert.Equal(t, p.getMaxCookieChunkLength(req, ""), 4021,
+		"cookie chunk calculation is not correct")
+}

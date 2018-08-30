@@ -47,42 +47,58 @@ func (r *oauthProxy) dropCookie(w http.ResponseWriter, host, name, value string,
 	http.SetCookie(w, cookie)
 }
 
+// maxCookieChunkSize calculates max cookie chunk size, which can be used for cookie value
+func (r *oauthProxy) getMaxCookieChunkLength(req *http.Request, cookieName string) int {
+	maxCookieChunkLength := 4069 - len(cookieName)
+	if r.config.CookieDomain != "" {
+		maxCookieChunkLength = maxCookieChunkLength - len(r.config.CookieDomain)
+	} else {
+		maxCookieChunkLength = maxCookieChunkLength - len(strings.Split(req.Host, ":")[0])
+	}
+	if r.config.HTTPOnlyCookie {
+		maxCookieChunkLength = maxCookieChunkLength - len("HttpOnly; ")
+	}
+	if !r.config.EnableSessionCookies {
+		maxCookieChunkLength = maxCookieChunkLength - len("Expires=Mon, 02 Jan 2006 03:04:05 MST; ")
+	}
+	if r.config.SecureCookie {
+		maxCookieChunkLength = maxCookieChunkLength - len("Secure")
+	}
+	return maxCookieChunkLength
+}
+
 // dropAccessTokenCookie drops a access token cookie into the response
 func (r *oauthProxy) dropAccessTokenCookie(req *http.Request, w http.ResponseWriter, value string, duration time.Duration) {
-	// also cookie name is included in the cookie length; cookie name suffix "-xxx"
-	maxCookieLength := 4089 - len(r.config.CookieAccessName)
-
-	if len(value) <= maxCookieLength {
+	maxCookieChunkLength := r.getMaxCookieChunkLength(req, r.config.CookieAccessName)
+	if len(value) <= maxCookieChunkLength {
 		r.dropCookie(w, req.Host, r.config.CookieAccessName, value, duration)
 	} else {
 		// write divided cookies because payload is too long for single cookie
-		r.dropCookie(w, req.Host, r.config.CookieAccessName, value[0:maxCookieLength], duration)
-		for i := maxCookieLength; i < len(value); i += maxCookieLength {
-			end := i + maxCookieLength
+		r.dropCookie(w, req.Host, r.config.CookieAccessName, value[0:maxCookieChunkLength], duration)
+		for i := maxCookieChunkLength; i < len(value); i += maxCookieChunkLength {
+			end := i + maxCookieChunkLength
 			if end > len(value) {
 				end = len(value)
 			}
-			r.dropCookie(w, req.Host, r.config.CookieAccessName+"-"+strconv.Itoa(i/maxCookieLength), value[i:end], duration)
+			r.dropCookie(w, req.Host, r.config.CookieAccessName+"-"+strconv.Itoa(i/maxCookieChunkLength), value[i:end], duration)
 		}
 	}
 }
 
 // dropRefreshTokenCookie drops a refresh token cookie into the response
 func (r *oauthProxy) dropRefreshTokenCookie(req *http.Request, w http.ResponseWriter, value string, duration time.Duration) {
-	// also cookie name is included in the cookie length; cookie name suffix "-xxx"
-	maxCookieLength := 4089 - len(r.config.CookieRefreshName)
-
-	if len(value) <= maxCookieLength {
+	maxCookieChunkLength := r.getMaxCookieChunkLength(req, r.config.CookieRefreshName)
+	if len(value) <= maxCookieChunkLength {
 		r.dropCookie(w, req.Host, r.config.CookieRefreshName, value, duration)
 	} else {
 		// write divided cookies because payload is too long for single cookie
-		r.dropCookie(w, req.Host, r.config.CookieRefreshName, value[0:maxCookieLength], duration)
-		for i := maxCookieLength; i < len(value); i += maxCookieLength {
-			end := i + maxCookieLength
+		r.dropCookie(w, req.Host, r.config.CookieRefreshName, value[0:maxCookieChunkLength], duration)
+		for i := maxCookieChunkLength; i < len(value); i += maxCookieChunkLength {
+			end := i + maxCookieChunkLength
 			if end > len(value) {
 				end = len(value)
 			}
-			r.dropCookie(w, req.Host, r.config.CookieRefreshName+"-"+strconv.Itoa(i/maxCookieLength), value[i:end], duration)
+			r.dropCookie(w, req.Host, r.config.CookieRefreshName+"-"+strconv.Itoa(i/maxCookieChunkLength), value[i:end], duration)
 		}
 	}
 }
