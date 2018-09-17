@@ -529,6 +529,7 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 		tlsConfig := &tls.Config{
 			GetCertificate:           getCertificate,
 			PreferServerCipherSuites: true,
+			NextProtos:               []string{"h2", "http/1.1"},
 		}
 
 		listener = tls.NewListener(listener, tlsConfig)
