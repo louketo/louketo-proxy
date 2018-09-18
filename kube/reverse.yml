@@ -9,7 +9,7 @@ spec:
       labels:
         name: proxy
       annotations:
-        repository: https://github.com/gambol99/keycloak-proxy
+        repository: https://github.com/keycloak/keycloak-gatekeeper
     spec:
       securityContext:
         fsGroup: 1000
@@ -21,7 +21,7 @@ spec:
           secretName: tls
       containers:
         - name: proxy
-          image: quay.io/gambol99/keycloak-proxy:latest
+          image: docker.io/jboss/keycloak/keycloak-gatekeeper:latest
           imagePullPolicy: Always
           args:
             - --client-id=broker

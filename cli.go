@@ -36,7 +36,7 @@ func newOauthProxyApp() *cli.App {
 	app.Author = author
 	app.Email = email
 	app.Flags = getCommandLineOptions()
-	app.UsageText = "keycloak-proxy [options]"
+	app.UsageText = "keycloak-gatekeeper [options]"
 
 	// step: the standard usage message isn't that helpful
 	app.OnUsageError = func(context *cli.Context, err error, isSubcommand bool) error {

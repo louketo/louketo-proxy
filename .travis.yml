@@ -1,6 +1,5 @@
 env:
   global:
-  - AUTHOR_EMAIL=gambol99@gmail.com
   - REGISTRY_USERNAME=gambol99+rebotbuilder
   - REGISTRY=quay.io
   - secure: L2Cx0t8rSc1x3bvVbC3ONSkw5i/b5sznvZFSrzxL7iaDjVIGxSFNYo7J0u3eKQh3+X/IxVvjsCSY/LyKErODzCsiv88BnpGvVRsu+Mq78NFMgrcPetXA/S0X/IEOfqiQ8F+a/7NNY+KJEEfKROwRrPbKx7bUpB+jkPQr5Hiyh77i0jcEl8ZKr/3zyuQBr5QMS7j9CQTkR7/vqi2Cd2LE4vxwC7Vi9cjs9fv64XeDfRY5eUJX7DZUs9M73lhQ5HwId40nNPjncrjRdQwAfmkbt2skV5v9xcPeuKvvynFy+11mkINMOR7PEK6nvyYq9bbAxarxSvYjRvPC1uIlXSHDO9FlEXzR0iAy26m0o9dOYloCs1mARFvOqPGWdxH6XXGSG4MtREpTXGFmIcStUCQGvMhY7NttYjD2leZTvPP99tODcUa6KQiQvH4ycPRmOwmgR496n+uW9IZWSEG1soRWZwxGJKxJVvwgt64V9UWWlxhb8+nAs/Ka1Lr8PqBKNNMjLBvLVIEOEldJz6Vk5fu3CtUIfxwMXwSfGmzPB1JZK5yB9Rc8vciPtaM6JaSAeTcp0e8SMOgUrk5lv9p72T5NvOh3U4DF4qvznK7saT20RHJF9080VQRyb/0m065oCn25ynvSJI9LZ5jzF5uQ+0D0mXnwnpUbWPopLf1NwKrS27Y=
@@ -18,8 +17,8 @@ install:
 script:
 - make test
 - if ([[ ${TRAVIS_BRANCH} == "master" ]] && [[ ${TRAVIS_EVENT_TYPE} == "push" ]]) || [[ -n ${TRAVIS_TAG} ]]; then
-    NAME=GOOS=windows GOARCH=amd64 go build -o bin/keycloak-proxy-windows-amd64.exe;
-    NAME=GOOS=linux GOARCH=amd64 go build -o bin/keycloak-proxy-linux-amd64;
+    NAME=GOOS=windows GOARCH=amd64 go build -o bin/keycloak-gatekeeper-windows-amd64.exe;
+    NAME=GOOS=linux GOARCH=amd64 go build -o bin/keycloak-gatekeeper-linux-amd64;
     docker login -u ${REGISTRY_USERNAME} -p ${REGISTRY_TOKEN} ${REGISTRY};
     VERSION=${TRAVIS_TAG:-latest} make docker-release;
   fi
@@ -32,10 +31,10 @@ deploy:
   provider: releases
   skip_cleanup: true
   on:
-    repo: gambol99/keycloak-proxy
+    repo: keycloak/keycloak-gatekeeper
     tags: true
   api_key:
     secure: "${GITHUB_TOKEN}"
   file:
-  - bin/keycloak-proxy-windows-amd64.exe
-  - bin/keycloak-proxy-linux-amd64
+  - bin/keycloak-gatekeeper-windows-amd64.exe
+  - bin/keycloak-gatekeeper-linux-amd64

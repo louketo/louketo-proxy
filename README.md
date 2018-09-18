@@ -1,9 +1,9 @@
-[![Build Status](https://travis-ci.org/gambol99/keycloak-proxy.svg?branch=master)](https://travis-ci.org/gambol99/keycloak-proxy)
-[![GoDoc](http://godoc.org/github.com/gambol99/keycloak-proxy?status.png)](http://godoc.org/github.com/gambol99/keycloak-proxy)
-[![Docker Repository on Quay](https://quay.io/repository/gambol99/keycloak-proxy/status "Docker Repository on Quay")](https://quay.io/repository/gambol99/keycloak-proxy)
+[![Build Status](https://travis-ci.org/keycloak/keycloak-gatekeeper.svg?branch=master)](https://travis-ci.org/keycloak/keycloak-gatekeeper)
+[![GoDoc](http://godoc.org/github.com/keycloak/keycloak-gatekeeper?status.png)](http://godoc.org/github.com/keycloak/keycloak-gatekeeper)
+[![Docker Repository on Quay](https://docker.io/repository/keycloak/keycloak-gatekeeper/status "Docker Repository on Quay")](https://docker.io/repository/keycloak/keycloak-gatekeeper)
 [![GitHub version](https://badge.fury.io/gh/gambol99%2Fkeycloak-proxy.svg)](https://badge.fury.io/gh/gambol99%2Fkeycloak-proxy)
-[![Go Report Card](https://goreportcard.com/badge/github.com/gambol99/keycloak-proxy)](https://goreportcard.com/report/github.com/gambol99/keycloak-proxy)
-[![Coverage Status](https://coveralls.io/repos/github/gambol99/keycloak-proxy/badge.svg?branch=master)](https://coveralls.io/github/gambol99/keycloak-proxy?branch=master)
+[![Go Report Card](https://goreportcard.com/badge/github.com/keycloak/keycloak-gatekeeper)](https://goreportcard.com/report/github.com/keycloak/keycloak-gatekeeper)
+[![Coverage Status](https://coveralls.io/repos/github/keycloak/keycloak-gatekeeper/badge.svg?branch=master)](https://coveralls.io/github/keycloak/keycloak-gatekeeper?branch=master)
 
 ### **Keycloak Proxy**
 ----
@@ -149,7 +149,7 @@ Assuming you have make + go, simply run make (or 'make static' for static linkin
 
 #### **Docker image**
 
-Docker image is available at [https://quay.io/repository/gambol99/keycloak-proxy](https://quay.io/repository/gambol99/keycloak-proxy)
+Docker image is available at [https://docker.io/repository/keycloak/keycloak-gatekeeper](https://docker.io/repository/keycloak/keycloak-gatekeeper)
 
 #### **Configuration**
 
@@ -334,7 +334,7 @@ You have collection of micro-services which are permitted to speak to one anothe
 
 ```YAML
 - name: keycloak-proxy
-  image: quay.io/gambol99/keycloak-proxy:latest
+  image: docker.io/keycloak/keycloak-gatekeeper:latest
   args:
   - --enable-forwarding=true
   - --forwarding-username=projecta
