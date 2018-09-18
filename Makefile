@@ -1,7 +1,6 @@
-NAME=keycloak-proxy
-AUTHOR=gambol99
-AUTHOR_EMAIL=gambol99@gmail.com
-REGISTRY=quay.io
+NAME=keycloak-gatekeeper
+AUTHOR=keycloak
+REGISTRY=docker.io
 GOVERSION ?= 1.10.2
 ROOT_DIR=${PWD}
 HARDWARE=$(shell uname -m)

@@ -1,15 +1,15 @@
 FROM alpine:3.7
-MAINTAINER Rohith Jayawardene <gambol99@gmail.com>
-LABEL Name=keycloak-proxy \
-      Release=https://github.com/gambol99/keycloak-proxy \
-      Url=https://github.com/gambol99/keycloak-proxy \
-      Help=https://github.com/gambol99/keycloak-proxy/issues
+
+LABEL Name=keycloak-gatekeeper \
+      Release=https://github.com/keycloak/keycloak-gatekeeper \
+      Url=https://github.com/keycloak/keycloak-gatekeeper \
+      Help=https://github.com/keycloak/keycloak-gatekeeper/issues
 
 RUN apk add --no-cache ca-certificates
 
 ADD templates/ /opt/templates
-ADD bin/keycloak-proxy /opt/keycloak-proxy
+ADD bin/keycloak-gatekeeper /opt/keycloak-gatekeeper
 
 WORKDIR "/opt"
 
-ENTRYPOINT [ "/opt/keycloak-proxy" ]
+ENTRYPOINT [ "/opt/keycloak-gatekeeper" ]
