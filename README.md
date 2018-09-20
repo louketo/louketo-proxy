@@ -8,13 +8,13 @@
 ### **Keycloak Proxy**
 ----
 
-  - Supports role based uri controls
+  - Supports role based URI controls
   - Web Socket connection upgrading
   - Token claim matching for additional ACL controls
   - Custom claim injections into authenticated requests
   - Stateless offline refresh tokens with optional predefined session limits
   - TLS and mutual TLS support
-  - JSON field bases access logs
+  - JSON field based access logs
   - Custom Sign-in and access forbidden pages
   - Forward Signed Proxy
   - URL Role Tokenization
