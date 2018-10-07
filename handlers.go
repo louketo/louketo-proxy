@@ -51,6 +51,9 @@ func (r *oauthProxy) getRedirectionURL(w http.ResponseWriter, req *http.Request)
 		redirect = fmt.Sprintf("%s://%s",
 			defaultTo(req.Header.Get("X-Forwarded-Proto"), scheme),
 			defaultTo(req.Header.Get("X-Forwarded-Host"), req.Host))
+	case "*":
+		// allows passing in redirect_uri param for custom redirects
+		redirect = req.URL.Query().Get("redirect_uri")
 	default:
 		redirect = r.config.RedirectionURL
 	}
