@@ -50,7 +50,7 @@ GLOBAL OPTIONS:
    --discovery-url value                     discovery url to retrieve the openid configuration [$PROXY_DISCOVERY_URL]
    --client-id value                         client id used to authenticate to the oauth service [$PROXY_CLIENT_ID]
    --client-secret value                     client secret used to authenticate to the oauth service [$PROXY_CLIENT_SECRET]
-   --redirection-url value                   redirection url for the oauth callback url, "*" allows for dynamic redirection via specifiying param redirect_uri in the URL, defaults to host header is absent [$PROXY_REDIRECTION_URL]
+   --redirection-url value                   redirection url for the oauth callback url, "*" allows for dynamic redirection via specifying param redirect_uri in the URL, defaults to host header is absent [$PROXY_REDIRECTION_URL]
    --revocation-url value                    url for the revocation endpoint to revoke refresh token [$PROXY_REVOCATION_URL]
    --skip-openid-provider-tls-verify         skip the verification of any TLS communication with the openid provider (default: false)
    --openid-provider-proxy value             proxy for communication with the openid provider
