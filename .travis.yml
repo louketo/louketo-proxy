@@ -1,12 +1,3 @@
-env:
-  global:
-  - REGISTRY_USERNAME=gambol99+rebotbuilder
-  - REGISTRY=quay.io
-  - secure: L2Cx0t8rSc1x3bvVbC3ONSkw5i/b5sznvZFSrzxL7iaDjVIGxSFNYo7J0u3eKQh3+X/IxVvjsCSY/LyKErODzCsiv88BnpGvVRsu+Mq78NFMgrcPetXA/S0X/IEOfqiQ8F+a/7NNY+KJEEfKROwRrPbKx7bUpB+jkPQr5Hiyh77i0jcEl8ZKr/3zyuQBr5QMS7j9CQTkR7/vqi2Cd2LE4vxwC7Vi9cjs9fv64XeDfRY5eUJX7DZUs9M73lhQ5HwId40nNPjncrjRdQwAfmkbt2skV5v9xcPeuKvvynFy+11mkINMOR7PEK6nvyYq9bbAxarxSvYjRvPC1uIlXSHDO9FlEXzR0iAy26m0o9dOYloCs1mARFvOqPGWdxH6XXGSG4MtREpTXGFmIcStUCQGvMhY7NttYjD2leZTvPP99tODcUa6KQiQvH4ycPRmOwmgR496n+uW9IZWSEG1soRWZwxGJKxJVvwgt64V9UWWlxhb8+nAs/Ka1Lr8PqBKNNMjLBvLVIEOEldJz6Vk5fu3CtUIfxwMXwSfGmzPB1JZK5yB9Rc8vciPtaM6JaSAeTcp0e8SMOgUrk5lv9p72T5NvOh3U4DF4qvznK7saT20RHJF9080VQRyb/0m065oCn25ynvSJI9LZ5jzF5uQ+0D0mXnwnpUbWPopLf1NwKrS27Y=
-  - secure: jX+wrfNA7TA0T+WVjQvg/WYWldaajobpsAMHVh+ZrvrnkfUeWyy7wS8ZccR+xAEMMXWRnVe1aLGhvWJdtoWV5/UAD0iPz8oqudlE17i1Jmt2aP3sl2mrnCRklIzVJoWIFNIWVlsZON9FkRcb3lbSM9BzWanYLpXB+cDaIHqFVAucL3iIBCAIb5LqVwBN0gM+mcbw1imlXkDnNAS/3rNEd+WGs5S7pJCFvVSmbwKV3362V+PUe8SxfT2MTyxUVkFXtiWIbcwPDTXir2QkPeyjDBh7DxXBl9jZqaTRMV6mz0/PsFpb8Z2M+gcLIucqET2LnK1DskkHCj3+RGbbbXsLt3q9BbM/VZvAfYkknMN/bXoB854RPXS7y1IhfuNs/fiHz/BFJKuYNKgXowjt455varO8Q7nXsz3gYf0N64S2fEHH0P8EL53iGHHHeKSIck5OCvaVY58oiIGzHgsWrFvJG00fEZjIeJL2wt+yfGsyj1FgsucB1SKnEpvSrbCcP3fQKKEZUmezAZo6LgXODxyIXC3QeVK7AZVRWqja72iaBD1yURk4VxMzVg95WqzFkkAxA/hZ4ViPZCEQQ6rsHJ7ubAEk8KafRmL3SsDTEewsrG0WQiH3xeswIPkLJ5dxAKONFzfYz1EI88N/VmoB6OcVt6bCUPyDxcQuvpCtOgD8eXk=
-  - secure: AzF7+iG4pQs8lwjxG72yhDiHwOV/oFwhwjwlF4kg80vnzIDkjdM0cbsHTN/g4Gk8GKYY3uRVk6cbbPjNT4EWg6OgxBOp5X6yAbxoRaMhewNvwxi5L8DzaL94/GurlG6mf6X0nSY8dNCTEBQyk5J+43TTolnwlZxcVoJ083WUsSpwPzpd36DAKvw8lOrsld+p8XukczvFBOjNdNiazbMMjt3fFk/9YuueaRSiR7kgd91jqv5SChezhEdiFEsOMKwMQTxi38H0m7S+rjD+WHqEtXO/8TtCjjZK27UA3dp0HU+u3sldADp6m9Nnwo5DPq8wx2XteVO09lrfiey87G556btPdWjcWArK9B4WkDfFRZx99np+LQI9vYePo+cmC0lOQBBK90QSe/8G0M3iA3Sx5QIVg6G9RM7dBjVAbWXjaCKllufaeiKeHZ6JQMZd7jo7oCo7cyB5ZbjbCsQ8k9ZPAfTz1rrHjxwl2Dt8ITRB2P6ZzMva9xnZQo+aGQp6njh3QX9GtbQAX1zIY4bRUQ1RXKaJuarjJBkUqfoON1XOsv8cA2lTs8mU/U+YijIfAeUDkiq2pV7VIcZ8Op4wNj0tkT3jXbFNswAl20NHWO8yJ2rIBcbTxQuFDEXRg3B+CdaB/doRCXtLpw8e9XsqcGqxMDmJVyZ6uOgW6aUsRDMdj0E=
-services:
-- docker
 language: go
 go:
 - "1.10.2"
@@ -16,25 +7,8 @@ install:
 - go get -u github.com/client9/misspell/cmd/misspell
 script:
 - make test
-- if ([[ ${TRAVIS_BRANCH} == "master" ]] && [[ ${TRAVIS_EVENT_TYPE} == "push" ]]) || [[ -n ${TRAVIS_TAG} ]]; then
-    NAME=GOOS=windows GOARCH=amd64 go build -o bin/keycloak-gatekeeper-windows-amd64.exe;
-    NAME=GOOS=linux GOARCH=amd64 go build -o bin/keycloak-gatekeeper-linux-amd64;
-    docker login -u ${REGISTRY_USERNAME} -p ${REGISTRY_TOKEN} ${REGISTRY};
-    VERSION=${TRAVIS_TAG:-latest} make docker-release;
-  fi
 - if ([[ ${TRAVIS_BRANCH} == "master" ]] && [[ ${TRAVIS_EVENT_TYPE} == "push" ]]); then
     go get github.com/mattn/goveralls;
     goveralls -service=travis-ci;
     make bench;
   fi
-deploy:
-  provider: releases
-  skip_cleanup: true
-  on:
-    repo: keycloak/keycloak-gatekeeper
-    tags: true
-  api_key:
-    secure: "${GITHUB_TOKEN}"
-  file:
-  - bin/keycloak-gatekeeper-windows-amd64.exe
-  - bin/keycloak-gatekeeper-linux-amd64
