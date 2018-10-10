@@ -67,6 +67,12 @@ func (r *Resource) parse(resource string) (*Resource, error) {
 				return nil, errors.New("the value of whitelisted must be true|TRUE|T or it's false equivalent")
 			}
 			r.WhiteListed = value
+		case "allow-no-auth":
+			value, err := strconv.ParseBool(kp[1])
+			if err != nil {
+				return nil, errors.New("the value of allow-no-auth must be true|TRUE|T or it's false equivalent")
+			}
+			r.AllowNoAuth = value
 		default:
 			return nil, errors.New("invalid identifier, should be roles, uri or methods")
 		}
