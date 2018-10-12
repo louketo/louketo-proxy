@@ -24,7 +24,7 @@
 ----
 > **Note**: since v2.2.0 session-only cookies and default denial is switched on by default; though both of these can be altered on the command line or config.
 
-Keycloak-proxy is a proxy service which at the risk of stating the obvious integrates with the [Keycloak](https://github.com/keycloak/keycloak) authentication service. Although technically the service has no dependency on Keycloak itself and would quite happily work with any OpenID provider. The service supports both access tokens in browser cookie or bearer tokens.
+Keycloak-proxy is a proxy service which, at the risk of stating the obvious, integrates with the [Keycloak](https://github.com/keycloak/keycloak) authentication service. Although technically the service has no dependency on Keycloak itself and would quite happily work with any OpenID provider. The service supports both access tokens in browser cookie or bearer tokens.
 
 ```shell
 $ bin/keycloak-proxy --help
@@ -44,7 +44,7 @@ COMMANDS:
      help, h  Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
-   --config value                            path the a configuration file [$PROXY_CONFIG_FILE]
+   --config value                            path to the configuration file [$PROXY_CONFIG_FILE]
    --listen value                            the interface the service should be listening on [$PROXY_LISTEN]
    --listen-http value                       interface we should be listening [$PROXY_LISTEN_HTTP]
    --discovery-url value                     discovery url to retrieve the openid configuration [$PROXY_DISCOVERY_URL]
@@ -281,7 +281,7 @@ Note the HTTP routing rules following the guidelines from [chi](https://github.c
 
 #### **Resources**
 
-The resources defined either on the command line as `--resources` or via a configuration file defines a collection of enrtypoints and the requirement for access.
+The resources defined either on the command line as `--resources` or via a configuration file defines a collection of entrypoints and the requirement for access.
 
 ```YAML
 resources:
@@ -298,7 +298,7 @@ resources:
 
 #### **Google OAuth**
 
-Although the role extensions do require a Keycloak IDP or at the very least a IDP that produces a token which contains roles, there's nothing stopping you from using it against any OpenID providers, such as Google. Go to the Google Developers Console/Google Cloud Console and create a new OAuth 2.0 client ID *(via "API Manager-> Credentials)*. Once you've created the OAuth 2.0 client ID, take the client ID, secret and make sure you've added the callback url to the application scope *(using the default this would be http://127.0.0.1:3000/oauth/callback)*
+Although the role extensions do require a Keycloak IDP or at the very least an IDP that produces a token which contains roles, there's nothing stopping you from using it against any OpenID providers, such as Google. Go to the Google Developers Console/Google Cloud Console and create a new OAuth 2.0 client ID *(via "API Manager-> Credentials)*. Once you've created the OAuth 2.0 client ID, take the client ID, secret and make sure you've added the callback url to the application scope *(using the default this would be http://127.0.0.1:3000/oauth/callback)*
 
 ```shell
 bin/keycloak-proxy \
@@ -320,11 +320,11 @@ DEBU[0002] resource access permitted: /favicon.ico       access=permitted bearer
 
 #### **Session Only Cookies**
 
-By default the access and refresh cookies are session only and disposed of on broswer close; you can disable this feature via the `--enable-session-cookies` option.
+By default the access and refresh cookies are session only and disposed of on browser close; you can disable this feature via the `--enable-session-cookies` option.
 
 #### **Forward Signing Proxy**
 
-Forward signing provides a mechanism for authentication and authorization between services using tokens issued from the IDp. When operating with in the mode the proxy will automatically acquire an access token (handling the refreshing or logins on your behalf) and tag outbound requests with a Authorization header. You can control which domains are tagged with the --forwarding-domains option. Note, this option use a **contains** comparison on domains. So, if you wanted to match all domains under *.svc.cluster.local can and simply use: --forwarding-domain=svc.cluster.local.
+Forward signing provides a mechanism for authentication and authorization between services using tokens issued from the IDp. When operating in this mode the proxy will automatically acquire an access token (handling the refreshing or logins on your behalf) and tag outbound requests with a Authorization header. You can control which domains are tagged with the --forwarding-domains option. Note, this option use a **contains** comparison on domains. So, if you wanted to match all domains under *.svc.cluster.local can and simply use: --forwarding-domain=svc.cluster.local.
 
 At present the service performs a login using oauth client_credentials grant type, so your IDp service must support direct (username/password) logins.
 
@@ -356,7 +356,7 @@ You have collection of micro-services which are permitted to speak to one anothe
 $ curl -k --proxy http://127.0.0.1:3000 https://test.projesta.svc.cluster.local
 ```
 
-Receiver side you could setup the keycloak-proxy (--no=redirects=true) and permit this proxy to verify and handle admission for you. Alternatively, the access token can found as a bearer token in the request.
+Receiver side you could setup the keycloak-proxy (--no=redirects=true) and permit this proxy to verify and handle admission for you. Alternatively, the access token can be found as a bearer token in the request.
 
 #### **Forwarding Signing HTTPS Connect**
 
@@ -408,7 +408,7 @@ By default the session token *(i.e. access/id token)* is placed into a cookie in
 
 #### **Upstream Headers**
 
-On protected resources the upstream endpoint will receive a number of headers added by the proxy, along with an custom claims.
+On protected resources the upstream endpoint will receive a number of headers added by the proxy, along with custom claims.
 
 ```GO
 # add the header to the upstream endpoint
@@ -543,7 +543,7 @@ By default the proxy will immediately redirect you for authentication and hand b
 
 #### **White-listed URL's**
 
-Depending on how the application url's are laid out, you might want protect the root / url but have exceptions on a list of paths, i.e. /health etc. Although you should probably fix this by fixing up the paths, you can add excepts to the protected resources.
+Depending on how the application url's are laid out, you might want to protect the root / url but have exceptions on a list of paths, i.e. /health etc. Although you should probably fix this by fixing up the paths, you can add excepts to the protected resources.
 
 ```YAML
   resources:
@@ -615,7 +615,7 @@ or via the command line arguments
 
 #### **Upstream URL**
 
-You can control the upstream endpoint via the --upstream-url option. Both http and https is supported with TLS verification and keepalive support configured via the --skip-upstream-tls-verify / --upstream-keepalives option. Note, the proxy can also upstream via a unix socket, --upstream-url unix://path/to/the/file.sock
+You can control the upstream endpoint via the --upstream-url option. Both http and https are supported with TLS verification and keepalive support configured via the --skip-upstream-tls-verify / --upstream-keepalives option. Note, the proxy can also upstream via a unix socket, --upstream-url unix://path/to/the/file.sock
 
 #### **Endpoints**
 
