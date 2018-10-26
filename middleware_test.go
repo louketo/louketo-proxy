@@ -21,6 +21,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -28,6 +29,7 @@ import (
 	"github.com/coreos/go-oidc/jose"
 	"github.com/go-resty/resty"
 	"github.com/rs/cors"
+	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 )
@@ -214,8 +216,14 @@ func (f *fakeProxy) RunTests(t *testing.T, requests []fakeRequest) {
 			assert.Equal(t, c.ExpectedCode, status, "case %d, expected status code: %d, got: %d", i, c.ExpectedCode, status)
 		}
 		if c.ExpectedLocation != "" {
-			l := resp.Header().Get("Location")
-			assert.Equal(t, c.ExpectedLocation, l, "case %d, expected location: %s, got: %s", i, c.ExpectedLocation, l)
+			l, _ := url.Parse(resp.Header().Get("Location"))
+			assert.True(t, strings.Contains(l.String(), c.ExpectedLocation), "Expected location to contain %s", l.String())
+			if l.Query().Get("state") != "" {
+				state, err := uuid.FromString(l.Query().Get("state"))
+				if err != nil {
+					assert.Fail(t, "Expected state parameter with valid UUID, got: %s with error %s", state.String(), err)
+				}
+			}
 		}
 		if len(c.ExpectedHeaders) > 0 {
 			for k, v := range c.ExpectedHeaders {

@@ -35,7 +35,7 @@ func TestRedirectToAuthorization(t *testing.T) {
 		{
 			URI:              "/admin",
 			Redirects:        true,
-			ExpectedLocation: "/oauth/authorize?state=L2FkbWlu",
+			ExpectedLocation: "/oauth/authorize?state",
 			ExpectedCode:     http.StatusTemporaryRedirect,
 		},
 	}
@@ -50,7 +50,7 @@ func TestRedirectToAuthorizationWith303Enabled(t *testing.T) {
 		{
 			URI:              "/admin",
 			Redirects:        true,
-			ExpectedLocation: "/oauth/authorize?state=L2FkbWlu",
+			ExpectedLocation: "/oauth/authorize?state",
 			ExpectedCode:     http.StatusSeeOther,
 		},
 	}

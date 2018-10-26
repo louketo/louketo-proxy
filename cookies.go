@@ -20,6 +20,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/satori/go.uuid"
 )
 
 // dropCookie drops a cookie into the response
@@ -82,6 +84,13 @@ func (r *oauthProxy) dropRefreshTokenCookie(req *http.Request, w http.ResponseWr
 			r.dropCookie(w, req.Host, r.config.CookieRefreshName+"-"+strconv.Itoa(i/maxCookieLength), value[i:end], duration)
 		}
 	}
+}
+
+// dropStateParameterCookie drops a state parameter cookie into the response
+func (r *oauthProxy) writeStateParameterCookie(req *http.Request, w http.ResponseWriter) string {
+	uuid := uuid.NewV4().String()
+	r.dropCookie(w, req.Host, "OAuth_Token_Request_State", uuid, 0)
+	return uuid
 }
 
 // clearAllCookies is just a helper function for the below

@@ -17,7 +17,6 @@ package main
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"net/http"
 	"path"
@@ -95,8 +94,10 @@ func (r *oauthProxy) redirectToAuthorization(w http.ResponseWriter, req *http.Re
 		w.WriteHeader(http.StatusUnauthorized)
 		return r.revokeProxy(w, req)
 	}
+
 	// step: add a state referrer to the authorization page
-	authQuery := fmt.Sprintf("?state=%s", base64.StdEncoding.EncodeToString([]byte(req.URL.RequestURI())))
+	uuid := r.writeStateParameterCookie(req, w)
+	authQuery := fmt.Sprintf("?state=%s", uuid)
 
 	// step: if verification is switched off, we can't authorization
 	if r.config.SkipTokenVerification {
