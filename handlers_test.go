@@ -216,7 +216,7 @@ func TestServiceRedirect(t *testing.T) {
 			URI:              "/admin",
 			Redirects:        true,
 			ExpectedCode:     http.StatusTemporaryRedirect,
-			ExpectedLocation: "/oauth/authorize?state=L2FkbWlu",
+			ExpectedLocation: "/oauth/authorize?state",
 		},
 		{
 			URI:          "/admin",
@@ -242,25 +242,25 @@ func TestAuthorizationURL(t *testing.T) {
 		{
 			URI:              "/admin",
 			Redirects:        true,
-			ExpectedLocation: "/oauth/authorize?state=L2FkbWlu",
+			ExpectedLocation: "/oauth/authorize?state",
 			ExpectedCode:     http.StatusTemporaryRedirect,
 		},
 		{
 			URI:              "/admin/test",
 			Redirects:        true,
-			ExpectedLocation: "/oauth/authorize?state=L2FkbWluL3Rlc3Q=",
+			ExpectedLocation: "/oauth/authorize?state",
 			ExpectedCode:     http.StatusTemporaryRedirect,
 		},
 		{
 			URI:              "/help/../admin",
 			Redirects:        true,
-			ExpectedLocation: "/oauth/authorize?state=L2FkbWlu",
+			ExpectedLocation: "/oauth/authorize?state",
 			ExpectedCode:     http.StatusTemporaryRedirect,
 		},
 		{
 			URI:              "/admin?test=yes&test1=test",
 			Redirects:        true,
-			ExpectedLocation: "/oauth/authorize?state=L2FkbWluP3Rlc3Q9eWVzJnRlc3QxPXRlc3Q=",
+			ExpectedLocation: "/oauth/authorize?state",
 			ExpectedCode:     http.StatusTemporaryRedirect,
 		},
 		{

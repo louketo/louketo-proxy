@@ -55,6 +55,12 @@ func (r *oauthProxy) getRedirectionURL(w http.ResponseWriter, req *http.Request)
 		redirect = r.config.RedirectionURL
 	}
 
+	state, _ := req.Cookie("OAuth_Token_Request_State")
+	if state != nil && req.URL.Query().Get("state") != state.Value {
+		r.log.Error("State parameter mismatch")
+		w.WriteHeader(http.StatusForbidden)
+		return ""
+	}
 	return fmt.Sprintf("%s%s", redirect, r.config.WithOAuthURI("callback"))
 }
 
