@@ -309,8 +309,10 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// step: can either use the id token or the refresh token
+	tokenURLParameter := "id_token_hint=%s"
 	identityToken := user.token.Encode()
 	if refresh, _, err := r.retrieveRefreshToken(req, user); err == nil {
+		tokenURLParameter = "refresh_token=%s"
 		identityToken = refresh
 	}
 	r.clearAllCookies(req, w)
@@ -367,7 +369,7 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 		encodedSecret := url.QueryEscape(r.config.ClientSecret)
 
 		// step: construct the url for revocation
-		request, err := http.NewRequest(http.MethodPost, revocationURL, bytes.NewBufferString(fmt.Sprintf("refresh_token=%s", identityToken)))
+		request, err := http.NewRequest(http.MethodPost, revocationURL, bytes.NewBufferString(fmt.Sprintf(tokenURLParameter, identityToken)))
 		if err != nil {
 			r.log.Error("unable to construct the revocation request", zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
