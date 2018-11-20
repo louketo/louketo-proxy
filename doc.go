@@ -166,6 +166,8 @@ type Config struct {
 	BaseURI string `json:"base-uri" yaml:"base-uri" usage:"common prefix for all URIs" env:"BASE_URI"`
 	// OAuthURI is the uri for the oauth endpoints for the proxy
 	OAuthURI string `json:"oauth-uri" yaml:"oauth-uri" usage:"the uri for proxy oauth endpoints" env:"OAUTH_URI"`
+	// OAuthAuthMethod defines the method for authenticating the oauth client to the server
+	OAuthAuthMethod string `json:"oauth-auth-method" yaml:"oauth-auth-method" usage:"the auth method to use with oauth (basic, post)" env:"OAUTH_AUTH_METHOD"`
 	// Scopes is a list of scope we should request
 	Scopes []string `json:"scopes" yaml:"scopes" usage:"list of scopes requested when authenticating the user"`
 	// Upstream is the upstream endpoint i.e whom were proxying to

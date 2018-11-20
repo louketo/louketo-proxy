@@ -70,7 +70,7 @@ func (r *oauthProxy) oauthAuthorizationHandler(w http.ResponseWriter, req *http.
 		w.WriteHeader(http.StatusNotAcceptable)
 		return
 	}
-	client, err := r.getOAuthClient(r.getRedirectionURL(w, req))
+	client, err := r.getOAuthClient(r.getRedirectionURL(w, req), getOauthAuthMethod(r.config.OAuthAuthMethod))
 	if err != nil {
 		r.log.Error("failed to retrieve the oauth client for authorization", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
@@ -102,6 +102,18 @@ func (r *oauthProxy) oauthAuthorizationHandler(w http.ResponseWriter, req *http.
 	r.redirectToURL(authURL, w, req, http.StatusTemporaryRedirect)
 }
 
+// getOauthAuthMethod maps the config value OAUTH_AUTH_METHOD to valid OAuth2 auth method keys
+func getOauthAuthMethod(authMethod string) string {
+	switch authMethod {
+	case "basic":
+		return oauth2.AuthMethodClientSecretBasic
+	case "post":
+		return oauth2.AuthMethodClientSecretPost
+	default:
+		return ""
+	}
+}
+
 // oauthCallbackHandler is responsible for handling the response from oauth service
 func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Request) {
 	if r.config.SkipTokenVerification {
@@ -115,7 +127,7 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	client, err := r.getOAuthClient(r.getRedirectionURL(w, req))
+	client, err := r.getOAuthClient(r.getRedirectionURL(w, req), getOauthAuthMethod(r.config.OAuthAuthMethod))
 	if err != nil {
 		r.log.Error("unable to create a oauth2 client", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)

@@ -30,7 +30,7 @@ import (
 )
 
 // getOAuthClient returns a oauth2 client from the openid client
-func (r *oauthProxy) getOAuthClient(redirectionURL string) (*oauth2.Client, error) {
+func (r *oauthProxy) getOAuthClient(redirectionURL string, oauthAuthMethod string) (*oauth2.Client, error) {
 	return oauth2.NewClient(r.idpClient, oauth2.Config{
 		Credentials: oauth2.ClientCredentials{
 			ID:     r.config.ClientID,

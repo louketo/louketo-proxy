@@ -49,6 +49,7 @@ func newDefaultConfig() *Config {
 		MaxIdleConns:                100,
 		MaxIdleConnsPerHost:         50,
 		OAuthURI:                    "/oauth",
+		OAuthAuthMethod:             "basic",
 		OpenIDProviderTimeout:       30 * time.Second,
 		PreserveHost:                false,
 		SelfSignedTLSExpiration:     3 * time.Hour,
@@ -62,6 +63,7 @@ func newDefaultConfig() *Config {
 		SkipOpenIDProviderTLSVerify: false,
 		SkipUpstreamTLSVerify:       true,
 		Tags: make(map[string]string, 0),
+
 		UpstreamExpectContinueTimeout: 10 * time.Second,
 		UpstreamKeepaliveTimeout:      10 * time.Second,
 		UpstreamKeepalives:            true,
@@ -188,6 +190,9 @@ func (r *Config) isValid() error {
 				if _, err := url.Parse(r.StoreURL); err != nil {
 					return fmt.Errorf("the store url is invalid, error: %s", err)
 				}
+			}
+			if r.OAuthAuthMethod != "basic" && r.OAuthAuthMethod != "post" {
+				return fmt.Errorf("invalid oauth auth method %q (valid values: basic, post)", r.OAuthAuthMethod)
 			}
 		}
 		// check: ensure each of the resource are valid
