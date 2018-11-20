@@ -36,7 +36,7 @@ func (r *oauthProxy) getOAuthClient(redirectionURL string, oauthAuthMethod strin
 			ID:     r.config.ClientID,
 			Secret: r.config.ClientSecret,
 		},
-		AuthMethod:  oauth2.AuthMethodClientSecretBasic,
+		AuthMethod:  oauthAuthMethod,
 		AuthURL:     r.idp.AuthEndpoint.String(),
 		RedirectURL: redirectionURL,
 		Scope:       append(r.config.Scopes, oidc.DefaultScope...),
