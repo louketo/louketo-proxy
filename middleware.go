@@ -316,7 +316,7 @@ func (r *oauthProxy) admissionMiddleware(resource *Resource) func(http.Handler) 
 
 			// @step: check if we have any groups, the groups are there
 			if !hasAccess(resource.Groups, user.groups, false) {
-				r.log.Warn("access denied, invalid roles",
+				r.log.Warn("access denied, invalid groups",
 					zap.String("access", "denied"),
 					zap.String("email", user.email),
 					zap.String("resource", resource.URL),

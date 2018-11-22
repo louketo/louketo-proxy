@@ -52,7 +52,8 @@ func (r *oauthProxy) getIdentity(req *http.Request) (*userContext, error) {
 		zap.String("id", user.id),
 		zap.String("name", user.name),
 		zap.String("email", user.email),
-		zap.String("roles", strings.Join(user.roles, ",")))
+		zap.String("roles", strings.Join(user.roles, ",")),
+		zap.String("groups", strings.Join(user.groups, ",")))
 
 	return user, nil
 }
