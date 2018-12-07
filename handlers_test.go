@@ -304,7 +304,7 @@ func TestCallbackURL(t *testing.T) {
 		{
 			URI:              cfg.WithOAuthURI(callbackURL) + "?code=fake&state=L2FkbWlu",
 			ExpectedCookies:  map[string]string{cfg.CookieAccessName: ""},
-			ExpectedLocation: "/admin",
+			ExpectedLocation: "/",
 			ExpectedCode:     http.StatusTemporaryRedirect,
 		},
 	}
