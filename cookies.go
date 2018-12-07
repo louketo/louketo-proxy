@@ -16,6 +16,7 @@ limitations under the License.
 package main
 
 import (
+	"encoding/base64"
 	"net/http"
 	"strconv"
 	"strings"
@@ -89,6 +90,8 @@ func (r *oauthProxy) dropRefreshTokenCookie(req *http.Request, w http.ResponseWr
 // dropStateParameterCookie drops a state parameter cookie into the response
 func (r *oauthProxy) writeStateParameterCookie(req *http.Request, w http.ResponseWriter) string {
 	uuid := uuid.NewV4().String()
+	requestURI := base64.StdEncoding.EncodeToString([]byte(req.URL.RequestURI()))
+	r.dropCookie(w, req.Host, "request_uri", requestURI, 0)
 	r.dropCookie(w, req.Host, "OAuth_Token_Request_State", uuid, 0)
 	return uuid
 }
