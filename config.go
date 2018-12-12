@@ -173,7 +173,7 @@ func (r *Config) isValid() error {
 					return errors.New("the security filter must be switch on for this feature: hostnames")
 				}
 			}
-			if r.EnableEncryptedToken && r.EncryptionKey == "" {
+			if (r.EnableEncryptedToken || r.ForceEncryptedCookie) && r.EncryptionKey == "" {
 				return errors.New("you have not specified an encryption key for encoding the access token")
 			}
 			if r.EnableRefreshTokens && r.EncryptionKey == "" {
