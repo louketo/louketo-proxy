@@ -185,6 +185,7 @@ func (r *oauthProxy) createReverseProxy() error {
 			AllowCredentials: r.config.CorsCredentials,
 			ExposedHeaders:   r.config.CorsExposedHeaders,
 			MaxAge:           int(r.config.CorsMaxAge.Seconds()),
+			Debug:            r.config.Verbose,
 		})
 		engine.Use(c.Handler)
 	}
@@ -605,6 +606,11 @@ func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) error {
 
 	// create the forwarding proxy
 	proxy := goproxy.NewProxyHttpServer()
+
+	// headers formed by middleware before proxying to upstream shall be
+	// kept in response. This is true for CORS headers ([KEYCOAK-9045])
+	// and for refreshed cookies (htts://github.com/keycloak/keycloak-gatekeeper/pulls/456])
+	proxy.KeepDestinationHeaders = true
 	proxy.Logger = httplog.New(ioutil.Discard, "", 0)
 	r.upstream = proxy
 

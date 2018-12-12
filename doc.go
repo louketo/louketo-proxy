@@ -293,7 +293,6 @@ type Config struct {
 	CorsCredentials bool `json:"cors-credentials" yaml:"cors-credentials" usage:"credentials access control header (Access-Control-Allow-Credentials)"`
 	// CorsMaxAge is the age for CORS
 	CorsMaxAge time.Duration `json:"cors-max-age" yaml:"cors-max-age" usage:"max age applied to cors headers (Access-Control-Max-Age)"`
-
 	// Hostnames is a list of hostname's the service should response to
 	Hostnames []string `json:"hostnames" yaml:"hostnames" usage:"list of hostnames the service will respond to"`
 
