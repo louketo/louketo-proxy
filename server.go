@@ -184,6 +184,7 @@ func (r *oauthProxy) createReverseProxy() error {
 			AllowCredentials: r.config.CorsCredentials,
 			ExposedHeaders:   r.config.CorsExposedHeaders,
 			MaxAge:           int(r.config.CorsMaxAge.Seconds()),
+			Debug:            r.config.Verbose,
 		})
 		engine.Use(c.Handler)
 	}
@@ -603,6 +604,7 @@ func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) error {
 
 	// create the forwarding proxy
 	proxy := goproxy.NewProxyHttpServer()
+	proxy.KeepDestinationHeaders = !r.config.CorsDisableUpstream
 	proxy.Logger = httplog.New(ioutil.Discard, "", 0)
 	r.upstream = proxy
 
