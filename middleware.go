@@ -194,7 +194,7 @@ func (r *oauthProxy) authenticationMiddleware(resource *Resource) func(http.Hand
 						zap.Duration("expires_in", time.Until(exp)))
 
 					accessToken := token.Encode()
-					if r.config.EnableEncryptedToken {
+					if r.config.EnableEncryptedToken || r.config.ForceEncryptedCookie {
 						if accessToken, err = encodeText(accessToken, r.config.EncryptionKey); err != nil {
 							r.log.Error("unable to encode the access token", zap.Error(err))
 							w.WriteHeader(http.StatusInternalServerError)
