@@ -7,7 +7,7 @@ WORKDIR /go/src/keycloak-gatekeeper
 COPY Gopkg.toml Gopkg.lock ./
 RUN dep ensure --vendor-only
 COPY . ./
-RUN CGO_ENABLED=0 GOOS=linux go build -a -o /keycloak-gatekeeper .
+RUN go test && CGO_ENABLED=0 GOOS=linux go build -a -o /keycloak-gatekeeper .
 
 ###
 
