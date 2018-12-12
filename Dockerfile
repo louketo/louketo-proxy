@@ -1,3 +1,16 @@
+FROM golang:1.11.2 as builder
+
+ADD https://github.com/golang/dep/releases/download/v0.4.1/dep-linux-amd64 /usr/bin/dep
+RUN chmod +x /usr/bin/dep
+
+WORKDIR /go/src/keycloak-gatekeeper
+COPY Gopkg.toml Gopkg.lock ./
+RUN dep ensure --vendor-only
+COPY . ./
+RUN CGO_ENABLED=0 GOOS=linux go build -a -o /keycloak-gatekeeper .
+
+###
+
 FROM alpine:3.7
 
 LABEL Name=keycloak-gatekeeper \
@@ -8,7 +21,7 @@ LABEL Name=keycloak-gatekeeper \
 RUN apk add --no-cache ca-certificates
 
 ADD templates/ /opt/templates
-ADD bin/keycloak-gatekeeper /opt/keycloak-gatekeeper
+COPY --from=builder /keycloak-gatekeeper /opt/keycloak-gatekeeper
 
 WORKDIR "/opt"
 
