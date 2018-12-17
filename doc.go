@@ -147,6 +147,8 @@ type Resource struct {
 	Roles []string `json:"roles" yaml:"roles"`
 	// Groups is a list of groups the user is in
 	Groups []string `json:"groups" yaml:"groups"`
+	// EnableCSRF enables CSRF check on this upstream Resource
+	EnableCSRF bool `json:"enable-csrf" yaml:"enable-csrf"`
 }
 
 // Config is the configuration for the proxy
@@ -192,7 +194,7 @@ type Config struct {
 	// RequestIDHeader is the header name for request ids
 	RequestIDHeader string `json:"request-id-header" yaml:"request-id-header" usage:"the http header name for request id" env:"REQUEST_ID_HEADER"`
 	// ResponseHeader is a map of response headers to add to the response
-	ResponseHeaders map[string]string `json:"response-headers" yaml:"response-headers" usage:"custom headers to added to the http response key=value"`
+	ResponseHeaders map[string]string `json:"response-headers" yaml:"response-headers" usage:"custom headers to be added to the http response key=value"`
 
 	// EnableSelfSignedTLS indicates we should create a self-signed ceritificate for the service
 	EnabledSelfSignedTLS bool `json:"enable-self-signed-tls" yaml:"enable-self-signed-tls" usage:"create self signed certificates for the proxy" env:"ENABLE_SELF_SIGNED_TLS"`
@@ -215,12 +217,20 @@ type Config struct {
 	EnableJSONLogging bool `json:"enable-json-logging" yaml:"enable-json-logging" usage:"switch on json logging rather than text"`
 	// EnableForwarding enables the forwarding proxy
 	EnableForwarding bool `json:"enable-forwarding" yaml:"enable-forwarding" usage:"enables the forwarding proxy mode, signing outbound request"`
-	// EnableSecurityFilter enabled the security handler
+	// EnableSecurityFilter enables the security handler
 	EnableSecurityFilter bool `json:"enable-security-filter" yaml:"enable-security-filter" usage:"enables the security filter handler" env:"ENABLE_SECURITY_FILTER"`
 	// EnableRefreshTokens indicate's you wish to ignore using refresh tokens and re-auth on expiration of access token
 	EnableRefreshTokens bool `json:"enable-refresh-tokens" yaml:"enable-refresh-tokens" usage:"enables the handling of the refresh tokens" env:"ENABLE_REFRESH_TOKEN"`
 	// EnableSessionCookies indicates the cookies, both token and refresh should not be persisted
 	EnableSessionCookies bool `json:"enable-session-cookies" yaml:"enable-session-cookies" usage:"access and refresh tokens are session only i.e. removed browser close"`
+	// EnableCSRF will generate a new session object (e.g.a cookie, or in a supported backend storage) to store a CSRF token.
+	// To enable CSRF on upstream endpoints, an additional EnableCSRF is needed in the Resource config section.
+	EnableCSRF bool `json:"enable-csrf" yaml:"enable-csrf" usage:"when enabled, this automatically adds a CSRF token to all responses. Matching token expected for next request is stored in the session (e.g. cookie or storage)" env:"ENABLE_CSRF"`
+	// CSRFCookieName sets the name of the CSRF (encrypted) cookie, when session storage is a cookie (defaults to kc-csrf).
+	// Note that in this case EncryptionKey is required to encrypt the cookie.
+	CSRFCookieName string `json:"csrf-cookie-name" yaml:"csrf-cookie-name" usage:"the name of CSRF cookie. Defaults to: kc-csrf" env:"CSRF_COOKIE_NAME"`
+	// CSRFHeader sets the header used in requests and response for the CSRF challenge (defaults to X-CSRF-Token)
+	CSRFHeader string `json:"csrf-header" yaml:"csrf-header" usage:"the header added to responses by gatekeeper and to be added by requests to check against replayed credentials (CSRF). Defaults to: X-CSRF-Token" env:"CSRF_HEADER"`
 	// EnableLoginHandler indicates we want the login handler enabled
 	EnableLoginHandler bool `json:"enable-login-handler" yaml:"enable-login-handler" usage:"enables the handling of the refresh tokens" env:"ENABLE_LOGIN_HANDLER"`
 	// EnableTokenHeader adds the JWT token to the upstream authentication headers
@@ -288,7 +298,8 @@ type Config struct {
 	// CorsCredentials set the credentials flag
 	CorsCredentials bool `json:"cors-credentials" yaml:"cors-credentials" usage:"credentials access control header (Access-Control-Allow-Credentials)"`
 	// CorsMaxAge is the age for CORS
-	CorsMaxAge time.Duration `json:"cors-max-age" yaml:"cors-max-age" usage:"max age applied to cors headers (Access-Control-Max-Age)"`
+	CorsMaxAge          time.Duration `json:"cors-max-age" yaml:"cors-max-age" usage:"max age applied to cors headers (Access-Control-Max-Age)"`
+	CorsDisableUpstream bool          `json:"cors-disable-upstream" yaml:"cors-disable-upstream" usage:"do not extend CORS support to upstream responses: only gatekeeper endpoints are CORS-enabled"`
 
 	// Hostnames is a list of hostname's the service should response to
 	Hostnames []string `json:"hostnames" yaml:"hostnames" usage:"list of hostnames the service will respond to"`

@@ -26,6 +26,7 @@ import (
 	"github.com/PuerkitoBio/purell"
 	"github.com/coreos/go-oidc/jose"
 	"github.com/go-chi/chi/middleware"
+	gcsrf "github.com/gorilla/csrf"
 	uuid "github.com/satori/go.uuid"
 	"github.com/unrolled/secure"
 	"go.uber.org/zap"
@@ -429,6 +430,136 @@ func (r *oauthProxy) securityMiddleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, req)
 	})
+}
+
+func (r *oauthProxy) csrfConfigMiddleware() func(http.Handler) http.Handler {
+	if r.config.EnableCSRF {
+		// CSRF protection establishes a session scoped CSRF state with an encrypted cookie.
+		// Encryption algorithm is AES-256
+		r.log.Info("enabling CSRF protection")
+		return gcsrf.Protect([]byte(r.config.EncryptionKey),
+			gcsrf.CookieName(r.config.CSRFCookieName),
+			gcsrf.RequestHeader(r.config.CSRFHeader),
+			gcsrf.Domain(r.config.CookieDomain),
+			gcsrf.HttpOnly(r.config.HTTPOnlyCookie),
+			gcsrf.Secure(r.config.SecureCookie),
+			gcsrf.Path("/"),
+			gcsrf.ErrorHandler(http.HandlerFunc(r.csrfErrorHandler)))
+
+	}
+	return nil
+}
+
+func (r *oauthProxy) csrfSkipMiddleware() func(next http.Handler) http.Handler {
+	// for proxy entrypoints: unconditionnaly skips CSRF check on unsafe methods (e.g. for login or profiling routes)
+	if r.config.EnableCSRF {
+		return func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				switch req.Method {
+				case "GET", "HEAD", "OPTIONS", "TRACE":
+					next.ServeHTTP(w, req)
+				default:
+					next.ServeHTTP(w, gcsrf.UnsafeSkipCheck(req))
+				}
+			})
+		}
+	}
+	return func(next http.Handler) http.Handler {
+		return next
+	}
+}
+
+func (r *oauthProxy) csrfSkipResourceMiddleware(resource *Resource) func(http.Handler) http.Handler {
+	// skips CSRF check when:
+	// - authorization bearer header is used and not cookie
+	// - resource config skips CSRF
+	if r.config.EnableCSRF {
+		if !resource.EnableCSRF {
+			// CSRF check managed by proxy check is disabled on this resource
+			return func(next http.Handler) http.Handler {
+				return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+					next.ServeHTTP(w, gcsrf.UnsafeSkipCheck(req))
+				})
+			}
+		}
+
+		r.log.Info("CSRF check enabled for resource", zap.String("resource", resource.URL))
+		return func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				scope := req.Context().Value(contextScopeName).(*RequestScope)
+
+				// not authenticated, CSRF is irrelevant here
+				if scope == nil || scope.AccessDenied || scope.Identity == nil {
+					next.ServeHTTP(w, req)
+					return
+				}
+
+				// request credentials come as a bearer token: skip CSRF check
+				if scope.Identity.isBearer() {
+					next.ServeHTTP(w, gcsrf.UnsafeSkipCheck(req))
+					return
+				}
+
+				next.ServeHTTP(w, req)
+			})
+		}
+	}
+	return func(next http.Handler) http.Handler {
+		return next
+	}
+}
+
+func (r *oauthProxy) csrfHeaderMiddleware() func(next http.Handler) http.Handler {
+	if r.config.EnableCSRF {
+		return func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+
+				// skip unauthenticated requests
+				scope := req.Context().Value(contextScopeName).(*RequestScope)
+
+				if scope == nil || scope.AccessDenied || scope.Identity == nil {
+					// not authenticated, CSRF is irrelevant here
+					next.ServeHTTP(w, req)
+					return
+				}
+
+				//skip requests with credentials in header
+				if scope.Identity.isBearer() {
+					next.ServeHTTP(w, req)
+					return
+				}
+
+				// skip redirected responses
+				if w.Header().Get("Location") != "" {
+					next.ServeHTTP(w, req)
+					return
+				}
+
+				csrfToken := gcsrf.Token(req)
+				if csrfToken == "" {
+					next.ServeHTTP(w, req)
+					return
+				}
+
+				// add CSRF header to all responses
+				w.Header().Add(r.config.CSRFHeader, csrfToken)
+
+				next.ServeHTTP(w, req)
+			})
+		}
+	}
+	return func(next http.Handler) http.Handler {
+		return next
+	}
+}
+
+func (r *oauthProxy) csrfProtectMiddleware() func(next http.Handler) http.Handler {
+	if r.config.EnableCSRF {
+		return r.csrf
+	}
+	return func(next http.Handler) http.Handler {
+		return next
+	}
 }
 
 // proxyDenyMiddleware just block everything

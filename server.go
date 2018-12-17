@@ -60,6 +60,7 @@ type oauthProxy struct {
 	store          storage
 	templates      *template.Template
 	upstream       reverseProxy
+	csrf           func(http.Handler) http.Handler
 }
 
 func init() {
@@ -195,8 +196,14 @@ func (r *oauthProxy) createReverseProxy() error {
 		engine.Use(r.responseHeaderMiddleware(r.config.ResponseHeaders))
 	}
 
+	// configure CSRF middleware
+	r.csrf = r.csrfConfigMiddleware()
+
 	// step: add the routing for oauth
-	engine.With(proxyDenyMiddleware).Route(r.config.OAuthURI, func(e chi.Router) {
+	engine.With(proxyDenyMiddleware,
+		r.csrfSkipMiddleware(), // handle CSRF state, but skip check on POST endpoints below
+		r.csrfProtectMiddleware(),
+		r.csrfHeaderMiddleware()).Route(r.config.OAuthURI, func(e chi.Router) {
 		e.MethodNotAllowed(methodNotAllowHandlder)
 		e.HandleFunc(authorizationURL, r.oauthAuthorizationHandler)
 		e.Get(callbackURL, r.oauthCallbackHandler)
@@ -260,8 +267,10 @@ func (r *oauthProxy) createReverseProxy() error {
 		e := engine.With(
 			r.authenticationMiddleware(x),
 			r.admissionMiddleware(x),
-			r.identityHeadersMiddleware(r.config.AddClaims))
-
+			r.identityHeadersMiddleware(r.config.AddClaims),
+			r.csrfSkipResourceMiddleware(x),
+			r.csrfProtectMiddleware(),
+			r.csrfHeaderMiddleware())
 		for _, m := range x.Methods {
 			if !x.WhiteListed {
 				e.MethodFunc(m, x.URL, emptyHandler)
@@ -605,6 +614,7 @@ func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) error {
 	// create the forwarding proxy
 	proxy := goproxy.NewProxyHttpServer()
 	proxy.Logger = httplog.New(ioutil.Discard, "", 0)
+	proxy.KeepDestinationHeaders = !r.config.CorsDisableUpstream
 	r.upstream = proxy
 
 	// update the tls configuration of the reverse proxy

@@ -100,9 +100,9 @@ func (r *oauthProxy) redirectToAuthorization(w http.ResponseWriter, req *http.Re
 	uuid := r.writeStateParameterCookie(req, w)
 	authQuery := fmt.Sprintf("?state=%s", uuid)
 
-	// step: if verification is switched off, we can't authorization
+	// step: if verification is switched off, we can't authorize
 	if r.config.SkipTokenVerification {
-		r.log.Error("refusing to redirection to authorization endpoint, skip token verification switched on")
+		r.log.Error("refusing to redirect to authorization endpoint, skip token verification switched on")
 		w.WriteHeader(http.StatusForbidden)
 		return r.revokeProxy(w, req)
 	}
