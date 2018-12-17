@@ -49,6 +49,10 @@
   branch = "master"
   name = "github.com/urfave/cli"
 
+[[constraint]]
+  branch = "master"
+  name = "github.com/gorilla/csrf"
+
 [prune]
   go-tests = true
   unused-packages = true

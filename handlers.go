@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc/oauth2"
+	gcsrf "github.com/gorilla/csrf"
 
 	"github.com/pressly/chi"
 	"go.uber.org/zap"
@@ -204,6 +205,8 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 	// step: decode the request variable
 	redirectURI := "/"
 	if req.URL.Query().Get("state") != "" {
+		// if the authorization has set a state, we now check if the calling client
+		// requested a specific landing URL to end the authentication handshake
 		if encodedRequestURI, _ := req.Cookie("request_uri"); encodedRequestURI != nil {
 			decoded, _ := base64.StdEncoding.DecodeString(encodedRequestURI.Value)
 			redirectURI = string(decoded)
@@ -493,6 +496,13 @@ func (r *oauthProxy) retrieveRefreshToken(req *http.Request, user *userContext) 
 	ecrypted = token // returns encryped, avoid encoding twice
 	token, err = decodeText(token, r.config.EncryptionKey)
 	return
+}
+
+func (r *oauthProxy) csrfErrorHandler(w http.ResponseWriter, req *http.Request) {
+	r.log.Info("CSRF error",
+		zap.Error(gcsrf.FailureReason(req)),
+		zap.String("client_ip", req.RemoteAddr))
+	r.accessForbidden(w, req)
 }
 
 func methodNotAllowHandlder(w http.ResponseWriter, req *http.Request) {

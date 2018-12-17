@@ -69,6 +69,9 @@ func newDefaultConfig() *Config {
 		UpstreamTLSHandshakeTimeout:   10 * time.Second,
 		UpstreamTimeout:               10 * time.Second,
 		UseLetsEncrypt:                false,
+		EnableCSRF:                    false,
+		CSRFCookieName:                "kc-csrf",
+		CSRFHeader:                    "X-Csrf-Token",
 	}
 }
 
@@ -204,6 +207,25 @@ func (r *Config) isValid() error {
 		}
 	}
 
+	// validity checks with CSRF options
+	if r.EnableCSRF {
+		if r.EncryptionKey == "" {
+			return fmt.Errorf("flag EnableCSRF requires EncryptionKey to be set")
+		}
+		var found bool
+		for _, resource := range r.Resources {
+			if resource.EnableCSRF {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("flag EnableCSRF is set but no protected resource sets EnableCSRF")
+		}
+		if r.CorsDisableUpstream {
+			return fmt.Errorf("flag EnableCSRF requires headers to be added to upstream response. This won't work if CorsDisableUpstream is set")
+		}
+	}
 	return nil
 }
 
