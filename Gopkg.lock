@@ -110,6 +110,30 @@
   revision = "1643683e1b54a9e88ad26d98f81400c8c9d9f4f9"
 
 [[projects]]
+  digest = "1:c79fb010be38a59d657c48c6ba1d003a8aa651fa56b579d959d74573b7dff8e1"
+  name = "github.com/gorilla/context"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "08b5f424b9271eedf6f9f0ce86cb9396ed337a42"
+  version = "v1.1.1"
+
+[[projects]]
+  branch = "master"
+  digest = "1:9743f0cd7701650c06594b456a1a4bfd563af1288ec449d30ff42f224b7989e7"
+  name = "github.com/gorilla/csrf"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "d1620373958b3d521d88c063d1c9b678e734e9df"
+
+[[projects]]
+  digest = "1:e72d1ebb8d395cf9f346fd9cbc652e5ae222dd85e0ac842dc57f175abed6d195"
+  name = "github.com/gorilla/securecookie"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "e59506cc896acb7f7bf732d4fdf5e25f7ccd8983"
+  version = "v1.1.1"
+
+[[projects]]
   digest = "1:97b065743ec8322fed8aa54afc3ae82fea9cdd15ea7a82c90a8d081e0e6f0bbf"
   name = "github.com/jonboulle/clockwork"
   packages = ["."]
@@ -122,6 +146,14 @@
   packages = ["pbutil"]
   pruneopts = "UT"
   revision = "fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a"
+
+[[projects]]
+  digest = "1:40e195917a951a8bf867cd05de2a46aaf1806c50cf92eebf4c16f78cd196f747"
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
+  version = "v0.8.0"
 
 [[projects]]
   digest = "1:08413c4235cad94a96c39e1e2f697789733c4a87d1fdf06b412d2cf2ba49826a"
@@ -327,6 +359,7 @@
     "github.com/fsnotify/fsnotify",
     "github.com/go-chi/chi/middleware",
     "github.com/go-resty/resty",
+    "github.com/gorilla/csrf",
     "github.com/pressly/chi",
     "github.com/pressly/chi/middleware",
     "github.com/prometheus/client_golang/prometheus",
