@@ -66,6 +66,9 @@ type fakeRequest struct {
 	ExpectedNoProxyHeaders  []string
 	ExpectedProxy           bool
 	ExpectedProxyHeaders    map[string]string
+
+	// advanced test cases
+	ExpectedCookiesValidator map[string]func(string) bool
 }
 
 type fakeProxy struct {
@@ -269,6 +272,15 @@ func (f *fakeProxy) RunTests(t *testing.T, requests []fakeRequest) {
 				}
 				if v != "" {
 					assert.Equal(t, cookie.Value, v, "case %d, expected cookie value: %s, got: %s", i, v, cookie.Value)
+				}
+			}
+			for k, v := range c.ExpectedCookiesValidator {
+				cookie := findCookie(k, resp.Cookies())
+				if !assert.NotNil(t, cookie, "case %d, expected cookie %s not found", i, k) {
+					continue
+				}
+				if v != nil {
+					assert.True(t, v(cookie.Value), "case %d, invalid cookie value: %s", i, cookie.Value)
 				}
 			}
 		}
@@ -1055,6 +1067,73 @@ func TestCheckRefreshTokens(t *testing.T) {
 			ExpectedProxy:   true,
 			ExpectedCode:    http.StatusOK,
 			ExpectedCookies: map[string]string{cfg.CookieAccessName: ""},
+		},
+	}
+	p.RunTests(t, requests)
+}
+
+func TestCheckEncryptedCookie(t *testing.T) {
+	cfg := newFakeKeycloakConfig()
+	cfg.EnableRefreshTokens = true
+	cfg.EnableEncryptedToken = true
+	cfg.Verbose = true
+	cfg.EnableLogging = true
+	cfg.EncryptionKey = "ZSeCYDUxIlhDrmPpa1Ldc7il384esSF2"
+	testEncryptedToken(t, cfg)
+}
+
+func TestCheckForcedEncryptedCookie(t *testing.T) {
+	cfg := newFakeKeycloakConfig()
+	cfg.EnableRefreshTokens = true
+	cfg.EnableEncryptedToken = false
+	cfg.ForceEncryptedCookie = true
+	cfg.Verbose = true
+	cfg.EnableLogging = true
+	cfg.EncryptionKey = "ZSeCYDUxIlhDrmPpa1Ldc7il384esSF2"
+	testEncryptedToken(t, cfg)
+}
+
+func testEncryptedToken(t *testing.T, cfg *Config) {
+	fn := func(no int, req *resty.Request, resp *resty.Response) {
+		if no == 0 {
+			<-time.After(1000 * time.Millisecond)
+		}
+	}
+	val := func(value string) bool {
+		// check the cookie value is an encrypted token
+		accessToken, err := decodeText(value, cfg.EncryptionKey)
+		if err != nil {
+			return false
+		}
+		jwt, err := jose.ParseJWT(accessToken)
+		if err != nil {
+			return false
+		}
+		claims, err := jwt.Claims()
+		if err != nil {
+			return false
+		}
+		return assert.Contains(t, claims, "aud") && assert.Contains(t, claims, "email")
+	}
+	p := newFakeProxy(cfg)
+	p.idp.setTokenExpiration(time.Duration(1000 * time.Millisecond))
+
+	requests := []fakeRequest{
+		{
+			URI:           fakeAuthAllURL,
+			HasLogin:      true,
+			Redirects:     true,
+			OnResponse:    fn,
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
+		},
+		{
+			URI:                      fakeAuthAllURL,
+			Redirects:                false,
+			ExpectedProxy:            true,
+			ExpectedCode:             http.StatusOK,
+			ExpectedCookies:          map[string]string{cfg.CookieAccessName: ""},
+			ExpectedCookiesValidator: map[string]func(string) bool{cfg.CookieAccessName: val},
 		},
 	}
 	p.RunTests(t, requests)
