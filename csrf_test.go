@@ -33,37 +33,19 @@ import (
 )
 
 const (
-	e2eUpstreamURL       = "/upstream"
-	e2eUpstreamURL2      = "/upstream2"
-	e2eUpstreamListener  = "127.0.0.1:12345"
-	e2eProxyListener     = "127.0.0.1:54321"
-	e2eOauthListener     = "127.0.0.1:23456"
-	e2eAppListener       = "127.0.0.1:34567"
-	e2eOauthURL          = "/auth/realms/hod-test/.well-known/openid-configuration"
-	e2eOauthAuthorizeURL = "/auth/realms/hod-test/protocol/openid-connect/auth"
+	e2eCsrfUpstreamURL       = "/upstream"
+	e2eCsrfUpstreamURL2      = "/upstream2"
+	e2eCsrfUpstreamListener  = "127.0.0.1:12349"
+	e2eCsrfProxyListener     = "127.0.0.1:54329"
+	e2eCsrfOauthListener     = "127.0.0.1:33456"
+	e2eCsrfAppListener       = "127.0.0.1:34569"
+	e2eCsrfOauthURL          = "/auth/realms/hod-test/.well-known/openid-configuration"
+	e2eCsrfOauthAuthorizeURL = "/auth/realms/hod-test/protocol/openid-connect/auth"
 	// #nosec
-	e2eOauthTokenURL = "/auth/realms/hod-test/protocol/openid-connect/token"
-	e2eOauthJWKSURL  = "/auth/realms/hod-test/protocol/openid-connect/certs"
-	e2eAppURL        = "/ok"
+	e2eCsrfOauthTokenURL = "/auth/realms/hod-test/protocol/openid-connect/token"
+	e2eCsrfOauthJWKSURL  = "/auth/realms/hod-test/protocol/openid-connect/certs"
+	e2eCsrfAppURL        = "/ok"
 )
-
-// checkListenOrBail waits on a endpoint listener to respond.
-// This avoids race conditions with test listieners as go routines
-func checkListenOrBail(endpoint string) bool {
-	const (
-		maxWaitCycles = 10
-		waitTime      = 100 * time.Millisecond
-	)
-	checkListen := http.Client{}
-	_, err := checkListen.Get(endpoint)
-	limit := 0
-	for err != nil && limit < maxWaitCycles {
-		time.Sleep(waitTime)
-		_, err = checkListen.Get(endpoint)
-		limit++
-	}
-	return limit < maxWaitCycles
-}
 
 func runTestApp(t *testing.T) error {
 	go func() {
@@ -71,11 +53,11 @@ func runTestApp(t *testing.T) error {
 			_, _ = io.WriteString(w, `{"message": "ok"}`)
 			w.Header().Set("Content-Type", "application/json")
 		}
-		http.HandleFunc(e2eAppURL, appHandler)
-		_ = http.ListenAndServe(e2eAppListener, nil)
+		http.HandleFunc(e2eCsrfAppURL, appHandler)
+		_ = http.ListenAndServe(e2eCsrfAppListener, nil)
 	}()
-	if !assert.True(t, checkListenOrBail("http://"+path.Join(e2eAppListener, e2eAppURL))) {
-		err := fmt.Errorf("cannot connect to test http listener on: %s", "http://"+path.Join(e2eAppListener, e2eAppURL))
+	if !assert.True(t, checkListenOrBail("http://"+path.Join(e2eCsrfAppListener, e2eCsrfAppURL))) {
+		err := fmt.Errorf("cannot connect to test http listener on: %s", "http://"+path.Join(e2eCsrfAppListener, e2eCsrfAppURL))
 		t.Logf("%v", err)
 		t.FailNow()
 		return err
@@ -83,22 +65,7 @@ func runTestApp(t *testing.T) error {
 	return nil
 }
 
-func runTestGatekeeper(t *testing.T, config *Config) error {
-	proxy, err := newProxy(config)
-	if err != nil {
-		return err
-	}
-	_ = proxy.Run()
-	if !assert.True(t, checkListenOrBail("http://"+config.Listen+"/oauth/login")) {
-		err := fmt.Errorf("cannot connect to test http listener on: %s", "http://"+config.Listen+"/oauth/login")
-		t.Logf("%v", err)
-		t.FailNow()
-		return err
-	}
-	return nil
-}
-
-func runTestUpstream(t *testing.T) error {
+func runCsrfTestUpstream(t *testing.T) error {
 	// a stub upstream API server
 	go func() {
 		getUpstream := func(w http.ResponseWriter, req *http.Request) {
@@ -120,21 +87,21 @@ func runTestUpstream(t *testing.T) error {
 		}
 
 		upstream := chi.NewRouter()
-		upstream.Route(e2eUpstreamURL, func(r chi.Router) {
+		upstream.Route(e2eCsrfUpstreamURL, func(r chi.Router) {
 			r.Get("/", getUpstream)
 			r.Post("/", postUpstream)
 			r.Delete("/", deleteUpstream)
 		})
-		upstream.Route(e2eUpstreamURL2, func(r chi.Router) {
+		upstream.Route(e2eCsrfUpstreamURL2, func(r chi.Router) {
 			r.Get("/", getUpstream)
 			r.Post("/", postUpstream)
 			r.Delete("/", deleteUpstream)
 		})
 
-		_ = http.ListenAndServe(e2eUpstreamListener, upstream)
+		_ = http.ListenAndServe(e2eCsrfUpstreamListener, upstream)
 	}()
-	if !assert.True(t, checkListenOrBail("http://"+path.Join(e2eUpstreamListener, e2eUpstreamURL))) {
-		err := fmt.Errorf("cannot connect to test http listener on: %s", "http://"+path.Join(e2eUpstreamListener, e2eUpstreamURL))
+	if !assert.True(t, checkListenOrBail("http://"+path.Join(e2eCsrfUpstreamListener, e2eCsrfUpstreamURL))) {
+		err := fmt.Errorf("cannot connect to test http listener on: %s", "http://"+path.Join(e2eCsrfUpstreamListener, e2eCsrfUpstreamURL))
 		t.Logf("%v", err)
 		t.FailNow()
 		return err
@@ -142,21 +109,21 @@ func runTestUpstream(t *testing.T) error {
 	return nil
 }
 
-func runTestAuth(t *testing.T) error {
+func runCsrfTestAuth(t *testing.T) error {
 	// a stub OIDC provider
 	fake := newFakeAuthServer()
-	fake.location, _ = url.Parse("http://" + e2eOauthListener)
+	fake.location, _ = url.Parse("http://" + e2eCsrfOauthListener)
 	go func() {
 		configurationHandler := func(w http.ResponseWriter, req *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = io.WriteString(w, `{
-				"issuer": "http://`+e2eOauthListener+`/auth/realms/hod-test",
+				"issuer": "http://`+e2eCsrfOauthListener+`/auth/realms/hod-test",
 				"subject_types_supported":["public","pairwise"],
 				"id_token_signing_alg_values_supported":["ES384","RS384","HS256","HS512","ES256","RS256","HS384","ES512","RS512"],
 				"userinfo_signing_alg_values_supported":["ES384","RS384","HS256","HS512","ES256","RS256","HS384","ES512","RS512","none"],
-				"authorization_endpoint":"http://`+e2eOauthListener+e2eOauthAuthorizeURL+`",
-				"token_endpoint":"http://`+e2eOauthListener+e2eOauthTokenURL+`",
-				"jwks_uri":"http://`+e2eOauthListener+e2eOauthJWKSURL+`"
+				"authorization_endpoint":"http://`+e2eCsrfOauthListener+e2eCsrfOauthAuthorizeURL+`",
+				"token_endpoint":"http://`+e2eCsrfOauthListener+e2eCsrfOauthTokenURL+`",
+				"jwks_uri":"http://`+e2eCsrfOauthListener+e2eCsrfOauthJWKSURL+`"
 			}`)
 		}
 
@@ -180,14 +147,14 @@ func runTestAuth(t *testing.T) error {
 		keysHandler := func(w http.ResponseWriter, req *http.Request) {
 			fake.keysHandler(w, req)
 		}
-		http.HandleFunc(e2eOauthURL, configurationHandler)
-		http.HandleFunc(e2eOauthAuthorizeURL, authorizeHandler)
-		http.HandleFunc(e2eOauthTokenURL, tokenHandler)
-		http.HandleFunc(e2eOauthJWKSURL, keysHandler)
-		_ = http.ListenAndServe(e2eOauthListener, nil)
+		http.HandleFunc(e2eCsrfOauthURL, configurationHandler)
+		http.HandleFunc(e2eCsrfOauthAuthorizeURL, authorizeHandler)
+		http.HandleFunc(e2eCsrfOauthTokenURL, tokenHandler)
+		http.HandleFunc(e2eCsrfOauthJWKSURL, keysHandler)
+		_ = http.ListenAndServe(e2eCsrfOauthListener, nil)
 	}()
-	if !assert.True(t, checkListenOrBail("http://"+path.Join(e2eOauthListener, e2eOauthURL))) {
-		err := fmt.Errorf("cannot connect to test http listener on: %s", "http://"+path.Join(e2eOauthListener, e2eOauthURL))
+	if !assert.True(t, checkListenOrBail("http://"+path.Join(e2eCsrfOauthListener, e2eCsrfOauthURL))) {
+		err := fmt.Errorf("cannot connect to test http listener on: %s", "http://"+path.Join(e2eCsrfOauthListener, e2eCsrfOauthURL))
 		t.Logf("%v", err)
 		t.FailNow()
 		return err
@@ -255,7 +222,7 @@ func runTestConnect(t *testing.T, config *Config) (string, []*http.Cookie, error
 		},
 		CheckRedirect: onRedirect,
 	}
-	u, _ := url.Parse("http://" + e2eProxyListener + "/oauth/authorize")
+	u, _ := url.Parse("http://" + e2eCsrfProxyListener + "/oauth/authorize")
 	v := u.Query()
 	v.Set("state", "my_client_nonce") // NOTE: this state provided by the client is not currently carried on to the end (lost)
 	u.RawQuery = v.Encode()
@@ -266,7 +233,7 @@ func runTestConnect(t *testing.T, config *Config) (string, []*http.Cookie, error
 		Header: make(http.Header),
 	}
 	// add request_uri to specify last stop redirection (inner workings since PR #440)
-	encoded := base64.StdEncoding.EncodeToString([]byte("http://" + e2eAppListener + e2eAppURL))
+	encoded := base64.StdEncoding.EncodeToString([]byte("http://" + e2eCsrfAppListener + e2eCsrfAppURL))
 	ck := &http.Cookie{
 		Name:  "request_uri",
 		Value: encoded,
@@ -339,7 +306,7 @@ func getUpstreamTest(t *testing.T, config *Config, cookies []*http.Cookie, expec
 	// the CSRF state with a cookie
 	client := http.Client{}
 
-	u, _ := url.Parse("http://" + e2eProxyListener + e2eUpstreamURL)
+	u, _ := url.Parse("http://" + e2eCsrfProxyListener + e2eCsrfUpstreamURL)
 	h := make(http.Header, 10)
 	h.Set("Content-Type", "application/json")
 	req := &http.Request{
@@ -400,7 +367,7 @@ func getUpstreamTest(t *testing.T, config *Config, cookies []*http.Cookie, expec
 func getTokenTest(t *testing.T, config *Config, cookies []*http.Cookie, expectCSRFCookie bool) (string, []*http.Cookie, error) {
 	client := http.Client{}
 
-	u, _ := url.Parse("http://" + e2eProxyListener + config.OAuthURI + "/" + tokenURL)
+	u, _ := url.Parse("http://" + e2eCsrfProxyListener + config.OAuthURI + "/" + tokenURL)
 	h := make(http.Header, 10)
 	h.Set("Content-Type", "application/json")
 	req := &http.Request{
@@ -454,7 +421,7 @@ func getTokenTest(t *testing.T, config *Config, cookies []*http.Cookie, expectCS
 func postUpstreamTest(t *testing.T, config *Config, cookies []*http.Cookie, csrfToken string, expectedFailure bool) (string, []*http.Cookie, error) {
 	client := http.Client{}
 
-	u, _ := url.Parse("http://" + e2eProxyListener + e2eUpstreamURL)
+	u, _ := url.Parse("http://" + e2eCsrfProxyListener + e2eCsrfUpstreamURL)
 	h := make(http.Header, 10)
 	h.Set("Content-Type", "application/json")
 	h.Add(config.CSRFHeader, csrfToken)
@@ -497,7 +464,7 @@ func postUpstreamTest(t *testing.T, config *Config, cookies []*http.Cookie, csrf
 func postUpstreamWithAccessTokenTest(t *testing.T, config *Config, cookies []*http.Cookie, accessToken string) (string, []*http.Cookie, error) {
 	client := http.Client{}
 
-	u, _ := url.Parse("http://" + e2eProxyListener + e2eUpstreamURL)
+	u, _ := url.Parse("http://" + e2eCsrfProxyListener + e2eCsrfUpstreamURL)
 	h := make(http.Header, 10)
 	h.Set("Content-Type", "application/json")
 	h.Add("Authorization", "Bearer: "+accessToken)
@@ -532,7 +499,7 @@ func postUpstreamWithAccessTokenTest(t *testing.T, config *Config, cookies []*ht
 func postUpstream2Test(t *testing.T, config *Config, cookies []*http.Cookie) (string, []*http.Cookie, error) {
 	client := http.Client{}
 
-	u, _ := url.Parse("http://" + e2eProxyListener + e2eUpstreamURL2)
+	u, _ := url.Parse("http://" + e2eCsrfProxyListener + e2eCsrfUpstreamURL2)
 	h := make(http.Header, 10)
 	h.Set("Content-Type", "application/json")
 	req := &http.Request{
@@ -570,9 +537,9 @@ func TestCSRF(t *testing.T) {
 	config.DisableAllLogging = true
 	config.EnableLogging = false
 
-	config.Listen = e2eProxyListener
-	config.DiscoveryURL = "http://" + e2eOauthListener + e2eOauthURL
-	config.Upstream = "http://" + e2eUpstreamListener
+	config.Listen = e2eCsrfProxyListener
+	config.DiscoveryURL = "http://" + e2eCsrfOauthListener + e2eCsrfOauthURL
+	config.Upstream = "http://" + e2eCsrfUpstreamListener
 
 	config.CorsOrigins = []string{"*"}
 	config.EnableCSRF = true
@@ -585,7 +552,7 @@ func TestCSRF(t *testing.T) {
 	config.ClientSecret = fakeSecret
 	config.Resources = []*Resource{
 		{
-			URL:         e2eUpstreamURL2,
+			URL:         e2eCsrfUpstreamURL2,
 			Methods:     []string{"GET", "POST", "DELETE"},
 			WhiteListed: false,
 			EnableCSRF:  false,
@@ -597,7 +564,7 @@ func TestCSRF(t *testing.T) {
 	assert.Error(t, config.isValid())
 
 	config.Resources = append(config.Resources, &Resource{
-		URL:         e2eUpstreamURL,
+		URL:         e2eCsrfUpstreamURL,
 		Methods:     []string{"GET", "POST", "DELETE"},
 		WhiteListed: false,
 		EnableCSRF:  true,
@@ -605,7 +572,7 @@ func TestCSRF(t *testing.T) {
 	assert.NoError(t, config.isValid())
 
 	// launch fake upstream resource server
-	err := runTestUpstream(t)
+	err := runCsrfTestUpstream(t)
 	if !assert.NoError(t, err) {
 		t.FailNow()
 	}
@@ -617,7 +584,7 @@ func TestCSRF(t *testing.T) {
 	}
 
 	// launch fake oauth OIDC server
-	err = runTestAuth(t)
+	err = runCsrfTestAuth(t)
 	if !assert.NoError(t, err) {
 		t.FailNow()
 	}
