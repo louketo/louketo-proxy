@@ -37,8 +37,10 @@ func TestReadOptions(t *testing.T) {
 	c := cli.NewApp()
 	c.Flags = getCommandLineOptions()
 	c.Action = func(cx *cli.Context) error {
-		parseCLIOptions(cx, &Config{})
+		ero := parseCLIOptions(cx, &Config{})
+		assert.NoError(t, ero)
 		return nil
 	}
-	c.Run([]string{""})
+	err := c.Run([]string{""})
+	assert.NoError(t, err)
 }

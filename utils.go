@@ -19,6 +19,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	cryptorand "crypto/rand"
 	"crypto/rsa"
 	sha "crypto/sha256"
 	"crypto/tls"
@@ -46,7 +47,7 @@ import (
 
 	"github.com/coreos/go-oidc/jose"
 	"github.com/urfave/cli"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 var (
@@ -69,7 +70,7 @@ var (
 // createCertificate is responsible for creating a certificate
 func createCertificate(key *rsa.PrivateKey, hostnames []string, expire time.Duration) (tls.Certificate, error) {
 	// @step: create a serial for the certificate
-	serial, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+	serial, err := cryptorand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
 	if err != nil {
 		return tls.Certificate{}, err
 	}
@@ -102,7 +103,7 @@ func createCertificate(key *rsa.PrivateKey, hostnames []string, expire time.Dura
 	}
 
 	// @step: create the certificate
-	cert, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
+	cert, err := x509.CreateCertificate(cryptorand.Reader, &template, &template, &key.PublicKey, key)
 	if err != nil {
 		return tls.Certificate{}, err
 	}
@@ -155,7 +156,7 @@ func encryptDataBlock(plaintext, key []byte) ([]byte, error) {
 		return []byte{}, err
 	}
 	nonce := make([]byte, gcm.NonceSize())
-	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
+	if _, err = io.ReadFull(cryptorand.Reader, nonce); err != nil {
 		return nil, err
 	}
 
@@ -299,14 +300,15 @@ func containsSubString(value string, list []string) bool {
 	return false
 }
 
-// tryDialEndpoint dials the upstream endpoint via plain
+// tryDialEndpoint dials the upstream endpoint via plain HTTP
 func tryDialEndpoint(location *url.URL) (net.Conn, error) {
 	switch dialAddress := dialAddress(location); location.Scheme {
-	case httpSchema:
+	case unsecureScheme:
 		return net.Dial("tcp", dialAddress)
 	default:
 		return tls.Dial("tcp", dialAddress, &tls.Config{
-			Rand:               rand.Reader,
+			Rand: cryptorand.Reader,
+			//nolint:gas
 			InsecureSkipVerify: true,
 		})
 	}
@@ -352,8 +354,8 @@ func tryUpdateConnection(req *http.Request, writer http.ResponseWriter, endpoint
 	// @step: copy the data between client and upstream endpoint
 	var wg sync.WaitGroup
 	wg.Add(2)
-	go transferBytes(server, client, &wg)
-	go transferBytes(client, server, &wg)
+	go func() { _, _ = transferBytes(server, client, &wg) }()
+	go func() { _, _ = transferBytes(client, server, &wg) }()
 	wg.Wait()
 
 	return nil
@@ -364,7 +366,7 @@ func dialAddress(location *url.URL) string {
 	items := strings.Split(location.Host, ":")
 	if len(items) != 2 {
 		switch location.Scheme {
-		case httpSchema:
+		case unsecureScheme:
 			return location.Host + ":80"
 		default:
 			return location.Host + ":443"
@@ -387,10 +389,11 @@ func findCookie(name string, cookies []*http.Cookie) *http.Cookie {
 
 // toHeader is a helper method to play nice in the headers
 func toHeader(v string) string {
-	var list []string
+	symbols := symbolsFilter.Split(v, -1)
+	list := make([]string, 0, len(symbols))
 
 	// step: filter out any symbols and convert to dashes
-	for _, x := range symbolsFilter.Split(v, -1) {
+	for _, x := range symbols {
 		list = append(list, capitalize(x))
 	}
 

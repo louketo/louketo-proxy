@@ -116,7 +116,8 @@ func (f *fakeProxy) RunTests(t *testing.T, requests []fakeRequest) {
 		f.proxy.server.Close()
 	}()
 
-	for i, c := range requests {
+	for i := range requests {
+		c := requests[i]
 		var upstream fakeUpstreamResponse
 
 		f.config.NoRedirects = !c.Redirects
@@ -136,7 +137,7 @@ func (f *fakeProxy) RunTests(t *testing.T, requests []fakeRequest) {
 						return nil, err
 					}
 					header := fmt.Sprintf("PROXY TCP4 %s 10.0.0.1 1000 2000\r\n", c.ProxyProtocol)
-					conn.Write([]byte(header))
+					_, _ = conn.Write([]byte(header))
 
 					return conn, nil
 				},
@@ -220,11 +221,11 @@ func (f *fakeProxy) RunTests(t *testing.T, requests []fakeRequest) {
 		}
 		if c.ExpectedLocation != "" {
 			l, _ := url.Parse(resp.Header().Get("Location"))
-			assert.True(t, strings.Contains(l.String(), c.ExpectedLocation), "Expected location to contain %s", l.String())
+			assert.True(t, strings.Contains(l.String(), c.ExpectedLocation), "expected location to contain %s", l.String())
 			if l.Query().Get("state") != "" {
 				state, err := uuid.FromString(l.Query().Get("state"))
 				if err != nil {
-					assert.Fail(t, "Expected state parameter with valid UUID, got: %s with error %s", state.String(), err)
+					assert.Fail(t, "expected state parameter with valid UUID, got: %s with error %s", state.String(), err)
 				}
 			}
 		}
@@ -495,6 +496,8 @@ func TestNoProxyingRequests(t *testing.T) {
 	newFakeProxy(c).RunTests(t, requests)
 }
 
+const testAdminURI = "/admin/test"
+
 func TestStrangeAdminRequests(t *testing.T) {
 	cfg := newFakeKeycloakConfig()
 	cfg.Resources = []*Resource{
@@ -521,12 +524,12 @@ func TestStrangeAdminRequests(t *testing.T) {
 			ExpectedCode: http.StatusTemporaryRedirect,
 		},
 		{ // check for prefix slashs
-			URI:          "//admin/test",
+			URI:          "/" + testAdminURI,
 			Redirects:    true,
 			ExpectedCode: http.StatusTemporaryRedirect,
 		},
 		{ // check for double slashs
-			URI:          "/admin//test",
+			URI:          testAdminURI,
 			Redirects:    true,
 			ExpectedCode: http.StatusTemporaryRedirect,
 		},
@@ -537,12 +540,12 @@ func TestStrangeAdminRequests(t *testing.T) {
 			ExpectedCode: http.StatusForbidden,
 		},
 		{ // check for dodgy url
-			URI:          "//admin/../admin/test",
+			URI:          "//admin/.." + testAdminURI,
 			Redirects:    true,
 			ExpectedCode: http.StatusTemporaryRedirect,
 		},
 		{ // check for it works
-			URI:           "//admin/test",
+			URI:           "/" + testAdminURI,
 			HasToken:      true,
 			Roles:         []string{fakeAdminRole},
 			ExpectedProxy: true,
@@ -1032,7 +1035,7 @@ func TestCrossSiteHandler(t *testing.T) {
 		cfg.CorsCredentials = c.Cors.AllowCredentials
 		cfg.CorsExposedHeaders = c.Cors.ExposedHeaders
 		cfg.CorsHeaders = c.Cors.AllowedHeaders
-		cfg.CorsMaxAge = time.Duration(time.Duration(c.Cors.MaxAge) * time.Second)
+		cfg.CorsMaxAge = time.Duration(c.Cors.MaxAge) * time.Second
 		cfg.CorsMethods = c.Cors.AllowedMethods
 		cfg.CorsOrigins = c.Cors.AllowedOrigins
 
@@ -1050,7 +1053,7 @@ func TestCheckRefreshTokens(t *testing.T) {
 		}
 	}
 	p := newFakeProxy(cfg)
-	p.idp.setTokenExpiration(time.Duration(1000 * time.Millisecond))
+	p.idp.setTokenExpiration(1000 * time.Millisecond)
 
 	requests := []fakeRequest{
 		{
@@ -1263,7 +1266,6 @@ func TestAdmissionHandlerRoles(t *testing.T) {
 
 // check to see if custom headers are hitting the upstream
 func TestCustomHeaders(t *testing.T) {
-	uri := "/admin/test"
 	requests := []struct {
 		Headers map[string]string
 		Request fakeRequest
@@ -1285,7 +1287,7 @@ func TestCustomHeaders(t *testing.T) {
 				"TestHeader": "test",
 			},
 			Request: fakeRequest{
-				URI:           uri,
+				URI:           testAdminURI,
 				HasToken:      true,
 				ExpectedProxy: true,
 				ExpectedProxyHeaders: map[string]string{
@@ -1299,7 +1301,7 @@ func TestCustomHeaders(t *testing.T) {
 				"TestHeaderTwo": "two",
 			},
 			Request: fakeRequest{
-				URI:           uri,
+				URI:           testAdminURI,
 				HasToken:      true,
 				ExpectedProxy: true,
 				ExpectedProxyHeaders: map[string]string{
@@ -1318,7 +1320,6 @@ func TestCustomHeaders(t *testing.T) {
 }
 
 func TestRolesAdmissionHandlerClaims(t *testing.T) {
-	uri := "/admin/test"
 	requests := []struct {
 		Matches map[string]string
 		Request fakeRequest
@@ -1327,7 +1328,7 @@ func TestRolesAdmissionHandlerClaims(t *testing.T) {
 		{
 			Matches: map[string]string{"cal": "test"},
 			Request: fakeRequest{
-				URI:          uri,
+				URI:          testAdminURI,
 				HasToken:     true,
 				ExpectedCode: http.StatusForbidden,
 			},
@@ -1335,7 +1336,7 @@ func TestRolesAdmissionHandlerClaims(t *testing.T) {
 		{
 			Matches: map[string]string{"item": "^tes$"},
 			Request: fakeRequest{
-				URI:          uri,
+				URI:          testAdminURI,
 				HasToken:     true,
 				ExpectedCode: http.StatusForbidden,
 			},
@@ -1343,7 +1344,7 @@ func TestRolesAdmissionHandlerClaims(t *testing.T) {
 		{
 			Matches: map[string]string{"item": "^tes$"},
 			Request: fakeRequest{
-				URI:           uri,
+				URI:           testAdminURI,
 				HasToken:      true,
 				TokenClaims:   jose.Claims{"item": "tes"},
 				ExpectedProxy: true,
@@ -1353,7 +1354,7 @@ func TestRolesAdmissionHandlerClaims(t *testing.T) {
 		{
 			Matches: map[string]string{"item": "not_match"},
 			Request: fakeRequest{
-				URI:          uri,
+				URI:          testAdminURI,
 				HasToken:     true,
 				TokenClaims:  jose.Claims{"item": "test"},
 				ExpectedCode: http.StatusForbidden,
@@ -1362,7 +1363,7 @@ func TestRolesAdmissionHandlerClaims(t *testing.T) {
 		{
 			Matches: map[string]string{"item": "^test", "found": "something"},
 			Request: fakeRequest{
-				URI:          uri,
+				URI:          testAdminURI,
 				HasToken:     true,
 				TokenClaims:  jose.Claims{"item": "test"},
 				ExpectedCode: http.StatusForbidden,
@@ -1371,7 +1372,7 @@ func TestRolesAdmissionHandlerClaims(t *testing.T) {
 		{
 			Matches: map[string]string{"item": "^test", "found": "something"},
 			Request: fakeRequest{
-				URI:      uri,
+				URI:      testAdminURI,
 				HasToken: true,
 				TokenClaims: jose.Claims{
 					"item":  "tester",
@@ -1384,7 +1385,7 @@ func TestRolesAdmissionHandlerClaims(t *testing.T) {
 		{
 			Matches: map[string]string{"item": ".*"},
 			Request: fakeRequest{
-				URI:           uri,
+				URI:           testAdminURI,
 				HasToken:      true,
 				TokenClaims:   jose.Claims{"item": "test"},
 				ExpectedProxy: true,
@@ -1394,7 +1395,7 @@ func TestRolesAdmissionHandlerClaims(t *testing.T) {
 		{
 			Matches: map[string]string{"item": "^t.*$"},
 			Request: fakeRequest{
-				URI:           uri,
+				URI:           testAdminURI,
 				HasToken:      true,
 				TokenClaims:   jose.Claims{"item": "test"},
 				ExpectedProxy: true,
@@ -1405,7 +1406,7 @@ func TestRolesAdmissionHandlerClaims(t *testing.T) {
 		{
 			Matches: map[string]string{"item": "^t.*t"},
 			Request: fakeRequest{
-				URI:           uri,
+				URI:           testAdminURI,
 				HasToken:      true,
 				TokenClaims:   jose.Claims{"item": []string{"nonMatchingClaim", "test", "anotherNonMatching"}},
 				ExpectedProxy: true,
@@ -1415,7 +1416,7 @@ func TestRolesAdmissionHandlerClaims(t *testing.T) {
 		{
 			Matches: map[string]string{"item": "^t.*t"},
 			Request: fakeRequest{
-				URI:           uri,
+				URI:           testAdminURI,
 				HasToken:      true,
 				TokenClaims:   jose.Claims{"item": []string{"1test", "2test", "3test"}},
 				ExpectedProxy: false,
@@ -1425,7 +1426,7 @@ func TestRolesAdmissionHandlerClaims(t *testing.T) {
 		{
 			Matches: map[string]string{"item": "^t.*t"},
 			Request: fakeRequest{
-				URI:           uri,
+				URI:           testAdminURI,
 				HasToken:      true,
 				TokenClaims:   jose.Claims{"item": []string{}},
 				ExpectedProxy: false,
@@ -1438,7 +1439,7 @@ func TestRolesAdmissionHandlerClaims(t *testing.T) {
 				"item2": "^another",
 			},
 			Request: fakeRequest{
-				URI:      uri,
+				URI:      testAdminURI,
 				HasToken: true,
 				TokenClaims: jose.Claims{
 					"item1": []string{"randomItem", "test"},

@@ -35,8 +35,8 @@ func newDefaultConfig() *Config {
 
 	return &Config{
 		AccessTokenDuration:           time.Duration(720) * time.Hour,
-		CookieAccessName:              "kc-access",
-		CookieRefreshName:             "kc-state",
+		CookieAccessName:              accessCookie,
+		CookieRefreshName:             refreshCookie,
 		EnableAuthorizationCookies:    true,
 		EnableAuthorizationHeader:     true,
 		EnableDefaultDeny:             true,
@@ -61,7 +61,7 @@ func newDefaultConfig() *Config {
 		ServerWriteTimeout:            10 * time.Second,
 		SkipOpenIDProviderTLSVerify:   false,
 		SkipUpstreamTLSVerify:         true,
-		Tags:                          make(map[string]string, 0),
+		Tags:                          make(map[string]string),
 		UpstreamExpectContinueTimeout: 10 * time.Second,
 		UpstreamKeepaliveTimeout:      10 * time.Second,
 		UpstreamKeepalives:            true,

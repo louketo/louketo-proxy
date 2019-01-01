@@ -64,7 +64,7 @@ type oauthProxy struct {
 }
 
 func init() {
-	time.LoadLocation("UTC")             // ensure all time is in UTC
+	_, _ = time.LoadLocation("UTC")      // ensure all time is in UTC [NOTE(fredbi): no this does just nothing]
 	runtime.GOMAXPROCS(runtime.NumCPU()) // set the core
 	prometheus.MustRegister(certificateRotationMetric)
 	prometheus.MustRegister(latencyMetric)
@@ -476,7 +476,7 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 	// @check if the socket requires TLS
 	if config.useSelfSignedTLS || config.useLetsEncryptTLS || config.useFileTLS {
 		getCertificate := func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-			return nil, errors.New("Not configured")
+			return nil, errors.New("not configured")
 		}
 
 		if config.useLetsEncryptTLS {
@@ -577,9 +577,10 @@ func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) error {
 		}
 		upstream.Path = ""
 		upstream.Host = "domain-sock"
-		upstream.Scheme = "http"
+		upstream.Scheme = unsecureScheme
 	}
 	// create the upstream tls configure
+	//nolint:gas
 	tlsConfig := &tls.Config{InsecureSkipVerify: r.config.SkipUpstreamTLSVerify}
 
 	// are we using a client certificate
@@ -671,9 +672,9 @@ func (r *oauthProxy) newOpenIDClient() (*oidc.Client, oidc.ProviderConfig, *http
 		Transport: &http.Transport{
 			Proxy: func(_ *http.Request) (*url.URL, error) {
 				if r.config.OpenIDProviderProxy != "" {
-					idpProxyURL, err := url.Parse(r.config.OpenIDProviderProxy)
-					if err != nil {
-						r.log.Warn("invalid proxy address for open IDP provider proxy", zap.Error(err))
+					idpProxyURL, erp := url.Parse(r.config.OpenIDProviderProxy)
+					if erp != nil {
+						r.log.Warn("invalid proxy address for open IDP provider proxy", zap.Error(erp))
 						return nil, nil
 					}
 					return idpProxyURL, nil
@@ -682,6 +683,7 @@ func (r *oauthProxy) newOpenIDClient() (*oidc.Client, oidc.ProviderConfig, *http
 				return nil, nil
 			},
 			TLSClientConfig: &tls.Config{
+				//nolint:gas
 				InsecureSkipVerify: r.config.SkipOpenIDProviderTLSVerify,
 			},
 		},

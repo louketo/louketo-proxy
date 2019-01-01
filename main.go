@@ -21,5 +21,5 @@ import (
 
 func main() {
 	app := newOauthProxyApp()
-	app.Run(os.Args)
+	_ = app.Run(os.Args)
 }

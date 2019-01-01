@@ -133,9 +133,13 @@ func TestIsValid(t *testing.T) {
 	}
 }
 
+var expectedRoles = []string{"1", "2", "3"}
+
+const rolesList = "1,2,3"
+
 func TestResourceString(t *testing.T) {
 	resource := &Resource{
-		Roles: []string{"1", "2", "3"},
+		Roles: expectedRoles,
 	}
 	if s := resource.String(); s == "" {
 		t.Error("we should have received a string")
@@ -144,10 +148,10 @@ func TestResourceString(t *testing.T) {
 
 func TestGetRoles(t *testing.T) {
 	resource := &Resource{
-		Roles: []string{"1", "2", "3"},
+		Roles: expectedRoles,
 	}
 
-	if resource.getRoles() != "1,2,3" {
+	if resource.getRoles() != rolesList {
 		t.Error("the resource roles not as expected")
 	}
 }
