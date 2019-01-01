@@ -78,6 +78,11 @@ type fakeProxy struct {
 	cookies map[string]*http.Cookie
 }
 
+const (
+	testAdminURI = "/admin/test"
+	testKey      = "ZSeCYDUxIlhDrmPpa1Ldc7il384esSF2"
+)
+
 func newFakeProxy(c *Config) *fakeProxy {
 	log.SetOutput(ioutil.Discard)
 	if c == nil {
@@ -495,8 +500,6 @@ func TestNoProxyingRequests(t *testing.T) {
 	}
 	newFakeProxy(c).RunTests(t, requests)
 }
-
-const testAdminURI = "/admin/test"
 
 func TestStrangeAdminRequests(t *testing.T) {
 	cfg := newFakeKeycloakConfig()
@@ -1042,11 +1045,10 @@ func TestCrossSiteHandler(t *testing.T) {
 		newFakeProxy(cfg).RunTests(t, []fakeRequest{c.Request})
 	}
 }
-
 func TestCheckRefreshTokens(t *testing.T) {
 	cfg := newFakeKeycloakConfig()
 	cfg.EnableRefreshTokens = true
-	cfg.EncryptionKey = "ZSeCYDUxIlhDrmPpa1Ldc7il384esSF2"
+	cfg.EncryptionKey = testKey
 	fn := func(no int, req *resty.Request, resp *resty.Response) {
 		if no == 0 {
 			<-time.After(1000 * time.Millisecond)
@@ -1081,7 +1083,7 @@ func TestCheckEncryptedCookie(t *testing.T) {
 	cfg.EnableEncryptedToken = true
 	cfg.Verbose = true
 	cfg.EnableLogging = true
-	cfg.EncryptionKey = "ZSeCYDUxIlhDrmPpa1Ldc7il384esSF2"
+	cfg.EncryptionKey = testKey
 	testEncryptedToken(t, cfg)
 }
 
@@ -1092,7 +1094,7 @@ func TestCheckForcedEncryptedCookie(t *testing.T) {
 	cfg.ForceEncryptedCookie = true
 	cfg.Verbose = true
 	cfg.EnableLogging = true
-	cfg.EncryptionKey = "ZSeCYDUxIlhDrmPpa1Ldc7il384esSF2"
+	cfg.EncryptionKey = testKey
 	testEncryptedToken(t, cfg)
 }
 
@@ -1119,7 +1121,7 @@ func testEncryptedToken(t *testing.T, cfg *Config) {
 		return assert.Contains(t, claims, "aud") && assert.Contains(t, claims, "email")
 	}
 	p := newFakeProxy(cfg)
-	p.idp.setTokenExpiration(time.Duration(1000 * time.Millisecond))
+	p.idp.setTokenExpiration(1000 * time.Millisecond)
 
 	requests := []fakeRequest{
 		{
