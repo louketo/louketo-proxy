@@ -63,7 +63,7 @@ func TestGetCertificate(t *testing.T) {
 func TestLoadCertificate(t *testing.T) {
 	c := newTestCertificateRotator(t)
 	assert.NotEmpty(t, c.certificate)
-	c.storeCertificate(tls.Certificate{})
+	_ = c.storeCertificate(tls.Certificate{})
 	crt, err := c.GetCertificate(nil)
 	assert.NoError(t, err)
 	assert.Equal(t, &tls.Certificate{}, crt)

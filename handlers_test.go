@@ -51,13 +51,13 @@ func TestExpirationHandler(t *testing.T) {
 		{
 			URI:          uri,
 			HasToken:     true,
-			Expires:      time.Duration(-48 * time.Hour),
+			Expires:      -48 * time.Hour,
 			ExpectedCode: http.StatusUnauthorized,
 		},
 		{
 			URI:          uri,
 			HasToken:     true,
-			Expires:      time.Duration(14 * time.Hour),
+			Expires:      14 * time.Hour,
 			ExpectedCode: http.StatusOK,
 		},
 	}

@@ -32,7 +32,7 @@ func TestCookieDomainHostHeader(t *testing.T) {
 
 	var cookie *http.Cookie
 	for _, c := range resp.Cookies() {
-		if c.Name == "kc-access" {
+		if c.Name == accessCookie {
 			cookie = c
 		}
 	}
@@ -49,7 +49,7 @@ func TestCookieDomain(t *testing.T) {
 
 	var cookie *http.Cookie
 	for _, c := range resp.Cookies() {
-		if c.Name == "kc-access" {
+		if c.Name == accessCookie {
 			cookie = c
 		}
 	}
@@ -101,7 +101,7 @@ func TestDropRefreshCookie(t *testing.T) {
 	p.dropRefreshTokenCookie(req, resp, "test", 0)
 
 	assert.Equal(t, resp.Header().Get("Set-Cookie"),
-		"kc-state=test; Path=/; Domain=127.0.0.1",
+		refreshCookie+"=test; Path=/; Domain=127.0.0.1",
 		"we have not set the cookie, headers: %v", resp.Header())
 }
 
@@ -146,7 +146,7 @@ func TestClearAccessTokenCookie(t *testing.T) {
 	resp := httptest.NewRecorder()
 	p.clearAccessTokenCookie(req, resp)
 	assert.Contains(t, resp.Header().Get("Set-Cookie"),
-		"kc-access=; Path=/; Domain=127.0.0.1; Expires=",
+		accessCookie+"=; Path=/; Domain=127.0.0.1; Expires=",
 		"we have not cleared the, headers: %v", resp.Header())
 }
 
@@ -156,7 +156,7 @@ func TestClearRefreshAccessTokenCookie(t *testing.T) {
 	resp := httptest.NewRecorder()
 	p.clearRefreshTokenCookie(req, resp)
 	assert.Contains(t, resp.Header().Get("Set-Cookie"),
-		"kc-state=; Path=/; Domain=127.0.0.1; Expires=",
+		refreshCookie+"=; Path=/; Domain=127.0.0.1; Expires=",
 		"we have not cleared the, headers: %v", resp.Header())
 }
 
@@ -166,7 +166,7 @@ func TestClearAllCookies(t *testing.T) {
 	resp := httptest.NewRecorder()
 	p.clearAllCookies(req, resp)
 	assert.Contains(t, resp.Header().Get("Set-Cookie"),
-		"kc-access=; Path=/; Domain=127.0.0.1; Expires=",
+		accessCookie+"=; Path=/; Domain=127.0.0.1; Expires=",
 		"we have not cleared the, headers: %v", resp.Header())
 }
 

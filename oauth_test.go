@@ -259,7 +259,7 @@ func (r *fakeAuthServer) tokenHandler(w http.ResponseWriter, req *http.Request) 
 		}
 		renderJSON(http.StatusUnauthorized, w, req, map[string]string{
 			"error":             "invalid_grant",
-			"error_description": "Invalid user credentials",
+			"error_description": "invalid user credentials",
 		})
 	case oauth2.GrantTypeRefreshToken:
 		fallthrough
@@ -292,11 +292,11 @@ func TestTokenExpired(t *testing.T) {
 		OK     bool
 	}{
 		{
-			Expire: time.Duration(1 * time.Hour),
+			Expire: 1 * time.Hour,
 			OK:     true,
 		},
 		{
-			Expire: time.Duration(-5 * time.Hour),
+			Expire: -5 * time.Hour,
 		},
 	}
 	for i, x := range cs {

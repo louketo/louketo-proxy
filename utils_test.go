@@ -104,7 +104,7 @@ func TestGetRequestHostURL(t *testing.T) {
 			TLS:    c.TLS,
 		}
 		if c.HostHeader != "" {
-			request.Header = make(http.Header, 0)
+			request.Header = make(http.Header)
 			request.Header.Set("X-Forwarded-Host", c.HostHeader)
 		}
 		assert.Equal(t, c.Expected, getRequestHostURL(request), "case %d, expected: %s, got: %s", i, c.Expected, getRequestHostURL(request))
@@ -114,7 +114,7 @@ func TestGetRequestHostURL(t *testing.T) {
 func BenchmarkUUID(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		s := uuid.NewV1()
-		s.String()
+		_ = s.String()
 	}
 }
 
@@ -200,7 +200,7 @@ func TestEncryptedText(t *testing.T) {
 
 func BenchmarkEncryptDataBlock(b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		encryptDataBlock(fakePlainText, fakeKey)
+		_, _ = encryptDataBlock(fakePlainText, fakeKey)
 	}
 }
 
@@ -208,7 +208,7 @@ func BenchmarkEncodeText(b *testing.B) {
 	text := string(fakePlainText)
 	key := string(fakeKey)
 	for n := 0; n < b.N; n++ {
-		encodeText(text, key)
+		_, _ = encodeText(text, key)
 	}
 }
 

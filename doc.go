@@ -33,6 +33,8 @@ var (
 	version  = ""
 )
 
+type contextKey int8
+
 const (
 	prog        = "keycloak-gatekeeper"
 	author      = "Keycloak"
@@ -40,10 +42,8 @@ const (
 	description = "is a proxy using the keycloak service for auth and authorization"
 
 	authorizationHeader = "Authorization"
-	contextScopeName    = "context.scope.name"
 	envPrefix           = "PROXY_"
 	headerUpgrade       = "Upgrade"
-	httpSchema          = "http"
 	versionHeader       = "X-Auth-Proxy-Version"
 
 	authorizationURL = "/authorize"
@@ -62,6 +62,17 @@ const (
 	claimResourceAccess = "resource_access"
 	claimResourceRoles  = "roles"
 	claimGroups         = "groups"
+
+	accessCookie       = "kc-access"
+	refreshCookie      = "kc-state"
+	requestURICookie   = "request_uri"
+	requestStateCookie = "OAuth_Token_Request_State"
+	unsecureScheme     = "http"
+	secureScheme       = "https"
+	anyMethod          = "ANY"
+
+	_ contextKey = iota
+	contextScopeName
 )
 
 const (
