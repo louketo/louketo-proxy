@@ -159,7 +159,7 @@ func (f *fakeProxy) RunTests(t *testing.T, requests []fakeRequest) {
 			request.SetResult(&upstream)
 		}
 		if c.ProxyRequest {
-			request.SetProxy(f.getServiceURL())
+			client.SetProxy(f.getServiceURL())
 		}
 		if c.BasicAuth {
 			request.SetBasicAuth(c.Username, c.Password)
@@ -209,7 +209,7 @@ func (f *fakeProxy) RunTests(t *testing.T, requests []fakeRequest) {
 			resp, err = request.Execute(c.Method, c.URL)
 		}
 		if err != nil {
-			if !strings.Contains(err.Error(), "Auto redirect is disable") {
+			if !strings.Contains(err.Error(), "auto redirect is disabled") {
 				assert.NoError(t, err, "case %d, unable to make request, error: %s", i, err)
 				continue
 			}
