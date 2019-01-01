@@ -312,7 +312,7 @@ func (r *oauthProxy) createForwardingProxy() error {
 			func(host string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string) {
 				return &goproxy.ConnectAction{
 					Action:    goproxy.ConnectMitm,
-					TLSConfig: goproxy.TLSConfigFromCA(ca),
+					TLSConfig: goproxy.TLSConfigFromCA(ca), // NOTE(fredbi): the default proxy config in github/elazarl/goproxy disables TLS verify
 				}, host
 			},
 		)
@@ -527,14 +527,33 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 		}
 
 		tlsConfig := &tls.Config{
-			GetCertificate:           getCertificate,
+			GetCertificate: getCertificate,
+			// Causes servers to use Go's default ciphersuite preferences,
+			// which are tuned to avoid attacks. Does nothing on clients.
 			PreferServerCipherSuites: true,
-			NextProtos:               []string{"h2", "http/1.1"},
+			// Only use curves which have assembly implementations
+			// https://github.com/golang/go/tree/master/src/crypto/elliptic
+			CurvePreferences: []tls.CurveID{
+				tls.CurveP256,
+				tls.X25519,
+			},
+			NextProtos: []string{"http/1.1", "h2"},
+			// https://www.owasp.org/index.php/Transport_Layer_Protection_Cheat_Sheet#Rule_-_Only_Support_Strong_Protocols
+			MinVersion: tls.VersionTLS12,
+			// Use modern tls mode https://wiki.mozilla.org/Security/Server_Side_TLS#Modern_compatibility
+			// See security linter code: https://github.com/securego/gosec/blob/master/rules/tls_config.go#L11
+			// These ciphersuites support Forward Secrecy: https://en.wikipedia.org/wiki/Forward_secrecy
+			CipherSuites: []uint16{
+				tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+				tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
+				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			},
 		}
 
-		listener = tls.NewListener(listener, tlsConfig)
-
-		// @check if we doing mutual tls
+		// @check if we are doing mutual tls
 		if config.clientCert != "" {
 			caCert, err := ioutil.ReadFile(config.clientCert)
 			if err != nil {
@@ -545,12 +564,14 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 			tlsConfig.ClientCAs = caCertPool
 			tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
 		}
+
+		listener = tls.NewListener(listener, tlsConfig)
 	}
 
 	return listener, nil
 }
 
-// createUpstreamProxy create a reverse http proxy from the upstream
+// createUpstreamProxy creates a reverse http proxy client to the upstream
 func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) error {
 	dialer := (&net.Dialer{
 		KeepAlive: r.config.UpstreamKeepaliveTimeout,
@@ -569,12 +590,12 @@ func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) error {
 		upstream.Host = "domain-sock"
 		upstream.Scheme = "http"
 	}
-	// create the upstream tls configure
+	// create the upstream tls configuration
 	tlsConfig := &tls.Config{InsecureSkipVerify: r.config.SkipUpstreamTLSVerify}
 
-	// are we using a client certificate
-	// @TODO provide a means of reload on the client certificate when it expires. I'm not sure if it's just a
-	// case of update the http transport settings - Also we to place this go-routine?
+	// are we using a client certificate?
+	// @TODO provide a means to reload the client certificate when it expires. I'm not sure if it's just a
+	// case of update the http transport settings - Also where to place this go-routine?
 	if r.config.TLSClientCertificate != "" {
 		cert, err := ioutil.ReadFile(r.config.TLSClientCertificate)
 		if err != nil {
@@ -587,18 +608,16 @@ func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) error {
 		tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
 	}
 
-	{
-		// @check if we have a upstream ca to verify the upstream
-		if r.config.UpstreamCA != "" {
-			r.log.Info("loading the upstream ca", zap.String("path", r.config.UpstreamCA))
-			ca, err := ioutil.ReadFile(r.config.UpstreamCA)
-			if err != nil {
-				return err
-			}
-			pool := x509.NewCertPool()
-			pool.AppendCertsFromPEM(ca)
-			tlsConfig.RootCAs = pool
+	// @check if we have a upstream ca to verify the upstream
+	if r.config.UpstreamCA != "" {
+		r.log.Info("loading the upstream ca", zap.String("path", r.config.UpstreamCA))
+		ca, err := ioutil.ReadFile(r.config.UpstreamCA)
+		if err != nil {
+			return err
 		}
+		pool := x509.NewCertPool()
+		pool.AppendCertsFromPEM(ca)
+		tlsConfig.RootCAs = pool
 	}
 
 	// create the forwarding proxy
@@ -649,7 +668,7 @@ func (r *oauthProxy) newOpenIDClient() (*oidc.Client, oidc.ProviderConfig, *http
 	var err error
 	var config oidc.ProviderConfig
 
-	// step: fix up the url if required, the underlining lib will add the .well-known/openid-configuration to the discovery url for us.
+	// step: fix up the url if required, the underlying lib will add the .well-known/openid-configuration to the discovery url for us.
 	if strings.HasSuffix(r.config.DiscoveryURL, "/.well-known/openid-configuration") {
 		r.config.DiscoveryURL = strings.TrimSuffix(r.config.DiscoveryURL, "/.well-known/openid-configuration")
 	}
