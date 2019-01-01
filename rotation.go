@@ -92,7 +92,7 @@ func (c *certificationRotation) watch() error {
 					// @metric inform of the rotation
 					certificateRotationMetric.Inc()
 					// step: load the new certificate
-					c.storeCertificate(certificate)
+					_ = c.storeCertificate(certificate)
 					// step: print a debug message for us
 					c.log.Info("replacing the server certifacte with updated version")
 				}

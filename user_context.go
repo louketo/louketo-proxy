@@ -46,11 +46,11 @@ func extractIdentity(token jose.JWT) (*userContext, error) {
 	if err == nil && found {
 		audiences = append(audiences, aud)
 	} else {
-		if aud, found, err := claims.StringsClaim(claimAudience); err != nil || !found {
+		aud, found, erc := claims.StringsClaim(claimAudience)
+		if erc != nil || !found {
 			return nil, ErrNoTokenAudience
-		} else {
-			audiences = aud
 		}
+		audiences = aud
 	}
 
 	// @step: extract the realm roles

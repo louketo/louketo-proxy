@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/satori/go.uuid"
+	uuid "github.com/satori/go.uuid"
 )
 
 // dropCookie drops a cookie into the response
@@ -51,64 +51,56 @@ func (r *oauthProxy) dropCookie(w http.ResponseWriter, host, name, value string,
 func (r *oauthProxy) getMaxCookieChunkLength(req *http.Request, cookieName string) int {
 	maxCookieChunkLength := 4069 - len(cookieName)
 	if r.config.CookieDomain != "" {
-		maxCookieChunkLength = maxCookieChunkLength - len(r.config.CookieDomain)
+		maxCookieChunkLength -= len(r.config.CookieDomain)
 	} else {
-		maxCookieChunkLength = maxCookieChunkLength - len(strings.Split(req.Host, ":")[0])
+		maxCookieChunkLength -= len(strings.Split(req.Host, ":")[0])
 	}
 	if r.config.HTTPOnlyCookie {
-		maxCookieChunkLength = maxCookieChunkLength - len("HttpOnly; ")
+		maxCookieChunkLength -= len("HttpOnly; ")
 	}
 	if !r.config.EnableSessionCookies {
-		maxCookieChunkLength = maxCookieChunkLength - len("Expires=Mon, 02 Jan 2006 03:04:05 MST; ")
+		maxCookieChunkLength -= len("Expires=Mon, 02 Jan 2006 03:04:05 MST; ")
 	}
 	if r.config.SecureCookie {
-		maxCookieChunkLength = maxCookieChunkLength - len("Secure")
+		maxCookieChunkLength -= len("Secure")
 	}
 	return maxCookieChunkLength
 }
 
-// dropAccessTokenCookie drops a access token cookie into the response
+// dropCookieWithChunks drops a cookie from the response, taking into account possible chunks
+func (r *oauthProxy) dropCookieWithChunks(req *http.Request, w http.ResponseWriter, name, value string, duration time.Duration) {
+	maxCookieChunkLength := r.getMaxCookieChunkLength(req, name)
+	if len(value) <= maxCookieChunkLength {
+		r.dropCookie(w, req.Host, name, value, duration)
+	} else {
+		// write divided cookies because payload is too long for single cookie
+		r.dropCookie(w, req.Host, name, value[0:maxCookieChunkLength], duration)
+		for i := maxCookieChunkLength; i < len(value); i += maxCookieChunkLength {
+			end := i + maxCookieChunkLength
+			if end > len(value) {
+				end = len(value)
+			}
+			r.dropCookie(w, req.Host, name+"-"+strconv.Itoa(i/maxCookieChunkLength), value[i:end], duration)
+		}
+	}
+}
+
+// dropAccessTokenCookie drops a access token cookie from the response
 func (r *oauthProxy) dropAccessTokenCookie(req *http.Request, w http.ResponseWriter, value string, duration time.Duration) {
-	maxCookieChunkLength := r.getMaxCookieChunkLength(req, r.config.CookieAccessName)
-	if len(value) <= maxCookieChunkLength {
-		r.dropCookie(w, req.Host, r.config.CookieAccessName, value, duration)
-	} else {
-		// write divided cookies because payload is too long for single cookie
-		r.dropCookie(w, req.Host, r.config.CookieAccessName, value[0:maxCookieChunkLength], duration)
-		for i := maxCookieChunkLength; i < len(value); i += maxCookieChunkLength {
-			end := i + maxCookieChunkLength
-			if end > len(value) {
-				end = len(value)
-			}
-			r.dropCookie(w, req.Host, r.config.CookieAccessName+"-"+strconv.Itoa(i/maxCookieChunkLength), value[i:end], duration)
-		}
-	}
+	r.dropCookieWithChunks(req, w, r.config.CookieAccessName, value, duration)
 }
 
-// dropRefreshTokenCookie drops a refresh token cookie into the response
+// dropRefreshTokenCookie drops a refresh token cookie from the response
 func (r *oauthProxy) dropRefreshTokenCookie(req *http.Request, w http.ResponseWriter, value string, duration time.Duration) {
-	maxCookieChunkLength := r.getMaxCookieChunkLength(req, r.config.CookieRefreshName)
-	if len(value) <= maxCookieChunkLength {
-		r.dropCookie(w, req.Host, r.config.CookieRefreshName, value, duration)
-	} else {
-		// write divided cookies because payload is too long for single cookie
-		r.dropCookie(w, req.Host, r.config.CookieRefreshName, value[0:maxCookieChunkLength], duration)
-		for i := maxCookieChunkLength; i < len(value); i += maxCookieChunkLength {
-			end := i + maxCookieChunkLength
-			if end > len(value) {
-				end = len(value)
-			}
-			r.dropCookie(w, req.Host, r.config.CookieRefreshName+"-"+strconv.Itoa(i/maxCookieChunkLength), value[i:end], duration)
-		}
-	}
+	r.dropCookieWithChunks(req, w, r.config.CookieRefreshName, value, duration)
 }
 
-// dropStateParameterCookie drops a state parameter cookie into the response
+// writeStateParameterCookie sets a state parameter cookie into the response
 func (r *oauthProxy) writeStateParameterCookie(req *http.Request, w http.ResponseWriter) string {
 	uuid := uuid.NewV4().String()
 	requestURI := base64.StdEncoding.EncodeToString([]byte(req.URL.RequestURI()))
-	r.dropCookie(w, req.Host, "request_uri", requestURI, 0)
-	r.dropCookie(w, req.Host, "OAuth_Token_Request_State", uuid, 0)
+	r.dropCookie(w, req.Host, requestURICookie, requestURI, 0)
+	r.dropCookie(w, req.Host, requestStateCookie, uuid, 0)
 	return uuid
 }
 

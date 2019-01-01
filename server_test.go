@@ -108,8 +108,8 @@ func TestForwardingProxy(t *testing.T) {
 	cfg := newFakeKeycloakConfig()
 	cfg.EnableForwarding = true
 	cfg.ForwardingDomains = []string{}
-	cfg.ForwardingUsername = "test"
-	cfg.ForwardingPassword = "test"
+	cfg.ForwardingUsername = validUsername
+	cfg.ForwardingPassword = validPassword
 	s := httptest.NewServer(&fakeUpstreamService{})
 	requests := []fakeRequest{
 		{
@@ -537,7 +537,7 @@ func (f *fakeUpstreamService) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		Address: r.RemoteAddr,
 		Headers: r.Header,
 	})
-	w.Write(content)
+	_, _ = w.Write(content)
 }
 
 type fakeToken struct {
