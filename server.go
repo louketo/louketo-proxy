@@ -373,6 +373,13 @@ func (r *oauthProxy) Run() error {
 		useFileTLS:          r.config.TLSPrivateKey != "" && r.config.TLSCertificate != "",
 		useLetsEncryptTLS:   r.config.UseLetsEncrypt,
 		useSelfSignedTLS:    r.config.EnabledSelfSignedTLS,
+		tlsAdvancedConfig: &tlsAdvancedConfig{
+			tlsMinVersion:               r.config.TLSMinVersion,
+			tlsCurvePreferences:         r.config.TLSCurvePreferences,
+			tlsCipherSuites:             r.config.TLSCipherSuites,
+			tlsUseModernSettings:        r.config.TLSUseModernSettings,
+			tlsPreferServerCipherSuites: r.config.TLSPreferServerCipherSuites,
+		},
 	})
 
 	if err != nil {
@@ -439,6 +446,9 @@ type listenerConfig struct {
 	useFileTLS          bool     // indicates we are using certificates from files
 	useLetsEncryptTLS   bool     // indicates we are using letsencrypt
 	useSelfSignedTLS    bool     // indicates we are using the self-signed tls
+
+	// advanced TLS settings
+	*tlsAdvancedConfig
 }
 
 // ErrHostNotConfigured indicates the hostname was not configured
@@ -536,31 +546,20 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 			getCertificate = rotate.GetCertificate
 		}
 
+		ts, err := parseTLS(config.tlsAdvancedConfig)
+		if err != nil {
+			return nil, err
+		}
+
 		tlsConfig := &tls.Config{
 			GetCertificate: getCertificate,
 			// Causes servers to use Go's default ciphersuite preferences,
 			// which are tuned to avoid attacks. Does nothing on clients.
-			PreferServerCipherSuites: true,
-			// Only use curves which have assembly implementations
-			// https://github.com/golang/go/tree/master/src/crypto/elliptic
-			CurvePreferences: []tls.CurveID{
-				tls.CurveP256,
-				tls.X25519,
-			},
-			NextProtos: []string{"http/1.1", "h2"},
-			// https://www.owasp.org/index.php/Transport_Layer_Protection_Cheat_Sheet#Rule_-_Only_Support_Strong_Protocols
-			MinVersion: tls.VersionTLS12,
-			// Use modern tls mode https://wiki.mozilla.org/Security/Server_Side_TLS#Modern_compatibility
-			// See security linter code: https://github.com/securego/gosec/blob/master/rules/tls_config.go#L11
-			// These ciphersuites support Forward Secrecy: https://en.wikipedia.org/wiki/Forward_secrecy
-			CipherSuites: []uint16{
-				tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
-				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-				tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
-				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-			},
+			PreferServerCipherSuites: ts.tlsPreferServerCipherSuites,
+			CurvePreferences:         ts.tlsCurvePreferences,
+			NextProtos:               []string{"http/1.1", "h2"},
+			MinVersion:               ts.tlsMinVersion,
+			CipherSuites:             ts.tlsCipherSuites,
 		}
 
 		// @check if we are doing mutual tls
