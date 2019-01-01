@@ -265,17 +265,27 @@ type Config struct {
 	AddClaims []string `json:"add-claims" yaml:"add-claims" usage:"extra claims from the token and inject into headers, e.g given_name -> X-Auth-Given-Name"`
 
 	// TLSCertificate is the location for a tls certificate
-	TLSCertificate string `json:"tls-cert" yaml:"tls-cert" usage:"path to ths TLS certificate"`
+	TLSCertificate string `json:"tls-cert" yaml:"tls-cert" usage:"path to ths TLS certificate" env:"TLS_CERTIFICATE"`
 	// TLSPrivateKey is the location of a tls private key
-	TLSPrivateKey string `json:"tls-private-key" yaml:"tls-private-key" usage:"path to the private key for TLS"`
+	TLSPrivateKey string `json:"tls-private-key" yaml:"tls-private-key" usage:"path to the private key for TLS" env:"TLS_PRIVATE_KEY"`
 	// TLSCaCertificate is the CA certificate which the client cert must be signed
-	TLSCaCertificate string `json:"tls-ca-certificate" yaml:"tls-ca-certificate" usage:"path to the ca certificate used for signing requests"`
+	TLSCaCertificate string `json:"tls-ca-certificate" yaml:"tls-ca-certificate" usage:"path to the ca certificate used for signing requests" env:"TLS_CA_CERTIFICATE"`
 	// TLSCaPrivateKey is the CA private key used for signing
-	TLSCaPrivateKey string `json:"tls-ca-key" yaml:"tls-ca-key" usage:"path the ca private key, used by the forward signing proxy"`
+	TLSCaPrivateKey string `json:"tls-ca-key" yaml:"tls-ca-key" usage:"path the ca private key, used by the forward signing proxy" env:"TLS_CA_PRIVATE_KEY"`
 	// TLSClientCertificate is path to a client certificate to use for outbound connections
-	TLSClientCertificate string `json:"tls-client-certificate" yaml:"tls-client-certificate" usage:"path to the client certificate for outbound connections in reverse and forwarding proxy modes"`
+	TLSClientCertificate string `json:"tls-client-certificate" yaml:"tls-client-certificate" usage:"path to the client certificate for outbound connections in reverse and forwarding proxy modes" env:"TLS_CLIENT_CERTIFICATE"`
+	// TLSUseModernSettings sets all TLS options for proxy listener to modern settings (TLS 1.2, advanced cipher suites, ...)
+	TLSUseModernSettings bool `json:"tls-use-modern-settings" yaml:"tls-use-modern-settings" usage:"sets all TLS options for proxy listener to modern settings (TLS 1.2, advanced cipher suites, ...)" env:"TLS_USE_MODERN_SETTINGS"`
+	// TLSMinVersion is the minimum TLS protocol version accepted by proxy listener. TLS 1.0 is the default.
+	TLSMinVersion string `json:"tls-min-version" yaml:"tls-min-version" usage:"the minimum TLS protocol version accepted by proxy listener. Accepted values are: SSL3.0, TLS1.0, TLS1.1, TLS1.2. TLS1.0 is the default" env:"TLS_MIN_VERSION"`
+	// TLSCipherSuites is the list of cipher suites accepted by server during TLS negotiation. Defaults to golang TLS supported suites.
+	TLSCipherSuites []string `json:"tls-cipher-suites" yaml:"tls-cipher-suites" usage:"the list of cipher suites accepted by server during TLS negotiation. Defaults to golang TLS supported suites" env:"TLS_CIPHER_SUITES"`
+	// TLSPreferServerCipherSuites indicates the TLS negotiation prefers server cipher suites
+	TLSPreferServerCipherSuites bool `json:"tls-prefer-server-cipher-suites" yaml:"tls-prefer-server-cipher-suites" usage:"indicates the TLS negotiation prefers server cipher suites" env:"TLS_PREFER_SERVER_CIPHER_SUITES"`
+	// TLSCurvePreferences indicate the server preferred cipher curves
+	TLSCurvePreferences []string `json:"tls-curve-preferences" yaml:"tls-curve-preferences" usage:"the server preferred cipher curves" env:"TLS_CURVE_PREFERENCES"`
 	// SkipUpstreamTLSVerify skips the verification of any upstream tls
-	SkipUpstreamTLSVerify bool `json:"skip-upstream-tls-verify" yaml:"skip-upstream-tls-verify" usage:"skip the verification of any upstream TLS"`
+	SkipUpstreamTLSVerify bool `json:"skip-upstream-tls-verify" yaml:"skip-upstream-tls-verify" usage:"skip the verification of any upstream TLS" env:"SKIP_UPSTREAM_TLS_VERIFY"`
 
 	// CorsOrigins is a list of origins permitted
 	CorsOrigins []string `json:"cors-origins" yaml:"cors-origins" usage:"origins to add to the CORE origins control (Access-Control-Allow-Origin)"`

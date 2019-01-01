@@ -16,7 +16,10 @@ limitations under the License.
 package main
 
 import (
+	"crypto/tls"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewDefaultConfig(t *testing.T) {
@@ -193,5 +196,49 @@ func TestIsConfig(t *testing.T) {
 		if err := c.Config.isValid(); err != nil && c.Ok {
 			t.Errorf("test case %d, the config should not have errored, error: %s", i, err)
 		}
+	}
+}
+
+func TestParseTLS(t *testing.T) {
+	tlsConfigFixture := tlsAdvancedConfig{
+		tlsPreferServerCipherSuites: true,
+		tlsMinVersion:               "TLS1.1",
+		tlsCipherSuites:             []string{"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256", "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256"},
+		tlsCurvePreferences:         []string{"P384"},
+	}
+	res, err := parseTLS(&tlsConfigFixture)
+	assert.NoError(t, err)
+	if assert.NotNil(t, res) {
+		assert.Equal(t, &tlsSettings{
+			tlsPreferServerCipherSuites: true,
+			tlsMinVersion:               tls.VersionTLS11,
+			tlsCipherSuites:             []uint16{tls.TLS_FALLBACK_SCSV, tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256},
+			tlsCurvePreferences:         []tls.CurveID{tls.CurveP384},
+		}, res)
+	}
+
+	tlsConfigFixture = tlsAdvancedConfig{
+		tlsUseModernSettings: true,
+	}
+	res, err = parseTLS(&tlsConfigFixture)
+	assert.NoError(t, err)
+	if assert.NotNil(t, res) {
+		assert.Equal(t, &tlsSettings{
+			tlsPreferServerCipherSuites: true,
+			tlsMinVersion:               tls.VersionTLS12,
+			tlsCipherSuites: []uint16{
+				tls.TLS_FALLBACK_SCSV,
+				tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+				tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
+				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			},
+			tlsCurvePreferences: []tls.CurveID{
+				tls.CurveP256,
+				tls.X25519,
+			},
+		}, res)
 	}
 }
