@@ -313,6 +313,8 @@ func parseTLS(config *tlsAdvancedConfig) (*tlsSettings, error) {
 		parsed.tlsCipherSuites = make([]uint16, 0, len(config.tlsCurvePreferences))
 		for _, cipher := range config.tlsCipherSuites {
 			switch cipher {
+			case "TLS_FALLBACK_SCSV":
+				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_FALLBACK_SCSV)
 			case "TLS_RSA_WITH_RC4_128_SHA":
 				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_RSA_WITH_RC4_128_SHA)
 			case "TLS_RSA_WITH_3DES_EDE_CBC_SHA":
