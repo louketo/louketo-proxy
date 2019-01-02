@@ -557,7 +557,7 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 			// which are tuned to avoid attacks. Does nothing on clients.
 			PreferServerCipherSuites: ts.tlsPreferServerCipherSuites,
 			CurvePreferences:         ts.tlsCurvePreferences,
-			NextProtos:               []string{"http/1.1", "h2"},
+			NextProtos:               []string{"h2", "http/1.1"},
 			MinVersion:               ts.tlsMinVersion,
 			CipherSuites:             ts.tlsCipherSuites,
 		}
