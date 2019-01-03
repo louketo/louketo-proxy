@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/keycloak/keycloak-gatekeeper.svg?branch=master)](https://travis-ci.org/keycloak/keycloak-gatekeeper)
 [![GoDoc](http://godoc.org/github.com/keycloak/keycloak-gatekeeper?status.png)](http://godoc.org/github.com/keycloak/keycloak-gatekeeper)
-[![GitHub version](https://badge.fury.io/gh/gambol99%2Fkeycloak-gatekeeper.svg)](https://badge.fury.io/gh/gambol99%2Fkeycloak-gatekeeper)
+[![GitHub version](https://badge.fury.io/gh/keycloak%2Fkeycloak-gatekeeper.svg)](https://badge.fury.io/gh/keycloak%2Fkeycloak-gatekeeper)
 [![Go Report Card](https://goreportcard.com/badge/github.com/keycloak/keycloak-gatekeeper)](https://goreportcard.com/report/github.com/keycloak/keycloak-gatekeeper)
 [![Coverage Status](https://coveralls.io/repos/github/keycloak/keycloak-gatekeeper/badge.svg?branch=master)](https://coveralls.io/github/keycloak/keycloak-gatekeeper?branch=master)
 
