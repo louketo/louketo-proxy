@@ -16,6 +16,7 @@ limitations under the License.
 package main
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net/url"
@@ -35,8 +36,8 @@ func newDefaultConfig() *Config {
 
 	return &Config{
 		AccessTokenDuration:           time.Duration(720) * time.Hour,
-		CookieAccessName:              "kc-access",
-		CookieRefreshName:             "kc-state",
+		CookieAccessName:              accessCookie,
+		CookieRefreshName:             refreshCookie,
 		EnableAuthorizationCookies:    true,
 		EnableAuthorizationHeader:     true,
 		EnableDefaultDeny:             true,
@@ -61,7 +62,7 @@ func newDefaultConfig() *Config {
 		ServerWriteTimeout:            10 * time.Second,
 		SkipOpenIDProviderTLSVerify:   false,
 		SkipUpstreamTLSVerify:         true,
-		Tags:                          make(map[string]string, 0),
+		Tags:                          make(map[string]string),
 		UpstreamExpectContinueTimeout: 10 * time.Second,
 		UpstreamKeepaliveTimeout:      10 * time.Second,
 		UpstreamKeepalives:            true,
@@ -237,4 +238,144 @@ func (r *Config) hasCustomSignInPage() bool {
 // hasForbiddenPage checks if there is a custom forbidden page
 func (r *Config) hasCustomForbiddenPage() bool {
 	return r.ForbiddenPage != ""
+}
+
+// tlsAdvancedConfig holds advanced parameters to control TLS negotiation
+type tlsAdvancedConfig struct {
+	tlsUseModernSettings        bool
+	tlsPreferServerCipherSuites bool
+	tlsMinVersion               string
+	tlsCipherSuites             []string
+	tlsCurvePreferences         []string
+}
+
+// tlsSettings holds advanced TLS parameters, parsed from config
+type tlsSettings struct {
+	tlsPreferServerCipherSuites bool
+	tlsMinVersion               uint16
+	tlsCipherSuites             []uint16
+	tlsCurvePreferences         []tls.CurveID
+}
+
+func parseTLS(config *tlsAdvancedConfig) (*tlsSettings, error) {
+	parsed := &tlsSettings{}
+
+	parsed.tlsPreferServerCipherSuites = config.tlsPreferServerCipherSuites || config.tlsUseModernSettings
+
+	if config.tlsMinVersion != "" {
+		switch config.tlsMinVersion {
+		case "SSL3.0":
+			parsed.tlsMinVersion = tls.VersionSSL30
+		case "TLS1.0":
+			parsed.tlsMinVersion = tls.VersionTLS10
+		case "TLS1.1":
+			parsed.tlsMinVersion = tls.VersionTLS11
+		case "TLS1.2":
+			parsed.tlsMinVersion = tls.VersionTLS12
+		default:
+			return nil, errors.New("invalid TLS version configured. Accepted values are: SSL3.0, TLS1.0, TLS1.1, TLS1.2")
+		}
+	} else if config.tlsUseModernSettings {
+		// standard modern setting
+		// https://www.owasp.org/index.php/Transport_Layer_Protection_Cheat_Sheet#Rule_-_Only_Support_Strong_Protocols
+		parsed.tlsMinVersion = tls.VersionTLS12
+	}
+
+	if config.tlsUseModernSettings || len(config.tlsCurvePreferences) > 0 {
+		if len(config.tlsCurvePreferences) > 0 {
+			parsed.tlsCurvePreferences = make([]tls.CurveID, 0, len(config.tlsCurvePreferences))
+			for _, curveName := range config.tlsCurvePreferences {
+				switch curveName {
+				case "P256":
+					parsed.tlsCurvePreferences = append(parsed.tlsCurvePreferences, tls.CurveP256)
+				case "P384":
+					parsed.tlsCurvePreferences = append(parsed.tlsCurvePreferences, tls.CurveP384)
+				case "P521":
+					parsed.tlsCurvePreferences = append(parsed.tlsCurvePreferences, tls.CurveP521)
+				case "X25519":
+					parsed.tlsCurvePreferences = append(parsed.tlsCurvePreferences, tls.X25519)
+				default:
+					return nil, errors.New("invalid TLS curve configured. Accepted values are: P256, P384, P521, X25519")
+				}
+			}
+		} else if config.tlsUseModernSettings {
+			// standard modern settings
+			// Only use curves which have assembly implementations
+			// https://github.com/golang/go/tree/master/src/crypto/elliptic
+			parsed.tlsCurvePreferences = []tls.CurveID{
+				tls.CurveP256,
+				tls.X25519,
+			}
+		}
+	}
+
+	if config.tlsUseModernSettings || len(config.tlsCipherSuites) > 0 {
+		parsed.tlsCipherSuites = make([]uint16, 0, len(config.tlsCurvePreferences))
+		for _, cipher := range config.tlsCipherSuites {
+			switch cipher {
+			case "TLS_FALLBACK_SCSV":
+				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_FALLBACK_SCSV)
+			case "TLS_RSA_WITH_RC4_128_SHA":
+				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_RSA_WITH_RC4_128_SHA)
+			case "TLS_RSA_WITH_3DES_EDE_CBC_SHA":
+				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_RSA_WITH_3DES_EDE_CBC_SHA)
+			case "TLS_RSA_WITH_AES_128_CBC_SHA":
+				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_RSA_WITH_AES_128_CBC_SHA)
+			case "TLS_RSA_WITH_AES_256_CBC_SHA":
+				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_RSA_WITH_AES_256_CBC_SHA)
+			case "TLS_RSA_WITH_AES_128_CBC_SHA256":
+				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_RSA_WITH_AES_128_CBC_SHA256)
+			case "TLS_RSA_WITH_AES_128_GCM_SHA256":
+				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_RSA_WITH_AES_128_GCM_SHA256)
+			case "TLS_RSA_WITH_AES_256_GCM_SHA384":
+				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_RSA_WITH_AES_256_GCM_SHA384)
+			case "TLS_ECDHE_ECDSA_WITH_RC4_128_SHA":
+				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_ECDHE_ECDSA_WITH_RC4_128_SHA)
+			case "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA":
+				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA)
+			case "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA":
+				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA)
+			case "TLS_ECDHE_RSA_WITH_RC4_128_SHA":
+				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_ECDHE_RSA_WITH_RC4_128_SHA)
+			case "TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA":
+				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA)
+			case "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA":
+				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA)
+			case "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA":
+				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA)
+			case "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256":
+				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256)
+			case "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256":
+				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256)
+			case "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256":
+				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256)
+			case "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256":
+				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256)
+			case "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384":
+				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384)
+			case "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384":
+				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384)
+			case "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305":
+				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305)
+			case "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305":
+				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305)
+			default:
+				return nil, errors.New("invalid TLS cipher suite configured. Accepted values are listed at https://golang.org/pkg/crypto/tls/#pkg-constants")
+			}
+		}
+		if config.tlsUseModernSettings && len(config.tlsCurvePreferences) == 0 {
+			// Use modern tls mode https://wiki.mozilla.org/Security/Server_Side_TLS#Modern_compatibility
+			// See security linter code: https://github.com/securego/gosec/blob/master/rules/tls_config.go#L11
+			// These ciphersuites support Forward Secrecy: https://en.wikipedia.org/wiki/Forward_secrecy
+			parsed.tlsCipherSuites = []uint16{
+				tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+				tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
+				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			}
+		}
+	}
+	return parsed, nil
 }

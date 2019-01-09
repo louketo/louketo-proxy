@@ -47,7 +47,7 @@ func (r *Resource) parse(resource string) (*Resource, error) {
 		case "methods":
 			r.Methods = strings.Split(kp[1], ",")
 			if len(r.Methods) == 1 {
-				if r.Methods[0] == "any" || r.Methods[0] == "ANY" {
+				if strings.EqualFold(r.Methods[0], anyMethod) {
 					r.Methods = allHTTPMethods
 				}
 			}
@@ -91,7 +91,7 @@ func (r *Resource) valid() error {
 	}
 
 	// step: add any of no methods
-	if len(r.Methods) <= 0 {
+	if len(r.Methods) == 0 {
 		r.Methods = allHTTPMethods
 	}
 	// step: check the method is valid
@@ -116,7 +116,7 @@ func (r Resource) String() string {
 	}
 
 	roles := "authentication only"
-	methods := "ANY"
+	methods := anyMethod
 
 	if len(r.Roles) > 0 {
 		roles = strings.Join(r.Roles, ",")

@@ -393,7 +393,7 @@ func (r *oauthProxy) identityHeadersMiddleware(custom []string) func(http.Handle
 				}
 				// are we filtering out the cookies
 				if !r.config.EnableAuthorizationCookies {
-					filterCookies(req, cookieFilter)
+					_ = filterCookies(req, cookieFilter)
 				}
 				// inject any custom claims
 				for claim, header := range customClaims {

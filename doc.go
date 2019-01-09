@@ -33,6 +33,8 @@ var (
 	version  = ""
 )
 
+type contextKey int8
+
 const (
 	prog        = "keycloak-gatekeeper"
 	author      = "Keycloak"
@@ -40,10 +42,8 @@ const (
 	description = "is a proxy using the keycloak service for auth and authorization"
 
 	authorizationHeader = "Authorization"
-	contextScopeName    = "context.scope.name"
 	envPrefix           = "PROXY_"
 	headerUpgrade       = "Upgrade"
-	httpSchema          = "http"
 	versionHeader       = "X-Auth-Proxy-Version"
 
 	authorizationURL = "/authorize"
@@ -62,6 +62,17 @@ const (
 	claimResourceAccess = "resource_access"
 	claimResourceRoles  = "roles"
 	claimGroups         = "groups"
+
+	accessCookie       = "kc-access"
+	refreshCookie      = "kc-state"
+	requestURICookie   = "request_uri"
+	requestStateCookie = "OAuth_Token_Request_State"
+	unsecureScheme     = "http"
+	secureScheme       = "https"
+	anyMethod          = "ANY"
+
+	_ contextKey = iota
+	contextScopeName
 )
 
 const (
@@ -275,6 +286,16 @@ type Config struct {
 	TLSCaPrivateKey string `json:"tls-ca-key" yaml:"tls-ca-key" usage:"path the ca private key, used by the forward signing proxy"`
 	// TLSClientCertificate is path to a client certificate to use for outbound connections
 	TLSClientCertificate string `json:"tls-client-certificate" yaml:"tls-client-certificate" usage:"path to the client certificate for outbound connections in reverse and forwarding proxy modes"`
+	// TLSUseModernSettings sets all TLS options for proxy listener to modern settings (TLS 1.2, advanced cipher suites, ...)
+	TLSUseModernSettings bool `json:"tls-use-modern-settings" yaml:"tls-use-modern-settings" usage:"sets all TLS options for proxy listener to modern settings (TLS 1.2, advanced cipher suites, ...)"`
+	// TLSMinVersion is the minimum TLS protocol version accepted by proxy listener. TLS 1.0 is the default.
+	TLSMinVersion string `json:"tls-min-version" yaml:"tls-min-version" usage:"the minimum TLS protocol version accepted by proxy listener. Accepted values are: SSL3.0, TLS1.0, TLS1.1, TLS1.2. TLS1.0 is the default"`
+	// TLSCipherSuites is the list of cipher suites accepted by server during TLS negotiation. Defaults to golang TLS supported suites.
+	TLSCipherSuites []string `json:"tls-cipher-suites" yaml:"tls-cipher-suites" usage:"the list of cipher suites accepted by server during TLS negotiation. Defaults to golang TLS supported suites"`
+	// TLSPreferServerCipherSuites indicates the TLS negotiation prefers server cipher suites
+	TLSPreferServerCipherSuites bool `json:"tls-prefer-server-cipher-suites" yaml:"tls-prefer-server-cipher-suites" usage:"indicates the TLS negotiation prefers server cipher suites"`
+	// TLSCurvePreferences indicate the server preferred cipher curves
+	TLSCurvePreferences []string `json:"tls-curve-preferences" yaml:"tls-curve-preferences" usage:"the server preferred cipher curves"`
 	// SkipUpstreamTLSVerify skips the verification of any upstream tls
 	SkipUpstreamTLSVerify bool `json:"skip-upstream-tls-verify" yaml:"skip-upstream-tls-verify" usage:"skip the verification of any upstream TLS"`
 

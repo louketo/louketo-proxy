@@ -26,6 +26,8 @@ import (
 	"github.com/urfave/cli"
 )
 
+const durationType = "time.Duration"
+
 // newOauthProxyApp creates a new cli application and runs it
 func newOauthProxyApp() *cli.App {
 	config := newDefaultConfig()
@@ -76,7 +78,7 @@ func newOauthProxyApp() *cli.App {
 		}
 
 		// step: setup the termination signals
-		signalChannel := make(chan os.Signal)
+		signalChannel := make(chan os.Signal, 1)
 		signal.Notify(signalChannel, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 		<-signalChannel
 
@@ -136,7 +138,7 @@ func getCommandLineOptions() []cli.Flag {
 			})
 		case reflect.Int64:
 			switch t.String() {
-			case "time.Duration":
+			case durationType:
 				dv := reflect.ValueOf(defaults).Elem().FieldByName(field.Name).Int()
 				flags = append(flags, cli.DurationFlag{
 					Name:  optName,
@@ -180,7 +182,7 @@ func parseCLIOptions(cx *cli.Context, config *Config) (err error) {
 				reflect.ValueOf(config).Elem().FieldByName(field.Name).Set(reflect.ValueOf(cx.Int(name)))
 			case reflect.Int64:
 				switch field.Type.String() {
-				case "time.Duration":
+				case durationType:
 					reflect.ValueOf(config).Elem().FieldByName(field.Name).SetInt(int64(cx.Duration(name)))
 				default:
 					reflect.ValueOf(config).Elem().FieldByName(field.Name).SetInt(cx.Int64(name))

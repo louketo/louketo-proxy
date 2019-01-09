@@ -46,7 +46,7 @@ type selfSignedCertificate struct {
 
 // newSelfSignedCertificate creates and returns a self signed certificate manager
 func newSelfSignedCertificate(hostnames []string, expiry time.Duration, log *zap.Logger) (*selfSignedCertificate, error) {
-	if len(hostnames) <= 0 {
+	if len(hostnames) == 0 {
 		return nil, errors.New("no hostnames specified")
 	}
 	if expiry < 5*time.Minute {
@@ -94,17 +94,17 @@ func (c *selfSignedCertificate) rotate(ctx context.Context) error {
 
 		for {
 			expires := time.Now().Add(c.expiration).Add(-5 * time.Minute)
-			ticker := expires.Sub(time.Now())
+			ticker := time.Until(expires)
 
 			select {
 			case <-ctx.Done():
 				return
 			case <-time.After(ticker):
 			}
-			c.log.Info("going to sleep until required for rotation", zap.Time("expires", expires), zap.Duration("duration", expires.Sub(time.Now())))
+			c.log.Info("going to sleep until required for rotation", zap.Time("expires", expires), zap.Duration("duration", time.Until(expires)))
 
 			// @step: got to sleep until we need to rotate
-			time.Sleep(expires.Sub(time.Now()))
+			time.Sleep(time.Until(expires))
 
 			// @step: create a new certificate for us
 			cert, _ := createCertificate(c.privateKey, c.hostnames, c.expiration)

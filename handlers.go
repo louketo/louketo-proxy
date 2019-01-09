@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+
 	"net/http"
 	"net/http/pprof"
 	"net/url"
@@ -44,9 +45,9 @@ func (r *oauthProxy) getRedirectionURL(w http.ResponseWriter, req *http.Request)
 	case "":
 		// need to determine the scheme, cx.Request.URL.Scheme doesn't have it, best way is to default
 		// and then check for TLS
-		scheme := "http"
+		scheme := unsecureScheme
 		if req.TLS != nil {
-			scheme = "https"
+			scheme = secureScheme
 		}
 		// @QUESTION: should I use the X-Forwarded-<header>?? ..
 		redirect = fmt.Sprintf("%s://%s",
@@ -56,9 +57,9 @@ func (r *oauthProxy) getRedirectionURL(w http.ResponseWriter, req *http.Request)
 		redirect = r.config.RedirectionURL
 	}
 
-	state, _ := req.Cookie("OAuth_Token_Request_State")
+	state, _ := req.Cookie(requestStateCookie)
 	if state != nil && req.URL.Query().Get("state") != state.Value {
-		r.log.Error("State parameter mismatch")
+		r.log.Error("state parameter mismatch")
 		w.WriteHeader(http.StatusForbidden)
 		return ""
 	}
@@ -95,7 +96,7 @@ func (r *oauthProxy) oauthAuthorizationHandler(w http.ResponseWriter, req *http.
 		model := make(map[string]string)
 		model["redirect"] = authURL
 		w.WriteHeader(http.StatusOK)
-		r.Render(w, path.Base(r.config.SignInPage), mergeMaps(model, r.config.Tags))
+		_ = r.Render(w, path.Base(r.config.SignInPage), mergeMaps(model, r.config.Tags))
 
 		return
 	}
@@ -207,7 +208,7 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 	if req.URL.Query().Get("state") != "" {
 		// if the authorization has set a state, we now check if the calling client
 		// requested a specific landing URL to end the authentication handshake
-		if encodedRequestURI, _ := req.Cookie("request_uri"); encodedRequestURI != nil {
+		if encodedRequestURI, _ := req.Cookie(requestURICookie); encodedRequestURI != nil {
 			decoded, _ := base64.StdEncoding.DecodeString(encodedRequestURI.Value)
 			redirectURI = string(decoded)
 		}
@@ -425,18 +426,19 @@ func (r *oauthProxy) tokenHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(user.token.Payload)
+	_, _ = w.Write(user.token.Payload)
 }
 
 // healthHandler is a health check handler for the service
 func (r *oauthProxy) healthHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set(versionHeader, getVersion())
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK\n"))
+	_, _ = w.Write([]byte("OK\n"))
 }
 
 // debugHandler is responsible for providing the pprof
 func (r *oauthProxy) debugHandler(w http.ResponseWriter, req *http.Request) {
+	const symbolProfile = "symbol"
 	name := chi.URLParam(req, "name")
 	switch req.Method {
 	case http.MethodGet:
@@ -455,14 +457,14 @@ func (r *oauthProxy) debugHandler(w http.ResponseWriter, req *http.Request) {
 			pprof.Profile(w, req)
 		case "trace":
 			pprof.Trace(w, req)
-		case "symbol":
+		case symbolProfile:
 			pprof.Symbol(w, req)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
 	case http.MethodPost:
 		switch name {
-		case "symbol":
+		case symbolProfile:
 			pprof.Symbol(w, req)
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -507,5 +509,5 @@ func (r *oauthProxy) csrfErrorHandler(w http.ResponseWriter, req *http.Request) 
 
 func methodNotAllowHandlder(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusMethodNotAllowed)
-	w.Write(nil)
+	_, _ = w.Write(nil)
 }
