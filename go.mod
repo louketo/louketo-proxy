@@ -14,7 +14,6 @@ require (
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/garyburd/redigo v1.6.0 // indirect
 	github.com/go-chi/chi v0.0.0-20170623174351-18d990c0d1c0
-	github.com/go-resty/resty v0.0.0-20160603021742-39c3db9c7bb4
 	github.com/gorilla/csrf v0.0.0-20181210000252-d1620373958b
 	github.com/jonboulle/clockwork v0.0.0-20151121001658-ed104f61ea48 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
@@ -40,5 +39,6 @@ require (
 	gopkg.in/bsm/ratelimit.v1 v1.0.0-20160220154919-db14e161995a // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/redis.v4 v4.0.0-20160409115837-889409de3831
+	gopkg.in/resty.v1 v1.11.0
 	gopkg.in/yaml.v2 v2.2.1
 )
