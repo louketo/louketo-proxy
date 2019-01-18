@@ -421,13 +421,8 @@ func getTokenTest(t *testing.T, config *Config, cookies []*http.Cookie, expectCS
 	}
 
 	var csrfToken string
-	if assert.Contains(t, resp.Header, config.CSRFHeader) { // we expect a CSRF header back
-		csrfToken = resp.Header.Get(config.CSRFHeader)
-		if !assert.NotEmpty(t, csrfToken) {
-			return "", nil, errors.New("expected a non-empty CSRF token in response header")
-		}
-	} else {
-		return "", nil, errors.New("expected a CSRF token in response header")
+	if !assert.NotContains(t, resp.Header, config.CSRFHeader) { // we don't expect any CSRF header back
+		return "", nil, errors.New("did not expect a CSRF token in response header")
 	}
 
 	csrfCookie := getCookie(resp, config.CSRFCookieName)
@@ -713,7 +708,9 @@ func TestCSRF(t *testing.T) {
 	}
 	t.Logf("CSRF test on POST upstream scenario 7 passed")
 
-	// Scenario 8: admin endpoints (e.g. /oauth/token) may yield a CSRF token in header
+	// Scenario 8: admin endpoints yield a CSRF token in header
+	// only if the Deny middleware did the job. Endpoints such as /auth/token don't deliver
+	// CSRF header back.
 	// (use-case: init CSRF state before calling APIs, when first call is a POST/PUT/DELETE...)
 	_, _, err = getTokenTest(t, config, newCookies, false)
 	if !assert.NoError(t, err) {

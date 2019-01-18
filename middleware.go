@@ -488,12 +488,20 @@ func (r *oauthProxy) csrfSkipResourceMiddleware(resource *Resource) func(http.Ha
 		r.log.Info("CSRF check enabled for resource", zap.String("resource", resource.URL))
 		return func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-				// request credentials come as a bearer token: skip CSRF check
 				scope := req.Context().Value(contextScopeName).(*RequestScope)
+
+				// not authenticated, CSRF is irrelevant here
+				if scope == nil || scope.AccessDenied || scope.Identity == nil {
+					next.ServeHTTP(w, req)
+					return
+				}
+
+				// request credentials come as a bearer token: skip CSRF check
 				if scope.Identity.isBearer() {
 					next.ServeHTTP(w, gcsrf.UnsafeSkipCheck(req))
 					return
 				}
+
 				next.ServeHTTP(w, req)
 			})
 		}
@@ -510,18 +518,17 @@ func (r *oauthProxy) csrfHeaderMiddleware() func(next http.Handler) http.Handler
 
 				// skip unauthenticated requests
 				scope := req.Context().Value(contextScopeName).(*RequestScope)
-				if scope.Identity != nil {
-					// identity has been retrieved by previous middleware and AccessDenied is relevant
-					if scope.AccessDenied {
-						next.ServeHTTP(w, req)
-						return
-					}
 
-					//skip requests with credentials in header
-					if scope.Identity.isBearer() {
-						next.ServeHTTP(w, req)
-						return
-					}
+				if scope == nil || scope.AccessDenied || scope.Identity == nil {
+					// not authenticated, CSRF is irrelevant here
+					next.ServeHTTP(w, req)
+					return
+				}
+
+				//skip requests with credentials in header
+				if scope.Identity.isBearer() {
+					next.ServeHTTP(w, req)
+					return
 				}
 
 				// skip redirected responses
@@ -538,6 +545,7 @@ func (r *oauthProxy) csrfHeaderMiddleware() func(next http.Handler) http.Handler
 
 				// add CSRF header to all responses
 				w.Header().Add(r.config.CSRFHeader, csrfToken)
+
 				next.ServeHTTP(w, req)
 			})
 		}
