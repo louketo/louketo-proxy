@@ -84,6 +84,7 @@ func (r *oauthProxy) accessForbidden(w http.ResponseWriter, req *http.Request) c
 
 // redirectToURL redirects the user and aborts the context
 func (r *oauthProxy) redirectToURL(url string, w http.ResponseWriter, req *http.Request, statusCode int) context.Context {
+	w.Header().Add("Cache-Control", "nocache, no-store, must-revalidate, max-age=0")
 	http.Redirect(w, req, url, statusCode)
 
 	return r.revokeProxy(w, req)
