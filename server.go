@@ -42,6 +42,7 @@ import (
 	"github.com/pressly/chi"
 	"github.com/pressly/chi/middleware"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
 	"go.uber.org/zap"
 )
@@ -84,7 +85,7 @@ func newProxy(config *Config) (*oauthProxy, error) {
 	svc := &oauthProxy{
 		config:         config,
 		log:            log,
-		metricsHandler: prometheus.Handler(),
+		metricsHandler: promhttp.Handler(),
 	}
 
 	// parse the upstream endpoint
