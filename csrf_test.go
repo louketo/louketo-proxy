@@ -66,7 +66,7 @@ func runTestApp(t *testing.T) error {
 
 func checkUpstreamCookies(t *testing.T, req *http.Request) {
 	// verify that the request received by upstream server is not polluted by proxy cookies
-	checkedCookies := []string{accessCookie, refreshCookie, "kc-csrf" /*requestURICookie,*/, requestStateCookie}
+	checkedCookies := []string{accessCookie, refreshCookie, "kc-csrf", requestURICookie, requestStateCookie}
 	for _, kc := range checkedCookies {
 		k, err := req.Cookie(kc)
 		if err == nil {
