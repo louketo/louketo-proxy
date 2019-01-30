@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"fmt"
+	"go.uber.org/zap"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -572,6 +573,23 @@ redirection_url: http://127.0.0.1:3000
 		}
 		os.Remove(file.Name())
 	}
+}
+
+func TestConfigureUpstreamTls(t *testing.T) {
+	tlsConfig := &tls.Config{}
+	r := &oauthProxy{
+		config: &Config{
+			UpstreamCA:         "tests/ca.pem",
+			UpstreamClientCert: "tests/client.pem",
+			UpstreamClientKey:  "tests/client.key",
+		},
+		log: zap.NewNop(),
+	}
+	err := configureUpstreamTls(r, tlsConfig)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, tlsConfig.RootCAs)
+	assert.NotNil(t, tlsConfig.Certificates)
 }
 
 func getFakeURL(location string) *url.URL {

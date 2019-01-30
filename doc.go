@@ -171,7 +171,11 @@ type Config struct {
 	// Upstream is the upstream endpoint i.e whom were proxying to
 	Upstream string `json:"upstream-url" yaml:"upstream-url" usage:"url for the upstream endpoint you wish to proxy" env:"UPSTREAM_URL"`
 	// UpstreamCA is the path to a CA certificate in PEM format to validate the upstream certificate
-	UpstreamCA string `json:"upstream-ca" yaml:"upstream-ca" usage:"the path to a file container a CA certificate to validate the upstream tls endpoint"`
+	UpstreamCA string `json:"upstream-ca" yaml:"upstream-ca" usage:"the path to a file containing a CA certificate to validate the upstream tls endpoint"`
+	// UpstreamClientCert path to a client cert
+	UpstreamClientCert string `json:"upstream-client-cert" yaml:"upstream-client-cert" usage:"the path to a file containing the x509 client certificate to authenticate against the upstream endpoint"`
+	// UpstreamClientKey path to a client key
+	UpstreamClientKey string `json:"upstream-client-key" yaml:"upstream-client-key" usage:"the path to a file containing the x509 client certificate key to authenticate against the upstream endpoint"`
 	// Resources is a list of protected resources
 	Resources []*Resource `json:"resources" yaml:"resources" usage:"list of resources 'uri=/admin*|methods=GET,PUT|roles=role1,role2'"`
 	// Headers permits adding customs headers across the board

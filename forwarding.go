@@ -61,7 +61,7 @@ func (r *oauthProxy) proxyMiddleware(next http.Handler) http.Handler {
 
 		if isUpgradedConnection(req) {
 			r.log.Debug("upgrading the connnection", zap.String("client_ip", req.RemoteAddr))
-			if err := tryUpdateConnection(req, w, r.endpoint); err != nil {
+			if err := tryUpdateConnection(req, w, r); err != nil {
 				r.log.Error("failed to upgrade connection", zap.Error(err))
 				w.WriteHeader(http.StatusInternalServerError)
 				return

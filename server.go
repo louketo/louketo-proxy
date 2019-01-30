@@ -36,7 +36,7 @@ import (
 
 	httplog "log"
 
-	proxyproto "github.com/armon/go-proxyproto"
+	"github.com/armon/go-proxyproto"
 	"github.com/coreos/go-oidc/oidc"
 	"github.com/elazarl/goproxy"
 	"github.com/pressly/chi"
@@ -587,18 +587,9 @@ func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) error {
 		tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
 	}
 
-	{
-		// @check if we have a upstream ca to verify the upstream
-		if r.config.UpstreamCA != "" {
-			r.log.Info("loading the upstream ca", zap.String("path", r.config.UpstreamCA))
-			ca, err := ioutil.ReadFile(r.config.UpstreamCA)
-			if err != nil {
-				return err
-			}
-			pool := x509.NewCertPool()
-			pool.AppendCertsFromPEM(ca)
-			tlsConfig.RootCAs = pool
-		}
+	err := configureUpstreamTls(r, tlsConfig)
+	if err != nil {
+		return err
 	}
 
 	// create the forwarding proxy

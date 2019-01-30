@@ -29,6 +29,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"go.uber.org/zap"
 	"io"
 	"io/ioutil"
 	"math/big"
@@ -300,16 +301,47 @@ func containsSubString(value string, list []string) bool {
 }
 
 // tryDialEndpoint dials the upstream endpoint via plain
-func tryDialEndpoint(location *url.URL) (net.Conn, error) {
-	switch dialAddress := dialAddress(location); location.Scheme {
+func tryDialEndpoint(r *oauthProxy) (net.Conn, error) {
+	switch dialAddress := dialAddress(r.endpoint); r.endpoint.Scheme {
 	case httpSchema:
 		return net.Dial("tcp", dialAddress)
 	default:
-		return tls.Dial("tcp", dialAddress, &tls.Config{
+		tlsConfig := &tls.Config{
 			Rand:               rand.Reader,
 			InsecureSkipVerify: true,
-		})
+		}
+		err := configureUpstreamTls(r, tlsConfig)
+		if err != nil {
+			return nil, err
+		}
+
+		return tls.Dial("tcp", dialAddress, tlsConfig)
 	}
+}
+
+func configureUpstreamTls(r *oauthProxy, tlsConfig *tls.Config) error {
+	// @check if we have a upstream ca to verify the upstream
+	if r.config.UpstreamCA != "" {
+		r.log.Info("loading the upstream ca", zap.String("path", r.config.UpstreamCA))
+		ca, err := ioutil.ReadFile(r.config.UpstreamCA)
+		if err != nil {
+			return err
+		}
+		pool := x509.NewCertPool()
+		pool.AppendCertsFromPEM(ca)
+		tlsConfig.RootCAs = pool
+	}
+
+	if r.config.UpstreamClientCert != "" && r.config.UpstreamClientKey != "" {
+		r.log.Info("loading the client cert", zap.String("path", r.config.UpstreamClientCert))
+		cert, err := tls.LoadX509KeyPair(r.config.UpstreamClientCert, r.config.UpstreamClientKey)
+		if err != nil {
+			return err
+		}
+		tlsConfig.Certificates = []tls.Certificate{cert}
+	}
+
+	return nil
 }
 
 // isUpgradedConnection checks to see if the request is requesting
@@ -324,9 +356,9 @@ func transferBytes(src io.Reader, dest io.Writer, wg *sync.WaitGroup) (int64, er
 }
 
 // tryUpdateConnection attempt to upgrade the connection to a http pdy stream
-func tryUpdateConnection(req *http.Request, writer http.ResponseWriter, endpoint *url.URL) error {
+func tryUpdateConnection(req *http.Request, writer http.ResponseWriter, r *oauthProxy) error {
 	// step: dial the endpoint
-	server, err := tryDialEndpoint(endpoint)
+	server, err := tryDialEndpoint(r)
 	if err != nil {
 		return err
 	}
