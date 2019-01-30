@@ -1,0 +1,14 @@
+version: 2.0
+jobs:
+  build:
+    working_directory: /go/src/github.com/oneconcern/keycloak-gatekeeper
+    docker:
+      # This is a debian strech image (todo: use alpine builder)
+      - image: circleci/golang:latest
+    steps:
+      - checkout
+      - run:
+          name: Run unit tests
+          # NOTE: atm, we have a checksum reproducibility issue here with (obsolete) prometheus client
+          command: rm -f go.sum && GO111MODULE=on go test -v -covermode=atomic -coverprofile=cover.out
+          no_output_timeout: 30m
