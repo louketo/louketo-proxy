@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strings"
 	"testing"
 	"time"
 
@@ -81,12 +82,23 @@ func checkNoCSRFHeader(t *testing.T, req *http.Request) {
 	assert.Empty(t, req.Header.Get("X-CSRF-Token"))
 }
 
+func checkNoAuthHeader(t *testing.T, req *http.Request) {
+	authHeaders := make([]string, 0, len(req.Header))
+	for hdr := range req.Header {
+		if strings.HasPrefix(hdr, "X-Auth") {
+			authHeaders = append(authHeaders, hdr)
+		}
+	}
+	assert.Empty(t, authHeaders)
+}
+
 func runCsrfTestUpstream(t *testing.T) error {
 	// a stub upstream API server
 	go func() {
 		getUpstream := func(w http.ResponseWriter, req *http.Request) {
 			checkUpstreamCookies(t, req)
 			checkNoCSRFHeader(t, req)
+			checkNoAuthHeader(t, req)
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("X-Upstream-Response-Header", "test")
 			_, _ = io.WriteString(w, `{"message": "test"}`)
@@ -566,6 +578,9 @@ func TestCSRF(t *testing.T) {
 	config.EnableEncryptedToken = false
 	config.EnableSessionCookies = true
 	config.EnableAuthorizationCookies = false
+	config.EnableClaimsHeaders = false
+	config.EnableTokenHeader = false
+	config.EnableAuthorizationHeader = true
 	config.ClientID = fakeClientID
 	config.ClientSecret = fakeSecret
 	config.Resources = []*Resource{

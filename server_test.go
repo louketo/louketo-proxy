@@ -449,6 +449,7 @@ func newFakeKeycloakConfig() *Config {
 		DiscoveryURL:               "127.0.0.1:0",
 		EnableAuthorizationCookies: true,
 		EnableAuthorizationHeader:  true,
+		EnableClaimsHeaders:        true,
 		EnableLogging:              false,
 		EnableLoginHandler:         true,
 		EnableTokenHeader:          true,

@@ -224,19 +224,21 @@ type Config struct {
 	// EnableRefreshTokens indicate's you wish to ignore using refresh tokens and re-auth on expiration of access token
 	EnableRefreshTokens bool `json:"enable-refresh-tokens" yaml:"enable-refresh-tokens" usage:"enables the handling of the refresh tokens" env:"ENABLE_REFRESH_TOKEN"`
 	// EnableSessionCookies indicates the cookies, both token and refresh should not be persisted
-	EnableSessionCookies bool `json:"enable-session-cookies" yaml:"enable-session-cookies" usage:"access and refresh tokens are session only i.e. removed browser close"`
+	EnableSessionCookies bool `json:"enable-session-cookies" yaml:"enable-session-cookies" usage:"access and refresh tokens are session only i.e. removed browser close" env:"ENABLE_SESSION_COOKIES"`
 	// EnableCSRF will generate a new session object (e.g.a cookie, or in a supported backend storage) to store a CSRF token.
 	// To enable CSRF on upstream endpoints, an additional EnableCSRF is needed in the Resource config section.
-	EnableCSRF bool `json:"enable-csrf" yaml:"enable-csrf" usage:"when enabled, this automatically adds a CSRF token to all responses. Matching token expected for next request is stored in the session (e.g. cookie or storage)"`
+	EnableCSRF bool `json:"enable-csrf" yaml:"enable-csrf" usage:"when enabled, this automatically adds a CSRF token to all responses. Matching token expected for next request is stored in the session (e.g. cookie or storage)" env:"ENABLE_CSRF"`
 	// CSRFCookieName sets the name of the CSRF (encrypted) cookie, when session storage is a cookie (defaults to kc-csrf).
 	// Note that in this case EncryptionKey is required to encrypt the cookie.
-	CSRFCookieName string `json:"csrf-cookie-name" yaml:"csrf-cookie-name" usage:"the name of CSRF cookie. Defaults to: kc-csrf"`
+	CSRFCookieName string `json:"csrf-cookie-name" yaml:"csrf-cookie-name" usage:"the name of CSRF cookie. Defaults to: kc-csrf" env:"CSRF_COOKIE_NAME"`
 	// CSRFHeader sets the header used in requests and response for the CSRF challenge (defaults to X-CSRF-Token)
-	CSRFHeader string `json:"csrf-header" yaml:"csrf-header" usage:"the header added to responses by gatekeeper and to be added by requests to check against replayed credentials (CSRF). Defaults to: X-CSRF-Token"`
+	CSRFHeader string `json:"csrf-header" yaml:"csrf-header" usage:"the header added to responses by gatekeeper and to be added by requests to check against replayed credentials (CSRF). Defaults to: X-CSRF-Token" env:"CSRF_HEADER"`
 	// EnableLoginHandler indicates we want the login handler enabled
 	EnableLoginHandler bool `json:"enable-login-handler" yaml:"enable-login-handler" usage:"enables the handling of the refresh tokens" env:"ENABLE_LOGIN_HANDLER"`
 	// EnableTokenHeader adds the JWT token to the upstream authentication headers
-	EnableTokenHeader bool `json:"enable-token-header" yaml:"enable-token-header" usage:"enables the token authentication header X-Auth-Token to upstream"`
+	EnableTokenHeader bool `json:"enable-token-header" yaml:"enable-token-header" usage:"enables the token authentication header X-Auth-Token to upstream" env:"ENABLE_TOKEN_HEADER"`
+	// EnableClaimsHeaders adds decoded claims as headers X-Auth-{claim} to the upstream endpoint
+	EnableClaimsHeaders bool `json:"enable-claims-headers" yaml:"enable-claims-headers" usage:"adds decoded claims as headers X-Auth-{claim} to the upstream endpoint. Defaults to true" env:"ENABLE_CLAIMS_HEADERS"`
 	// EnableAuthorizationHeader indicates we should pass the authorization header to the upstream endpoint
 	EnableAuthorizationHeader bool `json:"enable-authorization-header" yaml:"enable-authorization-header" usage:"adds the authorization header to the proxy request" env:"ENABLE_AUTHORIZATION_HEADER"`
 	// EnableAuthorizationCookies indicates we should pass the authorization cookies to the upstream endpoint

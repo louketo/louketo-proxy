@@ -363,8 +363,10 @@ func (r *oauthProxy) responseHeaderMiddleware(headers map[string]string) func(ht
 // identityHeadersMiddleware is responsible for add the authentication headers for the upstream
 func (r *oauthProxy) identityHeadersMiddleware(custom []string) func(http.Handler) http.Handler {
 	customClaims := make(map[string]string)
-	for _, x := range custom {
-		customClaims[x] = fmt.Sprintf("X-Auth-%s", toHeader(x))
+	if r.config.EnableClaimsHeaders {
+		for _, x := range custom {
+			customClaims[x] = fmt.Sprintf("X-Auth-%s", toHeader(x))
+		}
 	}
 
 	cookieFilter := []string{r.config.CookieAccessName, r.config.CookieRefreshName}
@@ -374,14 +376,16 @@ func (r *oauthProxy) identityHeadersMiddleware(custom []string) func(http.Handle
 			scope := req.Context().Value(contextScopeName).(*RequestScope)
 			if scope.Identity != nil {
 				user := scope.Identity
-				req.Header.Set("X-Auth-Audience", strings.Join(user.audiences, ","))
-				req.Header.Set("X-Auth-Email", user.email)
-				req.Header.Set("X-Auth-ExpiresIn", user.expiresAt.String())
-				req.Header.Set("X-Auth-Groups", strings.Join(user.groups, ","))
-				req.Header.Set("X-Auth-Roles", strings.Join(user.roles, ","))
-				req.Header.Set("X-Auth-Subject", user.id)
-				req.Header.Set("X-Auth-Userid", user.name)
-				req.Header.Set("X-Auth-Username", user.name)
+				if r.config.EnableClaimsHeaders {
+					req.Header.Set("X-Auth-Audience", strings.Join(user.audiences, ","))
+					req.Header.Set("X-Auth-Email", user.email)
+					req.Header.Set("X-Auth-ExpiresIn", user.expiresAt.String())
+					req.Header.Set("X-Auth-Groups", strings.Join(user.groups, ","))
+					req.Header.Set("X-Auth-Roles", strings.Join(user.roles, ","))
+					req.Header.Set("X-Auth-Subject", user.id)
+					req.Header.Set("X-Auth-Userid", user.name)
+					req.Header.Set("X-Auth-Username", user.name)
+				}
 
 				// should we add the token header?
 				if r.config.EnableTokenHeader {
