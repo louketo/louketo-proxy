@@ -52,6 +52,9 @@ func (r *oauthProxy) proxyMiddleware(next http.Handler) http.Handler {
 		// @note: by default goproxy only provides a forwarding proxy, thus all requests have to be absolute and we must update the host headers
 		req.URL.Host = r.endpoint.Host
 		req.URL.Scheme = r.endpoint.Scheme
+		if r.endpoint.Path != "" {
+			req.URL.Path = r.endpoint.Path + req.URL.Path
+		}
 		if v := req.Header.Get("Host"); v != "" {
 			req.Host = v
 			req.Header.Del("Host")
