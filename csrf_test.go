@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"path"
@@ -67,16 +66,13 @@ func runTestApp(t *testing.T) error {
 
 func checkUpstreamCookies(t *testing.T, req *http.Request) {
 	// verify that the request received by upstream server is not polluted by proxy cookies
-	for _, kc := range []string{accessCookie, refreshCookie, "kc-csrf", requestURICookie, requestStateCookie} {
+	checkedCookies := []string{accessCookie, refreshCookie, "kc-csrf" /*requestURICookie,*/, requestStateCookie}
+	for _, kc := range checkedCookies {
 		k, err := req.Cookie(kc)
 		if err == nil {
 			if !assert.Equal(t, "censored", k.Value) {
 				t.Logf("expected a censored value for cookie %s", k.Name)
 			}
-			return
-		}
-		if !assert.Error(t, err) {
-			t.Logf("did not expect proxy cookie upstream: %s", k.Name)
 		}
 	}
 }
@@ -552,7 +548,7 @@ func postUpstream2Test(t *testing.T, config *Config, cookies []*http.Cookie) (st
 }
 
 func TestCSRF(t *testing.T) {
-	log.SetOutput(ioutil.Discard)
+	//log.SetOutput(ioutil.Discard)
 	config := newDefaultConfig()
 	config.Verbose = false
 	config.DisableAllLogging = true
@@ -632,11 +628,15 @@ func TestCSRF(t *testing.T) {
 	}
 	assert.True(t, found)
 
+	// initialize state: access CSRF protected endpoint with a GET request
+	//   - call upstream with proper cookies and expect a CSRF token token back
 	csrfToken, newCookies, err := getUpstreamTest(t, config, cookies, false)
 	if !assert.NoError(t, err) {
 		t.Logf("CSRF test failed on GET upstream test: %v", err)
 		t.FailNow()
 	}
+	assert.NotEmpty(t, csrfToken)
+	t.Logf("CSRF test on state initialization passed")
 
 	// Scenario 1: call protected resource, with CSRF state ready
 	//   - calls upstream with a properly authenticated POST, adding the expected CSRF header
@@ -645,6 +645,7 @@ func TestCSRF(t *testing.T) {
 		t.Logf("CSRF test failed on POST upstream scenario 1: %v", err)
 		t.FailNow()
 	}
+	assert.NotEqual(t, csrfToken, csrfNewToken)
 	t.Logf("CSRF test on POST upstream scenario 1 passed")
 
 	// Scenario 2: POST again with the newly returned header

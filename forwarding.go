@@ -52,6 +52,9 @@ func (r *oauthProxy) proxyMiddleware(next http.Handler) http.Handler {
 		if r.config.EnableCSRF {
 			// remove csrf header
 			req.Header.Del(r.config.CSRFHeader)
+			if !r.config.EnableAuthorizationCookies {
+				filterCookies(req, []string{r.config.CSRFCookieName})
+			}
 		}
 
 		// @note: by default goproxy only provides a forwarding proxy, thus all requests have to be absolute and we must update the host headers
