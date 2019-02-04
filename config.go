@@ -377,6 +377,20 @@ func parseTLS(config *tlsAdvancedConfig) (*tlsSettings, error) {
 				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 			}
 		}
+		// when some cipher preferences are explicitly provided, enforce the presence of TLS_FALLBACK_SCSV
+		// at the top of cipher suites preferences.
+		// When no suites are specified, stick to golang's defaults.
+		if len(parsed.tlsCipherSuites) > 0 {
+			enforcedSCSV := make([]uint16, 1, len(parsed.tlsCipherSuites)+1)
+			enforcedSCSV[0] = tls.TLS_FALLBACK_SCSV
+			for _, cph := range parsed.tlsCipherSuites {
+				if cph == tls.TLS_FALLBACK_SCSV {
+					continue
+				}
+				enforcedSCSV = append(enforcedSCSV, cph)
+			}
+			parsed.tlsCipherSuites = enforcedSCSV
+		}
 	}
 	return parsed, nil
 }
