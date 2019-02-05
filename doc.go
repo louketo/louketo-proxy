@@ -155,10 +155,12 @@ type Resource struct {
 type Config struct {
 	// ConfigFile is the binding interface
 	ConfigFile string `json:"config" yaml:"config" usage:"path the a configuration file" env:"CONFIG_FILE"`
-	// Listen is the binding interface
-	Listen string `json:"listen" yaml:"listen" usage:"the interface the service should be listening on" env:"LISTEN"`
+	// Listen defines the binding interface for main listener, e.g. {address}:{port}. This is required and there is no default value.
+	Listen string `json:"listen" yaml:"listen" usage:"Defines the binding interface for main listener, e.g. {address}:{port}. This is required and there is no default value" env:"LISTEN"`
 	// ListenHTTP is the interface to bind the http only service on
-	ListenHTTP string `json:"listen-http" yaml:"listen-http" usage:"interface we should be listening" env:"LISTEN_HTTP"`
+	ListenHTTP string `json:"listen-http" yaml:"listen-http" usage:"interface we should be listening to for HTTP traffic" env:"LISTEN_HTTP"`
+	// ListenAdmin defines the interface to bind admin-only endpoint (live-status, debug, prometheus...). If not defined, this defaults to the main listener defined by Listen.
+	ListenAdmin string `json:"listen-admin" yaml:"listen-admin" usage:"defines the interface to bind admin-only endpoint (live-status, debug, prometheus...). If not defined, this defaults to the main listener defined by Listen" env:"LISTEN_ADMIN"`
 	// DiscoveryURL is the url for the keycloak server
 	DiscoveryURL string `json:"discovery-url" yaml:"discovery-url" usage:"discovery url to retrieve the openid configuration" env:"DISCOVERY_URL"`
 	// ClientID is the client id
@@ -257,7 +259,7 @@ type Config struct {
 	EnableFrameDeny bool `json:"filter-frame-deny" yaml:"filter-frame-deny" usage:"enable to the frame deny header"`
 	// ContentSecurityPolicy allows the Content-Security-Policy header value to be set with a custom value
 	ContentSecurityPolicy string `json:"content-security-policy" yaml:"content-security-policy" usage:"specify the content security policy"`
-	// LocalhostMetrics indicated the metrics can only be consume via localhost
+	// LocalhostMetrics indicates that metrics can only be consumed from localhost
 	LocalhostMetrics bool `json:"localhost-metrics" yaml:"localhost-metrics" usage:"enforces the metrics page can only been requested from 127.0.0.1"`
 
 	// AccessTokenDuration is default duration applied to the access token cookie
@@ -327,7 +329,7 @@ type Config struct {
 	InvalidAuthRedirectsWith303 bool `json:"invalid-auth-redirects-with-303" yaml:"invalid-auth-redirects-with-303" usage:"use HTTP 303 redirects instead of 307 for invalid auth tokens"`
 	// NoRedirects informs we should hand back a 401 not a redirect
 	NoRedirects bool `json:"no-redirects" yaml:"no-redirects" usage:"do not have back redirects when no authentication is present, 401 them"`
-	// SkipTokenVerification tells the service to skipp verifying the access token - for testing purposes
+	// SkipTokenVerification tells the service to skip verifying the access token - for testing purposes
 	SkipTokenVerification bool `json:"skip-token-verification" yaml:"skip-token-verification" usage:"TESTING ONLY; bypass token verification, only expiration and roles enforced"`
 	// UpstreamKeepalives specifies whether we use keepalives on the upstream
 	UpstreamKeepalives bool `json:"upstream-keepalives" yaml:"upstream-keepalives" usage:"enables or disables the keepalive connections for upstream endpoint"`

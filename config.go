@@ -91,6 +91,9 @@ func (r *Config) isValid() error {
 	if r.Listen == "" {
 		return errors.New("you have not specified the listening interface")
 	}
+	if r.ListenAdmin == r.Listen {
+		r.ListenAdmin = ""
+	}
 	if r.MaxIdleConns <= 0 {
 		return errors.New("max-idle-connections must be a number > 0")
 	}
