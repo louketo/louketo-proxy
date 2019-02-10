@@ -157,6 +157,8 @@ func (r *oauthProxy) createReverseProxy() error {
 	if err := r.createUpstreamProxy(r.endpoint); err != nil {
 		return err
 	}
+	// keep the destination headers to eventually preserve the refreshed access token cookie in the response
+	r.upstream.(*goproxy.ProxyHttpServer).KeepDestinationHeaders = true
 	engine := chi.NewRouter()
 	engine.MethodNotAllowed(emptyHandler)
 	engine.NotFound(emptyHandler)

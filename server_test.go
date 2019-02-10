@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc/jose"
+	"github.com/elazarl/goproxy"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -74,6 +75,7 @@ func TestNewKeycloakProxy(t *testing.T) {
 	proxy, err := newProxy(cfg)
 	assert.NoError(t, err)
 	assert.NotNil(t, proxy)
+	assert.True(t, proxy.upstream.(*goproxy.ProxyHttpServer).KeepDestinationHeaders)
 	assert.NotNil(t, proxy.config)
 	assert.NotNil(t, proxy.router)
 	assert.NotNil(t, proxy.endpoint)
