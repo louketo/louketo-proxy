@@ -40,6 +40,45 @@ func TestCookieDomainHostHeader(t *testing.T) {
 	assert.Equal(t, cookie.Domain, "127.0.0.1")
 }
 
+func TestCookieBasePath(t *testing.T) {
+	cfg := newFakeKeycloakConfig()
+	cfg.BaseURI = "/base-uri"
+
+	_, _, svc := newTestProxyService(cfg)
+
+	resp, err := makeTestCodeFlowLogin(svc + "/admin")
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	var cookie *http.Cookie
+	for _, c := range resp.Cookies() {
+		if c.Name == "kc-access" {
+			cookie = c
+		}
+	}
+	assert.NotNil(t, cookie)
+	assert.Equal(t, "/base-uri", cookie.Path)
+}
+
+func TestCookieWithoutBasePath(t *testing.T) {
+	cfg := newFakeKeycloakConfig()
+
+	_, _, svc := newTestProxyService(cfg)
+
+	resp, err := makeTestCodeFlowLogin(svc + "/admin")
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	var cookie *http.Cookie
+	for _, c := range resp.Cookies() {
+		if c.Name == "kc-access" {
+			cookie = c
+		}
+	}
+	assert.NotNil(t, cookie)
+	assert.Equal(t, "/", cookie.Path)
+}
+
 func TestCookieDomain(t *testing.T) {
 	p, _, svc := newTestProxyService(nil)
 	p.config.CookieDomain = "domain.com"
