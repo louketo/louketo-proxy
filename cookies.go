@@ -32,11 +32,15 @@ func (r *oauthProxy) dropCookie(w http.ResponseWriter, host, name, value string,
 	if r.config.CookieDomain != "" {
 		domain = r.config.CookieDomain
 	}
+	path := r.config.BaseURI
+	if path == "" {
+		path = "/"
+	}
 	cookie := &http.Cookie{
 		Domain:   domain,
 		HttpOnly: r.config.HTTPOnlyCookie,
 		Name:     name,
-		Path:     "/",
+		Path:     path,
 		Secure:   r.config.SecureCookie,
 		Value:    value,
 	}

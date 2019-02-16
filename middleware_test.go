@@ -354,6 +354,44 @@ func TestOauthRequests(t *testing.T) {
 	newFakeProxy(cfg).RunTests(t, requests)
 }
 
+func TestOauthRequestsWithBaseURI(t *testing.T) {
+	cfg := newFakeKeycloakConfig()
+	cfg.BaseURI = "/base-uri"
+	requests := []fakeRequest{
+		{
+			URI:          "/base-uri/oauth/authorize",
+			Redirects:    true,
+			ExpectedCode: http.StatusTemporaryRedirect,
+		},
+		{
+			URI:          "/base-uri/oauth/callback",
+			Redirects:    true,
+			ExpectedCode: http.StatusBadRequest,
+		},
+		{
+			URI:          "/base-uri/oauth/health",
+			Redirects:    true,
+			ExpectedCode: http.StatusOK,
+		},
+		{
+			URI:           "/oauth/authorize",
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
+		},
+		{
+			URI:           "/oauth/callback",
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
+		},
+		{
+			URI:           "/oauth/health",
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
+		},
+	}
+	newFakeProxy(cfg).RunTests(t, requests)
+}
+
 func TestMethodExclusions(t *testing.T) {
 	cfg := newFakeKeycloakConfig()
 	cfg.Resources = []*Resource{
