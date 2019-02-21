@@ -138,7 +138,10 @@ func TestLoginHandler(t *testing.T) {
 
 func TestLogoutHandlerBadRequest(t *testing.T) {
 	requests := []fakeRequest{
-		{URI: newFakeKeycloakConfig().WithOAuthURI(logoutURL), ExpectedCode: http.StatusBadRequest},
+		{
+			URI:          newFakeKeycloakConfig().WithOAuthURI(logoutURL),
+			ExpectedCode: http.StatusUnauthorized,
+		},
 	}
 	newFakeProxy(nil).RunTests(t, requests)
 }
@@ -148,18 +151,18 @@ func TestLogoutHandlerBadToken(t *testing.T) {
 	requests := []fakeRequest{
 		{
 			URI:          c.WithOAuthURI(logoutURL),
-			ExpectedCode: http.StatusBadRequest,
+			ExpectedCode: http.StatusUnauthorized,
 		},
 		{
 			URI:            c.WithOAuthURI(logoutURL),
 			HasCookieToken: true,
 			RawToken:       "this.is.a.bad.token",
-			ExpectedCode:   http.StatusBadRequest,
+			ExpectedCode:   http.StatusUnauthorized,
 		},
 		{
 			URI:          c.WithOAuthURI(logoutURL),
 			RawToken:     "this.is.a.bad.token",
-			ExpectedCode: http.StatusBadRequest,
+			ExpectedCode: http.StatusUnauthorized,
 		},
 	}
 	newFakeProxy(nil).RunTests(t, requests)
@@ -185,20 +188,22 @@ func TestLogoutHandlerGood(t *testing.T) {
 
 func TestTokenHandler(t *testing.T) {
 	uri := newFakeKeycloakConfig().WithOAuthURI(tokenURL)
+	goodToken := newTestToken("example").getToken()
 	requests := []fakeRequest{
 		{
 			URI:          uri,
 			HasToken:     true,
+			RawToken:     (&goodToken).Encode(),
 			ExpectedCode: http.StatusOK,
 		},
 		{
 			URI:          uri,
-			ExpectedCode: http.StatusBadRequest,
+			ExpectedCode: http.StatusUnauthorized,
 		},
 		{
 			URI:          uri,
 			RawToken:     "niothing",
-			ExpectedCode: http.StatusBadRequest,
+			ExpectedCode: http.StatusUnauthorized,
 		},
 		{
 			URI:            uri,
