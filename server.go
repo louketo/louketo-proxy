@@ -229,8 +229,10 @@ func (r *oauthProxy) createReverseProxy() error {
 		e.HandleFunc(authorizationURL, r.oauthAuthorizationHandler)
 		e.Get(callbackURL, r.oauthCallbackHandler)
 		e.Get(expiredURL, r.expirationHandler)
-		e.Get(logoutURL, r.logoutHandler)
-		e.Get(tokenURL, r.tokenHandler)
+
+		e.With(r.authenticationMiddleware()).Get(logoutURL, r.logoutHandler)
+		e.With(r.authenticationMiddleware()).Get(tokenURL, r.tokenHandler)
+
 		e.Post(loginURL, r.loginHandler)
 
 		if r.config.ListenAdmin == "" {
@@ -305,7 +307,7 @@ func (r *oauthProxy) createReverseProxy() error {
 	for _, x := range r.config.Resources {
 		r.log.Info("protecting resource", zap.String("resource", x.String()))
 		e := engine.With(
-			r.authenticationMiddleware(x),
+			r.authenticationMiddleware(),
 			r.admissionMiddleware(x),
 			r.identityHeadersMiddleware(r.config.AddClaims),
 			r.csrfSkipResourceMiddleware(x),

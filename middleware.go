@@ -99,7 +99,7 @@ func (r *oauthProxy) loggingMiddleware(next http.Handler) http.Handler {
 }
 
 // authenticationMiddleware is responsible for verifying the access token
-func (r *oauthProxy) authenticationMiddleware(resource *Resource) func(http.Handler) http.Handler {
+func (r *oauthProxy) authenticationMiddleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			clientIP := req.RemoteAddr
