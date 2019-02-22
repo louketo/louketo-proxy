@@ -441,7 +441,6 @@ func (r *oauthProxy) csrfConfigMiddleware() func(http.Handler) http.Handler {
 		// CSRF protection establishes a session scoped CSRF state with an encrypted cookie.
 		// Encryption algorithm is AES-256
 		r.log.Info("enabling CSRF protection")
-		cookieLifespan := int(r.config.AccessTokenDuration.Seconds())
 		return gcsrf.Protect([]byte(r.config.EncryptionKey),
 			gcsrf.CookieName(r.config.CSRFCookieName),
 			gcsrf.RequestHeader(r.config.CSRFHeader),
@@ -449,8 +448,7 @@ func (r *oauthProxy) csrfConfigMiddleware() func(http.Handler) http.Handler {
 			gcsrf.HttpOnly(r.config.HTTPOnlyCookie),
 			gcsrf.Secure(r.config.SecureCookie),
 			gcsrf.Path("/"),
-			gcsrf.ErrorHandler(http.HandlerFunc(r.csrfErrorHandler)),
-			gcsrf.MaxAge(cookieLifespan))
+			gcsrf.ErrorHandler(http.HandlerFunc(r.csrfErrorHandler)))
 
 	}
 	return nil
