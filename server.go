@@ -485,7 +485,10 @@ func (r *oauthProxy) Run() error {
 				adminListenerConfig.ca = r.config.TLSAdminCaCertificate
 			}
 			if r.config.TLSAdminClientCertificate != "" {
-				adminListenerConfig.clientCert = r.config.TLSAdminClientCertificate
+				adminListenerConfig.clientCerts = []string{r.config.TLSAdminClientCertificate}
+			}
+			if len(r.config.TLSAdminClientCertificates) > 0 {
+				adminListenerConfig.clientCerts = r.config.TLSAdminClientCertificates
 			}
 			adminListener, err = r.createHTTPListener(adminListenerConfig)
 			if err != nil {
@@ -513,7 +516,7 @@ func (r *oauthProxy) Run() error {
 type listenerConfig struct {
 	ca                  string   // the path to a certificate authority
 	certificate         string   // the path to the certificate if any
-	clientCert          string   // the path to a client certificate to use for mutual tls
+	clientCerts         []string // the paths to client certificates to use for mutual tls
 	hostnames           []string // list of hostnames the service will respond to
 	letsEncryptCacheDir string   // the path to cache letsencrypt certificates
 	listen              string   // the interface to bind the listener to
@@ -530,7 +533,7 @@ type listenerConfig struct {
 
 // makeListenerConfig extracts a listener configuration from a proxy Config
 func makeListenerConfig(config *Config) listenerConfig {
-	return listenerConfig{
+	cfg := listenerConfig{
 		hostnames:           config.Hostnames,
 		letsEncryptCacheDir: config.LetsEncryptCacheDir,
 		listen:              config.Listen,
@@ -542,7 +545,7 @@ func makeListenerConfig(config *Config) listenerConfig {
 		useFileTLS:        config.TLSPrivateKey != "" && config.TLSCertificate != "",
 		ca:                config.TLSCaCertificate,
 		certificate:       config.TLSCertificate,
-		clientCert:        config.TLSClientCertificate,
+		clientCerts:       []string{config.TLSClientCertificate},
 		useLetsEncryptTLS: config.UseLetsEncrypt,
 		useSelfSignedTLS:  config.EnabledSelfSignedTLS,
 		tlsAdvancedConfig: &tlsAdvancedConfig{
@@ -553,6 +556,10 @@ func makeListenerConfig(config *Config) listenerConfig {
 			tlsPreferServerCipherSuites: config.TLSPreferServerCipherSuites,
 		},
 	}
+	if len(config.TLSClientCertificates) > 0 {
+		cfg.clientCerts = config.TLSClientCertificates
+	}
+	return cfg
 }
 
 // ErrHostNotConfigured indicates the hostname was not configured
@@ -668,17 +675,18 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 		}
 
 		// @check if we are doing mutual tls
-		if config.clientCert != "" {
-			caCert, err := ioutil.ReadFile(config.clientCert)
-			if err != nil {
-				return nil, err
-			}
+		if len(config.clientCerts) > 0 {
 			caCertPool := x509.NewCertPool()
-			caCertPool.AppendCertsFromPEM(caCert)
+			for _, clientCert := range config.clientCerts {
+				clientPEMCert, err := ioutil.ReadFile(clientCert)
+				if err != nil {
+					return nil, err
+				}
+				caCertPool.AppendCertsFromPEM(clientPEMCert)
+			}
 			tlsConfig.ClientCAs = caCertPool
 			tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
 		}
-
 		listener = tls.NewListener(listener, tlsConfig)
 	}
 

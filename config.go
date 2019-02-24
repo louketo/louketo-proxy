@@ -136,11 +136,27 @@ func (r *Config) isValid() error {
 	if r.TLSAdminCaCertificate != "" && !fileExists(r.TLSAdminCaCertificate) {
 		return fmt.Errorf("the tls ca certificate file %s does not exist for admin endpoint", r.TLSAdminCaCertificate)
 	}
+	if r.TLSClientCertificate != "" && len(r.TLSClientCertificates) > 0 {
+		return fmt.Errorf("specify only one of single TLSAdminClientCertificate or array TLSAdminClientCertificates")
+	}
 	if r.TLSClientCertificate != "" && !fileExists(r.TLSClientCertificate) {
 		return fmt.Errorf("the tls client certificate %s does not exist", r.TLSClientCertificate)
 	}
+	for _, clientCertFile := range r.TLSClientCertificates {
+		if !fileExists(clientCertFile) {
+			return fmt.Errorf("the tls client certificate %s does not exist", clientCertFile)
+		}
+	}
+	if r.TLSAdminClientCertificate != "" && len(r.TLSAdminClientCertificates) > 0 {
+		return fmt.Errorf("specify only one of single TLSAdminClientCertificate or array TLSAdminClientCertificates")
+	}
 	if r.TLSAdminClientCertificate != "" && !fileExists(r.TLSAdminClientCertificate) {
 		return fmt.Errorf("the tls client certificate %s does not exist for admin endpoint", r.TLSAdminClientCertificate)
+	}
+	for _, clientCertFile := range r.TLSAdminClientCertificates {
+		if !fileExists(clientCertFile) {
+			return fmt.Errorf("the tls client certificate %s does not exist for admin endpoint", clientCertFile)
+		}
 	}
 	if r.UseLetsEncrypt && r.LetsEncryptCacheDir == "" {
 		return fmt.Errorf("the letsencrypt cache dir has not been set")

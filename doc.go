@@ -292,6 +292,8 @@ type Config struct {
 	TLSCaPrivateKey string `json:"tls-ca-key" yaml:"tls-ca-key" usage:"path the ca private key, used by the forward signing proxy" env:"TLS_CA_PRIVATE_KEY"`
 	// TLSClientCertificate is path to a client certificate to use for outbound connections
 	TLSClientCertificate string `json:"tls-client-certificate" yaml:"tls-client-certificate" usage:"path to the client certificate for outbound connections in reverse and forwarding proxy modes" env:"TLS_CLIENT_CERTIFICATE"`
+	// TLSClientCertificates is an array of paths to client certificates to use for outbound connections
+	TLSClientCertificates []string `json:"tls-client-certificates" yaml:"tls-client-certificates" usage:"paths to client certificates for outbound connections in reverse and forwarding proxy modes" env:"TLS_CLIENT_CERTIFICATES"`
 	// TLSUseModernSettings sets all TLS options for proxy listener to modern settings (TLS 1.2, advanced cipher suites, ...)
 	TLSUseModernSettings bool `json:"tls-use-modern-settings" yaml:"tls-use-modern-settings" usage:"sets all TLS options for proxy listener to modern settings (TLS 1.2, advanced cipher suites, ...)" env:"TLS_USE_MODERN_SETTINGS"`
 	// TLSMinVersion is the minimum TLS protocol version accepted by proxy listener. TLS 1.0 is the default.
@@ -311,8 +313,10 @@ type Config struct {
 	TLSAdminPrivateKey string `json:"tls-admin-private-key" yaml:"tls-admin-private-key" usage:"path to the private key for TLS" env:"TLS_ADMIN_PRIVATE_KEY"`
 	// TLSCaCertificate is the CA certificate which the client cert must be signed
 	TLSAdminCaCertificate string `json:"tls-admin-ca-certificate" yaml:"tls-admin-ca-certificate" usage:"path to the ca certificate used for signing requests" env:"TLS_ADMIN_CA_CERTIFICATE"`
-	// TLSAdinClientCertificate is path to a client certificate to use for outbound connections
-	TLSAdminClientCertificate string `json:"tls-admin-client-certificate" yaml:"tls-admin-client-certificate" usage:"path to the client certificate for outbound connections in reverse and forwarding proxy modes" env:"TLS_ADMIN_CLIENT_CERTIFICATE"`
+	// TLSAdminClientCertificate is path to a client certificate to use for admin endpoint
+	TLSAdminClientCertificate string `json:"tls-admin-client-certificate" yaml:"tls-admin-client-certificate" usage:"path to the client certificate for admin endpoint" env:"TLS_ADMIN_CLIENT_CERTIFICATE"`
+	// TLSAdminClientCertificates is an array of paths to client certificates to use for admin endpoint
+	TLSAdminClientCertificates []string `json:"tls-admin-client-certificates" yaml:"tls-admin-client-certificates" usage:"paths to client certificates for admin endpoint" env:"TLS_ADMIN_CLIENT_CERTIFICATES"`
 
 	// CorsOrigins is a list of origins permitted
 	CorsOrigins []string `json:"cors-origins" yaml:"cors-origins" usage:"origins to add to the CORE origins control (Access-Control-Allow-Origin)"`
