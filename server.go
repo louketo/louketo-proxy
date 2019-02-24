@@ -261,7 +261,9 @@ func (r *oauthProxy) createReverseProxy() error {
 		// mount admin and debug engines separately
 		r.log.Info("mounting admin endpoints on separate listener")
 		admin := chi.NewRouter()
-		r.useDefaultStack(admin)
+		admin.MethodNotAllowed(emptyHandler)
+		admin.NotFound(emptyHandler)
+		admin.Use(middleware.Recoverer)
 		admin.Use(proxyDenyMiddleware)
 		admin.Route("/", func(e chi.Router) {
 			e.Mount(r.config.OAuthURI, adminEngine)

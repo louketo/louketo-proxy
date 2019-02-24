@@ -32,7 +32,7 @@ func newDefaultConfig() *Config {
 	if name, err := os.Hostname(); err == nil {
 		hostnames = append(hostnames, name)
 	}
-	hostnames = append(hostnames, []string{"localhost", "127.0.0.1"}...)
+	hostnames = append(hostnames, []string{"localhost", "127.0.0.1", "::1"}...)
 
 	return &Config{
 		AccessTokenDuration:           time.Duration(720) * time.Hour,
