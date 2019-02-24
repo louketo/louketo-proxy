@@ -94,6 +94,12 @@ func (r *Config) isValid() error {
 	if r.ListenAdmin == r.Listen {
 		r.ListenAdmin = ""
 	}
+	if r.ListenAdminScheme == "" {
+		r.ListenAdminScheme = secureScheme
+	}
+	if r.ListenAdminScheme != secureScheme && r.ListenAdminScheme != unsecureScheme {
+		return errors.New("scheme for admin listener must be one of [http, https]")
+	}
 	if r.MaxIdleConns <= 0 {
 		return errors.New("max-idle-connections must be a number > 0")
 	}
@@ -103,20 +109,38 @@ func (r *Config) isValid() error {
 	if r.TLSCertificate != "" && r.TLSPrivateKey == "" {
 		return errors.New("you have not provided a private key")
 	}
+	if r.TLSAdminCertificate != "" && r.TLSAdminPrivateKey == "" {
+		return errors.New("you have not provided a private key for admin endpoint")
+	}
 	if r.TLSPrivateKey != "" && r.TLSCertificate == "" {
 		return errors.New("you have not provided a certificate file")
+	}
+	if r.TLSAdminPrivateKey != "" && r.TLSAdminCertificate == "" {
+		return errors.New("you have not provided a certificate file for admin endpoint")
 	}
 	if r.TLSCertificate != "" && !fileExists(r.TLSCertificate) {
 		return fmt.Errorf("the tls certificate %s does not exist", r.TLSCertificate)
 	}
+	if r.TLSAdminCertificate != "" && !fileExists(r.TLSAdminCertificate) {
+		return fmt.Errorf("the tls certificate %s does not exist for admin endpoint", r.TLSAdminCertificate)
+	}
 	if r.TLSPrivateKey != "" && !fileExists(r.TLSPrivateKey) {
 		return fmt.Errorf("the tls private key %s does not exist", r.TLSPrivateKey)
+	}
+	if r.TLSAdminPrivateKey != "" && !fileExists(r.TLSAdminPrivateKey) {
+		return fmt.Errorf("the tls private key %s does not exist for admin endpoint", r.TLSAdminPrivateKey)
 	}
 	if r.TLSCaCertificate != "" && !fileExists(r.TLSCaCertificate) {
 		return fmt.Errorf("the tls ca certificate file %s does not exist", r.TLSCaCertificate)
 	}
+	if r.TLSAdminCaCertificate != "" && !fileExists(r.TLSAdminCaCertificate) {
+		return fmt.Errorf("the tls ca certificate file %s does not exist for admin endpoint", r.TLSAdminCaCertificate)
+	}
 	if r.TLSClientCertificate != "" && !fileExists(r.TLSClientCertificate) {
 		return fmt.Errorf("the tls client certificate %s does not exist", r.TLSClientCertificate)
+	}
+	if r.TLSAdminClientCertificate != "" && !fileExists(r.TLSAdminClientCertificate) {
+		return fmt.Errorf("the tls client certificate %s does not exist for admin endpoint", r.TLSAdminClientCertificate)
 	}
 	if r.UseLetsEncrypt && r.LetsEncryptCacheDir == "" {
 		return fmt.Errorf("the letsencrypt cache dir has not been set")

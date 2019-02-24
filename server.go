@@ -450,14 +450,47 @@ func (r *oauthProxy) Run() error {
 		}()
 	}
 
-	// step: are we running admin service as well?
+	// step: are we running specific admin service as well?
+	// if not, admin endpoints are added as routes in the main service
 	if r.config.ListenAdmin != "" {
 		r.log.Info("keycloak proxy admin service starting", zap.String("interface", r.config.ListenAdmin))
-		adminListenerConfig := makeListenerConfig(r.config)
-		adminListenerConfig.listen = r.config.ListenAdmin
-		adminListener, err := r.createHTTPListener(adminListenerConfig)
-		if err != nil {
-			return err
+		var (
+			adminListener net.Listener
+			err           error
+		)
+
+		if r.config.ListenAdminScheme == unsecureScheme {
+			// run the admin endpoint (metrics, health) with http
+			adminListener, err = r.createHTTPListener(listenerConfig{
+				listen:        r.config.ListenAdmin,
+				proxyProtocol: r.config.EnableProxyProtocol,
+			})
+			if err != nil {
+				return err
+			}
+		} else {
+			adminListenerConfig := makeListenerConfig(r.config)
+
+			// admin specific overides
+			adminListenerConfig.listen = r.config.ListenAdmin
+
+			// TLS configuration defaults to the one for the main service,
+			// and may be overidden
+			if r.config.TLSAdminPrivateKey != "" && r.config.TLSAdminCertificate != "" {
+				adminListenerConfig.useFileTLS = true
+				adminListenerConfig.certificate = r.config.TLSAdminCertificate
+				adminListenerConfig.privateKey = r.config.TLSAdminPrivateKey
+			}
+			if r.config.TLSAdminCaCertificate != "" {
+				adminListenerConfig.ca = r.config.TLSAdminCaCertificate
+			}
+			if r.config.TLSAdminClientCertificate != "" {
+				adminListenerConfig.clientCert = r.config.TLSAdminClientCertificate
+			}
+			adminListener, err = r.createHTTPListener(adminListenerConfig)
+			if err != nil {
+				return err
+			}
 		}
 		adminsvc := &http.Server{
 			Addr:         r.config.ListenAdmin,
@@ -468,8 +501,8 @@ func (r *oauthProxy) Run() error {
 		}
 
 		go func() {
-			if err := adminsvc.Serve(adminListener); err != nil {
-				r.log.Fatal("failed to start the admin service", zap.Error(err))
+			if ers := adminsvc.Serve(adminListener); err != nil {
+				r.log.Fatal("failed to start the admin service", zap.Error(ers))
 			}
 		}()
 	}
@@ -498,18 +531,20 @@ type listenerConfig struct {
 // makeListenerConfig extracts a listener configuration from a proxy Config
 func makeListenerConfig(config *Config) listenerConfig {
 	return listenerConfig{
-		ca:                  config.TLSCaCertificate,
-		certificate:         config.TLSCertificate,
-		clientCert:          config.TLSClientCertificate,
 		hostnames:           config.Hostnames,
 		letsEncryptCacheDir: config.LetsEncryptCacheDir,
 		listen:              config.Listen,
-		privateKey:          config.TLSPrivateKey,
 		proxyProtocol:       config.EnableProxyProtocol,
 		redirectionURL:      config.RedirectionURL,
-		useFileTLS:          config.TLSPrivateKey != "" && config.TLSCertificate != "",
-		useLetsEncryptTLS:   config.UseLetsEncrypt,
-		useSelfSignedTLS:    config.EnabledSelfSignedTLS,
+		privateKey:          config.TLSPrivateKey,
+
+		// TLS settings
+		useFileTLS:        config.TLSPrivateKey != "" && config.TLSCertificate != "",
+		ca:                config.TLSCaCertificate,
+		certificate:       config.TLSCertificate,
+		clientCert:        config.TLSClientCertificate,
+		useLetsEncryptTLS: config.UseLetsEncrypt,
+		useSelfSignedTLS:  config.EnabledSelfSignedTLS,
 		tlsAdvancedConfig: &tlsAdvancedConfig{
 			tlsMinVersion:               config.TLSMinVersion,
 			tlsCurvePreferences:         config.TLSCurvePreferences,
