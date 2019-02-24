@@ -403,7 +403,7 @@ func (r *oauthProxy) createForwardingProxy() error {
 func (r *oauthProxy) Run() error {
 	listener, err := r.createHTTPListener(makeListenerConfig(r.config))
 	if err != nil {
-		return err
+		return fmt.Errorf("could not start main service: %v", err)
 	}
 
 	// step: create the main http(s) server
@@ -459,6 +459,7 @@ func (r *oauthProxy) Run() error {
 			err           error
 		)
 
+		r.log.Info("server admin service with scheme:", zap.String("scheme", r.config.ListenAdminScheme))
 		if r.config.ListenAdminScheme == unsecureScheme {
 			// run the admin endpoint (metrics, health) with http
 			adminListener, err = r.createHTTPListener(listenerConfig{
@@ -504,7 +505,7 @@ func (r *oauthProxy) Run() error {
 		}
 
 		go func() {
-			if ers := adminsvc.Serve(adminListener); err != nil {
+			if ers := adminsvc.Serve(adminListener); ers != nil {
 				r.log.Fatal("failed to start the admin service", zap.Error(ers))
 			}
 		}()
@@ -545,7 +546,7 @@ func makeListenerConfig(config *Config) listenerConfig {
 		useFileTLS:        config.TLSPrivateKey != "" && config.TLSCertificate != "",
 		ca:                config.TLSCaCertificate,
 		certificate:       config.TLSCertificate,
-		clientCerts:       []string{config.TLSClientCertificate},
+		clientCerts:       nil,
 		useLetsEncryptTLS: config.UseLetsEncrypt,
 		useSelfSignedTLS:  config.EnabledSelfSignedTLS,
 		tlsAdvancedConfig: &tlsAdvancedConfig{
@@ -555,6 +556,9 @@ func makeListenerConfig(config *Config) listenerConfig {
 			tlsUseModernSettings:        config.TLSUseModernSettings,
 			tlsPreferServerCipherSuites: config.TLSPreferServerCipherSuites,
 		},
+	}
+	if config.TLSClientCertificate != "" {
+		cfg.clientCerts = []string{config.TLSClientCertificate}
 	}
 	if len(config.TLSClientCertificates) > 0 {
 		cfg.clientCerts = config.TLSClientCertificates
@@ -647,10 +651,12 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 			r.log.Info("tls support enabled", zap.String("certificate", config.certificate), zap.String("private_key", config.privateKey))
 			rotate, err := newCertificateRotator(config.certificate, config.privateKey, r.log)
 			if err != nil {
+				r.log.Error("error while setting certificate rotator", zap.Error(err))
 				return nil, err
 			}
 			// start watching the files for changes
 			if err := rotate.watch(); err != nil {
+				r.log.Error("error while setting file watch on certificate", zap.Error(err))
 				return nil, err
 			}
 
@@ -676,6 +682,7 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 
 		// @check if we are doing mutual tls
 		if len(config.clientCerts) > 0 {
+			r.log.Info("enabling mutual tls support with client certs")
 			caCertPool := x509.NewCertPool()
 			for _, clientCert := range config.clientCerts {
 				clientPEMCert, err := ioutil.ReadFile(clientCert)
@@ -689,7 +696,6 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 		}
 		listener = tls.NewListener(listener, tlsConfig)
 	}
-
 	return listener, nil
 }
 
