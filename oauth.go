@@ -30,13 +30,13 @@ import (
 )
 
 // getOAuthClient returns a oauth2 client from the openid client
-func (r *oauthProxy) getOAuthClient(redirectionURL string) (*oauth2.Client, error) {
+func (r *oauthProxy) getOAuthClient(redirectionURL string, clientAuthMethod string) (*oauth2.Client, error) {
 	return oauth2.NewClient(r.idpClient, oauth2.Config{
 		Credentials: oauth2.ClientCredentials{
 			ID:     r.config.ClientID,
 			Secret: r.config.ClientSecret,
 		},
-		AuthMethod:  oauth2.AuthMethodClientSecretBasic,
+		AuthMethod:  clientAuthMethod,
 		AuthURL:     r.idp.AuthEndpoint.String(),
 		RedirectURL: redirectionURL,
 		Scope:       append(r.config.Scopes, oidc.DefaultScope...),
