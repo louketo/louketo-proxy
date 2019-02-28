@@ -70,6 +70,8 @@ const (
 	unsecureScheme     = "http"
 	secureScheme       = "https"
 	anyMethod          = "ANY"
+	authMethodBasic    = "secret-basic"
+	authMethodBody     = "secret-body"
 
 	_ contextKey = iota
 	contextScopeName
@@ -248,6 +250,8 @@ type Config struct {
 
 	// AccessTokenDuration is default duration applied to the access token cookie
 	AccessTokenDuration time.Duration `json:"access-token-duration" yaml:"access-token-duration" usage:"fallback cookie duration for the access token when using refresh tokens"`
+	// ClientAuthMethod defines the method for authenticating the oauth client to the server
+	ClientAuthMethod string `json:"client-auth-method" yaml:"client-auth-method" usage:"the auth method to use with oauth (secret-basic, secret-body)" env:"CLIENT_AUTH_METHOD"`
 	// CookieDomain is a list of domains the cookie is available to
 	CookieDomain string `json:"cookie-domain" yaml:"cookie-domain" usage:"domain the access cookie is available to, defaults host header"`
 	// CookieAccessName is the name of the access cookie holding the access token
