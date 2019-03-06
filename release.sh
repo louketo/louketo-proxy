@@ -22,7 +22,7 @@ echo "--------------------------------------------------------------------------
 echo "Upload to jboss.org:"
 echo ""
 
-rsync -rv --protocol=28 $DIR/keycloak-gatekeeper/release/* keycloak@filemgmt.jboss.org:/downloads_htdocs/keycloak/$VERSION/gatekeeper/
+rsync -rv --protocol=28 $DIR/release/* keycloak@filemgmt.jboss.org:/downloads_htdocs/keycloak/$VERSION/gatekeeper/
 
 
 echo "------------------------------------------------------------------------------------------------------------"
