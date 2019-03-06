@@ -28,7 +28,7 @@ build: golang
 	go build -ldflags "${LFLAGS}" -o bin/${NAME}
 
 release: clean golang deps
-	@mkdir -p release
+	mkdir -p release
 	$(foreach GOOS, $(PLATFORMS),\
 	$(foreach GOARCH, $(ARCHITECTURES), $(shell [ $(GOOS) = "windows" ]  && EXT=".exe"; env GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0; \
 	go build -a -tags netgo -ldflags "-w ${LFLAGS}" -o bin/${NAME}$$EXT; \
@@ -85,13 +85,13 @@ authors:
 	git log --format='%aN <%aE>' | sort -u > AUTHORS
 
 dep-install:
-	@echo "--> Installing dependencies"
-	@dep ensure
+	echo "--> Installing dependencies"
+	dep ensure
 
 deps:
-	@echo "--> Installing build dependencies"
-	@go get -u github.com/golang/dep/cmd/dep
-	@$(MAKE) dep-install
+	echo "--> Installing build dependencies"
+	go get -u github.com/golang/dep/cmd/dep
+	$(MAKE) dep-install
 
 vet:
 	@echo "--> Running go vet $(VETARGS) ."
