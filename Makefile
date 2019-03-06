@@ -30,7 +30,7 @@ build: golang
 release: clean golang deps
 	mkdir -p release
 	$(foreach GOOS, $(PLATFORMS),\
-	$(foreach GOARCH, $(ARCHITECTURES), $(shell [ $(GOOS) = "windows" ]  && EXT=".exe"; env --debug GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 go build -a -tags netgo -ldflags "-w ${LFLAGS}" -o bin/${NAME}$$EXT; \
+	$(foreach GOARCH, $(ARCHITECTURES), $(shell [ $(GOOS) = "windows" ]  && EXT=".exe"; env GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 go build -a -tags netgo -ldflags "-w ${LFLAGS}" -o bin/${NAME}$$EXT; \
 	tar -czvf release/${NAME}-$(GOOS)-$(GOARCH).tar.gz -C bin/ ${NAME}$$EXT >/dev/null; \
   sha1sum release/${NAME}-$(GOOS)-$(GOARCH).tar.gz | cut -d " " -f1 > release/${NAME}-$(GOOS)-$(GOARCH).tar.gz.sha1 )))
 
