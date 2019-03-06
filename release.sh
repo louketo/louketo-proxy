@@ -15,6 +15,9 @@ echo "--------------------------------------------------------------------------
 echo "Building:"
 echo ""
 
+rm -rf release
+mkdir release
+
 make release
 
 
