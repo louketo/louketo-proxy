@@ -206,7 +206,21 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 	redirectURI := "/"
 	if req.URL.Query().Get("state") != "" {
 		if encodedRequestURI, _ := req.Cookie(requestURICookie); encodedRequestURI != nil {
-			decoded, _ := base64.StdEncoding.DecodeString(encodedRequestURI.Value)
+			// some clients URL-escape padding characters
+			unescapedValue, err := url.PathUnescape(encodedRequestURI.Value)
+			if err != nil {
+				r.log.Warn("app did send a corrupted redirectURI in cookie: invalid url escaping", zap.Error(err))
+			}
+			// Since the value is passed with a cookie, we do not expect the client to use base64url (but the
+			// base64-encoded value may itself be url-encoded).
+			// This is safe for browsers using atob() but needs to be treated with care for nodeJS clients,
+			// which natively use base64url encoding, and url-escape padding '=' characters.
+			decoded, err := base64.StdEncoding.DecodeString(unescapedValue)
+			if err != nil {
+				r.log.Warn("app did send a corrupted redirectURI in cookie: invalid base64url encoding",
+					zap.Error(err),
+					zap.String("encoded_value", unescapedValue))
+			}
 			redirectURI = string(decoded)
 		}
 	}
@@ -215,6 +229,7 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 		redirectURI = r.config.BaseURI + redirectURI
 	}
 
+	r.log.Debug("redirecting to", zap.String("location", redirectURI))
 	r.redirectToURL(redirectURI, w, req, http.StatusTemporaryRedirect)
 }
 
