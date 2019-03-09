@@ -209,7 +209,14 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 		// if the authorization has set a state, we now check if the calling client
 		// requested a specific landing URL to end the authentication handshake
 		if encodedRequestURI, _ := req.Cookie(requestURICookie); encodedRequestURI != nil {
-			decoded, _ := base64.StdEncoding.DecodeString(encodedRequestURI.Value)
+			unescapedValue, err := url.PathUnescape(encodedRequestURI.Value)
+			if err != nil {
+				r.log.Warn("app did send a corrupted redirectURI in cookie: invalid url espcaping", zap.Error(err))
+			}
+			decoded, err := base64.URLEncoding.DecodeString(unescapedValue)
+			if err != nil {
+				r.log.Warn("app did send a corrupted redirectURI in cookie: invalid base64url encoding", zap.Error(err))
+			}
 			redirectURI = string(decoded)
 		}
 	}
@@ -218,6 +225,7 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 		redirectURI = r.config.BaseURI + redirectURI
 	}
 
+	r.log.Debug("redirecting to", zap.String("location", redirectURI))
 	r.redirectToURL(redirectURI, w, req, http.StatusTemporaryRedirect)
 }
 
