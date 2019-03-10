@@ -79,7 +79,7 @@ func (c *certificationRotation) watch() error {
 			case event := <-watcher.Events:
 				if event.Op&fsnotify.Write == fsnotify.Write {
 					// step: does the change effect our files?
-					if !containedIn(event.Name, filewatchPaths) {
+					if !containedIn(event.Name, filewatchPaths, false) {
 						continue
 					}
 					// step: reload the certificate

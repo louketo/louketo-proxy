@@ -326,7 +326,7 @@ func TestHasAccessOK(t *testing.T) {
 		},
 	}
 	for i, x := range cs {
-		assert.True(t, hasAccess(x.Need, x.Have, x.Required), "case: %d should be true, have: %v, need: %v, require: %t ", i, x.Have, x.Need, x.Required)
+		assert.True(t, hasAccess(x.Need, x.Have, x.Required, false), "case: %d should be true, have: %v, need: %v, require: %t ", i, x.Have, x.Need, x.Required)
 	}
 }
 
@@ -363,13 +363,76 @@ func TestHasAccessBad(t *testing.T) {
 	}
 
 	for i, x := range cs {
-		assert.False(t, hasAccess(x.Need, x.Have, x.Required), "case: %d should be false, have: %v, need: %v, require: %t ", i, x.Have, x.Need, x.Required)
+		assert.False(t, hasAccess(x.Need, x.Have, x.Required, false), "case: %d should be false, have: %v, need: %v, require: %t ", i, x.Have, x.Need, x.Required)
+	}
+}
+
+func TestHasAccessWildcar(t *testing.T) {
+	cs := []struct {
+		Have     []string
+		Need     []string
+		Required bool
+		Expect   bool
+	}{
+		{
+			Have:   []string{"a", "b", "c/b/d"},
+			Need:   []string{"c/*"},
+			Expect: true,
+		},
+		{
+			Have:   []string{"a", "b", "c"},
+			Need:   []string{"c/*"},
+			Expect: true,
+		},
+		{
+			Have:     []string{"a", "b", "c"},
+			Need:     []string{"c/*", "b/*"},
+			Required: true,
+			Expect:   true,
+		},
+		{
+			Have:     []string{"a", "b", "c1"},
+			Need:     []string{"c*", "b/*"},
+			Required: true,
+			Expect:   true,
+		},
+		{
+			Have:   []string{"a", "b", "c1/b/d"},
+			Need:   []string{"c/*"},
+			Expect: false,
+		},
+		{
+			Have:     []string{"a", "b1", "c1"},
+			Need:     []string{"c*", "b/*"},
+			Required: true,
+			Expect:   false,
+		},
+	}
+
+	for i, x := range cs {
+		assert.Equal(t, x.Expect, hasAccess(x.Need, x.Have, x.Required, true), "case: %d should be %t, have: %v, need: %v, require: %t ", i, x.Expect, x.Have, x.Need, x.Required)
 	}
 }
 
 func TestContainedIn(t *testing.T) {
-	assert.False(t, containedIn("1", []string{"2", "3", "4"}))
-	assert.True(t, containedIn("1", []string{"1", "2", "3", "4"}))
+	assert.False(t, containedIn("1", []string{"2", "3", "4"}, false))
+	assert.True(t, containedIn("1", []string{"1", "2", "3", "4"}, false))
+
+	// with wildcards
+	assert.False(t, containedIn("1/*", []string{"2", "3", "4"}, true))
+	assert.False(t, containedIn("1/*", []string{"1.2", "3", "4"}, true))
+	assert.False(t, containedIn("1/*", []string{"12", "3", "4"}, true))
+	assert.False(t, containedIn("2/3/4/*", []string{"1", "2", "3", "4"}, true))
+	assert.False(t, containedIn("1*", []string{"0123", "3", "4"}, true))
+
+	assert.True(t, containedIn("1/*", []string{"1", "3", "4"}, true))
+	assert.True(t, containedIn("1/*", []string{"1/2", "3", "4"}, true))
+	assert.True(t, containedIn("2/3/4/*", []string{"1", "2/3/4", "3", "4"}, true))
+	assert.True(t, containedIn("2/3/4/*", []string{"1", "2/3/4", "3", "4"}, true))
+	assert.True(t, containedIn("2/3/4/*", []string{"1", "2/3/4/", "3", "4"}, true))
+	assert.True(t, containedIn("2/3/4/*", []string{"1", "2/3/4/5/6", "3", "4"}, true))
+
+	assert.True(t, containedIn("1*", []string{"123", "3", "4"}, true))
 }
 
 func TestContainsSubString(t *testing.T) {

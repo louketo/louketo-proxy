@@ -67,6 +67,11 @@ var (
 	symbolsFilter = regexp.MustCompilePOSIX("[_$><\\[\\].,\\+-/'%^&*()!\\\\]+")
 )
 
+const (
+	wildcard = "*"
+	trailer  = "/"
+)
+
 // createCertificate is responsible for creating a certificate
 func createCertificate(key *rsa.PrivateKey, hostnames []string, expire time.Duration) (tls.Certificate, error) {
 	// @step: create a serial for the certificate
@@ -254,14 +259,14 @@ func fileExists(filename string) bool {
 }
 
 // hasAccess checks we have all or any of the needed items in the list
-func hasAccess(need, have []string, all bool) bool {
+func hasAccess(need, have []string, all bool, enableWildcard bool) bool {
 	if len(need) == 0 {
 		return true
 	}
 
 	var matched int
 	for _, x := range need {
-		found := containedIn(x, have)
+		found := containedIn(x, have, enableWildcard)
 		switch found {
 		case true:
 			if !all {
@@ -279,10 +284,25 @@ func hasAccess(need, have []string, all bool) bool {
 }
 
 // containedIn checks if a value in a list of a strings
-func containedIn(value string, list []string) bool {
+func containedIn(value string, list []string, enableWildcard bool) bool {
 	for _, x := range list {
 		if x == value {
 			return true
+		}
+
+		// wildcard support for values like xxx* or xxx/*
+		if enableWildcard && strings.HasSuffix(value, wildcard) {
+			var checked string
+			against := strings.TrimSuffix(value, wildcard)
+			// allows 'xxx' to match 'xxx/*' but not xxxy, which would match 'xxx*'
+			if !strings.HasSuffix(x, trailer) {
+				checked = x + "/"
+			} else {
+				checked = x
+			}
+			if strings.HasPrefix(checked, against) {
+				return true
+			}
 		}
 	}
 

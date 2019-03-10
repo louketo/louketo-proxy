@@ -265,7 +265,7 @@ func (r *oauthProxy) checkClaim(user *userContext, claimName string, match *rege
 				return true
 			}
 		}
-		r.log.Warn("claim requirement does not match any element claim group in token", append(errFields,
+		r.log.Warn("claim requirement does not match any claim in token", append(errFields,
 			zap.String("issued", fmt.Sprintf("%v", valueStrs)),
 			zap.String("required", match.String()),
 		)...)
@@ -304,7 +304,7 @@ func (r *oauthProxy) admissionMiddleware(resource *Resource) func(http.Handler) 
 			user := scope.Identity
 
 			// @step: we need to check the roles
-			if !hasAccess(resource.Roles, user.roles, !resource.RequireAnyRole) {
+			if !hasAccess(resource.Roles, user.roles, !resource.RequireAnyRole, false) {
 				r.log.Warn("access denied, invalid roles",
 					zap.String("access", "denied"),
 					zap.String("email", user.email),
@@ -316,7 +316,7 @@ func (r *oauthProxy) admissionMiddleware(resource *Resource) func(http.Handler) 
 			}
 
 			// @step: check if we have any groups, the groups are there
-			if !hasAccess(resource.Groups, user.groups, false) {
+			if !hasAccess(resource.Groups, user.groups, false, true) {
 				r.log.Warn("access denied, invalid groups",
 					zap.String("access", "denied"),
 					zap.String("email", user.email),

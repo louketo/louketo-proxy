@@ -166,7 +166,7 @@ func parseCLIOptions(cx *cli.Context, config *Config) (err error) {
 	for i := 0; i < count; i++ {
 		field := reflect.TypeOf(config).Elem().Field(i)
 		name := field.Tag.Get("yaml")
-		if containedIn(name, ignoredOptions) {
+		if containedIn(name, ignoredOptions, false) {
 			continue
 		}
 
