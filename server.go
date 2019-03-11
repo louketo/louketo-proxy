@@ -28,6 +28,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"runtime"
 	"strings"
 	"time"
@@ -39,8 +40,8 @@ import (
 	proxyproto "github.com/armon/go-proxyproto"
 	"github.com/coreos/go-oidc/oidc"
 	"github.com/elazarl/goproxy"
-	"github.com/pressly/chi"
-	"github.com/pressly/chi/middleware"
+	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
@@ -57,6 +58,7 @@ type oauthProxy struct {
 	log            *zap.Logger
 	metricsHandler http.Handler
 	router         http.Handler
+	adminRouter    http.Handler
 	server         *http.Server
 	store          storage
 	templates      *template.Template
@@ -106,7 +108,7 @@ func newProxy(config *Config) (*oauthProxy, error) {
 			return nil, err
 		}
 	} else {
-		log.Warn("TESTING ONLY CONFIG - the verification of the token have been disabled")
+		log.Warn("TESTING ONLY CONFIG - access token verification has been disabled")
 	}
 
 	if config.ClientID == "" && config.ClientSecret == "" {
@@ -152,19 +154,15 @@ func createLogger(config *Config) (*zap.Logger, error) {
 	return c.Build()
 }
 
-// createReverseProxy creates a reverse proxy
-func (r *oauthProxy) createReverseProxy() error {
-	r.log.Info("enabled reverse proxy mode, upstream url", zap.String("url", r.config.Upstream))
-	if err := r.createUpstreamProxy(r.endpoint); err != nil {
-		return err
-	}
-	engine := chi.NewRouter()
+// useDefaultStack sets the default middleware stack for router
+func (r *oauthProxy) useDefaultStack(engine chi.Router) {
 	engine.MethodNotAllowed(emptyHandler)
 	engine.NotFound(emptyHandler)
 	engine.Use(middleware.Recoverer)
+
 	// @check if the request tracking id middleware is enabled
 	if r.config.EnableRequestID {
-		r.log.Info("enabled the correlation request id middlware")
+		r.log.Info("enabled the correlation request id middleware")
 		engine.Use(r.requestIDMiddleware(r.config.RequestIDHeader))
 	}
 	// @step: enable the entrypoint middleware
@@ -173,10 +171,22 @@ func (r *oauthProxy) createReverseProxy() error {
 	if r.config.EnableLogging {
 		engine.Use(r.loggingMiddleware)
 	}
+
 	if r.config.EnableSecurityFilter {
 		engine.Use(r.securityMiddleware)
 	}
+}
 
+// createReverseProxy creates a reverse proxy
+func (r *oauthProxy) createReverseProxy() error {
+	r.log.Info("enabled reverse proxy mode, upstream url", zap.String("url", r.config.Upstream))
+	if err := r.createUpstreamProxy(r.endpoint); err != nil {
+		return err
+	}
+	engine := chi.NewRouter()
+	r.useDefaultStack(engine)
+
+	// @step: configure CORS middleware
 	if len(r.config.CorsOrigins) > 0 {
 		c := cors.New(cors.Options{
 			AllowedOrigins:   r.config.CorsOrigins,
@@ -196,32 +206,62 @@ func (r *oauthProxy) createReverseProxy() error {
 		engine.Use(r.responseHeaderMiddleware(r.config.ResponseHeaders))
 	}
 
+	// step: define admin subrouter: health and metrics
+	adminEngine := chi.NewRouter()
+	r.log.Info("enabled health service", zap.String("path", path.Clean(r.config.WithOAuthURI(healthURL))))
+	adminEngine.Get(healthURL, r.healthHandler)
+	if r.config.EnableMetrics {
+		r.log.Info("enabled the service metrics middleware", zap.String("path", path.Clean(r.config.WithOAuthURI(metricsURL))))
+		adminEngine.Get(metricsURL, r.proxyMetricsHandler)
+	}
+
 	// step: add the routing for oauth
 	engine.With(proxyDenyMiddleware).Route(r.config.OAuthURI, func(e chi.Router) {
 		e.MethodNotAllowed(methodNotAllowHandlder)
 		e.HandleFunc(authorizationURL, r.oauthAuthorizationHandler)
 		e.Get(callbackURL, r.oauthCallbackHandler)
 		e.Get(expiredURL, r.expirationHandler)
-		e.Get(healthURL, r.healthHandler)
 		e.Get(logoutURL, r.logoutHandler)
 		e.Get(tokenURL, r.tokenHandler)
 		e.Post(loginURL, r.loginHandler)
-		if r.config.EnableMetrics {
-			r.log.Info("enabled the service metrics middleware", zap.String("path", r.config.WithOAuthURI(metricsURL)))
-			e.Get(metricsURL, r.proxyMetricsHandler)
+
+		if r.config.ListenAdmin == "" {
+			e.Mount("/", adminEngine)
 		}
 	})
 
+	// step: define profiling subrouter
+	var debugEngine chi.Router
 	if r.config.EnableProfiling {
-		engine.With(proxyDenyMiddleware).Route(debugURL, func(e chi.Router) {
-			r.log.Warn("enabling the debug profiling on /debug/pprof")
-			e.Get("/{name}", r.debugHandler)
-			e.Post("/{name}", r.debugHandler)
-		})
+		r.log.Warn("enabling the debug profiling on " + debugURL)
+		debugEngine = chi.NewRouter()
+		debugEngine.Get("/{name}", r.debugHandler)
+		debugEngine.Post("/{name}", r.debugHandler)
+
 		// @check if the server write-timeout is still set and throw a warning
 		if r.config.ServerWriteTimeout > 0 {
-			r.log.Warn("you must disable the server write timeout (--server-write-timeout) when using pprof profiling")
+			r.log.Warn("you should disable the server write timeout (--server-write-timeout) when using pprof profiling")
 		}
+		if r.config.ListenAdmin == "" {
+			engine.With(proxyDenyMiddleware).Mount(debugURL, debugEngine)
+		}
+	}
+
+	if r.config.ListenAdmin != "" {
+		// mount admin and debug engines separately
+		r.log.Info("mounting admin endpoints on separate listener")
+		admin := chi.NewRouter()
+		admin.MethodNotAllowed(emptyHandler)
+		admin.NotFound(emptyHandler)
+		admin.Use(middleware.Recoverer)
+		admin.Use(proxyDenyMiddleware)
+		admin.Route("/", func(e chi.Router) {
+			e.Mount(r.config.OAuthURI, adminEngine)
+			if debugEngine != nil {
+				e.Mount(debugURL, debugEngine)
+			}
+		})
+		r.adminRouter = admin
 	}
 
 	if r.config.EnableSessionCookies {
@@ -351,25 +391,12 @@ func (r *oauthProxy) createForwardingProxy() error {
 
 // Run starts the proxy service
 func (r *oauthProxy) Run() error {
-	listener, err := r.createHTTPListener(listenerConfig{
-		ca:                  r.config.TLSCaCertificate,
-		certificate:         r.config.TLSCertificate,
-		clientCert:          r.config.TLSClientCertificate,
-		hostnames:           r.config.Hostnames,
-		letsEncryptCacheDir: r.config.LetsEncryptCacheDir,
-		listen:              r.config.Listen,
-		privateKey:          r.config.TLSPrivateKey,
-		proxyProtocol:       r.config.EnableProxyProtocol,
-		redirectionURL:      r.config.RedirectionURL,
-		useFileTLS:          r.config.TLSPrivateKey != "" && r.config.TLSCertificate != "",
-		useLetsEncryptTLS:   r.config.UseLetsEncrypt,
-		useSelfSignedTLS:    r.config.EnabledSelfSignedTLS,
-	})
-
+	listener, err := r.createHTTPListener(makeListenerConfig(r.config))
 	if err != nil {
 		return err
 	}
-	// step: create the http server
+
+	// step: create the main http(s) server
 	server := &http.Server{
 		Addr:         r.config.Listen,
 		Handler:      r.router,
@@ -413,6 +440,62 @@ func (r *oauthProxy) Run() error {
 		}()
 	}
 
+	// step: are we running specific admin service as well?
+	// if not, admin endpoints are added as routes in the main service
+	if r.config.ListenAdmin != "" {
+		r.log.Info("keycloak proxy admin service starting", zap.String("interface", r.config.ListenAdmin))
+		var (
+			adminListener net.Listener
+			err           error
+		)
+
+		if r.config.ListenAdminScheme == unsecureScheme {
+			// run the admin endpoint (metrics, health) with http
+			adminListener, err = r.createHTTPListener(listenerConfig{
+				listen:        r.config.ListenAdmin,
+				proxyProtocol: r.config.EnableProxyProtocol,
+			})
+			if err != nil {
+				return err
+			}
+		} else {
+			adminListenerConfig := makeListenerConfig(r.config)
+
+			// admin specific overides
+			adminListenerConfig.listen = r.config.ListenAdmin
+
+			// TLS configuration defaults to the one for the main service,
+			// and may be overidden
+			if r.config.TLSAdminPrivateKey != "" && r.config.TLSAdminCertificate != "" {
+				adminListenerConfig.useFileTLS = true
+				adminListenerConfig.certificate = r.config.TLSAdminCertificate
+				adminListenerConfig.privateKey = r.config.TLSAdminPrivateKey
+			}
+			if r.config.TLSAdminCaCertificate != "" {
+				adminListenerConfig.ca = r.config.TLSAdminCaCertificate
+			}
+			if r.config.TLSAdminClientCertificate != "" {
+				adminListenerConfig.clientCert = r.config.TLSAdminClientCertificate
+			}
+			adminListener, err = r.createHTTPListener(adminListenerConfig)
+			if err != nil {
+				return err
+			}
+		}
+		adminsvc := &http.Server{
+			Addr:         r.config.ListenAdmin,
+			Handler:      r.adminRouter,
+			ReadTimeout:  r.config.ServerReadTimeout,
+			WriteTimeout: r.config.ServerWriteTimeout,
+			IdleTimeout:  r.config.ServerIdleTimeout,
+		}
+
+		go func() {
+			if ers := adminsvc.Serve(adminListener); err != nil {
+				r.log.Fatal("failed to start the admin service", zap.Error(ers))
+			}
+		}()
+	}
 	return nil
 }
 
@@ -430,6 +513,26 @@ type listenerConfig struct {
 	useFileTLS          bool     // indicates we are using certificates from files
 	useLetsEncryptTLS   bool     // indicates we are using letsencrypt
 	useSelfSignedTLS    bool     // indicates we are using the self-signed tls
+}
+
+// makeListenerConfig extracts a listener configuration from a proxy Config
+func makeListenerConfig(config *Config) listenerConfig {
+	return listenerConfig{
+		hostnames:           config.Hostnames,
+		letsEncryptCacheDir: config.LetsEncryptCacheDir,
+		listen:              config.Listen,
+		proxyProtocol:       config.EnableProxyProtocol,
+		redirectionURL:      config.RedirectionURL,
+
+		// TLS settings
+		useFileTLS:        config.TLSPrivateKey != "" && config.TLSCertificate != "",
+		privateKey:        config.TLSPrivateKey,
+		ca:                config.TLSCaCertificate,
+		certificate:       config.TLSCertificate,
+		clientCert:        config.TLSClientCertificate,
+		useLetsEncryptTLS: config.UseLetsEncrypt,
+		useSelfSignedTLS:  config.EnabledSelfSignedTLS,
+	}
 }
 
 // ErrHostNotConfigured indicates the hostname was not configured
@@ -528,7 +631,9 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 		}
 
 		tlsConfig := &tls.Config{
-			GetCertificate:           getCertificate,
+			GetCertificate: getCertificate,
+			// Causes servers to use Go's default ciphersuite preferences,
+			// which are tuned to avoid attacks. Does nothing on clients.
 			PreferServerCipherSuites: true,
 			NextProtos:               []string{"h2", "http/1.1"},
 		}

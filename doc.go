@@ -153,10 +153,14 @@ type Resource struct {
 type Config struct {
 	// ConfigFile is the binding interface
 	ConfigFile string `json:"config" yaml:"config" usage:"path the a configuration file" env:"CONFIG_FILE"`
-	// Listen is the binding interface
-	Listen string `json:"listen" yaml:"listen" usage:"the interface the service should be listening on" env:"LISTEN"`
+	// Listen defines the binding interface for main listener, e.g. {address}:{port}. This is required and there is no default value.
+	Listen string `json:"listen" yaml:"listen" usage:"Defines the binding interface for main listener, e.g. {address}:{port}. This is required and there is no default value" env:"LISTEN"`
 	// ListenHTTP is the interface to bind the http only service on
-	ListenHTTP string `json:"listen-http" yaml:"listen-http" usage:"interface we should be listening" env:"LISTEN_HTTP"`
+	ListenHTTP string `json:"listen-http" yaml:"listen-http" usage:"interface we should be listening to for HTTP traffic" env:"LISTEN_HTTP"`
+	// ListenAdmin defines the interface to bind admin-only endpoint (live-status, debug, prometheus...). If not defined, this defaults to the main listener defined by Listen.
+	ListenAdmin string `json:"listen-admin" yaml:"listen-admin" usage:"defines the interface to bind admin-only endpoint (live-status, debug, prometheus...). If not defined, this defaults to the main listener defined by Listen" env:"LISTEN_ADMIN"`
+	// ListenAdminScheme defines the scheme admin endpoints are served with. If not defined, same as main listener.
+	ListenAdminScheme string `json:"listen-admin-scheme" yaml:"listen-admin-scheme" usage:"scheme to serve admin-only endpoint (http or https)." env:"LISTEN_ADMIN_SCHEME"`
 	// DiscoveryURL is the url for the keycloak server
 	DiscoveryURL string `json:"discovery-url" yaml:"discovery-url" usage:"discovery url to retrieve the openid configuration" env:"DISCOVERY_URL"`
 	// ClientID is the client id
@@ -243,7 +247,7 @@ type Config struct {
 	EnableFrameDeny bool `json:"filter-frame-deny" yaml:"filter-frame-deny" usage:"enable to the frame deny header"`
 	// ContentSecurityPolicy allows the Content-Security-Policy header value to be set with a custom value
 	ContentSecurityPolicy string `json:"content-security-policy" yaml:"content-security-policy" usage:"specify the content security policy"`
-	// LocalhostMetrics indicated the metrics can only be consume via localhost
+	// LocalhostMetrics indicates that metrics can only be consumed from localhost
 	LocalhostMetrics bool `json:"localhost-metrics" yaml:"localhost-metrics" usage:"enforces the metrics page can only been requested from 127.0.0.1"`
 
 	// AccessTokenDuration is default duration applied to the access token cookie
@@ -277,6 +281,15 @@ type Config struct {
 	// SkipUpstreamTLSVerify skips the verification of any upstream tls
 	SkipUpstreamTLSVerify bool `json:"skip-upstream-tls-verify" yaml:"skip-upstream-tls-verify" usage:"skip the verification of any upstream TLS"`
 
+	// TLSAdminCertificate is the location for a tls certificate for admin https endpoint. Defaults to TLSCertificate.
+	TLSAdminCertificate string `json:"tls-admin-cert" yaml:"tls-admin-cert" usage:"path to ths TLS certificate" env:"TLS_ADMIN_CERTIFICATE"`
+	// TLSAdminPrivateKey is the location of a tls private key for admin https endpoint. Default to TLSPrivateKey
+	TLSAdminPrivateKey string `json:"tls-admin-private-key" yaml:"tls-admin-private-key" usage:"path to the private key for TLS" env:"TLS_ADMIN_PRIVATE_KEY"`
+	// TLSCaCertificate is the CA certificate which the client cert must be signed
+	TLSAdminCaCertificate string `json:"tls-admin-ca-certificate" yaml:"tls-admin-ca-certificate" usage:"path to the ca certificate used for signing requests" env:"TLS_ADMIN_CA_CERTIFICATE"`
+	// TLSAdinClientCertificate is path to a client certificate to use for outbound connections
+	TLSAdminClientCertificate string `json:"tls-admin-client-certificate" yaml:"tls-admin-client-certificate" usage:"path to the client certificate for outbound connections in reverse and forwarding proxy modes" env:"TLS_ADMIN_CLIENT_CERTIFICATE"`
+
 	// CorsOrigins is a list of origins permitted
 	CorsOrigins []string `json:"cors-origins" yaml:"cors-origins" usage:"origins to add to the CORE origins control (Access-Control-Allow-Origin)"`
 	// CorsMethods is a set of access control methods
@@ -302,7 +315,7 @@ type Config struct {
 	InvalidAuthRedirectsWith303 bool `json:"invalid-auth-redirects-with-303" yaml:"invalid-auth-redirects-with-303" usage:"use HTTP 303 redirects instead of 307 for invalid auth tokens"`
 	// NoRedirects informs we should hand back a 401 not a redirect
 	NoRedirects bool `json:"no-redirects" yaml:"no-redirects" usage:"do not have back redirects when no authentication is present, 401 them"`
-	// SkipTokenVerification tells the service to skipp verifying the access token - for testing purposes
+	// SkipTokenVerification tells the service to skip verifying the access token - for testing purposes
 	SkipTokenVerification bool `json:"skip-token-verification" yaml:"skip-token-verification" usage:"TESTING ONLY; bypass token verification, only expiration and roles enforced"`
 	// UpstreamKeepalives specifies whether we use keepalives on the upstream
 	UpstreamKeepalives bool `json:"upstream-keepalives" yaml:"upstream-keepalives" usage:"enables or disables the keepalive connections for upstream endpoint"`

@@ -143,22 +143,12 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:a9fe0f8ff72c388d0128e88ce5f3c27d37dcd0950acd7cdb8323555f12463396"
-  name = "github.com/pressly/chi"
-  packages = [
-    ".",
-    "middleware",
-  ]
-  pruneopts = "UT"
-  revision = "b5294d10673813fac8558e7f47242bc9e61b4c25"
-  version = "v3.3.3"
-
-[[projects]]
-  digest = "1:75d51eeab0df85a3cea9e1297ccd3183b20a10cb4b48c753d8ec8d113cc14250"
+  digest = "1:93a746f1060a8acbcf69344862b2ceced80f854170e1caae089b2834c5fbf7f4"
   name = "github.com/prometheus/client_golang"
   packages = [
     "prometheus",
     "prometheus/internal",
+    "prometheus/promhttp",
   ]
   pruneopts = "UT"
   revision = "505eaef017263e299324067d40ca2c48f6a2cf50"
@@ -369,11 +359,11 @@
     "github.com/coreos/go-oidc/oidc",
     "github.com/elazarl/goproxy",
     "github.com/fsnotify/fsnotify",
+    "github.com/go-chi/chi",
     "github.com/go-chi/chi/middleware",
     "github.com/go-resty/resty",
-    "github.com/pressly/chi",
-    "github.com/pressly/chi/middleware",
     "github.com/prometheus/client_golang/prometheus",
+    "github.com/prometheus/client_golang/prometheus/promhttp",
     "github.com/rs/cors",
     "github.com/satori/go.uuid",
     "github.com/stretchr/testify/assert",
