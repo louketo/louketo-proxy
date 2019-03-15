@@ -54,7 +54,7 @@ func (r *oauthProxy) StoreRefreshToken(token jose.JWT, value string) error {
 	return r.store.Set(getHashKey(&token), value)
 }
 
-// Get retrieves a token from the store, the key we are using here is the access token
+// GetRefreshToken gets retrieves a token from the store, the key we are using here is the access token
 func (r *oauthProxy) GetRefreshToken(token jose.JWT) (string, error) {
 	// step: the key is the access token
 	v, err := r.store.Get(getHashKey(&token))
