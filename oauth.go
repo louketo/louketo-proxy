@@ -56,26 +56,44 @@ func verifyToken(client *oidc.Client, token jose.JWT) error {
 	return nil
 }
 
-// getRefreshedToken attempts to refresh the access token, returning the parsed token and the time it expires or a error
-func getRefreshedToken(client *oidc.Client, t string) (jose.JWT, time.Time, error) {
+// getRefreshedToken attempts to refresh the access token, returning the parsed token, optionally with a renewed
+// refresh token and the time the access and refresh tokens expire
+//
+// NOTE: we may be able to extract the specific (non-standard) claim refresh_expires_in and refresh_expires
+// from response.RawBody.
+// When not available, keycloak provides us with the same (for now) expiry value for ID token.
+func getRefreshedToken(client *oidc.Client, t string) (jose.JWT, string, time.Time, time.Duration, error) {
 	cl, err := client.OAuthClient()
 	if err != nil {
-		return jose.JWT{}, time.Time{}, err
+		return jose.JWT{}, "", time.Time{}, time.Duration(0), err
 	}
 	response, err := getToken(cl, oauth2.GrantTypeRefreshToken, t)
 	if err != nil {
-		if strings.Contains(err.Error(), "token expired") {
-			return jose.JWT{}, time.Time{}, ErrRefreshTokenExpired
+		if strings.Contains(err.Error(), "refresh token has expired") {
+			return jose.JWT{}, "", time.Time{}, time.Duration(0), ErrRefreshTokenExpired
 		}
-		return jose.JWT{}, time.Time{}, err
+		return jose.JWT{}, "", time.Time{}, time.Duration(0), err
 	}
 
+	// extracts non-standard claims about refresh token, to get refresh token expiry
+	var (
+		refreshExpiresIn time.Duration
+		extraClaims      struct {
+			RefreshExpiresIn json.Number `json:"refresh_expires_in"`
+		}
+	)
+	_ = json.Unmarshal(response.RawBody, &extraClaims)
+	if extraClaims.RefreshExpiresIn != "" {
+		if asInt, erj := extraClaims.RefreshExpiresIn.Int64(); erj == nil {
+			refreshExpiresIn = time.Duration(asInt) * time.Second
+		}
+	}
 	token, identity, err := parseToken(response.AccessToken)
 	if err != nil {
-		return jose.JWT{}, time.Time{}, err
+		return jose.JWT{}, "", time.Time{}, time.Duration(0), err
 	}
 
-	return token, identity.ExpiresAt, nil
+	return token, response.RefreshToken, identity.ExpiresAt, refreshExpiresIn, nil
 }
 
 // exchangeAuthenticationCode exchanges the authentication code with the oauth server for a access token
@@ -130,7 +148,7 @@ func getToken(client *oauth2.Client, grantType, code string) (oauth2.TokenRespon
 	return token, err
 }
 
-// parseToken retrieve the user identity from the token
+// parseToken retrieves the user identity from the token
 func parseToken(t string) (jose.JWT, *oidc.Identity, error) {
 	token, err := jose.ParseJWT(t)
 	if err != nil {

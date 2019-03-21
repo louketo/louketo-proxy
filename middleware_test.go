@@ -91,7 +91,6 @@ func newFakeProxy(c *Config) *fakeProxy {
 	auth := newFakeAuthServer()
 	c.DiscoveryURL = auth.getLocation()
 	c.RevocationEndpoint = auth.getRevocationURL()
-	c.Verbose = true
 	proxy, err := newProxy(c)
 	if err != nil {
 		panic("failed to create fake proxy service, error: " + err.Error())
@@ -1049,6 +1048,7 @@ func TestCheckRefreshTokens(t *testing.T) {
 	cfg := newFakeKeycloakConfig()
 	cfg.EnableRefreshTokens = true
 	cfg.EncryptionKey = testKey
+	cfg.Verbose = true
 	fn := func(no int, req *resty.Request, resp *resty.Response) {
 		if no == 0 {
 			<-time.After(1000 * time.Millisecond)

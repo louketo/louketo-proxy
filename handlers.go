@@ -499,7 +499,7 @@ func (r *oauthProxy) proxyMetricsHandler(w http.ResponseWriter, req *http.Reques
 }
 
 // retrieveRefreshToken retrieves the refresh token from store or cookie
-func (r *oauthProxy) retrieveRefreshToken(req *http.Request, user *userContext) (token, ecrypted string, err error) {
+func (r *oauthProxy) retrieveRefreshToken(req *http.Request, user *userContext) (token, encrypted string, err error) {
 	switch r.useStore() {
 	case true:
 		token, err = r.GetRefreshToken(user.token)
@@ -510,7 +510,7 @@ func (r *oauthProxy) retrieveRefreshToken(req *http.Request, user *userContext) 
 		return
 	}
 
-	ecrypted = token // returns encryped, avoid encoding twice
+	encrypted = token // returns encrypted, avoids encoding twice
 	token, err = decodeText(token, r.config.EncryptionKey)
 	return
 }

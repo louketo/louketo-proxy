@@ -164,7 +164,7 @@ func (r *oauthProxy) forwardProxyHandler() func(*http.Request, *http.Response) {
 						zap.String("expires", state.expiration.Format(time.RFC3339)))
 
 					// step: attempt to refresh the access
-					token, expiration, err := getRefreshedToken(r.client, state.refresh)
+					token, newRefreshToken, expiration, _, err := getRefreshedToken(r.client, state.refresh)
 					if err != nil {
 						state.login = true
 						switch err {
@@ -183,6 +183,9 @@ func (r *oauthProxy) forwardProxyHandler() func(*http.Request, *http.Response) {
 					state.expiration = expiration
 					state.wait = true
 					state.login = false
+					if newRefreshToken != "" {
+						state.refresh = newRefreshToken
+					}
 
 					// step: add some debugging
 					r.log.Info("successfully refreshed the access token",
@@ -207,7 +210,7 @@ func (r *oauthProxy) forwardProxyHandler() func(*http.Request, *http.Response) {
 				duration := getWithin(state.expiration, 0.85)
 				r.log.Info("waiting for expiration of access token",
 					zap.String("token_expiration", state.expiration.Format(time.RFC3339)),
-					zap.String("renewel_duration", duration.String()))
+					zap.String("renewal_duration", duration.String()))
 
 				<-time.After(duration)
 			}
