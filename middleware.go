@@ -285,7 +285,7 @@ func (r *oauthProxy) checkClaim(user *userContext, claimName string, match *rege
 	return false
 }
 
-// admissionMiddleware is responsible checking the access token against the protected resource
+// admissionMiddleware is responsible for checking the access token against the protected resource
 func (r *oauthProxy) admissionMiddleware(resource *Resource) func(http.Handler) http.Handler {
 	claimMatches := make(map[string]*regexp.Regexp)
 	for k, v := range r.config.MatchClaims {
@@ -359,7 +359,7 @@ func (r *oauthProxy) responseHeaderMiddleware(headers map[string]string) func(ht
 	}
 }
 
-// identityHeadersMiddleware is responsible for add the authentication headers for the upstream
+// identityHeadersMiddleware is responsible for adding the authentication headers to upstream
 func (r *oauthProxy) identityHeadersMiddleware(custom []string) func(http.Handler) http.Handler {
 	customClaims := make(map[string]string)
 	for _, x := range custom {
