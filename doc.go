@@ -42,6 +42,7 @@ const (
 	description = "is a proxy using the keycloak service for auth and authorization"
 
 	authorizationHeader = "Authorization"
+	authorizationType   = "Bearer"
 	envPrefix           = "PROXY_"
 	headerUpgrade       = "Upgrade"
 	versionHeader       = "X-Auth-Proxy-Version"
