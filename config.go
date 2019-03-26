@@ -40,6 +40,7 @@ func newDefaultConfig() *Config {
 		CookieRefreshName:             refreshCookie,
 		EnableAuthorizationCookies:    true,
 		EnableAuthorizationHeader:     true,
+		EnableRawAuthorizationHeader:  false,
 		EnableDefaultDeny:             true,
 		EnableSessionCookies:          true,
 		EnableTokenHeader:             true,

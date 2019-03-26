@@ -48,6 +48,9 @@ func (r *oauthProxy) getIdentity(req *http.Request) (*userContext, error) {
 	}
 	user.bearerToken = isBearer
 
+	// store transmitted Authorization header "AS IS"
+	user.rawAuthorization = req.Header.Get(authorizationHeader)
+
 	r.log.Debug("found the user identity",
 		zap.String("id", user.id),
 		zap.String("name", user.name),

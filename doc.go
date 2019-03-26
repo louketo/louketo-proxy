@@ -231,6 +231,8 @@ type Config struct {
 	ForceCookieLookup bool `json:"force-cookie-lookup" yaml:"force-cookie-lookup" usage:"look up the JWT token in cookies and skip authentication with Authorization header"`
 	// EnableAuthorizationHeader indicates we should pass the authorization header
 	EnableAuthorizationHeader bool `json:"enable-authorization-header" yaml:"enable-authorization-header" usage:"adds the authorization header to the proxy request" env:"ENABLE_AUTHORIZATION_HEADER"`
+	// EnableRawAuthorizationHeader indicates we should pass the authorization header "AS IS" to the upstream endpoint. EnableAuthorizationHeader flag must also be set
+	EnableRawAuthorizationHeader bool `json:"enable-raw-authorization-header" yaml:"enable-raw-authorization-header" usage:"adds the authorization header to the proxy request AS IS. Requires enable-authorization-header flag to be true." env:"ENABLE_RAW_AUTHORIZATION_HEADER"`
 	// EnableAuthorizationCookies indicates we should pass the authorization cookies to the upstream endpoint
 	EnableAuthorizationCookies bool `json:"enable-authorization-cookies" yaml:"enable-authorization-cookies" usage:"adds the authorization cookies to the uptream proxy request" env:"ENABLE_AUTHORIZATION_COOKIES"`
 	// EnableHTTPSRedirect indicate we should redirection http -> https
@@ -427,6 +429,8 @@ type userContext struct {
 	roles []string
 	// the access token itself
 	token jose.JWT
+	// raw http authorization header
+	rawAuthorization string
 }
 
 // tokenResponse

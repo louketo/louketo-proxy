@@ -92,6 +92,7 @@ func extractIdentity(token jose.JWT) (*userContext, error) {
 		preferredName: preferredName,
 		roles:         roleList,
 		token:         token,
+		rawAuthorization: string(""),
 	}, nil
 }
 
