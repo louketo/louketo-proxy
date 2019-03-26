@@ -227,6 +227,8 @@ type Config struct {
 	EnableLoginHandler bool `json:"enable-login-handler" yaml:"enable-login-handler" usage:"enables the handling of the refresh tokens" env:"ENABLE_LOGIN_HANDLER"`
 	// EnableTokenHeader adds the JWT token to the upstream authentication headers
 	EnableTokenHeader bool `json:"enable-token-header" yaml:"enable-token-header" usage:"enables the token authentication header X-Auth-Token to upstream"`
+	// ForceCookieLookup indicates that we must look for the JWT token in cookies only
+	ForceCookieLookup bool `json:"force-cookie-lookup" yaml:"force-cookie-lookup" usage:"look up the JWT token in cookies and skip authentication with Authorization header"`
 	// EnableAuthorizationHeader indicates we should pass the authorization header
 	EnableAuthorizationHeader bool `json:"enable-authorization-header" yaml:"enable-authorization-header" usage:"adds the authorization header to the proxy request" env:"ENABLE_AUTHORIZATION_HEADER"`
 	// EnableAuthorizationCookies indicates we should pass the authorization cookies to the upstream endpoint
