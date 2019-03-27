@@ -10,7 +10,7 @@ VERSION ?= $(shell awk '/release.*=/ { print $$3 }' doc.go | sed 's/"//g')
 DEPS=$(shell go list -f '{{range .TestImports}}{{.}} {{end}}' ./...)
 PACKAGES=$(shell go list ./...)
 LFLAGS ?= -X main.gitsha=${GIT_SHA} -X main.compiled=${BUILD_TIME}
-VETARGS ?= -asmdecl -atomic -bool -buildtags -copylocks -methods -nilfunc -printf -rangeloops -shift -structtags -unsafeptr
+VETARGS ?= -asmdecl -atomic -bool -buildtags -copylocks -methods -nilfunc -printf -rangeloops -shift -unsafeptr
 PLATFORMS=darwin linux windows
 ARCHITECTURES=amd64
 
@@ -27,14 +27,14 @@ build: golang
 	@mkdir -p bin
 	go build -ldflags "${LFLAGS}" -o bin/${NAME}
 
-release: clean golang deps
+release: clean golang
 	mkdir -p release
 	$(foreach GOOS, $(PLATFORMS),\
 	$(foreach GOARCH, $(ARCHITECTURES), $(shell [ $(GOOS) = "windows" ]  && EXT=".exe"; env GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 go build -a -tags netgo -ldflags "-w ${LFLAGS}" -o bin/${NAME}$$EXT; \
 	tar -czvf release/${NAME}-$(GOOS)-$(GOARCH).tar.gz -C bin/ ${NAME}$$EXT >/dev/null; \
   sha1sum release/${NAME}-$(GOOS)-$(GOARCH).tar.gz | cut -d " " -f1 > release/${NAME}-$(GOOS)-$(GOARCH).tar.gz.sha1 )))
 
-static: golang deps
+static: golang
 	@echo "--> Compiling the static binary"
 	@mkdir -p bin
 	CGO_ENABLED=0 GOOS=linux go build -a -tags netgo -ldflags "-w ${LFLAGS}" -o bin/${NAME}
@@ -83,21 +83,18 @@ authors:
 	@echo "--> Updating the AUTHORS"
 	git log --format='%aN <%aE>' | sort -u > AUTHORS
 
-dep-install:
-	echo "--> Installing dependencies"
-	dep ensure
-
-deps:
-	echo "--> Installing build dependencies"
-	go get -u github.com/golang/dep/cmd/dep
-	$(MAKE) dep-install
-
 vet:
 	@echo "--> Running go vet $(VETARGS) ."
-	@go tool vet 2>/dev/null ; if [ $$? -eq 3 ]; then \
+	@go vet 2>/dev/null ; if [ $$? -eq 3 ]; then \
 		go get golang.org/x/tools/cmd/vet; \
 	fi
-	@go tool vet $(VETARGS) *.go
+	# This is required due to break of API compatibility in go vet between version 1.11 and 1.12
+	@go version | grep '1.11' 2>/dev/null ; if [[ $$? -eq 0 ]]; then \
+    go vet $(VETARGS) -structtags *.go; \
+	fi
+	@go version | grep '1.12' 2>/dev/null ; if [[ $$? -eq 0 ]]; then \
+    go vet $(VETARGS) -structtag *.go; \
+	fi
 
 lint:
 	@echo "--> Running golint"
@@ -146,9 +143,6 @@ spelling:
 
 test:
 	@echo "--> Running the tests"
-	@if [ ! -d "vendor" ]; then \
-		make dep-install; \
-  fi
 	@go test -v
 	@$(MAKE) golang
 	@$(MAKE) gofmt

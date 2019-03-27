@@ -33,7 +33,7 @@ import (
 
 	"github.com/coreos/go-oidc/oauth2"
 
-	"github.com/pressly/chi"
+	"github.com/go-chi/chi"
 	"go.uber.org/zap"
 )
 

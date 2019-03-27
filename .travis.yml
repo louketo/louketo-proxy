@@ -1,8 +1,13 @@
 language: go
-go:
-- "1.11.x"
+
+matrix:
+  include:
+  - go: 1.12.x
+    env: GO111MODULE=on
+  - go: 1.11.x
+    env: GO111MODULE=on
+    
 install:
-- go get -u github.com/golang/dep/cmd/dep
 - go get github.com/mattn/goveralls
 - go get -u github.com/client9/misspell/cmd/misspell
 script:
