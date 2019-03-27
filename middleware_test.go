@@ -27,11 +27,11 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc/jose"
-	"github.com/go-resty/resty"
 	"github.com/rs/cors"
 	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
+	"gopkg.in/resty.v1"
 )
 
 type fakeRequest struct {
