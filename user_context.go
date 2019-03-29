@@ -82,16 +82,16 @@ func extractIdentity(token jose.JWT) (*userContext, error) {
 	}
 
 	return &userContext{
-		audiences:     audiences,
-		claims:        claims,
-		email:         identity.Email,
-		expiresAt:     identity.ExpiresAt,
-		groups:        groups,
-		id:            identity.ID,
-		name:          preferredName,
-		preferredName: preferredName,
-		roles:         roleList,
-		token:         token,
+		audiences:        audiences,
+		claims:           claims,
+		email:            identity.Email,
+		expiresAt:        identity.ExpiresAt,
+		groups:           groups,
+		id:               identity.ID,
+		name:             preferredName,
+		preferredName:    preferredName,
+		roles:            roleList,
+		token:            token,
 		rawAuthorization: string(""),
 	}, nil
 }
