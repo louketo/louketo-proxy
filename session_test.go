@@ -99,7 +99,7 @@ func TestGetTokenInRequest(t *testing.T) {
 				})
 			}
 		}
-		access, bearer, err := getTokenInRequest(req, defaultName)
+		access, bearer, err := getTokenInRequest(req, defaultName, false)
 		switch x.Error {
 		case nil:
 			assert.NoError(t, err, "case %d should not have thrown an error", i)
