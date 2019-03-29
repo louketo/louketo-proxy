@@ -389,7 +389,7 @@ func (r *oauthProxy) identityHeadersMiddleware(custom []string) func(http.Handle
 				// add the authorization header if requested
 				if r.config.EnableAuthorizationHeader && r.config.EnableRawAuthorizationHeader {
 					// Forward received Authorization header AS IS
-					req.Header.Set("Authorization", fmt.Sprintf("%s", user.rawAuthorization))
+					req.Header.Set("Authorization", user.rawAuthorization)
 				} else if r.config.EnableAuthorizationHeader {
 					req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", user.token.Encode()))
 				}
