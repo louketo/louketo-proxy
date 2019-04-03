@@ -1,9 +1,8 @@
 version: 2.0
 jobs:
-  build:
+  test:
     working_directory: /go/src/github.com/oneconcern/keycloak-gatekeeper
     docker:
-      # This is a debian strech image (todo: use alpine builder)
       - image: circleci/golang:latest
     steps:
       - checkout
@@ -11,3 +10,54 @@ jobs:
           name: Run unit tests
           command: GO111MODULE=on go test -v -covermode=atomic -coverprofile=cover.out
           no_output_timeout: 30m
+
+  build_image:
+    docker:
+      - image: gcr.io/onec-co/depmon-builder:latest
+        auth:
+          username: _json_key
+          password: $GCLOUD_SERVICE_KEY
+    environment:
+      REPOSITORY: 'gcr.io/onec-co'
+      GOOGLE_PROJECT_ID: "onec-co"
+      GOOGLE_COMPUTE_ZONE: us-west2-c
+      IMAGE: gatekeeper
+    shell: /bin/bash
+    steps:
+      - run:
+          name: Initialize gcloud sdk
+          command: |
+            echo $GCLOUD_SERVICE_KEY | gcloud auth activate-service-account --key-file=-
+            gcloud --quiet config set project ${GOOGLE_PROJECT_ID}
+            gcloud --quiet config set compute/zone ${GOOGLE_COMPUTE_ZONE}
+            gcloud --quiet config set container/new_scopes_behavior true
+            gcloud --quiet container clusters get-credentials onec-dev
+      - checkout
+      - setup_remote_docker:
+          version: 18.09.3
+      - run:
+          name: Prepare environment
+          shell: /bin/bash
+          command: |
+            echo $GCLOUD_SERVICE_KEY | docker login -u _json_key --password-stdin https://gcr.io
+      - run:
+          name: Build docker image then push to gcloud repo
+          command: |
+            VERSION=$(git describe --tags)
+            docker build --progress plain -t ${REPOSITORY}/${IMAGE}:${VERSION} -t ${REPOSITORY}/${IMAGE}:latest .
+            docker push ${REPOSITORY}/${IMAGE}:${VERSION}
+            docker push ${REPOSITORY}/${IMAGE}:latest
+
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - test:
+          context: "OC Common"
+      - build_image:
+          context: "OC Common"
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              only: /oneconcern-release/
