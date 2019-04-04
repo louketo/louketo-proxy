@@ -6,7 +6,15 @@
 
 ### **Keycloak Gatekeeper**
 
-Keycloak Gatekeeper is an adapter which, at the risk of stating the obvious, integrates with the [Keycloak](https://github.com/keycloak/keycloak) authentication service. The Gatekeeper is most happy in the company of Keycloak, but is also able to make friends with other OpenID Connect providers. The service supports both access tokens in browser cookie or bearer tokens.
+Keycloak Gatekeeper is a transparent authentication proxy that integrates with the [Keycloak](https://github.com/keycloak/keycloak) authentication service.
+
+The service supports both access tokens in browser cookie or bearer tokens.
+
+Gatekeeper may run as a reverse proxy or as a forwarding proxy.
+
+When authenticating with cookies, an automatic CSRF mechanism may be used for additional protection.
+
+Access tokens managed by cookies are refreshed automatically.
 
 Reporting security vulnerabilities
 ----------------------------------
