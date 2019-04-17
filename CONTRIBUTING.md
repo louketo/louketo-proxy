@@ -1,6 +1,6 @@
 # Keycloak Community
 
-Keycloak Gatekeeper is an Open Source adapter to solution to protect non-Java modern Applications and Services.
+Keycloak Gatekeeper is an Open Source adapter solution to protect non-Java modern Applications and Services.
 
 ## Building and working with the codebase
 
