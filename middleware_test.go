@@ -377,6 +377,11 @@ func TestMethodExclusions(t *testing.T) {
 			URL:     "/post",
 			Methods: []string{http.MethodPost, http.MethodPut},
 		},
+		{
+			URL:         "/white",
+			WhiteListed: true,
+			Methods:     []string{http.MethodPost, http.MethodPut},
+		},
 	}
 	requests := []fakeRequest{
 		{ // we should get a 401
@@ -384,11 +389,58 @@ func TestMethodExclusions(t *testing.T) {
 			Method:       http.MethodPost,
 			ExpectedCode: http.StatusUnauthorized,
 		},
-		{ // we should be permitted
+		{ // we should be okay
 			URI:           "/post",
-			Method:        http.MethodGet,
+			HasToken:      true,
+			Method:        http.MethodPost,
 			ExpectedProxy: true,
 			ExpectedCode:  http.StatusOK,
+		},
+		{ // we should get a 401
+			URI:          "/post",
+			Method:       http.MethodPut,
+			ExpectedCode: http.StatusUnauthorized,
+		},
+		{ // we should be okay
+			URI:           "/post",
+			HasToken:      true,
+			Method:        http.MethodPut,
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
+		},
+		{ // we should NOT be permitted
+			URI:          "/post",
+			HasToken:     true,
+			Method:       http.MethodGet,
+			ExpectedCode: http.StatusMethodNotAllowed,
+		},
+		{ // we should NOT be permitted
+			URI:          "/post",
+			Method:       http.MethodGet,
+			ExpectedCode: http.StatusUnauthorized,
+		},
+		{ // we should NOT be permitted
+			URI:          "/post",
+			HasToken:     true,
+			Method:       http.MethodGet,
+			ExpectedCode: http.StatusMethodNotAllowed,
+		},
+		{ // we should be permitted
+			URI:           "/white",
+			Method:        http.MethodPost,
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
+		},
+		{ // we should be permitted
+			URI:           "/white",
+			Method:        http.MethodPut,
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
+		},
+		{ // we should NOT be permitted
+			URI:          "/white",
+			Method:       http.MethodGet,
+			ExpectedCode: http.StatusMethodNotAllowed,
 		},
 	}
 	newFakeProxy(cfg).RunTests(t, requests)
@@ -833,8 +885,8 @@ func TestRolePermissionsMiddleware(t *testing.T) {
 			Redirects:     false,
 			HasToken:      true,
 			Roles:         []string{fakeTestRole},
-			ExpectedCode:  http.StatusOK,
-			ExpectedProxy: true,
+			ExpectedCode:  http.StatusMethodNotAllowed,
+			ExpectedProxy: false,
 		},
 		{ // check with correct token
 			URI:           "/test",
@@ -1267,21 +1319,77 @@ func TestAdmissionHandlerRoles(t *testing.T) {
 }
 
 // check to see if custom headers are hitting the upstream
-func TestCustomHeaders(t *testing.T) {
+//
+// When EnableDefaultDeny, URIs not declared as resources are not forwarded.
+func TestCustomHeadersUpstream(t *testing.T) {
 	requests := []struct {
-		Headers map[string]string
-		Request fakeRequest
+		Headers         map[string]string
+		Request         fakeRequest
+		WithDefaultDeny bool
 	}{
 		{
+			// this one does not pass proxy: it is not even authorized
 			Headers: map[string]string{
 				"TestHeaderOne": "one",
 			},
 			Request: fakeRequest{
-				URI:           "/gambol99.htm",
-				ExpectedProxy: true,
-				ExpectedProxyHeaders: map[string]string{
-					"TestHeaderOne": "one",
-				},
+				URI:                  "/gambol99.htm",
+				ExpectedProxyHeaders: map[string]string{},
+				ExpectedCode:         http.StatusUnauthorized,
+				ExpectedProxy:        false,
+			},
+			WithDefaultDeny: true,
+		},
+		{
+			// this one does pass proxy: the request is authenticated
+			Headers: map[string]string{
+				"TestHeaderOne": "one",
+			},
+			Request: fakeRequest{
+				URI:                  "/fred",
+				HasToken:             true,
+				ExpectedProxyHeaders: map[string]string{},
+				ExpectedCode:         http.StatusOK,
+				ExpectedProxy:        true,
+			},
+			WithDefaultDeny: true,
+		},
+		{
+			// this one does pass proxy
+			Headers: map[string]string{
+				"TestHeaderOne": "one",
+			},
+			Request: fakeRequest{
+				URI:                  "/gambol99.htm",
+				ExpectedProxyHeaders: map[string]string{},
+				ExpectedCode:         http.StatusOK,
+				ExpectedProxy:        true,
+			},
+			WithDefaultDeny: false,
+		},
+		{
+			// this one does pass proxy
+			Headers: map[string]string{
+				"TestHeaderOne": "one",
+			},
+			Request: fakeRequest{
+				URI:                  "/fred/sneak/attempt",
+				ExpectedProxyHeaders: map[string]string{},
+				ExpectedCode:         http.StatusOK,
+				ExpectedProxy:        true,
+			},
+			WithDefaultDeny: false,
+		},
+		{
+			Headers: map[string]string{
+				"TestHeader": "test",
+			},
+			Request: fakeRequest{
+				URI:                  testAdminURI,
+				HasToken:             false,
+				ExpectedProxy:        false,
+				ExpectedProxyHeaders: map[string]string{},
+				ExpectedCode:         http.StatusUnauthorized,
 			},
 		},
 		{
@@ -1295,6 +1403,7 @@ func TestCustomHeaders(t *testing.T) {
 				ExpectedProxyHeaders: map[string]string{
 					"TestHeader": "test",
 				},
+				ExpectedCode: http.StatusOK,
 			},
 		},
 		{
@@ -1310,13 +1419,16 @@ func TestCustomHeaders(t *testing.T) {
 					"TestHeaderOne": "one",
 					"TestHeaderTwo": "two",
 				},
+				ExpectedCode: http.StatusOK,
 			},
 		},
 	}
-	for _, c := range requests {
+	for i, c := range requests {
 		cfg := newFakeKeycloakConfig()
 		cfg.Resources = []*Resource{{URL: "/admin*", Methods: allHTTPMethods}}
 		cfg.Headers = c.Headers
+		cfg.EnableDefaultDeny = c.WithDefaultDeny
+		t.Logf("HeadersUpstream testcase: %d", i)
 		newFakeProxy(cfg).RunTests(t, []fakeRequest{c.Request})
 	}
 }

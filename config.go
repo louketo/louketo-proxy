@@ -183,10 +183,18 @@ func (r *Config) isValid() error {
 		}
 	} else {
 		if r.Upstream == "" {
-			return errors.New("you have not specified an upstream endpoint to proxy to")
-		}
-		if _, err := url.Parse(r.Upstream); err != nil {
-			return fmt.Errorf("the upstream endpoint is invalid, %s", err)
+			if r.EnableDefaultDeny {
+				return errors.New("you have not specified an upstream endpoint to proxy to")
+			}
+			for _, resource := range r.Resources {
+				if resource.Upstream == "" {
+					return errors.New("you have not specified an upstream endpoint to proxy to")
+				}
+			}
+		} else {
+			if _, err := url.Parse(r.Upstream); err != nil {
+				return fmt.Errorf("the upstream endpoint is invalid, %s", err)
+			}
 		}
 		if r.SkipUpstreamTLSVerify && r.UpstreamCA != "" {
 			return fmt.Errorf("you cannot skip upstream tls and load a root ca: %s to verify it", r.UpstreamCA)

@@ -16,7 +16,6 @@ limitations under the License.
 package main
 
 import (
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -33,37 +32,15 @@ import (
 )
 
 const (
-	e2eCsrfUpstreamURL       = "/upstream"
-	e2eCsrfUpstreamURL2      = "/upstream2"
-	e2eCsrfUpstreamListener  = "127.0.0.1:12349"
-	e2eCsrfProxyListener     = "127.0.0.1:54329"
-	e2eCsrfOauthListener     = "127.0.0.1:33456"
-	e2eCsrfAppListener       = "127.0.0.1:34569"
-	e2eCsrfOauthURL          = "/auth/realms/hod-test/.well-known/openid-configuration"
-	e2eCsrfOauthAuthorizeURL = "/auth/realms/hod-test/protocol/openid-connect/auth"
+	e2eCsrfUpstreamURL      = "/upstream"
+	e2eCsrfUpstreamURL2     = "/upstream2"
+	e2eCsrfUpstreamListener = "127.0.0.1:12349"
+	e2eCsrfProxyListener    = "127.0.0.1:54329"
+	e2eCsrfOauthListener    = "127.0.0.1:33456"
+	e2eCsrfAppListener      = "127.0.0.1:34569"
 	// #nosec
-	e2eCsrfOauthTokenURL = "/auth/realms/hod-test/protocol/openid-connect/token"
-	e2eCsrfOauthJWKSURL  = "/auth/realms/hod-test/protocol/openid-connect/certs"
-	e2eCsrfAppURL        = "/ok"
+	e2eCsrfAppURL = "/ok"
 )
-
-func runTestApp(t *testing.T) error {
-	go func() {
-		appHandler := func(w http.ResponseWriter, req *http.Request) {
-			_, _ = io.WriteString(w, `{"message": "ok"}`)
-			w.Header().Set("Content-Type", "application/json")
-		}
-		http.HandleFunc(e2eCsrfAppURL, appHandler)
-		_ = http.ListenAndServe(e2eCsrfAppListener, nil)
-	}()
-	if !assert.True(t, checkListenOrBail("http://"+path.Join(e2eCsrfAppListener, e2eCsrfAppURL))) {
-		err := fmt.Errorf("cannot connect to test http listener on: %s", "http://"+path.Join(e2eCsrfAppListener, e2eCsrfAppURL))
-		t.Logf("%v", err)
-		t.FailNow()
-		return err
-	}
-	return nil
-}
 
 func checkUpstreamCookies(t *testing.T, req *http.Request) {
 	// verify that the request received by upstream server is not polluted by proxy cookies
@@ -143,59 +120,6 @@ func runCsrfTestUpstream(t *testing.T) error {
 	return nil
 }
 
-func runCsrfTestAuth(t *testing.T) error {
-	// a stub OIDC provider
-	fake := newFakeAuthServer()
-	fake.location, _ = url.Parse("http://" + e2eCsrfOauthListener)
-	go func() {
-		configurationHandler := func(w http.ResponseWriter, req *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = io.WriteString(w, `{
-				"issuer": "http://`+e2eCsrfOauthListener+`/auth/realms/hod-test",
-				"subject_types_supported":["public","pairwise"],
-				"id_token_signing_alg_values_supported":["ES384","RS384","HS256","HS512","ES256","RS256","HS384","ES512","RS512"],
-				"userinfo_signing_alg_values_supported":["ES384","RS384","HS256","HS512","ES256","RS256","HS384","ES512","RS512","none"],
-				"authorization_endpoint":"http://`+e2eCsrfOauthListener+e2eCsrfOauthAuthorizeURL+`",
-				"token_endpoint":"http://`+e2eCsrfOauthListener+e2eCsrfOauthTokenURL+`",
-				"jwks_uri":"http://`+e2eCsrfOauthListener+e2eCsrfOauthJWKSURL+`"
-			}`)
-		}
-
-		authorizeHandler := func(w http.ResponseWriter, req *http.Request) {
-			redirect := req.FormValue("redirect_uri")
-			state := req.FormValue("state")
-			code := "xyz"
-			location, _ := url.PathUnescape(redirect)
-			u, _ := url.Parse(location)
-			v := u.Query()
-			v.Set("code", code)
-			v.Set("state", state)
-			u.RawQuery = v.Encode()
-			http.Redirect(w, req, u.String(), http.StatusFound)
-		}
-
-		tokenHandler := func(w http.ResponseWriter, req *http.Request) {
-			fake.tokenHandler(w, req)
-		}
-
-		keysHandler := func(w http.ResponseWriter, req *http.Request) {
-			fake.keysHandler(w, req)
-		}
-		http.HandleFunc(e2eCsrfOauthURL, configurationHandler)
-		http.HandleFunc(e2eCsrfOauthAuthorizeURL, authorizeHandler)
-		http.HandleFunc(e2eCsrfOauthTokenURL, tokenHandler)
-		http.HandleFunc(e2eCsrfOauthJWKSURL, keysHandler)
-		_ = http.ListenAndServe(e2eCsrfOauthListener, nil)
-	}()
-	if !assert.True(t, checkListenOrBail("http://"+path.Join(e2eCsrfOauthListener, e2eCsrfOauthURL))) {
-		err := fmt.Errorf("cannot connect to test http listener on: %s", "http://"+path.Join(e2eCsrfOauthListener, e2eCsrfOauthURL))
-		t.Logf("%v", err)
-		t.FailNow()
-		return err
-	}
-	return nil
-}
-
 // onRedirect forces the client to forward cookies on redirect, even though the URL is unsecure
 func onRedirect(req *http.Request, via []*http.Request) error {
 	if len(via) > 0 {
@@ -235,104 +159,6 @@ func (c controlledRedirect) RoundTrip(req *http.Request) (resp *http.Response, e
 		c.CollectedCookies[ck.Name] = ck
 	}
 	return
-}
-
-// runTestConnect exercises a connect scenario in which the client gets redirected to
-// an OIDC authorize endpoint, then to the gatekeeper caller, and
-// eventually to a custom endpoint specified in an initial cookie.
-//
-// NOTE: in this scenario, the "state" possibly passed by the initial query
-// is no more carried on til the end of the endshake
-//
-// This scenario mimics a typical browser app running the authentication handshake
-// in an iframe, the calling a custom URL to close the iframe after successful authentication.
-//
-// NOTE: for testing purposes, we use http transport and have to force our test client to
-// forward the expected "request_uri" cookie set by the client.
-func runTestConnect(t *testing.T, config *Config) (string, []*http.Cookie, error) {
-	client := http.Client{
-		Transport: controlledRedirect{
-			CollectedCookies: make(map[string]*http.Cookie, 10),
-		},
-		CheckRedirect: onRedirect,
-	}
-	u, _ := url.Parse("http://" + e2eCsrfProxyListener + "/oauth/authorize")
-	v := u.Query()
-	v.Set("state", "my_client_nonce") // NOTE: this state provided by the client is not currently carried on to the end (lost)
-	u.RawQuery = v.Encode()
-
-	req := &http.Request{
-		Method: "GET",
-		URL:    u,
-		Header: make(http.Header),
-	}
-	// add request_uri to specify last stop redirection (inner workings since PR #440)
-	encoded := base64.StdEncoding.EncodeToString([]byte("http://" + e2eCsrfAppListener + e2eCsrfAppURL))
-	ck := &http.Cookie{
-		Name:  "request_uri",
-		Value: encoded,
-		Path:  "/",
-		// real life cookie gets Secure, SameSite
-	}
-	req.AddCookie(ck)
-
-	// attempts to login
-	resp, err := client.Do(req)
-	if !assert.NoError(t, err) {
-		return "", nil, err
-	}
-
-	// check that we get the final redirection to app correctly
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	buf, erb := ioutil.ReadAll(resp.Body)
-	assert.NoError(t, erb)
-	assert.JSONEq(t, `{"message": "ok"}`, string(buf))
-
-	// returns all collected cookies during the handshake
-	collector := client.Transport.(controlledRedirect)
-	collected := make([]*http.Cookie, 0, 10)
-	for _, ck := range collector.CollectedCookies {
-		collected = append(collected, ck)
-	}
-
-	// assert kc-access cookie
-	var (
-		found       bool
-		accessToken string
-	)
-	for _, ck := range collected {
-		if ck.Name == config.CookieAccessName {
-			accessToken = ck.Value
-			found = true
-			break
-		}
-	}
-	assert.True(t, found)
-	if t.Failed() {
-		return "", nil, errors.New("failed to connect")
-	}
-	return accessToken, collected, nil
-}
-
-func getCookie(resp *http.Response, name string) (cookie *http.Cookie) {
-	for _, ck := range resp.Cookies() {
-		if ck.Name == name {
-			cookie = ck
-			break
-		}
-	}
-	return
-}
-
-func copyCookies(req *http.Request, cookies []*http.Cookie) {
-	ckMap := make(map[string]*http.Cookie, len(cookies))
-	for _, ck := range cookies {
-		if ck != nil {
-			ckMap[ck.Name] = ck // dedupe
-			// forward cookies obtained during authentication stage (mimicks browser)
-			req.AddCookie(ckMap[ck.Name])
-		}
-	}
 }
 
 func getUpstreamTest(t *testing.T, config *Config, cookies []*http.Cookie, expectCSRFCookie bool) (string, []*http.Cookie, error) {
@@ -567,7 +393,7 @@ func TestCSRF(t *testing.T) {
 	config.EnableLogging = false
 
 	config.Listen = e2eCsrfProxyListener
-	config.DiscoveryURL = "http://" + e2eCsrfOauthListener + e2eCsrfOauthURL
+	config.DiscoveryURL = testDiscoveryURL(e2eCsrfOauthListener, "hod-test")
 	config.Upstream = "http://" + e2eCsrfUpstreamListener
 
 	config.CorsOrigins = []string{"*"}
@@ -611,13 +437,13 @@ func TestCSRF(t *testing.T) {
 	}
 
 	// launch fake app server where to land after authentication
-	err = runTestApp(t)
+	err = runTestApp(t, e2eCsrfAppListener, e2eCsrfAppURL)
 	if !assert.NoError(t, err) {
 		t.FailNow()
 	}
 
 	// launch fake oauth OIDC server
-	err = runCsrfTestAuth(t)
+	err = runTestAuth(t, e2eCsrfOauthListener, "hod-test")
 	if !assert.NoError(t, err) {
 		t.FailNow()
 	}
@@ -629,7 +455,7 @@ func TestCSRF(t *testing.T) {
 	}
 
 	// establish an authenticated session
-	accessToken, cookies, err := runTestConnect(t, config)
+	accessToken, cookies, err := runTestConnect(t, config, e2eCsrfAppListener, e2eCsrfAppURL)
 	if !assert.NoError(t, err) {
 		t.Logf("could not login: %v", err)
 		t.FailNow()

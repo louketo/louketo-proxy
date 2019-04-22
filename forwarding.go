@@ -22,69 +22,72 @@ import (
 
 	"github.com/coreos/go-oidc/jose"
 	"github.com/coreos/go-oidc/oidc"
+	"github.com/elazarl/goproxy"
 	"go.uber.org/zap"
 )
 
-// proxyMiddleware is responsible for handles reverse proxy request to the upstream endpoint
-func (r *oauthProxy) proxyMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		next.ServeHTTP(w, req)
+// createForwardingProxy creates a forwarding proxy
+func (r *oauthProxy) createForwardingProxy() error {
+	r.log.Info("enabling forward signing mode, listening on", zap.String("interface", r.config.Listen))
 
-		// @step: retrieve the request scope
-		scope := req.Context().Value(contextScopeName)
-		if scope != nil {
-			sc := scope.(*RequestScope)
-			if sc.AccessDenied {
-				return
-			}
+	if r.config.SkipUpstreamTLSVerify {
+		r.log.Warn("tls verification switched off. In forward signing mode it's recommended you verify! (--skip-upstream-tls-verify=false)")
+	}
+	if err := r.createUpstreamProxy(nil); err != nil {
+		return err
+	}
+	forwardingHandler := r.forwardProxyHandler()
+
+	// set the http handler
+	proxy := r.upstream.(*goproxy.ProxyHttpServer)
+	r.router = proxy
+
+	// setup the tls configuration
+	if r.config.TLSCaCertificate != "" && r.config.TLSCaPrivateKey != "" {
+		ca, err := loadCA(r.config.TLSCaCertificate, r.config.TLSCaPrivateKey)
+		if err != nil {
+			return fmt.Errorf("unable to load certificate authority, error: %s", err)
 		}
 
-		// @step: add the proxy forwarding headers
-		req.Header.Add("X-Forwarded-For", realIP(req))
-		req.Header.Set("X-Forwarded-Host", req.Host)
-		req.Header.Set("X-Forwarded-Proto", req.Header.Get("X-Forwarded-Proto"))
+		// implement the goproxy connect method
+		proxy.OnRequest().HandleConnectFunc(
+			func(host string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string) {
+				return &goproxy.ConnectAction{
+					Action:    goproxy.ConnectMitm,
+					TLSConfig: goproxy.TLSConfigFromCA(ca), // NOTE(fredbi): the default proxy config in github/elazarl/goproxy disables TLS verify
+				}, host
+			},
+		)
+	} else {
+		// use the default certificate provided by goproxy
+		proxy.OnRequest().HandleConnect(goproxy.AlwaysMitm)
+	}
 
-		if len(r.config.CorsOrigins) > 0 {
-			// if CORS is enabled by gatekeeper, do not propagate CORS requests upstream
-			req.Header.Del("Origin")
-		}
-		// @step: add any custom headers to the request
-		for k, v := range r.config.Headers {
-			req.Header.Set(k, v)
-		}
-
-		if r.config.EnableCSRF {
-			// remove csrf header
-			req.Header.Del(r.config.CSRFHeader)
-			if !r.config.EnableAuthorizationCookies {
-				_ = filterCookies(req, []string{requestURICookie, r.config.CSRFCookieName})
-			}
-		} else if !r.config.EnableAuthorizationCookies {
-			_ = filterCookies(req, []string{requestURICookie})
-		}
-
-		// @note: by default goproxy only provides a forwarding proxy, thus all requests have to be absolute and we must update the host headers
-		req.URL.Host = r.endpoint.Host
-		req.URL.Scheme = r.endpoint.Scheme
-		if v := req.Header.Get("Host"); v != "" {
-			req.Host = v
-			req.Header.Del("Host")
-		} else if !r.config.PreserveHost {
-			req.Host = r.endpoint.Host
+	proxy.OnResponse().DoFunc(func(resp *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
+		// @NOTES, somewhat annoying but goproxy hands back a nil response on proxy client errors
+		if resp != nil && r.config.EnableLogging {
+			start := ctx.UserData.(time.Time)
+			latency := time.Since(start)
+			latencyMetric.Observe(latency.Seconds())
+			r.log.Info("client request",
+				zap.String("method", resp.Request.Method),
+				zap.String("path", resp.Request.URL.Path),
+				zap.Int("status", resp.StatusCode),
+				zap.Int64("bytes", resp.ContentLength),
+				zap.String("host", resp.Request.Host),
+				zap.String("path", resp.Request.URL.Path),
+				zap.String("latency", latency.String()))
 		}
 
-		if isUpgradedConnection(req) {
-			r.log.Debug("upgrading the connnection", zap.String("client_ip", req.RemoteAddr))
-			if err := tryUpdateConnection(req, w, r.endpoint); err != nil {
-				r.log.Error("failed to upgrade connection", zap.Error(err))
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			return
-		}
-
-		r.upstream.ServeHTTP(w, req)
+		return resp
 	})
+	proxy.OnRequest().DoFunc(func(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
+		ctx.UserData = time.Now()
+		forwardingHandler(req, ctx.Resp)
+		return req, ctx.Resp
+	})
+
+	return nil
 }
 
 // forwardProxyHandler is responsible for signing outbound requests

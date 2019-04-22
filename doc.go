@@ -149,6 +149,12 @@ type Resource struct {
 	Groups []string `json:"groups" yaml:"groups"`
 	// EnableCSRF enables CSRF check on this upstream Resource
 	EnableCSRF bool `json:"enable-csrf" yaml:"enable-csrf"`
+	// StripBasePath is the prefix to strip from URL before sending upstream
+	StripBasePath string `json:"strip-basepath" yaml:"strip-basepath"`
+	// Upstream is the upstream endpoint i.e whom were proxying to
+	Upstream string `json:"upstream-url" yaml:"upstream-url" usage:"url for the upstream endpoint you wish to proxy this resource"`
+	// TODO: UpstreamCA is the path to a CA certificate in PEM format to validate the upstream certificate
+	//UpstreamCA string `json:"upstream-ca" yaml:"upstream-ca" usage:"the path to a file container a CA certificate to validate the upstream tls endpoint for this resource"`
 }
 
 // Config is the configuration for the proxy
@@ -213,6 +219,7 @@ type Config struct {
 	EnableLogoutRedirect bool `json:"enable-logout-redirect" yaml:"enable-logout-redirect" usage:"indicates we should redirect to the identity provider for logging out"`
 	// EnableDefaultDeny indicates we should deny by default all requests
 	EnableDefaultDeny bool `json:"enable-default-deny" yaml:"enable-default-deny" usage:"enables a default denial on all requests, you have to explicitly say what is permitted (recommended)"`
+	// Enable... TODO(fredbi) : explicit resources
 	// EnableEncryptedToken indicates the access token should be encoded
 	EnableEncryptedToken bool `json:"enable-encrypted-token" yaml:"enable-encrypted-token" usage:"enable encryption for the access tokens"`
 	// ForceEncryptedCookie indicates that the access token in the cookie should be encoded, regardless what EnableEncryptedToken says. This way, gatekeeper may receive tokens in header in the clear, whereas tokens in cookies remain encrypted

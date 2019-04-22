@@ -523,6 +523,7 @@ type fakeUpstreamResponse struct {
 	Method  string      `json:"method"`
 	Address string      `json:"address"`
 	Headers http.Header `json:"headers"`
+	Message string      `json:"message"`
 }
 
 // fakeUpstreamService acts as a fake upstream service, returns the headers and request
@@ -537,6 +538,7 @@ func (f *fakeUpstreamService) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		Method:  r.Method,
 		Address: r.RemoteAddr,
 		Headers: r.Header,
+		Message: "upstream called",
 	})
 	_, _ = w.Write(content)
 }

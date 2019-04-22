@@ -18,6 +18,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 )
@@ -88,6 +89,11 @@ func (r *Resource) valid() error {
 	}
 	if strings.HasSuffix(r.URL, "/") && !r.WhiteListed {
 		return fmt.Errorf("you need a wildcard on the url resource to cover all request i.e. --resources=uri=%s*", r.URL)
+	}
+	if r.Upstream != "" {
+		if _, err := url.Parse(r.Upstream); err != nil {
+			return fmt.Errorf("upstream specified for resource %s is not a valid URL: %q", r.URL, r.Upstream)
+		}
 	}
 
 	// step: add any of no methods

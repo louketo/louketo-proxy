@@ -16,19 +16,13 @@ limitations under the License.
 package main
 
 import (
-	"encoding/base64"
-	"errors"
-	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
-	"path"
 	"testing"
 	"time"
 
-	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -38,199 +32,17 @@ const (
 
 	e2eAdminProxyListener2 = "127.0.0.1:44329"
 
-	e2eAdminOauthListener     = "127.0.0.1:23457"
-	e2eAdminUpstreamListener  = "127.0.0.1:28512"
-	e2eAdminAppListener       = "127.0.0.1:33996"
-	e2eAdminOauthURL          = "/auth/realms/hod-test/.well-known/openid-configuration"
-	e2eAdminOauthAuthorizeURL = "/auth/realms/hod-test/protocol/openid-connect/auth"
-	// #nosec
-	e2eAdminOauthTokenURL = "/auth/realms/hod-test/protocol/openid-connect/token"
-	e2eAdminOauthJWKSURL  = "/auth/realms/hod-test/protocol/openid-connect/certs"
-	e2eAdminAppURL        = "/ok"
+	e2eAdminOauthListener    = "127.0.0.1:23457"
+	e2eAdminUpstreamListener = "127.0.0.1:28512"
+	e2eAdminAppListener      = "127.0.0.1:33996"
+
+	e2eAdminAppURL      = "/ok"
+	e2eAdminUpstreamURL = "/fake"
+
+	secretForCookie = "A123456789B123456789C123456789D1"
 )
 
-func runAdminTestAuth(t *testing.T) error {
-	// a stub OIDC provider
-	fake := newFakeAuthServer()
-	fake.location, _ = url.Parse("http://" + e2eAdminOauthListener)
-	go func() {
-		mux := http.NewServeMux()
-		configurationHandler := func(w http.ResponseWriter, req *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = io.WriteString(w, `{
-				"issuer": "http://`+e2eAdminOauthListener+`/auth/realms/hod-test",
-				"subject_types_supported":["public","pairwise"],
-				"id_token_signing_alg_values_supported":["ES384","RS384","HS256","HS512","ES256","RS256","HS384","ES512","RS512"],
-				"userinfo_signing_alg_values_supported":["ES384","RS384","HS256","HS512","ES256","RS256","HS384","ES512","RS512","none"],
-				"authorization_endpoint":"http://`+e2eAdminOauthListener+e2eAdminOauthAuthorizeURL+`",
-				"token_endpoint":"http://`+e2eAdminOauthListener+e2eAdminOauthTokenURL+`",
-				"jwks_uri":"http://`+e2eAdminOauthListener+e2eAdminOauthJWKSURL+`"
-			}`)
-		}
-
-		authorizeHandler := func(w http.ResponseWriter, req *http.Request) {
-			redirect := req.FormValue("redirect_uri")
-			state := req.FormValue("state")
-			code := "zyx"
-			location, _ := url.PathUnescape(redirect)
-			u, _ := url.Parse(location)
-			v := u.Query()
-			v.Set("code", code)
-			v.Set("state", state)
-			u.RawQuery = v.Encode()
-			http.Redirect(w, req, u.String(), http.StatusFound)
-		}
-
-		tokenHandler := func(w http.ResponseWriter, req *http.Request) {
-			fake.tokenHandler(w, req)
-		}
-
-		keysHandler := func(w http.ResponseWriter, req *http.Request) {
-			fake.keysHandler(w, req)
-		}
-		mux.HandleFunc(e2eAdminOauthURL, configurationHandler)
-		mux.HandleFunc(e2eAdminOauthAuthorizeURL, authorizeHandler)
-		mux.HandleFunc(e2eAdminOauthTokenURL, tokenHandler)
-		mux.HandleFunc(e2eAdminOauthJWKSURL, keysHandler)
-		_ = http.ListenAndServe(e2eAdminOauthListener, mux)
-	}()
-	if !assert.True(t, checkListenOrBail("http://"+path.Join(e2eAdminOauthListener, e2eAdminOauthURL))) {
-		err := fmt.Errorf("cannot connect to test http listener on: %s", "http://"+path.Join(e2eAdminOauthListener, e2eAdminOauthURL))
-		t.Logf("%v", err)
-		t.FailNow()
-		return err
-	}
-	return nil
-}
-
-func runAdminTestApp(t *testing.T) error {
-	go func() {
-		mux := http.NewServeMux()
-		appHandler := func(w http.ResponseWriter, req *http.Request) {
-			_, _ = io.WriteString(w, `{"message": "ok"}`)
-			w.Header().Set("Content-Type", "application/json")
-		}
-		mux.HandleFunc(e2eAdminAppURL, appHandler)
-		_ = http.ListenAndServe(e2eAdminAppListener, mux)
-	}()
-	if !assert.True(t, checkListenOrBail("http://"+path.Join(e2eAdminAppListener, e2eAdminAppURL))) {
-		err := fmt.Errorf("cannot connect to test http listener on: %s", "http://"+path.Join(e2eAdminAppListener, e2eAdminAppURL))
-		t.Logf("%v", err)
-		t.FailNow()
-		return err
-	}
-	return nil
-}
-
-// runAdminTestConnect connects to the oauth server then return
-func runAdminTestConnect(t *testing.T, config *Config) (string, []*http.Cookie, error) {
-	client := http.Client{
-		Transport: controlledRedirect{
-			CollectedCookies: make(map[string]*http.Cookie, 10),
-		},
-		CheckRedirect: onRedirect,
-	}
-	u, _ := url.Parse("http://" + e2eAdminProxyListener + "/oauth/authorize")
-	v := u.Query()
-	v.Set("state", "my_client_nonce") // NOTE: this state provided by the client is not currently carried on to the end (lost)
-	u.RawQuery = v.Encode()
-
-	req := &http.Request{
-		Method: "GET",
-		URL:    u,
-		Header: make(http.Header),
-	}
-	// add request_uri to specify last stop redirection (inner workings since PR #440)
-	encoded := base64.StdEncoding.EncodeToString([]byte("http://" + e2eAdminAppListener + e2eAdminAppURL))
-	ck := &http.Cookie{
-		Name:  "request_uri",
-		Value: encoded,
-		Path:  "/",
-		// real life cookie gets Secure, SameSite
-	}
-	req.AddCookie(ck)
-
-	// attempts to login
-	resp, err := client.Do(req)
-	if !assert.NoError(t, err) {
-		return "", nil, err
-	}
-
-	// check that we get the final redirection to app correctly
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	buf, erb := ioutil.ReadAll(resp.Body)
-	assert.NoError(t, erb)
-	assert.JSONEq(t, `{"message": "ok"}`, string(buf))
-
-	// returns all collected cookies during the handshake
-	collector := client.Transport.(controlledRedirect)
-	collected := make([]*http.Cookie, 0, 10)
-	for _, ck := range collector.CollectedCookies {
-		collected = append(collected, ck)
-	}
-
-	// assert kc-access cookie
-	var (
-		found       bool
-		accessToken string
-	)
-	for _, ck := range collected {
-		if ck.Name == config.CookieAccessName {
-			accessToken = ck.Value
-			found = true
-			break
-		}
-	}
-	assert.True(t, found)
-	if t.Failed() {
-		return "", nil, errors.New("failed to connect")
-	}
-	return accessToken, collected, nil
-}
-
-func runAdminTestGatekeeper(t *testing.T, config *Config) error {
-	proxy, err := newProxy(config)
-	if err != nil {
-		return err
-	}
-	_ = proxy.Run()
-	if !assert.True(t, checkListenOrBail("http://"+config.Listen+"/oauth/login")) {
-		err := fmt.Errorf("cannot connect to test http listener on: %s", "http://"+config.Listen+"/oauth/login")
-		t.Logf("%v", err)
-		t.FailNow()
-		return err
-	}
-	return nil
-}
-
-func runAdminTestUpstream(t *testing.T) error {
-	// a stub upstream API server
-	go func() {
-		getUpstream := func(w http.ResponseWriter, req *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			w.Header().Set("X-Upstream-Response-Header", "test")
-			_, _ = io.WriteString(w, `{"message": "test"}`)
-		}
-
-		upstream := chi.NewRouter()
-		upstream.Route("/", func(r chi.Router) {
-			r.Get("/fake", getUpstream)
-		})
-
-		_ = http.ListenAndServe(e2eAdminUpstreamListener, upstream)
-	}()
-	if !assert.True(t, checkListenOrBail("http://"+path.Join(e2eAdminUpstreamListener, "/fake"))) {
-		err := fmt.Errorf("cannot connect to test http listener on: %s", "http://"+path.Join(e2eAdminUpstreamListener, "/fake"))
-		t.Logf("%v", err)
-		t.FailNow()
-		return err
-	}
-	return nil
-}
-
-func TestAdmin(t *testing.T) {
-	log.SetOutput(ioutil.Discard)
-
+func testBuildAdminConfig() *Config {
 	config := newDefaultConfig()
 	config.Verbose = false
 	config.DisableAllLogging = false
@@ -240,7 +52,7 @@ func TestAdmin(t *testing.T) {
 	config.ListenAdmin = e2eAdminEndpointListener
 	config.EnableMetrics = true
 	config.EnableProfiling = true
-	config.DiscoveryURL = "http://" + e2eAdminOauthListener + e2eAdminOauthURL
+	config.DiscoveryURL = testDiscoveryURL(e2eAdminOauthListener, "hod-test")
 	config.Upstream = "http://" + e2eAdminUpstreamListener
 
 	config.CorsOrigins = []string{"*"}
@@ -270,31 +82,37 @@ func TestAdmin(t *testing.T) {
 		WhiteListed: false,
 		EnableCSRF:  false,
 	})
-	config.EncryptionKey = "A123456789B123456789C123456789D1"
+	config.EncryptionKey = secretForCookie
+	return config
+}
+
+func TestAdmin(t *testing.T) {
+	log.SetOutput(ioutil.Discard)
+	config := testBuildAdminConfig()
 	if !assert.NoError(t, config.isValid()) {
 		t.FailNow()
 	}
 
 	// launch fake oauth OIDC server
-	err := runAdminTestAuth(t)
+	err := runTestAuth(t, e2eAdminOauthListener, "hod-test")
 	if !assert.NoError(t, err) {
 		t.FailNow()
 	}
 
 	// launch fake upstream resource server
-	err = runAdminTestUpstream(t)
+	err = runTestUpstream(t, e2eAdminUpstreamListener, e2eAdminUpstreamURL)
 	if !assert.NoError(t, err) {
 		t.FailNow()
 	}
 
 	// launch fake app server where to land after authentication
-	err = runAdminTestApp(t)
+	err = runTestApp(t, e2eAdminAppListener, e2eAdminAppURL)
 	if !assert.NoError(t, err) {
 		t.FailNow()
 	}
 
 	// launch keycloak-gatekeeper proxy
-	err = runAdminTestGatekeeper(t, config)
+	err = runTestGatekeeper(t, config)
 	if !assert.NoError(t, err) {
 		t.FailNow()
 	}
@@ -365,7 +183,7 @@ func TestAdmin(t *testing.T) {
 	config.LocalhostMetrics = true
 
 	// launch a new keycloak-gatekeeper proxy
-	err = runAdminTestGatekeeper(t, config)
+	err = runTestGatekeeper(t, config)
 	if !assert.NoError(t, err) {
 		t.FailNow()
 	}

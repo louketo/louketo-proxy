@@ -28,7 +28,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path"
 	"runtime"
 	"strings"
 	"time"
@@ -44,7 +43,6 @@ import (
 	"github.com/go-chi/chi/middleware"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/rs/cors"
 	"go.uber.org/zap"
 )
 
@@ -176,229 +174,6 @@ func (r *oauthProxy) useDefaultStack(engine chi.Router) {
 	if r.config.EnableSecurityFilter {
 		engine.Use(r.securityMiddleware)
 	}
-}
-
-// createReverseProxy creates a reverse proxy
-func (r *oauthProxy) createReverseProxy() error {
-	r.log.Info("enabled reverse proxy mode, upstream url", zap.String("url", r.config.Upstream))
-	if err := r.createUpstreamProxy(r.endpoint); err != nil {
-		return err
-	}
-	engine := chi.NewRouter()
-	r.useDefaultStack(engine)
-
-	// @step: configure CORS middleware
-	if len(r.config.CorsOrigins) > 0 {
-		c := cors.New(cors.Options{
-			AllowedOrigins:   r.config.CorsOrigins,
-			AllowedMethods:   r.config.CorsMethods,
-			AllowedHeaders:   r.config.CorsHeaders,
-			AllowCredentials: r.config.CorsCredentials,
-			ExposedHeaders:   r.config.CorsExposedHeaders,
-			MaxAge:           int(r.config.CorsMaxAge.Seconds()),
-			Debug:            r.config.Verbose,
-		})
-		engine.Use(c.Handler)
-	}
-
-	engine.Use(r.proxyMiddleware)
-	r.router = engine
-
-	if len(r.config.ResponseHeaders) > 0 {
-		engine.Use(r.responseHeaderMiddleware(r.config.ResponseHeaders))
-	}
-
-	// configure CSRF middleware
-	r.csrf = r.csrfConfigMiddleware()
-
-	// step: define admin subrouter: health and metrics
-	adminEngine := chi.NewRouter()
-	r.log.Info("enabled health service", zap.String("path", path.Clean(r.config.WithOAuthURI(healthURL))))
-	adminEngine.Get(healthURL, r.healthHandler)
-	if r.config.EnableMetrics {
-		r.log.Info("enabled the service metrics middleware", zap.String("path", path.Clean(r.config.WithOAuthURI(metricsURL))))
-		adminEngine.Get(metricsURL, r.proxyMetricsHandler)
-	}
-
-	// step: add the routing for oauth
-	engine.With(proxyDenyMiddleware,
-		r.csrfSkipMiddleware(), // handle CSRF state, but skip check on POST endpoints below
-		r.csrfProtectMiddleware(),
-		r.csrfHeaderMiddleware()).Route(r.config.OAuthURI, func(e chi.Router) {
-		e.MethodNotAllowed(methodNotAllowHandlder)
-		e.HandleFunc(authorizationURL, r.oauthAuthorizationHandler)
-		e.Get(callbackURL, r.oauthCallbackHandler)
-		e.Get(expiredURL, r.expirationHandler)
-
-		e.With(r.authenticationMiddleware()).Get(logoutURL, r.logoutHandler)
-		e.With(r.authenticationMiddleware()).Get(tokenURL, r.tokenHandler)
-
-		e.Post(loginURL, r.loginHandler)
-
-		if r.config.ListenAdmin == "" {
-			e.Mount("/", adminEngine)
-		}
-	})
-
-	// step: define profiling subrouter
-	var debugEngine chi.Router
-	if r.config.EnableProfiling {
-		r.log.Warn("enabling the debug profiling on " + debugURL)
-		debugEngine = chi.NewRouter()
-		debugEngine.Get("/{name}", r.debugHandler)
-		debugEngine.Post("/{name}", r.debugHandler)
-
-		// @check if the server write-timeout is still set and throw a warning
-		if r.config.ServerWriteTimeout > 0 {
-			r.log.Warn("you should disable the server write timeout (--server-write-timeout) when using pprof profiling")
-		}
-		if r.config.ListenAdmin == "" {
-			engine.With(proxyDenyMiddleware).Mount(debugURL, debugEngine)
-		}
-	}
-
-	if r.config.ListenAdmin != "" {
-		// mount admin and debug engines separately
-		r.log.Info("mounting admin endpoints on separate listener")
-		admin := chi.NewRouter()
-		admin.MethodNotAllowed(emptyHandler)
-		admin.NotFound(emptyHandler)
-		admin.Use(middleware.Recoverer)
-		admin.Use(proxyDenyMiddleware)
-		admin.Route("/", func(e chi.Router) {
-			e.Mount(r.config.OAuthURI, adminEngine)
-			if debugEngine != nil {
-				e.Mount(debugURL, debugEngine)
-			}
-		})
-		r.adminRouter = admin
-	}
-
-	if r.config.EnableSessionCookies {
-		r.log.Info("using session cookies only for access and refresh tokens")
-	}
-
-	// step: load the templates if any
-	if err := r.createTemplates(); err != nil {
-		return err
-	}
-	// step: provision in the protected resources
-	enableDefaultDeny := r.config.EnableDefaultDeny
-	for _, x := range r.config.Resources {
-		if x.URL[len(x.URL)-1:] == "/" {
-			r.log.Warn("the resource url is not a prefix",
-				zap.String("resource", x.URL),
-				zap.String("change", x.URL),
-				zap.String("amended", strings.TrimRight(x.URL, "/")))
-		}
-		if x.URL == "/*" && r.config.EnableDefaultDeny {
-			switch x.WhiteListed {
-			case true:
-				return errors.New("you've asked for a default denial but whitelisted everything")
-			default:
-				enableDefaultDeny = false
-			}
-		}
-	}
-
-	if enableDefaultDeny {
-		r.log.Info("adding a default denial into the protected resources")
-		r.config.Resources = append(r.config.Resources, &Resource{URL: "/*", Methods: allHTTPMethods})
-	}
-
-	for _, x := range r.config.Resources {
-		r.log.Info("protecting resource", zap.String("resource", x.String()))
-		e := engine.With(
-			r.authenticationMiddleware(),
-			r.admissionMiddleware(x),
-			r.identityHeadersMiddleware(r.config.AddClaims),
-			r.csrfSkipResourceMiddleware(x),
-			r.csrfProtectMiddleware(),
-			r.csrfHeaderMiddleware())
-		for _, m := range x.Methods {
-			if !x.WhiteListed {
-				e.MethodFunc(m, x.URL, emptyHandler)
-				continue
-			}
-			engine.MethodFunc(m, x.URL, emptyHandler)
-		}
-	}
-
-	for name, value := range r.config.MatchClaims {
-		r.log.Info("token must contain", zap.String("claim", name), zap.String("value", value))
-	}
-	if r.config.RedirectionURL == "" {
-		r.log.Warn("no redirection url has been set, will use host headers")
-	}
-	if r.config.EnableEncryptedToken {
-		r.log.Info("session access tokens will be encrypted")
-	}
-
-	return nil
-}
-
-// createForwardingProxy creates a forwarding proxy
-func (r *oauthProxy) createForwardingProxy() error {
-	r.log.Info("enabling forward signing mode, listening on", zap.String("interface", r.config.Listen))
-
-	if r.config.SkipUpstreamTLSVerify {
-		r.log.Warn("tls verification switched off. In forward signing mode it's recommended you verify! (--skip-upstream-tls-verify=false)")
-	}
-	if err := r.createUpstreamProxy(nil); err != nil {
-		return err
-	}
-	forwardingHandler := r.forwardProxyHandler()
-
-	// set the http handler
-	proxy := r.upstream.(*goproxy.ProxyHttpServer)
-	r.router = proxy
-
-	// setup the tls configuration
-	if r.config.TLSCaCertificate != "" && r.config.TLSCaPrivateKey != "" {
-		ca, err := loadCA(r.config.TLSCaCertificate, r.config.TLSCaPrivateKey)
-		if err != nil {
-			return fmt.Errorf("unable to load certificate authority, error: %s", err)
-		}
-
-		// implement the goproxy connect method
-		proxy.OnRequest().HandleConnectFunc(
-			func(host string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string) {
-				return &goproxy.ConnectAction{
-					Action:    goproxy.ConnectMitm,
-					TLSConfig: goproxy.TLSConfigFromCA(ca), // NOTE(fredbi): the default proxy config in github/elazarl/goproxy disables TLS verify
-				}, host
-			},
-		)
-	} else {
-		// use the default certificate provided by goproxy
-		proxy.OnRequest().HandleConnect(goproxy.AlwaysMitm)
-	}
-
-	proxy.OnResponse().DoFunc(func(resp *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
-		// @NOTES, somewhat annoying but goproxy hands back a nil response on proxy client errors
-		if resp != nil && r.config.EnableLogging {
-			start := ctx.UserData.(time.Time)
-			latency := time.Since(start)
-			latencyMetric.Observe(latency.Seconds())
-			r.log.Info("client request",
-				zap.String("method", resp.Request.Method),
-				zap.String("path", resp.Request.URL.Path),
-				zap.Int("status", resp.StatusCode),
-				zap.Int64("bytes", resp.ContentLength),
-				zap.String("host", resp.Request.Host),
-				zap.String("path", resp.Request.URL.Path),
-				zap.String("latency", latency.String()))
-		}
-
-		return resp
-	})
-	proxy.OnRequest().DoFunc(func(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
-		ctx.UserData = time.Now()
-		forwardingHandler(req, ctx.Resp)
-		return req, ctx.Resp
-	})
-
-	return nil
 }
 
 // Run starts the proxy service
@@ -701,78 +476,6 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 	return listener, nil
 }
 
-// createUpstreamProxy creates a reverse http proxy client to the upstream
-func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) error {
-	dialer := (&net.Dialer{
-		KeepAlive: r.config.UpstreamKeepaliveTimeout,
-		Timeout:   r.config.UpstreamTimeout,
-	}).Dial
-
-	// are we using a unix socket?
-	if upstream != nil && upstream.Scheme == "unix" {
-		r.log.Info("using unix socket for upstream", zap.String("socket", fmt.Sprintf("%s%s", upstream.Host, upstream.Path)))
-
-		socketPath := fmt.Sprintf("%s%s", upstream.Host, upstream.Path)
-		dialer = func(network, address string) (net.Conn, error) {
-			return net.Dial("unix", socketPath)
-		}
-		upstream.Path = ""
-		upstream.Host = "domain-sock"
-		upstream.Scheme = unsecureScheme
-	}
-	// create the upstream tls configuration
-	//nolint:gas
-	tlsConfig := &tls.Config{InsecureSkipVerify: r.config.SkipUpstreamTLSVerify}
-
-	// are we using a client certificate?
-	// @TODO provide a means to reload the client certificate when it expires. I'm not sure if it's just a
-	// case of update the http transport settings - Also where to place this go-routine?
-	if r.config.TLSClientCertificate != "" {
-		cert, err := ioutil.ReadFile(r.config.TLSClientCertificate)
-		if err != nil {
-			r.log.Error("unable to read client certificate", zap.String("path", r.config.TLSClientCertificate), zap.Error(err))
-			return err
-		}
-		pool := x509.NewCertPool()
-		pool.AppendCertsFromPEM(cert)
-		tlsConfig.ClientCAs = pool
-		tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
-	}
-
-	// @check if we have a upstream ca to verify the upstream
-	if r.config.UpstreamCA != "" {
-		r.log.Info("loading the upstream ca", zap.String("path", r.config.UpstreamCA))
-		ca, err := ioutil.ReadFile(r.config.UpstreamCA)
-		if err != nil {
-			return err
-		}
-		pool := x509.NewCertPool()
-		pool.AppendCertsFromPEM(ca)
-		tlsConfig.RootCAs = pool
-	}
-
-	// create the forwarding proxy
-	proxy := goproxy.NewProxyHttpServer()
-	proxy.KeepDestinationHeaders = !r.config.CorsDisableUpstream
-	proxy.Logger = httplog.New(ioutil.Discard, "", 0)
-	proxy.KeepDestinationHeaders = !r.config.CorsDisableUpstream
-	r.upstream = proxy
-
-	// update the tls configuration of the reverse proxy
-	r.upstream.(*goproxy.ProxyHttpServer).Tr = &http.Transport{
-		Dial:                  dialer,
-		DisableKeepAlives:     !r.config.UpstreamKeepalives,
-		ExpectContinueTimeout: r.config.UpstreamExpectContinueTimeout,
-		ResponseHeaderTimeout: r.config.UpstreamResponseHeaderTimeout,
-		TLSClientConfig:       tlsConfig,
-		TLSHandshakeTimeout:   r.config.UpstreamTLSHandshakeTimeout,
-		MaxIdleConns:          r.config.MaxIdleConns,
-		MaxIdleConnsPerHost:   r.config.MaxIdleConnsPerHost,
-	}
-
-	return nil
-}
-
 // createTemplates loads the custom template
 func (r *oauthProxy) createTemplates() error {
 	var list []string
@@ -874,4 +577,76 @@ func (r *oauthProxy) newOpenIDClient() (*oidc.Client, oidc.ProviderConfig, *http
 // Render implements the echo Render interface
 func (r *oauthProxy) Render(w io.Writer, name string, data interface{}) error {
 	return r.templates.ExecuteTemplate(w, name, data)
+}
+
+// createUpstreamProxy creates a reverse http proxy client to the upstream
+func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) error {
+	dialer := (&net.Dialer{
+		KeepAlive: r.config.UpstreamKeepaliveTimeout,
+		Timeout:   r.config.UpstreamTimeout,
+	}).Dial
+
+	// are we using a unix socket?
+	if upstream != nil && upstream.Scheme == "unix" {
+		r.log.Info("using unix socket for upstream", zap.String("socket", fmt.Sprintf("%s%s", upstream.Host, upstream.Path)))
+
+		socketPath := fmt.Sprintf("%s%s", upstream.Host, upstream.Path)
+		dialer = func(network, address string) (net.Conn, error) {
+			return net.Dial("unix", socketPath)
+		}
+		upstream.Path = ""
+		upstream.Host = "domain-sock"
+		upstream.Scheme = unsecureScheme
+	}
+	// create the upstream tls configuration
+	//nolint:gas
+	tlsConfig := &tls.Config{InsecureSkipVerify: r.config.SkipUpstreamTLSVerify}
+
+	// are we using a client certificate?
+	// @TODO provide a means to reload the client certificate when it expires. I'm not sure if it's just a
+	// case of update the http transport settings - Also where to place this go-routine?
+	if r.config.TLSClientCertificate != "" {
+		cert, err := ioutil.ReadFile(r.config.TLSClientCertificate)
+		if err != nil {
+			r.log.Error("unable to read client certificate", zap.String("path", r.config.TLSClientCertificate), zap.Error(err))
+			return err
+		}
+		pool := x509.NewCertPool()
+		pool.AppendCertsFromPEM(cert)
+		tlsConfig.ClientCAs = pool
+		tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
+	}
+
+	// @check if we have a upstream ca to verify the upstream
+	if r.config.UpstreamCA != "" {
+		r.log.Info("loading the upstream ca", zap.String("path", r.config.UpstreamCA))
+		ca, err := ioutil.ReadFile(r.config.UpstreamCA)
+		if err != nil {
+			return err
+		}
+		pool := x509.NewCertPool()
+		pool.AppendCertsFromPEM(ca)
+		tlsConfig.RootCAs = pool
+	}
+
+	// create the forwarding proxy
+	proxy := goproxy.NewProxyHttpServer()
+	proxy.KeepDestinationHeaders = !r.config.CorsDisableUpstream
+	proxy.Logger = httplog.New(ioutil.Discard, "", 0)
+	proxy.KeepDestinationHeaders = !r.config.CorsDisableUpstream
+	r.upstream = proxy
+
+	// update the tls configuration of the reverse proxy
+	r.upstream.(*goproxy.ProxyHttpServer).Tr = &http.Transport{
+		Dial:                  dialer,
+		DisableKeepAlives:     !r.config.UpstreamKeepalives,
+		ExpectContinueTimeout: r.config.UpstreamExpectContinueTimeout,
+		ResponseHeaderTimeout: r.config.UpstreamResponseHeaderTimeout,
+		TLSClientConfig:       tlsConfig,
+		TLSHandshakeTimeout:   r.config.UpstreamTLSHandshakeTimeout,
+		MaxIdleConns:          r.config.MaxIdleConns,
+		MaxIdleConnsPerHost:   r.config.MaxIdleConnsPerHost,
+	}
+
+	return nil
 }
