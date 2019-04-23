@@ -1323,9 +1323,10 @@ func TestAdmissionHandlerRoles(t *testing.T) {
 // When EnableDefaultDeny, URIs not declared as resources are not forwarded.
 func TestCustomHeadersUpstream(t *testing.T) {
 	requests := []struct {
-		Headers         map[string]string
-		Request         fakeRequest
-		WithDefaultDeny bool
+		Headers             map[string]string
+		Request             fakeRequest
+		WithDefaultDeny     bool
+		WithDefaultNotFound bool
 	}{
 		{
 			// this one does not pass proxy: it is not even authorized
@@ -1355,6 +1356,36 @@ func TestCustomHeadersUpstream(t *testing.T) {
 			WithDefaultDeny: true,
 		},
 		{
+			// this one does NOT pass proxy: the request is authenticated, but the route is not explicit
+			Headers: map[string]string{
+				"TestHeaderOne": "one",
+			},
+			Request: fakeRequest{
+				URI:                  "/fred",
+				HasToken:             true,
+				ExpectedProxyHeaders: map[string]string{},
+				ExpectedCode:         http.StatusNotFound,
+				ExpectedProxy:        false,
+			},
+			WithDefaultDeny:     true,
+			WithDefaultNotFound: true,
+		},
+		{
+			// this one does NOT pass proxy: the request is NOT authenticated, AND the route is not explicit
+			Headers: map[string]string{
+				"TestHeaderOne": "one",
+			},
+			Request: fakeRequest{
+				URI:                  "/fred",
+				HasToken:             false,
+				ExpectedProxyHeaders: map[string]string{},
+				ExpectedCode:         http.StatusUnauthorized,
+				ExpectedProxy:        false,
+			},
+			WithDefaultDeny:     true,
+			WithDefaultNotFound: true,
+		},
+		{
 			// this one does pass proxy
 			Headers: map[string]string{
 				"TestHeaderOne": "one",
@@ -1366,6 +1397,20 @@ func TestCustomHeadersUpstream(t *testing.T) {
 				ExpectedProxy:        true,
 			},
 			WithDefaultDeny: false,
+		},
+		{
+			// this one does NOT pass proxy: default not found kicks in
+			Headers: map[string]string{
+				"TestHeaderOne": "one",
+			},
+			Request: fakeRequest{
+				URI:                  "/gambol99.htm",
+				ExpectedProxyHeaders: map[string]string{},
+				ExpectedCode:         http.StatusNotFound,
+				ExpectedProxy:        false,
+			},
+			WithDefaultDeny:     false,
+			WithDefaultNotFound: true,
 		},
 		{
 			// this one does pass proxy
@@ -1425,9 +1470,13 @@ func TestCustomHeadersUpstream(t *testing.T) {
 	}
 	for i, c := range requests {
 		cfg := newFakeKeycloakConfig()
+		cfg.DisableAllLogging = false
+		cfg.Verbose = true
+		cfg.EnableLogging = true
 		cfg.Resources = []*Resource{{URL: "/admin*", Methods: allHTTPMethods}}
 		cfg.Headers = c.Headers
 		cfg.EnableDefaultDeny = c.WithDefaultDeny
+		cfg.EnableDefaultNotFound = c.WithDefaultNotFound
 		t.Logf("HeadersUpstream testcase: %d", i)
 		newFakeProxy(cfg).RunTests(t, []fakeRequest{c.Request})
 	}

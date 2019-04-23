@@ -16,14 +16,12 @@ limitations under the License.
 package main
 
 import (
-	"errors"
 	"net/http"
 	"net/url"
 	"path"
 	"strings"
 
 	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
 	"github.com/rs/cors"
 	"go.uber.org/zap"
 )
@@ -60,68 +58,33 @@ func (r *oauthProxy) createReverseProxy() error {
 	// configure CSRF middleware
 	r.csrf = r.csrfConfigMiddleware()
 
-	// step: define admin subrouter: health and metrics
-	adminEngine := chi.NewRouter()
-	r.log.Info("enabled health service", zap.String("path", path.Clean(r.config.WithOAuthURI(healthURL))))
-	adminEngine.Get(healthURL, r.healthHandler)
-	if r.config.EnableMetrics {
-		r.log.Info("enabled the service metrics middleware", zap.String("path", path.Clean(r.config.WithOAuthURI(metricsURL))))
-		adminEngine.Get(metricsURL, r.proxyMetricsHandler)
-	}
-
-	// step: add the routing for oauth
+	// step: add the handlers for oauth
 	engine.With(
 		proxyDenyMiddleware,
 		r.csrfSkipMiddleware(), // handle CSRF state, but skip check on POST endpoints below
 		r.csrfProtectMiddleware(),
-		r.csrfHeaderMiddleware()).Route(r.config.OAuthURI, func(e chi.Router) {
-		e.MethodNotAllowed(methodNotAllowHandlder)
-		e.HandleFunc(authorizationURL, r.oauthAuthorizationHandler)
-		e.Get(callbackURL, r.oauthCallbackHandler)
-		e.Get(expiredURL, r.expirationHandler)
+		r.csrfHeaderMiddleware()).Route(r.config.OAuthURI,
+		func(e chi.Router) {
+			e.MethodNotAllowed(methodNotAllowHandlder)
 
-		e.With(r.authenticationMiddleware()).Get(logoutURL, r.logoutHandler)
-		e.With(r.authenticationMiddleware()).Get(tokenURL, r.tokenHandler)
+			e.HandleFunc(authorizationURL, r.oauthAuthorizationHandler)
+			e.Get(callbackURL, r.oauthCallbackHandler)
+			e.Get(expiredURL, r.expirationHandler)
 
-		e.Post(loginURL, r.loginHandler)
+			e.With(r.authenticationMiddleware()).Get(logoutURL, r.logoutHandler)
+			e.With(r.authenticationMiddleware()).Get(tokenURL, r.tokenHandler)
 
-		if r.config.ListenAdmin == "" {
-			e.Mount("/", adminEngine)
-		}
-	})
+			e.Post(loginURL, r.loginHandler)
 
-	// step: define profiling subrouter
-	var debugEngine chi.Router
-	if r.config.EnableProfiling {
-		r.log.Warn("enabling the debug profiling on " + debugURL)
-		debugEngine = chi.NewRouter()
-		debugEngine.Get("/{name}", r.debugHandler)
-		debugEngine.Post("/{name}", r.debugHandler)
-
-		// @check if the server write-timeout is still set and throw a warning
-		if r.config.ServerWriteTimeout > 0 {
-			r.log.Warn("you should disable the server write timeout (--server-write-timeout) when using pprof profiling")
-		}
-		if r.config.ListenAdmin == "" {
-			engine.With(proxyDenyMiddleware).Mount(debugURL, debugEngine)
-		}
-	}
-
-	if r.config.ListenAdmin != "" {
-		// mount admin and debug engines separately
-		r.log.Info("mounting admin endpoints on separate listener")
-		admin := chi.NewRouter()
-		admin.MethodNotAllowed(emptyHandler)
-		admin.NotFound(emptyHandler)
-		admin.Use(middleware.Recoverer)
-		admin.Use(proxyDenyMiddleware)
-		admin.Route("/", func(e chi.Router) {
-			e.Mount(r.config.OAuthURI, adminEngine)
-			if debugEngine != nil {
-				e.Mount(debugURL, debugEngine)
+			if r.config.ListenAdmin == "" {
+				e.Mount("/", r.createAdminRoutes())
 			}
 		})
-		r.adminRouter = admin
+
+	if r.config.ListenAdmin == "" {
+		if debugEngine := r.createDebugRoutes(); debugEngine != nil {
+			engine.With(proxyDenyMiddleware).Mount(debugURL, debugEngine)
+		}
 	}
 
 	if r.config.EnableSessionCookies {
@@ -133,7 +96,7 @@ func (r *oauthProxy) createReverseProxy() error {
 		return err
 	}
 	// step: provision in the protected resources
-	enableDefaultDeny := r.config.EnableDefaultDeny
+	addDefaultDeny := r.config.EnableDefaultDeny
 	for _, x := range r.config.Resources {
 		if x.URL[len(x.URL)-1:] == "/" {
 			r.log.Warn("the resource url is not a prefix",
@@ -141,22 +104,39 @@ func (r *oauthProxy) createReverseProxy() error {
 				zap.String("change", x.URL),
 				zap.String("amended", strings.TrimRight(x.URL, "/")))
 		}
-		if x.URL == "/*" && r.config.EnableDefaultDeny {
-			switch x.WhiteListed {
-			case true:
-				return errors.New("you've asked for a default denial but whitelisted everything")
-			default:
-				enableDefaultDeny = false
-			}
+		if x.URL == allRoutes && r.config.EnableDefaultDeny {
+			addDefaultDeny = false
 		}
 	}
 
-	if enableDefaultDeny {
-		r.log.Info("adding a default denial to protected resources: all routes to upstream require authentication")
-		r.config.Resources = append(r.config.Resources, &Resource{URL: "/*", Methods: allHTTPMethods})
+	// step: define expected behaviour on default route: "/*"
+	if addDefaultDeny {
+		if r.config.EnableDefaultNotFound {
+			r.log.Info("routes which are not explicitly declared as resources will respond 401 not authenticated or 404 NotFound for authenticated users")
+			engine.With(r.authenticationMiddleware()).
+				Handle(allRoutes, chi.NewMux().NotFoundHandler())
+		} else {
+			r.log.Info("adding a default denial to protected resources: all routes to upstream require authentication")
+			r.config.Resources = append(r.config.Resources, &Resource{URL: allRoutes, Methods: allHTTPMethods})
+		}
 	} else {
-		r.log.Info("routes to upstream are not configured to be denied by default")
-		engine.With(r.proxyMiddleware(nil)).HandleFunc("/*", emptyHandler)
+		if r.config.EnableDefaultNotFound {
+			// this setting kicks in only on default catch all route, not if one has been explicitly set up
+			foundAllRoutes := false
+			for _, x := range r.config.Resources {
+				if x.URL == allRoutes {
+					foundAllRoutes = true
+					break
+				}
+			}
+			if !foundAllRoutes {
+				r.log.Info("routes which are not explicitly declared as resources will respond 404 NotFound")
+				engine.Handle(allRoutes, chi.NewMux().NotFoundHandler())
+			}
+		} else {
+			r.log.Warn("routes to upstream are not configured to be denied by default")
+			engine.With(r.proxyMiddleware(nil)).HandleFunc(allRoutes, emptyHandler)
+		}
 	}
 
 	for _, x := range r.config.Resources {
@@ -267,7 +247,6 @@ func (r *oauthProxy) proxyMiddleware(resource *Resource) func(http.Handler) http
 			r.log.Debug("proxying to upstream", zap.String("matched_resource", matched), zap.Stringer("upstream_url", req.URL))
 
 			// @note: by default goproxy only provides a forwarding proxy, thus all requests have to be absolute and we must update the host headers
-			// TODO(fredbi): weakness here
 			if v := req.Header.Get("Host"); v != "" {
 				req.Host = v
 				req.Header.Del("Host")

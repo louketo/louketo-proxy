@@ -70,6 +70,7 @@ const (
 	unsecureScheme     = "http"
 	secureScheme       = "https"
 	anyMethod          = "ANY"
+	allRoutes          = "/*"
 
 	_ contextKey = iota
 	contextScopeName
@@ -218,8 +219,9 @@ type Config struct {
 	// EnableLogoutRedirect indicates we should redirect to the identity provider for logging out
 	EnableLogoutRedirect bool `json:"enable-logout-redirect" yaml:"enable-logout-redirect" usage:"indicates we should redirect to the identity provider for logging out"`
 	// EnableDefaultDeny indicates we should deny by default all requests
-	EnableDefaultDeny bool `json:"enable-default-deny" yaml:"enable-default-deny" usage:"enables a default denial on all requests, you have to explicitly say what is permitted (recommended)"`
-	// Enable... TODO(fredbi) : explicit resources
+	EnableDefaultDeny bool `json:"enable-default-deny" yaml:"enable-default-deny" usage:"enables a default denial on all requests, you have to explicitly say what is permitted (recommended)" env:"ENABLE_DEFAULT_DENY"`
+	// EnableDefaultNotFound: makes explicit resources routing mandatory (i.e. responds with 404 NotFound, even if authenticated)
+	EnableDefaultNotFound bool `json:"enable-default-notfound" yaml:"enable-default-notfound" usage:"makes explicit resources routing mandatory (i.e. responds with 404 NotFound, even if authenticated)" env:"ENABLE_DEFAULT_NOTFOUND"`
 	// EnableEncryptedToken indicates the access token should be encoded
 	EnableEncryptedToken bool `json:"enable-encrypted-token" yaml:"enable-encrypted-token" usage:"enable encryption for the access tokens"`
 	// ForceEncryptedCookie indicates that the access token in the cookie should be encoded, regardless what EnableEncryptedToken says. This way, gatekeeper may receive tokens in header in the clear, whereas tokens in cookies remain encrypted

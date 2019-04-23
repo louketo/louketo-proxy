@@ -177,7 +177,7 @@ func TestAdmin(t *testing.T) {
 	assert.NoError(t, erb)
 	assert.Contains(t, string(buf), "num_symbols: 1\n")
 
-	// scenario 2: admin endpoints beside other routes
+	// scenario 2: admin endpoints next to other routes (same listener)
 	config.Listen = e2eAdminProxyListener2
 	config.ListenAdmin = ""
 	config.LocalhostMetrics = true
@@ -200,6 +200,9 @@ func TestAdmin(t *testing.T) {
 		t.FailNow()
 	}
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	buf, erb = ioutil.ReadAll(resp.Body)
+	assert.NoError(t, erb)
+	assert.Contains(t, string(buf), `OK`)
 
 	// test metrics
 	u, _ = url.Parse("http://" + e2eAdminProxyListener2 + "/oauth/metrics")

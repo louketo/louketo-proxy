@@ -114,15 +114,19 @@ func newProxy(config *Config) (*oauthProxy, error) {
 		log.Warn("client credentials are not set, depending on provider (confidential|public) you might be unable to auth")
 	}
 
-	// are we running in forwarding mode?
 	if config.EnableForwarding {
+		// runs forward proxy mode
 		if err := svc.createForwardingProxy(); err != nil {
 			return nil, err
 		}
 	} else {
+		// runs reverse proxy mode
 		if err := svc.createReverseProxy(); err != nil {
 			return nil, err
 		}
+
+		// publish health, metrics and profiling endpoints
+		svc.createAdminServices()
 	}
 
 	return svc, nil

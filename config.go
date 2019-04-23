@@ -88,198 +88,21 @@ func (r *Config) WithOAuthURI(uri string) string {
 
 // isValid validates if the config is valid
 func (r *Config) isValid() error {
-	if r.Listen == "" {
-		return errors.New("you have not specified the listening interface")
+	if err := r.isListenValid(); err != nil {
+		return err
 	}
-	if r.ListenAdmin == r.Listen {
-		r.ListenAdmin = ""
+	if err := r.isTLSValid(); err != nil {
+		return err
 	}
-	if r.ListenAdminScheme == "" {
-		r.ListenAdminScheme = secureScheme
-	}
-	if r.ListenAdminScheme != secureScheme && r.ListenAdminScheme != unsecureScheme {
-		return errors.New("scheme for admin listener must be one of [http, https]")
-	}
-	if r.MaxIdleConns <= 0 {
-		return errors.New("max-idle-connections must be a number > 0")
-	}
-	if r.MaxIdleConnsPerHost < 0 || r.MaxIdleConnsPerHost > r.MaxIdleConns {
-		return errors.New("maxi-idle-connections-per-host must be a number > 0 and <= max-idle-connections")
-	}
-	if r.TLSCertificate != "" && r.TLSPrivateKey == "" {
-		return errors.New("you have not provided a private key")
-	}
-	if r.TLSAdminCertificate != "" && r.TLSAdminPrivateKey == "" {
-		return errors.New("you have not provided a private key for admin endpoint")
-	}
-	if r.TLSPrivateKey != "" && r.TLSCertificate == "" {
-		return errors.New("you have not provided a certificate file")
-	}
-	if r.TLSAdminPrivateKey != "" && r.TLSAdminCertificate == "" {
-		return errors.New("you have not provided a certificate file for admin endpoint")
-	}
-	if r.TLSCertificate != "" && !fileExists(r.TLSCertificate) {
-		return fmt.Errorf("the tls certificate %s does not exist", r.TLSCertificate)
-	}
-	if r.TLSAdminCertificate != "" && !fileExists(r.TLSAdminCertificate) {
-		return fmt.Errorf("the tls certificate %s does not exist for admin endpoint", r.TLSAdminCertificate)
-	}
-	if r.TLSPrivateKey != "" && !fileExists(r.TLSPrivateKey) {
-		return fmt.Errorf("the tls private key %s does not exist", r.TLSPrivateKey)
-	}
-	if r.TLSAdminPrivateKey != "" && !fileExists(r.TLSAdminPrivateKey) {
-		return fmt.Errorf("the tls private key %s does not exist for admin endpoint", r.TLSAdminPrivateKey)
-	}
-	if r.TLSCaCertificate != "" && !fileExists(r.TLSCaCertificate) {
-		return fmt.Errorf("the tls ca certificate file %s does not exist", r.TLSCaCertificate)
-	}
-	if r.TLSAdminCaCertificate != "" && !fileExists(r.TLSAdminCaCertificate) {
-		return fmt.Errorf("the tls ca certificate file %s does not exist for admin endpoint", r.TLSAdminCaCertificate)
-	}
-	if r.TLSClientCertificate != "" && len(r.TLSClientCertificates) > 0 {
-		return fmt.Errorf("specify only one of single TLSAdminClientCertificate or array TLSAdminClientCertificates")
-	}
-	if r.TLSClientCertificate != "" && !fileExists(r.TLSClientCertificate) {
-		return fmt.Errorf("the tls client certificate %s does not exist", r.TLSClientCertificate)
-	}
-	for _, clientCertFile := range r.TLSClientCertificates {
-		if !fileExists(clientCertFile) {
-			return fmt.Errorf("the tls client certificate %s does not exist", clientCertFile)
-		}
-	}
-	if r.TLSAdminClientCertificate != "" && len(r.TLSAdminClientCertificates) > 0 {
-		return fmt.Errorf("specify only one of single TLSAdminClientCertificate or array TLSAdminClientCertificates")
-	}
-	if r.TLSAdminClientCertificate != "" && !fileExists(r.TLSAdminClientCertificate) {
-		return fmt.Errorf("the tls client certificate %s does not exist for admin endpoint", r.TLSAdminClientCertificate)
-	}
-	for _, clientCertFile := range r.TLSAdminClientCertificates {
-		if !fileExists(clientCertFile) {
-			return fmt.Errorf("the tls client certificate %s does not exist for admin endpoint", clientCertFile)
-		}
-	}
+
 	if r.UseLetsEncrypt && r.LetsEncryptCacheDir == "" {
 		return fmt.Errorf("the letsencrypt cache dir has not been set")
 	}
 
 	if r.EnableForwarding {
-		if r.ClientID == "" {
-			return errors.New("you have not specified the client id")
-		}
-		if r.DiscoveryURL == "" {
-			return errors.New("you have not specified the discovery url")
-		}
-		if r.ForwardingUsername == "" {
-			return errors.New("no forwarding username")
-		}
-		if r.ForwardingPassword == "" {
-			return errors.New("no forwarding password")
-		}
-		if r.TLSCertificate != "" {
-			return errors.New("you don't need to specify a tls-certificate, use tls-ca-certificate instead")
-		}
-		if r.TLSPrivateKey != "" {
-			return errors.New("you don't need to specify the tls-private-key, use tls-ca-key instead")
-		}
-	} else {
-		if r.Upstream == "" {
-			if r.EnableDefaultDeny {
-				return errors.New("you have not specified an upstream endpoint to proxy to")
-			}
-			for _, resource := range r.Resources {
-				if resource.Upstream == "" {
-					return errors.New("you have not specified an upstream endpoint to proxy to")
-				}
-			}
-		} else {
-			if _, err := url.Parse(r.Upstream); err != nil {
-				return fmt.Errorf("the upstream endpoint is invalid, %s", err)
-			}
-		}
-		if r.SkipUpstreamTLSVerify && r.UpstreamCA != "" {
-			return fmt.Errorf("you cannot skip upstream tls and load a root ca: %s to verify it", r.UpstreamCA)
-		}
-
-		// step: if the skip verification is off, we need the below
-		if !r.SkipTokenVerification {
-			if r.ClientID == "" {
-				return errors.New("you have not specified the client id")
-			}
-			if r.DiscoveryURL == "" {
-				return errors.New("you have not specified the discovery url")
-			}
-			if strings.HasSuffix(r.RedirectionURL, "/") {
-				r.RedirectionURL = strings.TrimSuffix(r.RedirectionURL, "/")
-			}
-			if !r.EnableSecurityFilter {
-				if r.EnableHTTPSRedirect {
-					return errors.New("the security filter must be switch on for this feature: http-redirect")
-				}
-				if r.EnableBrowserXSSFilter {
-					return errors.New("the security filter must be switch on for this feature: brower-xss-filter")
-				}
-				if r.EnableFrameDeny {
-					return errors.New("the security filter must be switch on for this feature: frame-deny-filter")
-				}
-				if r.ContentSecurityPolicy != "" {
-					return errors.New("the security filter must be switch on for this feature: content-security-policy")
-				}
-				if len(r.Hostnames) > 0 {
-					return errors.New("the security filter must be switch on for this feature: hostnames")
-				}
-			}
-			if (r.EnableEncryptedToken || r.ForceEncryptedCookie) && r.EncryptionKey == "" {
-				return errors.New("you have not specified an encryption key for encoding the access token")
-			}
-			if r.EnableRefreshTokens && r.EncryptionKey == "" {
-				return errors.New("you have not specified an encryption key for encoding the session state")
-			}
-			if r.EnableRefreshTokens && (len(r.EncryptionKey) != 16 && len(r.EncryptionKey) != 32) {
-				return fmt.Errorf("the encryption key (%d) must be either 16 or 32 characters for AES-128/AES-256 selection", len(r.EncryptionKey))
-			}
-			if !r.NoRedirects && r.SecureCookie && r.RedirectionURL != "" && !strings.HasPrefix(r.RedirectionURL, "https") {
-				return errors.New("the cookie is set to secure but your redirection url is non-tls")
-			}
-			if r.StoreURL != "" {
-				if _, err := url.Parse(r.StoreURL); err != nil {
-					return fmt.Errorf("the store url is invalid, error: %s", err)
-				}
-			}
-		}
-		// check: ensure each of the resource are valid
-		for _, resource := range r.Resources {
-			if err := resource.valid(); err != nil {
-				return err
-			}
-		}
-		// step: validate the claims are validate regex's
-		for k, claim := range r.MatchClaims {
-			if _, err := regexp.Compile(claim); err != nil {
-				return fmt.Errorf("the claim matcher: %s for claim: %s is not a valid regex", claim, k)
-			}
-		}
+		return r.isForwardingValid()
 	}
-
-	// validity checks with CSRF options
-	if r.EnableCSRF {
-		if r.EncryptionKey == "" {
-			return fmt.Errorf("flag EnableCSRF requires EncryptionKey to be set")
-		}
-		var found bool
-		for _, resource := range r.Resources {
-			if resource.EnableCSRF {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("flag EnableCSRF is set but no protected resource sets EnableCSRF")
-		}
-		if r.CorsDisableUpstream {
-			return fmt.Errorf("flag EnableCSRF requires headers to be added to upstream response. This won't work if CorsDisableUpstream is set")
-		}
-	}
-	return nil
+	return r.isReverseProxyValid()
 }
 
 // hasCustomSignInPage checks if there is a custom sign in  page
@@ -444,4 +267,214 @@ func parseTLS(config *tlsAdvancedConfig) (*tlsSettings, error) {
 		}
 	}
 	return parsed, nil
+}
+
+func (r *Config) isListenValid() error {
+	if r.Listen == "" {
+		return errors.New("you have not specified the listening interface")
+	}
+	if r.ListenAdmin == r.Listen {
+		r.ListenAdmin = ""
+	}
+	if r.ListenAdminScheme == "" {
+		r.ListenAdminScheme = secureScheme
+	}
+	if r.ListenAdminScheme != secureScheme && r.ListenAdminScheme != unsecureScheme {
+		return errors.New("scheme for admin listener must be one of [http, https]")
+	}
+	if r.MaxIdleConns <= 0 {
+		return errors.New("max-idle-connections must be a number > 0")
+	}
+	if r.MaxIdleConnsPerHost < 0 || r.MaxIdleConnsPerHost > r.MaxIdleConns {
+		return errors.New("maxi-idle-connections-per-host must be a number > 0 and <= max-idle-connections")
+	}
+	return nil
+}
+
+func (r *Config) isTLSValid() error {
+	if r.TLSCertificate != "" && r.TLSPrivateKey == "" {
+		return errors.New("you have not provided a private key")
+	}
+	if r.TLSAdminCertificate != "" && r.TLSAdminPrivateKey == "" {
+		return errors.New("you have not provided a private key for admin endpoint")
+	}
+	if r.TLSPrivateKey != "" && r.TLSCertificate == "" {
+		return errors.New("you have not provided a certificate file")
+	}
+	if r.TLSAdminPrivateKey != "" && r.TLSAdminCertificate == "" {
+		return errors.New("you have not provided a certificate file for admin endpoint")
+	}
+	if r.TLSCertificate != "" && !fileExists(r.TLSCertificate) {
+		return fmt.Errorf("the tls certificate %s does not exist", r.TLSCertificate)
+	}
+	if r.TLSAdminCertificate != "" && !fileExists(r.TLSAdminCertificate) {
+		return fmt.Errorf("the tls certificate %s does not exist for admin endpoint", r.TLSAdminCertificate)
+	}
+	if r.TLSPrivateKey != "" && !fileExists(r.TLSPrivateKey) {
+		return fmt.Errorf("the tls private key %s does not exist", r.TLSPrivateKey)
+	}
+	if r.TLSAdminPrivateKey != "" && !fileExists(r.TLSAdminPrivateKey) {
+		return fmt.Errorf("the tls private key %s does not exist for admin endpoint", r.TLSAdminPrivateKey)
+	}
+	if r.TLSCaCertificate != "" && !fileExists(r.TLSCaCertificate) {
+		return fmt.Errorf("the tls ca certificate file %s does not exist", r.TLSCaCertificate)
+	}
+	if r.TLSAdminCaCertificate != "" && !fileExists(r.TLSAdminCaCertificate) {
+		return fmt.Errorf("the tls ca certificate file %s does not exist for admin endpoint", r.TLSAdminCaCertificate)
+	}
+	if r.TLSClientCertificate != "" && len(r.TLSClientCertificates) > 0 {
+		return fmt.Errorf("specify only one of single TLSAdminClientCertificate or array TLSAdminClientCertificates")
+	}
+	if r.TLSClientCertificate != "" && !fileExists(r.TLSClientCertificate) {
+		return fmt.Errorf("the tls client certificate %s does not exist", r.TLSClientCertificate)
+	}
+	for _, clientCertFile := range r.TLSClientCertificates {
+		if !fileExists(clientCertFile) {
+			return fmt.Errorf("the tls client certificate %s does not exist", clientCertFile)
+		}
+	}
+	if r.TLSAdminClientCertificate != "" && len(r.TLSAdminClientCertificates) > 0 {
+		return fmt.Errorf("specify only one of single TLSAdminClientCertificate or array TLSAdminClientCertificates")
+	}
+	if r.TLSAdminClientCertificate != "" && !fileExists(r.TLSAdminClientCertificate) {
+		return fmt.Errorf("the tls client certificate %s does not exist for admin endpoint", r.TLSAdminClientCertificate)
+	}
+	for _, clientCertFile := range r.TLSAdminClientCertificates {
+		if !fileExists(clientCertFile) {
+			return fmt.Errorf("the tls client certificate %s does not exist for admin endpoint", clientCertFile)
+		}
+	}
+	return nil
+}
+
+func (r *Config) isForwardingValid() error {
+	if r.ClientID == "" {
+		return errors.New("you have not specified the client id")
+	}
+	if r.DiscoveryURL == "" {
+		return errors.New("you have not specified the discovery url")
+	}
+	if r.ForwardingUsername == "" {
+		return errors.New("no forwarding username")
+	}
+	if r.ForwardingPassword == "" {
+		return errors.New("no forwarding password")
+	}
+	if r.TLSCertificate != "" {
+		return errors.New("you don't need to specify a tls-certificate, use tls-ca-certificate instead")
+	}
+	if r.TLSPrivateKey != "" {
+		return errors.New("you don't need to specify the tls-private-key, use tls-ca-key instead")
+	}
+	return nil
+}
+
+func (r *Config) isReverseProxyValid() error {
+	if r.Upstream == "" {
+		if r.EnableDefaultDeny {
+			return errors.New("you have not specified an upstream endpoint to proxy to")
+		}
+		for _, resource := range r.Resources {
+			if resource.Upstream == "" {
+				return errors.New("you have not specified an upstream endpoint to proxy to")
+			}
+		}
+	} else {
+		if _, err := url.Parse(r.Upstream); err != nil {
+			return fmt.Errorf("the upstream endpoint is invalid, %s", err)
+		}
+	}
+	if r.SkipUpstreamTLSVerify && r.UpstreamCA != "" {
+		return fmt.Errorf("you cannot skip upstream tls and load a root ca: %s to verify it", r.UpstreamCA)
+	}
+
+	// step: if token verification is enabled (skip is off), we need the below checks
+	if !r.SkipTokenVerification {
+		if err := r.isTokenConfigValid(); err != nil {
+			return err
+		}
+	}
+	// check: ensure each of the resource are valid
+	for _, resource := range r.Resources {
+		if err := resource.valid(); err != nil {
+			return err
+		}
+		if resource.URL == allRoutes && r.EnableDefaultDeny && resource.WhiteListed {
+			return errors.New("you've asked for a default denial but whitelisted everything")
+		}
+	}
+	// step: validate the claims are validate regex's
+	for k, claim := range r.MatchClaims {
+		if _, err := regexp.Compile(claim); err != nil {
+			return fmt.Errorf("the claim matcher: %s for claim: %s is not a valid regex", claim, k)
+		}
+	}
+
+	// validity checks with CSRF options
+	if r.EnableCSRF {
+		if r.EncryptionKey == "" {
+			return fmt.Errorf("flag EnableCSRF requires EncryptionKey to be set")
+		}
+		var found bool
+		for _, resource := range r.Resources {
+			if resource.EnableCSRF {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("flag EnableCSRF is set but no protected resource sets EnableCSRF")
+		}
+		if r.CorsDisableUpstream {
+			return fmt.Errorf("flag EnableCSRF requires headers to be added to upstream response. This won't work if CorsDisableUpstream is set")
+		}
+	}
+	return nil
+}
+
+func (r *Config) isTokenConfigValid() error {
+	if r.ClientID == "" {
+		return errors.New("you have not specified the client id")
+	}
+	if r.DiscoveryURL == "" {
+		return errors.New("you have not specified the discovery url")
+	}
+	if strings.HasSuffix(r.RedirectionURL, "/") {
+		r.RedirectionURL = strings.TrimSuffix(r.RedirectionURL, "/")
+	}
+	if !r.EnableSecurityFilter {
+		if r.EnableHTTPSRedirect {
+			return errors.New("the security filter must be switch on for this feature: http-redirect")
+		}
+		if r.EnableBrowserXSSFilter {
+			return errors.New("the security filter must be switch on for this feature: brower-xss-filter")
+		}
+		if r.EnableFrameDeny {
+			return errors.New("the security filter must be switch on for this feature: frame-deny-filter")
+		}
+		if r.ContentSecurityPolicy != "" {
+			return errors.New("the security filter must be switch on for this feature: content-security-policy")
+		}
+		if len(r.Hostnames) > 0 {
+			return errors.New("the security filter must be switch on for this feature: hostnames")
+		}
+	}
+	if (r.EnableEncryptedToken || r.ForceEncryptedCookie) && r.EncryptionKey == "" {
+		return errors.New("you have not specified an encryption key for encoding the access token")
+	}
+	if r.EnableRefreshTokens && r.EncryptionKey == "" {
+		return errors.New("you have not specified an encryption key for encoding the session state")
+	}
+	if r.EnableRefreshTokens && (len(r.EncryptionKey) != 16 && len(r.EncryptionKey) != 32) {
+		return fmt.Errorf("the encryption key (%d) must be either 16 or 32 characters for AES-128/AES-256 selection", len(r.EncryptionKey))
+	}
+	if !r.NoRedirects && r.SecureCookie && r.RedirectionURL != "" && !strings.HasPrefix(r.RedirectionURL, "https") {
+		return errors.New("the cookie is set to secure but your redirection url is non-tls")
+	}
+	if r.StoreURL != "" {
+		if _, err := url.Parse(r.StoreURL); err != nil {
+			return fmt.Errorf("the store url is invalid, error: %s", err)
+		}
+	}
+	return nil
 }
