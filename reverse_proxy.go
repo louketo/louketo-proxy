@@ -213,7 +213,11 @@ func (r *oauthProxy) proxyMiddleware(resource *Resource) func(http.Handler) http
 			// @step: add the proxy forwarding headers
 			req.Header.Add("X-Forwarded-For", realIP(req))
 			req.Header.Set("X-Forwarded-Host", req.Host)
-			req.Header.Set("X-Forwarded-Proto", req.Header.Get("X-Forwarded-Proto"))
+			if fp := req.Header.Get("X-Forwarded-Proto"); fp != "" {
+				req.Header.Set("X-Forwarded-Proto", fp)
+			} else {
+				req.Header.Set("X-Forwarded-Proto", upstreamScheme)
+			}
 
 			if len(r.config.CorsOrigins) > 0 {
 				// if CORS is enabled by gatekeeper, do not propagate CORS requests upstream
@@ -238,13 +242,13 @@ func (r *oauthProxy) proxyMiddleware(resource *Resource) func(http.Handler) http
 			req.URL.Scheme = upstreamScheme
 			if stripBasePath != "" {
 				// strip prefix if needed
-				req.URL.Path = strings.TrimPrefix(stripBasePath, req.URL.Path)
+				r.log.Debug("stripping prefix from URL", zap.String("stripBasePath", stripBasePath), zap.String("original_path", req.URL.Path))
+				req.URL.Path = strings.TrimPrefix(req.URL.Path, stripBasePath)
 			}
 			if upstreamBasePath != "" {
 				// add upstream URL component if any
 				req.URL.Path = path.Join(upstreamBasePath, req.URL.Path)
 			}
-			r.log.Debug("proxying to upstream", zap.String("matched_resource", matched), zap.Stringer("upstream_url", req.URL))
 
 			// @note: by default goproxy only provides a forwarding proxy, thus all requests have to be absolute and we must update the host headers
 			if v := req.Header.Get("Host"); v != "" {
@@ -253,7 +257,7 @@ func (r *oauthProxy) proxyMiddleware(resource *Resource) func(http.Handler) http
 			} else if !r.config.PreserveHost {
 				req.Host = upstreamHost
 			}
-			r.log.Debug("host", zap.String("host", req.Host))
+			r.log.Debug("proxying to upstream", zap.String("matched_resource", matched), zap.Stringer("upstream_url", req.URL), zap.String("host_header", req.Host))
 
 			if isUpgradedConnection(req) {
 				r.log.Debug("upgrading the connnection", zap.String("client_ip", req.RemoteAddr))
