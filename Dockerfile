@@ -16,7 +16,7 @@ RUN go mod download
 
 ADD . /gatekeeper
 RUN LDFLAGS="-s -w -linkmode external -extldflags \"-static\"" &&\
-    go build -o /stage/usr/bin/gatekeeper --ldflags "$LDFLAGS" .
+    go build -tags "nostores noforwarding" -o /stage/usr/bin/gatekeeper --ldflags "$LDFLAGS" .
 RUN upx /stage/usr/bin/gatekeeper
 
 # Build the dist image

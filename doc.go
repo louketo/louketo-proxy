@@ -71,6 +71,7 @@ const (
 	secureScheme       = "https"
 	anyMethod          = "ANY"
 	allRoutes          = "/*"
+	jsonMime           = "application/json; charset=utf-8"
 
 	_ contextKey = iota
 	contextScopeName

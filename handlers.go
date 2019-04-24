@@ -59,8 +59,7 @@ func (r *oauthProxy) getRedirectionURL(w http.ResponseWriter, req *http.Request)
 
 	state, _ := req.Cookie(requestStateCookie)
 	if state != nil && req.URL.Query().Get("state") != state.Value {
-		r.log.Error("state parameter mismatch")
-		w.WriteHeader(http.StatusForbidden)
+		r.errorResponse(w, "state parameter mismatch", http.StatusForbidden, nil)
 		return ""
 	}
 	return fmt.Sprintf("%s%s", redirect, r.config.WithOAuthURI("callback"))
@@ -69,13 +68,12 @@ func (r *oauthProxy) getRedirectionURL(w http.ResponseWriter, req *http.Request)
 // oauthAuthorizationHandler is responsible for performing the redirection to oauth provider
 func (r *oauthProxy) oauthAuthorizationHandler(w http.ResponseWriter, req *http.Request) {
 	if r.config.SkipTokenVerification {
-		w.WriteHeader(http.StatusNotAcceptable)
+		r.errorResponse(w, "", http.StatusNotAcceptable, nil)
 		return
 	}
 	client, err := r.getOAuthClient(r.getRedirectionURL(w, req))
 	if err != nil {
-		r.log.Error("failed to retrieve the oauth client for authorization", zap.Error(err))
-		w.WriteHeader(http.StatusInternalServerError)
+		r.errorResponse(w, "failed to retrieve the oauth client for authorization", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -95,6 +93,7 @@ func (r *oauthProxy) oauthAuthorizationHandler(w http.ResponseWriter, req *http.
 	if r.config.hasCustomSignInPage() {
 		model := make(map[string]string)
 		model["redirect"] = authURL
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		_ = r.Render(w, path.Base(r.config.SignInPage), mergeMaps(model, r.config.Tags))
 
@@ -107,27 +106,25 @@ func (r *oauthProxy) oauthAuthorizationHandler(w http.ResponseWriter, req *http.
 // oauthCallbackHandler is responsible for handling the response from oauth service
 func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Request) {
 	if r.config.SkipTokenVerification {
-		w.WriteHeader(http.StatusNotAcceptable)
+		r.errorResponse(w, "", http.StatusNotAcceptable, nil)
 		return
 	}
 	// step: ensure we have a authorization code
 	code := req.URL.Query().Get("code")
 	if code == "" {
-		w.WriteHeader(http.StatusBadRequest)
+		r.errorResponse(w, "no code in query", http.StatusBadRequest, nil)
 		return
 	}
 
 	client, err := r.getOAuthClient(r.getRedirectionURL(w, req))
 	if err != nil {
-		r.log.Error("unable to create a oauth2 client", zap.Error(err))
-		w.WriteHeader(http.StatusInternalServerError)
+		r.errorResponse(w, "unable to create a oauth2 client", http.StatusInternalServerError, err)
 		return
 	}
 
 	resp, err := exchangeAuthenticationCode(client, code)
 	if err != nil {
-		r.log.Error("unable to exchange code for access token", zap.Error(err))
-		r.accessForbidden(w, req)
+		r.accessForbidden(w, req, "unable to exchange code for access token", err.Error())
 		return
 	}
 
@@ -136,8 +133,7 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 	// to the ID Token.
 	token, identity, err := parseToken(resp.IDToken)
 	if err != nil {
-		r.log.Error("unable to parse id token for identity", zap.Error(err))
-		r.accessForbidden(w, req)
+		r.accessForbidden(w, req, "unable to parse ID token for identity", err.Error())
 		return
 	}
 	access, id, err := parseToken(resp.AccessToken)
@@ -150,8 +146,7 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 
 	// step: check the access token is valid
 	if err = verifyToken(r.client, token); err != nil {
-		r.log.Error("unable to verify the id token", zap.Error(err))
-		r.accessForbidden(w, req)
+		r.accessForbidden(w, req, "unable to verify the ID token", err.Error())
 		return
 	}
 	accessToken := token.Encode()
@@ -159,8 +154,7 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 	// step: are we encrypting the access token?
 	if r.config.EnableEncryptedToken || r.config.ForceEncryptedCookie {
 		if accessToken, err = encodeText(accessToken, r.config.EncryptionKey); err != nil {
-			r.log.Error("unable to encode the access token", zap.Error(err))
-			w.WriteHeader(http.StatusInternalServerError)
+			r.errorResponse(w, "unable to encode the access token", http.StatusInternalServerError, err)
 			return
 		}
 	}
@@ -178,8 +172,7 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 		var encrypted string
 		encrypted, err = encodeText(resp.RefreshToken, r.config.EncryptionKey)
 		if err != nil {
-			r.log.Error("failed to encrypt the refresh token", zap.Error(err))
-			w.WriteHeader(http.StatusInternalServerError)
+			r.errorResponse(w, "failed to encrypt the refresh token", http.StatusInternalServerError, err)
 			return
 		}
 		// drop in the access token - cookie expiration = access token
@@ -274,7 +267,7 @@ func (r *oauthProxy) loginHandler(w http.ResponseWriter, req *http.Request) {
 		// @metric a token has been issued
 		oauthTokensMetric.WithLabelValues("login").Inc()
 
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Type", jsonMime)
 		if err := json.NewEncoder(w).Encode(tokenResponse{
 			IDToken:      token.IDToken,
 			AccessToken:  token.AccessToken,
@@ -288,11 +281,7 @@ func (r *oauthProxy) loginHandler(w http.ResponseWriter, req *http.Request) {
 		return "", http.StatusOK, nil
 	}()
 	if err != nil {
-		r.log.Error(errorMsg,
-			zap.String("client_ip", req.RemoteAddr),
-			zap.Error(err))
-
-		w.WriteHeader(code)
+		r.errorResponse(w, strings.Join([]string{errorMsg, "client_ip", req.RemoteAddr}, ","), code, err)
 	}
 }
 
@@ -319,7 +308,7 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 	// @step: drop the access token
 	user, err := r.getIdentity(req)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		r.errorResponse(w, "", http.StatusBadRequest, nil)
 		return
 	}
 
@@ -372,8 +361,7 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 	if revocationURL != "" {
 		client, err := r.client.OAuthClient()
 		if err != nil {
-			r.log.Error("unable to retrieve the openid client", zap.Error(err))
-			w.WriteHeader(http.StatusInternalServerError)
+			r.errorResponse(w, "unable to retrieve the openid client", http.StatusInternalServerError, err)
 			return
 		}
 
@@ -384,8 +372,7 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 		// step: construct the url for revocation
 		request, err := http.NewRequest(http.MethodPost, revocationURL, bytes.NewBufferString(fmt.Sprintf("refresh_token=%s", identityToken)))
 		if err != nil {
-			r.log.Error("unable to construct the revocation request", zap.Error(err))
-			w.WriteHeader(http.StatusInternalServerError)
+			r.errorResponse(w, "unable to construct the revocation request", http.StatusInternalServerError, err)
 			return
 		}
 
@@ -415,21 +402,20 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 	// step: should we redirect the user
 	if redirectURL != "" {
 		r.redirectToURL(redirectURL, w, req, http.StatusTemporaryRedirect)
+	} else {
+		w.Header().Set("Content-Type", jsonMime)
+		w.WriteHeader(http.StatusOK)
 	}
 }
 
 // expirationHandler checks if the token has expired
 func (r *oauthProxy) expirationHandler(w http.ResponseWriter, req *http.Request) {
 	user, err := r.getIdentity(req)
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
+	if err != nil || user.isExpired() {
+		r.errorResponse(w, "", http.StatusUnauthorized, nil)
 		return
 	}
-
-	if user.isExpired() {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
+	w.Header().Set("Content-Type", jsonMime)
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -437,18 +423,20 @@ func (r *oauthProxy) expirationHandler(w http.ResponseWriter, req *http.Request)
 func (r *oauthProxy) tokenHandler(w http.ResponseWriter, req *http.Request) {
 	user, err := r.getIdentity(req)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		r.errorResponse(w, "", http.StatusBadRequest, nil)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", jsonMime)
 	_, _ = w.Write(user.token.Payload)
+	w.WriteHeader(http.StatusOK)
 }
 
 // healthHandler is a health check handler for the service
 func (r *oauthProxy) healthHandler(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", jsonMime)
 	w.Header().Set(versionHeader, getVersion())
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("OK\n"))
+	_, _ = w.Write([]byte(`{"status":"OK"}`))
 }
 
 // debugHandler is responsible for providing the pprof
@@ -475,14 +463,14 @@ func (r *oauthProxy) debugHandler(w http.ResponseWriter, req *http.Request) {
 		case symbolProfile:
 			pprof.Symbol(w, req)
 		default:
-			w.WriteHeader(http.StatusNotFound)
+			r.errorResponse(w, "", http.StatusNotFound, nil)
 		}
 	case http.MethodPost:
 		switch name {
 		case symbolProfile:
 			pprof.Symbol(w, req)
 		default:
-			w.WriteHeader(http.StatusNotFound)
+			r.errorResponse(w, "", http.StatusNotFound, nil)
 		}
 	}
 }
@@ -516,13 +504,5 @@ func (r *oauthProxy) retrieveRefreshToken(req *http.Request, user *userContext) 
 }
 
 func (r *oauthProxy) csrfErrorHandler(w http.ResponseWriter, req *http.Request) {
-	r.log.Info("CSRF error",
-		zap.Error(gcsrf.FailureReason(req)),
-		zap.String("client_ip", req.RemoteAddr))
-	r.accessForbidden(w, req)
-}
-
-func methodNotAllowHandlder(w http.ResponseWriter, req *http.Request) {
-	w.WriteHeader(http.StatusMethodNotAllowed)
-	_, _ = w.Write(nil)
+	r.accessForbidden(w, req, "CSRF error", gcsrf.FailureReason(req).Error(), req.RemoteAddr)
 }

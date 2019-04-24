@@ -49,16 +49,18 @@ func TestExpirationHandler(t *testing.T) {
 			ExpectedCode: http.StatusUnauthorized,
 		},
 		{
-			URI:          uri,
-			HasToken:     true,
-			Expires:      -48 * time.Hour,
-			ExpectedCode: http.StatusUnauthorized,
+			URI:             uri,
+			HasToken:        true,
+			Expires:         -48 * time.Hour,
+			ExpectedCode:    http.StatusUnauthorized,
+			ExpectedHeaders: map[string]string{"Content-Type": jsonMime},
 		},
 		{
-			URI:          uri,
-			HasToken:     true,
-			Expires:      14 * time.Hour,
-			ExpectedCode: http.StatusOK,
+			URI:             uri,
+			HasToken:        true,
+			Expires:         14 * time.Hour,
+			ExpectedCode:    http.StatusOK,
+			ExpectedHeaders: map[string]string{"Content-Type": jsonMime},
 		},
 	}
 	newFakeProxy(nil).RunTests(t, requests)
@@ -139,8 +141,9 @@ func TestLoginHandler(t *testing.T) {
 func TestLogoutHandlerBadRequest(t *testing.T) {
 	requests := []fakeRequest{
 		{
-			URI:          newFakeKeycloakConfig().WithOAuthURI(logoutURL),
-			ExpectedCode: http.StatusUnauthorized,
+			URI:             newFakeKeycloakConfig().WithOAuthURI(logoutURL),
+			ExpectedCode:    http.StatusUnauthorized,
+			ExpectedHeaders: map[string]string{"Content-Type": jsonMime},
 		},
 	}
 	newFakeProxy(nil).RunTests(t, requests)
@@ -150,19 +153,22 @@ func TestLogoutHandlerBadToken(t *testing.T) {
 	c := newFakeKeycloakConfig()
 	requests := []fakeRequest{
 		{
-			URI:          c.WithOAuthURI(logoutURL),
-			ExpectedCode: http.StatusUnauthorized,
+			URI:             c.WithOAuthURI(logoutURL),
+			ExpectedCode:    http.StatusUnauthorized,
+			ExpectedHeaders: map[string]string{"Content-Type": jsonMime},
 		},
 		{
-			URI:            c.WithOAuthURI(logoutURL),
-			HasCookieToken: true,
-			RawToken:       "this.is.a.bad.token",
-			ExpectedCode:   http.StatusUnauthorized,
+			URI:             c.WithOAuthURI(logoutURL),
+			HasCookieToken:  true,
+			RawToken:        "this.is.a.bad.token",
+			ExpectedCode:    http.StatusUnauthorized,
+			ExpectedHeaders: map[string]string{"Content-Type": jsonMime},
 		},
 		{
-			URI:          c.WithOAuthURI(logoutURL),
-			RawToken:     "this.is.a.bad.token",
-			ExpectedCode: http.StatusUnauthorized,
+			URI:             c.WithOAuthURI(logoutURL),
+			RawToken:        "this.is.a.bad.token",
+			ExpectedCode:    http.StatusUnauthorized,
+			ExpectedHeaders: map[string]string{"Content-Type": jsonMime},
 		},
 	}
 	newFakeProxy(nil).RunTests(t, requests)
@@ -172,9 +178,10 @@ func TestLogoutHandlerGood(t *testing.T) {
 	c := newFakeKeycloakConfig()
 	requests := []fakeRequest{
 		{
-			URI:          c.WithOAuthURI(logoutURL),
-			HasToken:     true,
-			ExpectedCode: http.StatusOK,
+			URI:             c.WithOAuthURI(logoutURL),
+			HasToken:        true,
+			ExpectedCode:    http.StatusOK,
+			ExpectedHeaders: map[string]string{"Content-Type": jsonMime},
 		},
 		{
 			URI:              c.WithOAuthURI(logoutURL) + "?redirect=http://example.com",
@@ -191,25 +198,29 @@ func TestTokenHandler(t *testing.T) {
 	goodToken := newTestToken("example").getToken()
 	requests := []fakeRequest{
 		{
-			URI:          uri,
-			HasToken:     true,
-			RawToken:     (&goodToken).Encode(),
-			ExpectedCode: http.StatusOK,
+			URI:             uri,
+			HasToken:        true,
+			RawToken:        (&goodToken).Encode(),
+			ExpectedCode:    http.StatusOK,
+			ExpectedHeaders: map[string]string{"Content-Type": jsonMime},
 		},
 		{
-			URI:          uri,
-			ExpectedCode: http.StatusUnauthorized,
+			URI:             uri,
+			ExpectedCode:    http.StatusUnauthorized,
+			ExpectedHeaders: map[string]string{"Content-Type": jsonMime},
 		},
 		{
-			URI:          uri,
-			RawToken:     "niothing",
-			ExpectedCode: http.StatusUnauthorized,
+			URI:             uri,
+			RawToken:        "niothing",
+			ExpectedCode:    http.StatusUnauthorized,
+			ExpectedHeaders: map[string]string{"Content-Type": jsonMime},
 		},
 		{
-			URI:            uri,
-			HasToken:       true,
-			HasCookieToken: true,
-			ExpectedCode:   http.StatusOK,
+			URI:             uri,
+			HasToken:        true,
+			HasCookieToken:  true,
+			ExpectedCode:    http.StatusOK,
+			ExpectedHeaders: map[string]string{"Content-Type": jsonMime},
 		},
 	}
 	newFakeProxy(nil).RunTests(t, requests)
@@ -236,8 +247,9 @@ func TestAuthorizationURLWithSkipToken(t *testing.T) {
 	c.SkipTokenVerification = true
 	newFakeProxy(c).RunTests(t, []fakeRequest{
 		{
-			URI:          c.WithOAuthURI(authorizationURL),
-			ExpectedCode: http.StatusNotAcceptable,
+			URI:             c.WithOAuthURI(authorizationURL),
+			ExpectedCode:    http.StatusNotAcceptable,
+			ExpectedHeaders: map[string]string{"Content-Type": jsonMime},
 		},
 	})
 }
@@ -286,13 +298,15 @@ func TestCallbackURL(t *testing.T) {
 	cfg := newFakeKeycloakConfig()
 	requests := []fakeRequest{
 		{
-			URI:          cfg.WithOAuthURI(callbackURL),
-			Method:       http.MethodPost,
-			ExpectedCode: http.StatusMethodNotAllowed,
+			URI:             cfg.WithOAuthURI(callbackURL),
+			Method:          http.MethodPost,
+			ExpectedCode:    http.StatusMethodNotAllowed,
+			ExpectedHeaders: map[string]string{"Content-Type": jsonMime},
 		},
 		{
-			URI:          cfg.WithOAuthURI(callbackURL),
-			ExpectedCode: http.StatusBadRequest,
+			URI:             cfg.WithOAuthURI(callbackURL),
+			ExpectedCode:    http.StatusBadRequest,
+			ExpectedHeaders: map[string]string{"Content-Type": jsonMime},
 		},
 		{
 			URI:              cfg.WithOAuthURI(callbackURL) + "?code=fake",
@@ -322,12 +336,14 @@ func TestHealthHandler(t *testing.T) {
 		{
 			URI:             c.WithOAuthURI(healthURL),
 			ExpectedCode:    http.StatusOK,
-			ExpectedContent: "OK\n",
+			ExpectedContent: `{"status":"OK"}`,
+			ExpectedHeaders: map[string]string{"Content-Type": jsonMime},
 		},
 		{
-			URI:          c.WithOAuthURI(healthURL),
-			Method:       http.MethodHead,
-			ExpectedCode: http.StatusMethodNotAllowed,
+			URI:             c.WithOAuthURI(healthURL),
+			Method:          http.MethodHead,
+			ExpectedCode:    http.StatusMethodNotAllowed,
+			ExpectedHeaders: map[string]string{"Content-Type": jsonMime},
 		},
 	}
 	newFakeProxy(nil).RunTests(t, requests)

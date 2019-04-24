@@ -106,7 +106,7 @@ func (r *oauthProxy) authenticationMiddleware() func(http.Handler) http.Handler 
 			// grab the user identity from the request
 			user, err := r.getIdentity(req)
 			if err != nil {
-				r.log.Error("no session found in request, redirecting for authorization", zap.Error(err))
+				r.log.Warn("no session found in request, redirecting for authorization", zap.Error(err))
 				next.ServeHTTP(w, req.WithContext(r.redirectToAuthorization(w, req)))
 				return
 			}
@@ -119,7 +119,7 @@ func (r *oauthProxy) authenticationMiddleware() func(http.Handler) http.Handler 
 			if r.config.SkipTokenVerification {
 				r.log.Warn("skip token verification enabled, skipping verification - TESTING ONLY")
 				if user.isExpired() {
-					r.log.Error("the session has expired and verification switch off",
+					r.log.Warn("the session has expired and verification is switched off",
 						zap.String("client_ip", clientIP),
 						zap.String("username", user.name),
 						zap.String("expired_on", user.expiresAt.String()))
@@ -133,7 +133,7 @@ func (r *oauthProxy) authenticationMiddleware() func(http.Handler) http.Handler 
 					// expired error we immediately throw an access forbidden - as there is
 					// something messed up in the token
 					if err != ErrAccessTokenExpired {
-						r.log.Error("access token failed verification",
+						r.log.Warn("access token failed verification",
 							zap.String("client_ip", clientIP),
 							zap.Error(err))
 
@@ -143,7 +143,7 @@ func (r *oauthProxy) authenticationMiddleware() func(http.Handler) http.Handler 
 
 					// step: check if we are refreshing the access tokens and if not re-auth
 					if !r.config.EnableRefreshTokens {
-						r.log.Error("session expired and access token refreshing is disabled",
+						r.log.Warn("session expired and access token refreshing is disabled",
 							zap.String("client_ip", clientIP),
 							zap.String("email", user.name),
 							zap.String("expired_on", user.expiresAt.String()))
@@ -159,7 +159,7 @@ func (r *oauthProxy) authenticationMiddleware() func(http.Handler) http.Handler 
 					// step: check if the user has refresh token
 					refresh, encrypted, err := r.retrieveRefreshToken(req.WithContext(ctx), user)
 					if err != nil {
-						r.log.Error("unable to find a refresh token for user",
+						r.log.Warn("unable to find a refresh token for user",
 							zap.String("client_ip", clientIP),
 							zap.String("email", user.email),
 							zap.Error(err))
@@ -214,8 +214,7 @@ func (r *oauthProxy) authenticationMiddleware() func(http.Handler) http.Handler 
 					accessToken := token.Encode()
 					if r.config.EnableEncryptedToken || r.config.ForceEncryptedCookie {
 						if accessToken, err = encodeText(accessToken, r.config.EncryptionKey); err != nil {
-							r.log.Error("unable to encode the access token", zap.Error(err))
-							w.WriteHeader(http.StatusInternalServerError)
+							r.errorResponse(w, "unable to encode the access token", http.StatusInternalServerError, err)
 							return
 						}
 					}
@@ -228,8 +227,7 @@ func (r *oauthProxy) authenticationMiddleware() func(http.Handler) http.Handler 
 							zap.Duration("refresh_expires_in", refreshExpiresIn))
 						encryptedRefreshToken, err := encodeText(newRefreshToken, r.config.EncryptionKey)
 						if err != nil {
-							r.log.Error("failed to encrypt the refresh token", zap.Error(err))
-							w.WriteHeader(http.StatusInternalServerError)
+							r.errorResponse(w, "failed to encrypt the refresh token", http.StatusInternalServerError, err)
 							return
 						}
 						r.dropRefreshTokenCookie(req.WithContext(ctx), w, encryptedRefreshToken, refreshExpiresIn)
@@ -305,7 +303,7 @@ func (r *oauthProxy) checkClaim(user *userContext, claimName string, match *rege
 
 	// If this fails, the claim is probably float or int.
 	if errStr != nil && errStrs != nil {
-		r.log.Error("unable to extract the claim from token (tried string and strings)", append(errFields,
+		r.log.Warn("unable to extract the claim from token (tried string and strings)", append(errFields,
 			zap.Error(errStr),
 			zap.Error(errStrs),
 		)...)

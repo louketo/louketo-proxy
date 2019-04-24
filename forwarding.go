@@ -1,3 +1,5 @@
+//+build !noforwarding
+
 /*
 Copyright 2015 All rights reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,6 +18,7 @@ limitations under the License.
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -25,6 +28,28 @@ import (
 	"github.com/elazarl/goproxy"
 	"go.uber.org/zap"
 )
+
+func (r *Config) isForwardingValid() error {
+	if r.ClientID == "" {
+		return errors.New("you have not specified the client id")
+	}
+	if err := r.isDiscoveryValid(); err != nil {
+		return err
+	}
+	if r.ForwardingUsername == "" {
+		return errors.New("no forwarding username")
+	}
+	if r.ForwardingPassword == "" {
+		return errors.New("no forwarding password")
+	}
+	if r.TLSCertificate != "" {
+		return errors.New("you don't need to specify a tls-certificate, use tls-ca-certificate instead")
+	}
+	if r.TLSPrivateKey != "" {
+		return errors.New("you don't need to specify the tls-private-key, use tls-ca-key instead")
+	}
+	return nil
+}
 
 // createForwardingProxy creates a forwarding proxy
 func (r *oauthProxy) createForwardingProxy() error {

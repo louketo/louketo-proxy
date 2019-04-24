@@ -65,7 +65,7 @@ func (r *oauthProxy) createReverseProxy() error {
 		r.csrfProtectMiddleware(),
 		r.csrfHeaderMiddleware()).Route(r.config.OAuthURI,
 		func(e chi.Router) {
-			e.MethodNotAllowed(methodNotAllowHandlder)
+			e.MethodNotAllowed(methodNotAllowedHandler)
 
 			e.HandleFunc(authorizationURL, r.oauthAuthorizationHandler)
 			e.Get(callbackURL, r.oauthCallbackHandler)
@@ -85,10 +85,6 @@ func (r *oauthProxy) createReverseProxy() error {
 		if debugEngine := r.createDebugRoutes(); debugEngine != nil {
 			engine.With(proxyDenyMiddleware).Mount(debugURL, debugEngine)
 		}
-	}
-
-	if r.config.EnableSessionCookies {
-		r.log.Info("using session cookies only for access and refresh tokens")
 	}
 
 	// step: load the templates if any
@@ -114,7 +110,7 @@ func (r *oauthProxy) createReverseProxy() error {
 		if r.config.EnableDefaultNotFound {
 			r.log.Info("routes which are not explicitly declared as resources will respond 401 not authenticated or 404 NotFound for authenticated users")
 			engine.With(r.authenticationMiddleware()).
-				Handle(allRoutes, chi.NewMux().NotFoundHandler())
+				Handle(allRoutes, http.HandlerFunc(methodNotFoundHandler))
 		} else {
 			r.log.Info("adding a default denial to protected resources: all routes to upstream require authentication")
 			r.config.Resources = append(r.config.Resources, &Resource{URL: allRoutes, Methods: allHTTPMethods})
@@ -131,7 +127,7 @@ func (r *oauthProxy) createReverseProxy() error {
 			}
 			if !foundAllRoutes {
 				r.log.Info("routes which are not explicitly declared as resources will respond 404 NotFound")
-				engine.Handle(allRoutes, chi.NewMux().NotFoundHandler())
+				engine.Handle(allRoutes, http.HandlerFunc(methodNotFoundHandler))
 			}
 		} else {
 			r.log.Warn("routes to upstream are not configured to be denied by default")
@@ -150,18 +146,24 @@ func (r *oauthProxy) createReverseProxy() error {
 				r.csrfSkipResourceMiddleware(x),
 				r.csrfProtectMiddleware(),
 				r.csrfHeaderMiddleware())
-			e.Handle(x.URL, chi.NewMux().MethodNotAllowedHandler())
+			e.Handle(x.URL, http.HandlerFunc(methodNotAllowedHandler))
 			for _, m := range x.Methods {
 				e.MethodFunc(m, x.URL, emptyHandler)
 			}
 		} else {
 			e := engine.With(
 				r.proxyMiddleware(x))
-			e.Handle(x.URL, chi.NewMux().MethodNotAllowedHandler())
+			e.Handle(x.URL, http.HandlerFunc(methodNotAllowedHandler))
 			for _, m := range x.Methods {
 				e.MethodFunc(m, x.URL, emptyHandler)
 			}
 		}
+	}
+
+	// startup information
+
+	if r.config.EnableSessionCookies {
+		r.log.Info("using session cookies only for access and refresh tokens")
 	}
 
 	for name, value := range r.config.MatchClaims {
@@ -262,8 +264,7 @@ func (r *oauthProxy) proxyMiddleware(resource *Resource) func(http.Handler) http
 			if isUpgradedConnection(req) {
 				r.log.Debug("upgrading the connnection", zap.String("client_ip", req.RemoteAddr))
 				if err := tryUpdateConnection(req, w, req.URL); err != nil {
-					r.log.Error("failed to upgrade connection", zap.Error(err))
-					w.WriteHeader(http.StatusInternalServerError)
+					r.errorResponse(w, "failed to upgrade connection", http.StatusInternalServerError, err)
 					return
 				}
 				return

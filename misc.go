@@ -19,7 +19,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"path"
 	"strings"
 	"time"
 
@@ -68,20 +67,6 @@ func (r *oauthProxy) revokeProxy(w http.ResponseWriter, req *http.Request) conte
 	return context.WithValue(req.Context(), contextScopeName, scope)
 }
 
-// accessForbidden redirects the user to the forbidden page
-func (r *oauthProxy) accessForbidden(w http.ResponseWriter, req *http.Request) context.Context {
-	w.WriteHeader(http.StatusForbidden)
-	// are we using a custom http template for 403?
-	if r.config.hasCustomForbiddenPage() {
-		name := path.Base(r.config.ForbiddenPage)
-		if err := r.Render(w, name, r.config.Tags); err != nil {
-			r.log.Error("failed to render the template", zap.Error(err), zap.String("template", name))
-		}
-	}
-
-	return r.revokeProxy(w, req)
-}
-
 // redirectToURL redirects the user and aborts the context
 func (r *oauthProxy) redirectToURL(url string, w http.ResponseWriter, req *http.Request, statusCode int) context.Context {
 	w.Header().Add("Cache-Control", "nocache, no-store, must-revalidate, max-age=0")
@@ -93,7 +78,7 @@ func (r *oauthProxy) redirectToURL(url string, w http.ResponseWriter, req *http.
 // redirectToAuthorization redirects the user to authorization handler
 func (r *oauthProxy) redirectToAuthorization(w http.ResponseWriter, req *http.Request) context.Context {
 	if r.config.NoRedirects {
-		w.WriteHeader(http.StatusUnauthorized)
+		r.errorResponse(w, "", http.StatusUnauthorized, nil)
 		return r.revokeProxy(w, req)
 	}
 
@@ -103,8 +88,7 @@ func (r *oauthProxy) redirectToAuthorization(w http.ResponseWriter, req *http.Re
 
 	// step: if verification is switched off, we can't authorize
 	if r.config.SkipTokenVerification {
-		r.log.Error("refusing to redirect to authorization endpoint, skip token verification switched on")
-		w.WriteHeader(http.StatusForbidden)
+		r.errorResponse(w, "refusing to redirect to authorization endpoint, skip token verification switched on", http.StatusForbidden, nil)
 		return r.revokeProxy(w, req)
 	}
 	if r.config.InvalidAuthRedirectsWith303 {
@@ -129,7 +113,7 @@ func (r *oauthProxy) getAccessCookieExpiration(token jose.JWT, refresh string) t
 		}
 		r.log.Debug("parsed refresh token with new duration", zap.Duration("new duration", delta))
 	} else {
-		r.log.Debug("refresh token is opaque and cannot be used to extend calculated duration")
+		r.log.Debug("refresh token is opaque and cannot be used to derive calculated duration")
 	}
 
 	return duration

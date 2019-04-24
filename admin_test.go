@@ -139,7 +139,7 @@ func TestAdmin(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	buf, erb := ioutil.ReadAll(resp.Body)
 	assert.NoError(t, erb)
-	assert.Equal(t, "OK\n", string(buf)) // check this is our test resource being called
+	assert.Equal(t, `{"status":"OK"}`, string(buf)) // check this is our test resource being called
 
 	// test prometheus metrics endpoint
 	u, _ = url.Parse("http://" + e2eAdminEndpointListener + "/oauth/metrics")

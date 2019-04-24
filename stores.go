@@ -1,3 +1,5 @@
+//+build !nostores
+
 /*
 Copyright 2015 All rights reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +25,15 @@ import (
 	"go.uber.org/zap"
 )
 
+func (r *Config) isStoreValid() error {
+	if r.StoreURL != "" {
+		if _, err := url.Parse(r.StoreURL); err != nil {
+			return fmt.Errorf("the store url is invalid, error: %s", err)
+		}
+	}
+	return nil
+}
+
 // createStorage creates the store client for use
 func createStorage(location string) (storage, error) {
 	var store storage
@@ -38,7 +49,7 @@ func createStorage(location string) (storage, error) {
 	case "boltdb":
 		store, err = newBoltDBStore(u)
 	default:
-		return nil, fmt.Errorf("unsupport store: %s", u.Scheme)
+		return nil, fmt.Errorf("unsupported store: %s", u.Scheme)
 	}
 
 	return store, err

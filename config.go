@@ -347,28 +347,6 @@ func (r *Config) isTLSValid() error {
 	return nil
 }
 
-func (r *Config) isForwardingValid() error {
-	if r.ClientID == "" {
-		return errors.New("you have not specified the client id")
-	}
-	if err := r.isDiscoveryValid(); err != nil {
-		return err
-	}
-	if r.ForwardingUsername == "" {
-		return errors.New("no forwarding username")
-	}
-	if r.ForwardingPassword == "" {
-		return errors.New("no forwarding password")
-	}
-	if r.TLSCertificate != "" {
-		return errors.New("you don't need to specify a tls-certificate, use tls-ca-certificate instead")
-	}
-	if r.TLSPrivateKey != "" {
-		return errors.New("you don't need to specify the tls-private-key, use tls-ca-key instead")
-	}
-	return nil
-}
-
 func (r *Config) isReverseProxyValid() error {
 	if r.Upstream == "" {
 		if r.EnableDefaultDeny && !r.EnableDefaultNotFound {
@@ -475,6 +453,7 @@ func (r *Config) isTokenConfigValid() error {
 			return errors.New("the security filter must be switched on for this feature: hostnames")
 		}
 	}
+
 	if (r.EnableEncryptedToken || r.ForceEncryptedCookie) && r.EncryptionKey == "" {
 		return errors.New("you have not specified an encryption key for encoding the access token")
 	}
@@ -487,10 +466,9 @@ func (r *Config) isTokenConfigValid() error {
 	if !r.NoRedirects && r.SecureCookie && r.RedirectionURL != "" && !strings.HasPrefix(r.RedirectionURL, "https") {
 		return errors.New("the cookie is set to secure but your redirection url is non-tls")
 	}
-	if r.StoreURL != "" {
-		if _, err := url.Parse(r.StoreURL); err != nil {
-			return fmt.Errorf("the store url is invalid, error: %s", err)
-		}
+
+	if err := r.isStoreValid(); err != nil {
+		return err
 	}
 	return nil
 }

@@ -46,7 +46,6 @@ Protected resources (URIs) may be guarded with some basic RBAC rules checking gr
 
 > NOTE: group rules support trailing wildcards, so you may configure group claims to be the full group hierarchical path.
 
-
 ### Features
 
 * Proxied access token exchange flow
@@ -55,7 +54,6 @@ Protected resources (URIs) may be guarded with some basic RBAC rules checking gr
 * Large cookies are split in chunks
 * When authenticating with cookies, an automatic CSRF mechanism may be used for additional protection
 * Access tokens managed by cookies are refreshed automatically
-
 
 ### Topology
 
@@ -71,8 +69,19 @@ are shared by all instances.
 
 Gatekeeper exposes prometheus metrics and health status endpoint.
 
+```
+/oauth/metrics
+/oauth/health
+```
+
 These may be optionally exposed on a separate port, or restricted to localhost requests.
 
+There is an opt-in live profiler endpoint for debugging performance issues:
+```
+/debug/pprof/{name}
+```
+
+This serves commands from the pprof handler described [here](https://golang.org/pkg/net/http/pprof/#pkg-index).
 
 Reporting security vulnerabilities
 ----------------------------------
