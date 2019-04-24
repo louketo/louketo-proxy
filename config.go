@@ -351,8 +351,8 @@ func (r *Config) isForwardingValid() error {
 	if r.ClientID == "" {
 		return errors.New("you have not specified the client id")
 	}
-	if r.DiscoveryURL == "" {
-		return errors.New("you have not specified the discovery url")
+	if err := r.isDiscoveryValid(); err != nil {
+		return err
 	}
 	if r.ForwardingUsername == "" {
 		return errors.New("no forwarding username")
@@ -371,12 +371,12 @@ func (r *Config) isForwardingValid() error {
 
 func (r *Config) isReverseProxyValid() error {
 	if r.Upstream == "" {
-		if r.EnableDefaultDeny {
-			return errors.New("you have not specified an upstream endpoint to proxy to")
+		if r.EnableDefaultDeny && !r.EnableDefaultNotFound {
+			return errors.New("you expect some default fallback routing, but have not specified an upstream endpoint to proxy to")
 		}
 		for _, resource := range r.Resources {
 			if resource.Upstream == "" {
-				return errors.New("you have not specified an upstream endpoint to proxy to")
+				return fmt.Errorf("you did not set any default upstream and you have not specified an upstream endpoint to proxy to on resource: %s", resource.URL)
 			}
 		}
 	} else {
@@ -385,7 +385,7 @@ func (r *Config) isReverseProxyValid() error {
 		}
 	}
 	if r.SkipUpstreamTLSVerify && r.UpstreamCA != "" {
-		return fmt.Errorf("you cannot skip upstream tls and load a root ca: %s to verify it", r.UpstreamCA)
+		return fmt.Errorf("you cannot both require to skip upstream tls and load a root ca to verify it: %s", r.UpstreamCA)
 	}
 
 	// step: if token verification is enabled (skip is off), we need the below checks
@@ -400,7 +400,7 @@ func (r *Config) isReverseProxyValid() error {
 			return err
 		}
 		if resource.URL == allRoutes && r.EnableDefaultDeny && resource.WhiteListed {
-			return errors.New("you've asked for a default denial but whitelisted everything")
+			return errors.New("you've asked for a default denial (EnableDefaultDeny is true by default) but whitelisted everything")
 		}
 	}
 	// step: validate the claims are validate regex's
@@ -410,7 +410,7 @@ func (r *Config) isReverseProxyValid() error {
 		}
 	}
 
-	// validity checks with CSRF options
+	// step: validity checks for CSRF options
 	if r.EnableCSRF {
 		if r.EncryptionKey == "" {
 			return fmt.Errorf("flag EnableCSRF requires EncryptionKey to be set")
@@ -425,9 +425,20 @@ func (r *Config) isReverseProxyValid() error {
 		if !found {
 			return fmt.Errorf("flag EnableCSRF is set but no protected resource sets EnableCSRF")
 		}
+		// TODO: this option should disappear and always be left to default
 		if r.CorsDisableUpstream {
 			return fmt.Errorf("flag EnableCSRF requires headers to be added to upstream response. This won't work if CorsDisableUpstream is set")
 		}
+	}
+	return nil
+}
+
+func (r *Config) isDiscoveryValid() error {
+	if r.DiscoveryURL == "" {
+		return errors.New("you have not specified the discovery url")
+	}
+	if u, err := url.Parse(r.DiscoveryURL); err != nil || u.Scheme == "" || u.Host == "" {
+		return fmt.Errorf("discovery url is not a valid URL: %s", r.DiscoveryURL)
 	}
 	return nil
 }
@@ -436,27 +447,32 @@ func (r *Config) isTokenConfigValid() error {
 	if r.ClientID == "" {
 		return errors.New("you have not specified the client id")
 	}
-	if r.DiscoveryURL == "" {
-		return errors.New("you have not specified the discovery url")
+	if err := r.isDiscoveryValid(); err != nil {
+		return err
 	}
 	if strings.HasSuffix(r.RedirectionURL, "/") {
 		r.RedirectionURL = strings.TrimSuffix(r.RedirectionURL, "/")
 	}
+	if r.RedirectionURL != "" {
+		if _, err := url.Parse(r.RedirectionURL); err != nil {
+			return fmt.Errorf("redirection url is not a valid URL: %s", r.RedirectionURL)
+		}
+	}
 	if !r.EnableSecurityFilter {
 		if r.EnableHTTPSRedirect {
-			return errors.New("the security filter must be switch on for this feature: http-redirect")
+			return errors.New("the security filter must be switched on for this feature: http-redirect")
 		}
 		if r.EnableBrowserXSSFilter {
-			return errors.New("the security filter must be switch on for this feature: brower-xss-filter")
+			return errors.New("the security filter must be switched on for this feature: brower-xss-filter")
 		}
 		if r.EnableFrameDeny {
-			return errors.New("the security filter must be switch on for this feature: frame-deny-filter")
+			return errors.New("the security filter must be switched on for this feature: frame-deny-filter")
 		}
 		if r.ContentSecurityPolicy != "" {
-			return errors.New("the security filter must be switch on for this feature: content-security-policy")
+			return errors.New("the security filter must be switched on for this feature: content-security-policy")
 		}
 		if len(r.Hostnames) > 0 {
-			return errors.New("the security filter must be switch on for this feature: hostnames")
+			return errors.New("the security filter must be switched on for this feature: hostnames")
 		}
 	}
 	if (r.EnableEncryptedToken || r.ForceEncryptedCookie) && r.EncryptionKey == "" {

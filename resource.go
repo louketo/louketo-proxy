@@ -23,6 +23,30 @@ import (
 	"strings"
 )
 
+// Resource represents an upstream resource to protect
+type Resource struct {
+	// URL the url for the resource
+	URL string `json:"uri" yaml:"uri"`
+	// Methods the method type
+	Methods []string `json:"methods" yaml:"methods"`
+	// WhiteListed permits the prefix through
+	WhiteListed bool `json:"white-listed" yaml:"white-listed"`
+	// RequireAnyRole indicates that ANY of the roles are required, the default is all
+	RequireAnyRole bool `json:"require-any-role" yaml:"require-any-role"`
+	// Roles the roles required to access this url
+	Roles []string `json:"roles" yaml:"roles"`
+	// Groups is a list of groups the user is in
+	Groups []string `json:"groups" yaml:"groups"`
+	// EnableCSRF enables CSRF check on this upstream Resource
+	EnableCSRF bool `json:"enable-csrf" yaml:"enable-csrf"`
+	// StripBasePath is the prefix to strip from URL before sending upstream
+	StripBasePath string `json:"strip-basepath" yaml:"strip-basepath"`
+	// Upstream is the upstream endpoint i.e whom were proxying to
+	Upstream string `json:"upstream-url" yaml:"upstream-url" usage:"url for the upstream endpoint you wish to proxy this resource"`
+	// TODO: UpstreamCA is the path to a CA certificate in PEM format to validate the upstream certificate
+	//UpstreamCA string `json:"upstream-ca" yaml:"upstream-ca" usage:"the path to a file container a CA certificate to validate the upstream tls endpoint for this resource"`
+}
+
 func newResource() *Resource {
 	return &Resource{
 		Methods: allHTTPMethods,
@@ -68,6 +92,16 @@ func (r *Resource) parse(resource string) (*Resource, error) {
 				return nil, errors.New("the value of whitelisted must be true|TRUE|T or it's false equivalent")
 			}
 			r.WhiteListed = value
+		case "upstream-url":
+			r.Upstream = kp[1]
+		case "strip-basepath":
+			r.StripBasePath = kp[1]
+		case "enable-csrf":
+			v, err := strconv.ParseBool(kp[1])
+			if err != nil {
+				return nil, errors.New("the value of enable-csrf must be true|TRUE|T or it's false equivalent")
+			}
+			r.EnableCSRF = v
 		default:
 			return nil, errors.New("invalid identifier, should be roles, uri or methods")
 		}

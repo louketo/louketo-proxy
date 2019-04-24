@@ -134,30 +134,6 @@ var (
 	ErrDecryption = errors.New("failed to decrypt token")
 )
 
-// Resource represents a url resource to protect
-type Resource struct {
-	// URL the url for the resource
-	URL string `json:"uri" yaml:"uri"`
-	// Methods the method type
-	Methods []string `json:"methods" yaml:"methods"`
-	// WhiteListed permits the prefix through
-	WhiteListed bool `json:"white-listed" yaml:"white-listed"`
-	// RequireAnyRole indicates that ANY of the roles are required, the default is all
-	RequireAnyRole bool `json:"require-any-role" yaml:"require-any-role"`
-	// Roles the roles required to access this url
-	Roles []string `json:"roles" yaml:"roles"`
-	// Groups is a list of groups the user is in
-	Groups []string `json:"groups" yaml:"groups"`
-	// EnableCSRF enables CSRF check on this upstream Resource
-	EnableCSRF bool `json:"enable-csrf" yaml:"enable-csrf"`
-	// StripBasePath is the prefix to strip from URL before sending upstream
-	StripBasePath string `json:"strip-basepath" yaml:"strip-basepath"`
-	// Upstream is the upstream endpoint i.e whom were proxying to
-	Upstream string `json:"upstream-url" yaml:"upstream-url" usage:"url for the upstream endpoint you wish to proxy this resource"`
-	// TODO: UpstreamCA is the path to a CA certificate in PEM format to validate the upstream certificate
-	//UpstreamCA string `json:"upstream-ca" yaml:"upstream-ca" usage:"the path to a file container a CA certificate to validate the upstream tls endpoint for this resource"`
-}
-
 // Config is the configuration for the proxy
 type Config struct {
 	// ConfigFile is the binding interface
@@ -248,7 +224,7 @@ type Config struct {
 	CSRFHeader string `json:"csrf-header" yaml:"csrf-header" usage:"the header added to responses by gatekeeper and to be added by requests to check against replayed credentials (CSRF). Defaults to: X-CSRF-Token" env:"CSRF_HEADER"`
 	// EnableLoginHandler indicates we want the login handler enabled
 	EnableLoginHandler bool `json:"enable-login-handler" yaml:"enable-login-handler" usage:"enables the handling of the refresh tokens" env:"ENABLE_LOGIN_HANDLER"`
-	// EnableTokenHeader adds the JWT token to the upstream authentication headers
+	// EnableTokenHeader adds the JWT token to the upstream authentication headers as X-Auth-Token header
 	EnableTokenHeader bool `json:"enable-token-header" yaml:"enable-token-header" usage:"enables the token authentication header X-Auth-Token to upstream" env:"ENABLE_TOKEN_HEADER"`
 	// EnableClaimsHeaders adds decoded claims as headers X-Auth-{claim} to the upstream endpoint
 	EnableClaimsHeaders bool `json:"enable-claims-headers" yaml:"enable-claims-headers" usage:"adds decoded claims as headers X-Auth-{claim} to the upstream endpoint. Defaults to true" env:"ENABLE_CLAIMS_HEADERS"`
