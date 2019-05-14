@@ -110,6 +110,7 @@ func TestForwardingProxy(t *testing.T) {
 	cfg.ForwardingDomains = []string{}
 	cfg.ForwardingUsername = validUsername
 	cfg.ForwardingPassword = validPassword
+	cfg.ForwardingGrantType = "password"
 	s := httptest.NewServer(&fakeUpstreamService{})
 	requests := []fakeRequest{
 		{

@@ -23,6 +23,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/coreos/go-oidc/oauth2"
 )
 
 // newDefaultConfig returns a initialized config
@@ -70,6 +72,7 @@ func newDefaultConfig() *Config {
 		UpstreamTLSHandshakeTimeout:   10 * time.Second,
 		UpstreamTimeout:               10 * time.Second,
 		UseLetsEncrypt:                false,
+		ForwardingGrantType:           oauth2.GrantTypeUserCreds,
 	}
 }
 
@@ -122,11 +125,18 @@ func (r *Config) isValid() error {
 		if r.DiscoveryURL == "" {
 			return errors.New("you have not specified the discovery url")
 		}
-		if r.ForwardingUsername == "" {
-			return errors.New("no forwarding username")
+		if r.ForwardingGrantType == oauth2.GrantTypeUserCreds {
+			if r.ForwardingUsername == "" {
+				return errors.New("no forwarding username")
+			}
+			if r.ForwardingPassword == "" {
+				return errors.New("no forwarding password")
+			}
 		}
-		if r.ForwardingPassword == "" {
-			return errors.New("no forwarding password")
+		if r.ForwardingGrantType == oauth2.GrantTypeClientCreds {
+			if r.ClientSecret == "" {
+				return errors.New("you have not specified the client secret")
+			}
 		}
 		if r.TLSCertificate != "" {
 			return errors.New("you don't need to specify a tls-certificate, use tls-ca-certificate instead")
