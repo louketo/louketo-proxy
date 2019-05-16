@@ -230,9 +230,10 @@ func TestDecodeText(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, encrypted)
 
-	decoded, _ := decodeText(encrypted, fakeKey)
-	assert.NotNil(t, decoded, "the session should not have been nil")
-	assert.Equal(t, decoded, fakeText, "the decoded text is not the same")
+	decoded, err := decodeText(encrypted, fakeKey)
+	require.NoError(t, err)
+	assert.NotEmpty(t, decoded, "the session should not have been nil")
+	assert.Equal(t, fakeText, decoded, "the decoded text is not the same")
 }
 
 func TestFindCookie(t *testing.T) {
