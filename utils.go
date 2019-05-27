@@ -16,6 +16,7 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -44,6 +45,8 @@ import (
 	"time"
 	"unicode"
 	"unicode/utf8"
+
+	"compress/zlib"
 
 	"github.com/coreos/go-oidc/jose"
 	"github.com/urfave/cli"
@@ -188,8 +191,13 @@ func decryptDataBlock(cipherText, key []byte) ([]byte, error) {
 }
 
 // encodeText encodes the session state information into a value for a cookie to consume
-func encodeText(plaintext string, key string) (string, error) {
-	cipherText, err := encryptDataBlock([]byte(plaintext), []byte(key))
+func encodeText(plaintext, key string) (string, error) {
+	var compressedText bytes.Buffer
+	w := zlib.NewWriter(&compressedText)
+	w.Write([]byte(plaintext))
+	w.Close()
+
+	cipherText, err := encryptDataBlock(compressedText.Bytes(), []byte(key))
 	if err != nil {
 		return "", err
 	}
@@ -203,13 +211,25 @@ func decodeText(state, key string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	// step: decrypt the cookie back in the expiration|token
-	encoded, err := decryptDataBlock(cipherText, []byte(key))
+	decoded, err := decryptDataBlock(cipherText, []byte(key))
 	if err != nil {
 		return "", ErrInvalidSession
 	}
 
-	return string(encoded), nil
+	b := bytes.NewBuffer(decoded)
+	r, err := zlib.NewReader(b)
+	defer r.Close()
+	if err != nil {
+		return "", ErrInvalidSession
+	}
+
+	uncompressed, err := ioutil.ReadAll(r)
+	if err != nil {
+		return "", ErrInvalidSession
+	}
+	return string(uncompressed), nil
 }
 
 // decodeKeyPairs converts a list of strings (key=pair) to a map
