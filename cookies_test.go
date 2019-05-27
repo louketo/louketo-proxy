@@ -178,13 +178,13 @@ func TestGetMaxCookieChunkLength(t *testing.T) {
 	p.config.EnableSessionCookies = true
 	p.config.SecureCookie = true
 	p.config.CookieDomain = "1234567890"
-	assert.Equal(t, p.getMaxCookieChunkLength(req, "1234567890"), 4033,
+	assert.Equal(t, 4016, p.getMaxCookieChunkLength(req, "1234567890"),
 		"cookie chunk calculation is not correct")
 
 	p.config.HTTPOnlyCookie = false
 	p.config.EnableSessionCookies = false
 	p.config.SecureCookie = false
 	p.config.CookieDomain = ""
-	assert.Equal(t, p.getMaxCookieChunkLength(req, ""), 4021,
+	assert.Equal(t, 4013, p.getMaxCookieChunkLength(req, ""),
 		"cookie chunk calculation is not correct")
 }
