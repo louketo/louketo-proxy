@@ -220,10 +220,10 @@ func decodeText(state, key string) (string, error) {
 
 	b := bytes.NewBuffer(decoded)
 	r, err := zlib.NewReader(b)
-	defer r.Close()
 	if err != nil {
 		return "", ErrInvalidSession
 	}
+	defer r.Close()
 
 	uncompressed, err := ioutil.ReadAll(r)
 	if err != nil {
