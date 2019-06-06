@@ -37,7 +37,7 @@ func TestCookieDomainHostHeader(t *testing.T) {
 		}
 	}
 	assert.NotNil(t, cookie)
-	assert.Equal(t, cookie.Domain, "127.0.0.1")
+	assert.Equal(t, cookie.Domain, "")
 }
 
 func TestCookieBasePath(t *testing.T) {
@@ -104,7 +104,7 @@ func TestDropCookie(t *testing.T) {
 	p.dropCookie(resp, req.Host, "test-cookie", "test-value", 0)
 
 	assert.Equal(t, resp.Header().Get("Set-Cookie"),
-		"test-cookie=test-value; Path=/; Domain=127.0.0.1",
+		"test-cookie=test-value; Path=/",
 		"we have not set the cookie, headers: %v", resp.Header())
 
 	req = newFakeHTTPRequest("GET", "/admin")
@@ -113,7 +113,7 @@ func TestDropCookie(t *testing.T) {
 	p.dropCookie(resp, req.Host, "test-cookie", "test-value", 0)
 
 	assert.Equal(t, resp.Header().Get("Set-Cookie"),
-		"test-cookie=test-value; Path=/; Domain=127.0.0.1",
+		"test-cookie=test-value; Path=/",
 		"we have not set the cookie, headers: %v", resp.Header())
 
 	req = newFakeHTTPRequest("GET", "/admin")
@@ -140,7 +140,7 @@ func TestDropRefreshCookie(t *testing.T) {
 	p.dropRefreshTokenCookie(req, resp, "test", 0)
 
 	assert.Equal(t, resp.Header().Get("Set-Cookie"),
-		refreshCookie+"=test; Path=/; Domain=127.0.0.1",
+		refreshCookie+"=test; Path=/",
 		"we have not set the cookie, headers: %v", resp.Header())
 }
 
@@ -153,7 +153,7 @@ func TestSessionOnlyCookie(t *testing.T) {
 	p.dropCookie(resp, req.Host, "test-cookie", "test-value", 1*time.Hour)
 
 	assert.Equal(t, resp.Header().Get("Set-Cookie"),
-		"test-cookie=test-value; Path=/; Domain=127.0.0.1",
+		"test-cookie=test-value; Path=/",
 		"we have not set the cookie, headers: %v", resp.Header())
 }
 
@@ -165,7 +165,7 @@ func TestHTTPOnlyCookie(t *testing.T) {
 	p.dropCookie(resp, req.Host, "test-cookie", "test-value", 0)
 
 	assert.Equal(t, resp.Header().Get("Set-Cookie"),
-		"test-cookie=test-value; Path=/; Domain=127.0.0.1",
+		"test-cookie=test-value; Path=/",
 		"we have not set the cookie, headers: %v", resp.Header())
 
 	req = newFakeHTTPRequest("GET", "/admin")
@@ -174,7 +174,7 @@ func TestHTTPOnlyCookie(t *testing.T) {
 	p.dropCookie(resp, req.Host, "test-cookie", "test-value", 0)
 
 	assert.Equal(t, resp.Header().Get("Set-Cookie"),
-		"test-cookie=test-value; Path=/; Domain=127.0.0.1; HttpOnly",
+		"test-cookie=test-value; Path=/; HttpOnly",
 		"we have not set the cookie, headers: %v", resp.Header())
 }
 
@@ -185,7 +185,7 @@ func TestClearAccessTokenCookie(t *testing.T) {
 	resp := httptest.NewRecorder()
 	p.clearAccessTokenCookie(req, resp)
 	assert.Contains(t, resp.Header().Get("Set-Cookie"),
-		accessCookie+"=; Path=/; Domain=127.0.0.1; Expires=",
+		accessCookie+"=; Path=/; Expires=",
 		"we have not cleared the, headers: %v", resp.Header())
 }
 
@@ -195,7 +195,7 @@ func TestClearRefreshAccessTokenCookie(t *testing.T) {
 	resp := httptest.NewRecorder()
 	p.clearRefreshTokenCookie(req, resp)
 	assert.Contains(t, resp.Header().Get("Set-Cookie"),
-		refreshCookie+"=; Path=/; Domain=127.0.0.1; Expires=",
+		refreshCookie+"=; Path=/; Expires=",
 		"we have not cleared the, headers: %v", resp.Header())
 }
 
@@ -205,7 +205,7 @@ func TestClearAllCookies(t *testing.T) {
 	resp := httptest.NewRecorder()
 	p.clearAllCookies(req, resp)
 	assert.Contains(t, resp.Header().Get("Set-Cookie"),
-		accessCookie+"=; Path=/; Domain=127.0.0.1; Expires=",
+		accessCookie+"=; Path=/; Expires=",
 		"we have not cleared the, headers: %v", resp.Header())
 }
 
