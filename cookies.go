@@ -28,7 +28,7 @@ import (
 // dropCookie drops a cookie into the response
 func (r *oauthProxy) dropCookie(w http.ResponseWriter, host, name, value string, duration time.Duration) {
 	// step: default to the host header, else the config domain
-	domain := strings.Split(host, ":")[0]
+	domain := ""
 	if r.config.CookieDomain != "" {
 		domain = r.config.CookieDomain
 	}
