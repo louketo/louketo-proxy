@@ -157,7 +157,7 @@ func TestRequestIDHeader(t *testing.T) {
 			ExpectedProxy: true,
 			Redirects:     true,
 			ExpectedHeaders: map[string]string{
-				"X-Request-ID": "",
+				c.RequestIDHeader: "",
 			},
 			ExpectedCode: http.StatusOK,
 		},
@@ -445,6 +445,7 @@ func newFakeKeycloakConfig() *Config {
 		ClientSecret:               fakeSecret,
 		CookieAccessName:           "kc-access",
 		CookieRefreshName:          "kc-state",
+		RequestIDHeader:            "X-Request-ID",
 		DisableAllLogging:          true,
 		DiscoveryURL:               "127.0.0.1:0",
 		EnableAuthorizationCookies: true,
@@ -525,8 +526,19 @@ type fakeUpstreamResponse struct {
 }
 
 // fakeUpstreamService acts as a fake upstream service, returns the headers and request
-type fakeUpstreamService struct{}
+type fakeUpstreamService struct {
+	server   *httptest.Server
+	location string
+}
 
+func newFakeUpstreamService() *fakeUpstreamService {
+	service := &fakeUpstreamService{}
+
+	service.server = httptest.NewServer(service)
+	service.location = service.server.URL
+
+	return service
+}
 func (f *fakeUpstreamService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set(testProxyAccepted, "true")
 	w.Header().Set("Content-Type", "application/json")

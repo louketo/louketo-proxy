@@ -69,10 +69,11 @@ type fakeRequest struct {
 }
 
 type fakeProxy struct {
-	config  *Config
-	idp     *fakeAuthServer
-	proxy   *oauthProxy
-	cookies map[string]*http.Cookie
+	config   *Config
+	idp      *fakeAuthServer
+	proxy    *oauthProxy
+	upstream *fakeUpstreamService
+	cookies  map[string]*http.Cookie
 }
 
 func newFakeProxy(c *Config) *fakeProxy {
@@ -80,6 +81,13 @@ func newFakeProxy(c *Config) *fakeProxy {
 	if c == nil {
 		c = newFakeKeycloakConfig()
 	}
+
+	var upstream *fakeUpstreamService
+	if c.Upstream == "" {
+		upstream = newFakeUpstreamService()
+		c.Upstream = upstream.location
+	}
+
 	auth := newFakeAuthServer()
 	c.DiscoveryURL = auth.getLocation()
 	c.RevocationEndpoint = auth.getRevocationURL()
@@ -89,7 +97,6 @@ func newFakeProxy(c *Config) *fakeProxy {
 		panic("failed to create fake proxy service, error: " + err.Error())
 	}
 	proxy.log = zap.NewNop()
-	proxy.upstream = &fakeUpstreamService{}
 	if err = proxy.Run(); err != nil {
 		panic("failed to create the proxy service, error: " + err.Error())
 	}
@@ -99,7 +106,7 @@ func newFakeProxy(c *Config) *fakeProxy {
 		panic("failed to recreate the openid client, error: " + err.Error())
 	}
 
-	return &fakeProxy{c, auth, proxy, make(map[string]*http.Cookie)}
+	return &fakeProxy{c, auth, proxy, upstream, make(map[string]*http.Cookie)}
 }
 
 func (f *fakeProxy) getServiceURL() string {
@@ -111,6 +118,9 @@ func (f *fakeProxy) RunTests(t *testing.T, requests []fakeRequest) {
 	defer func() {
 		f.idp.Close()
 		f.proxy.server.Close()
+		if f.upstream != nil {
+			f.upstream.server.Close()
+		}
 	}()
 
 	for i := range requests {
