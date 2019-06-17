@@ -16,6 +16,8 @@ limitations under the License.
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -30,6 +32,27 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func makeTestCACertPool() *x509.CertPool {
+	crt, err := ioutil.ReadFile(caCert)
+	if err != nil {
+		msg := fmt.Sprintf("cannot read test CA cert file: %v", err)
+		panic(msg)
+	}
+	caCertPool := x509.NewCertPool()
+	ok := caCertPool.AppendCertsFromPEM(crt)
+	if !ok {
+		panic("cannot add cert to CA pool")
+	}
+	return caCertPool
+}
+
+// controlledRedirect is a client RoundTripper to capture all cookies exchanged during the redirection process
+// (assuming HttpOnly is not set for testing purpose)
+type controlledRedirect struct {
+	Transport        http.RoundTripper
+	CollectedCookies map[string]*http.Cookie
+}
+
 // checkListenOrBail waits on a endpoint listener to respond.
 // This avoids race conditions with test listieners as go routines
 func checkListenOrBail(endpoint string) bool {
@@ -37,12 +60,28 @@ func checkListenOrBail(endpoint string) bool {
 		maxWaitCycles = 10
 		waitTime      = 100 * time.Millisecond
 	)
-	checkListen := http.Client{}
-	_, err := checkListen.Get(endpoint)
+	checkListen := http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs: makeTestCACertPool(),
+			},
+		},
+	}
+	resp, err := checkListen.Get(endpoint)
+	if err == nil {
+		defer func() {
+			_ = resp.Body.Close()
+		}()
+	}
 	limit := 0
 	for err != nil && limit < maxWaitCycles {
 		time.Sleep(waitTime)
-		_, err = checkListen.Get(endpoint)
+		resp, err = checkListen.Get(endpoint)
+		if err == nil {
+			defer func() {
+				_ = resp.Body.Close()
+			}()
+		}
 		limit++
 	}
 	return limit < maxWaitCycles
@@ -54,8 +93,15 @@ func runTestGatekeeper(t *testing.T, config *Config) error {
 		return err
 	}
 	_ = proxy.Run()
-	if !assert.True(t, checkListenOrBail("http://"+config.Listen+"/oauth/login")) {
-		err := fmt.Errorf("cannot connect to test http listener on: %s", "http://"+config.Listen+"/oauth/login")
+	var scheme string
+	if config.TLSCertificate != "" {
+		scheme = "https"
+	} else {
+		scheme = "http"
+	}
+	u := fmt.Sprintf("%s://%s/oauth/login", scheme, config.Listen)
+	if !assert.True(t, checkListenOrBail(u)) {
+		err = fmt.Errorf("cannot connect to test %s listener on: %s", scheme, u)
 		t.Logf("%v", err)
 		t.FailNow()
 		return err
@@ -145,7 +191,7 @@ func runTestAuth(t *testing.T, listener, realm string) error {
 		authorizeHandler := func(w http.ResponseWriter, req *http.Request) {
 			redirect := req.FormValue("redirect_uri")
 			state := req.FormValue("state")
-			code := "zyx"
+			code := "xyz"
 			location, _ := url.PathUnescape(redirect)
 			u, _ := url.Parse(location)
 			v := u.Query()
@@ -222,6 +268,9 @@ func runTestConnect(t *testing.T, config *Config, listener, route string) (strin
 	if !assert.NoError(t, err) {
 		return "", nil, err
 	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	// check that we get the final redirection to app correctly
 	assert.Equal(t, http.StatusOK, resp.StatusCode)

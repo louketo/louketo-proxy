@@ -36,12 +36,10 @@ import (
 	"math/big"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
-	"sync"
 	"time"
 	"unicode"
 	"unicode/utf8"
@@ -128,9 +126,9 @@ func getRequestHostURL(r *http.Request) string {
 		hostname = r.Header.Get("X-Forwarded-Host")
 	}
 
-	scheme := "http"
+	scheme := unsecureScheme
 	if r.TLS != nil {
-		scheme = "https"
+		scheme = secureScheme
 	}
 
 	return fmt.Sprintf("%s://%s", scheme, hostname)
@@ -194,7 +192,7 @@ func decryptDataBlock(cipherText, key []byte) ([]byte, error) {
 func encodeText(plaintext, key string) (string, error) {
 	var compressedText bytes.Buffer
 	w := zlib.NewWriter(&compressedText)
-	w.Write([]byte(plaintext))
+	_, _ = w.Write([]byte(plaintext))
 	w.Close()
 
 	cipherText, err := encryptDataBlock(compressedText.Bytes(), []byte(key))
@@ -338,82 +336,6 @@ func containsSubString(value string, list []string) bool {
 	}
 
 	return false
-}
-
-// tryDialEndpoint dials the upstream endpoint via plain HTTP
-func tryDialEndpoint(location *url.URL) (net.Conn, error) {
-	switch dialAddress := dialAddress(location); location.Scheme {
-	case unsecureScheme:
-		return net.Dial("tcp", dialAddress)
-	default:
-		return tls.Dial("tcp", dialAddress, &tls.Config{
-			Rand: cryptorand.Reader,
-			//nolint:gas
-			InsecureSkipVerify: true,
-		})
-	}
-}
-
-// isUpgradedConnection checks to see if the request is requesting
-func isUpgradedConnection(req *http.Request) bool {
-	return req.Header.Get(headerUpgrade) != ""
-}
-
-// transferBytes transfers bytes between the sink and source
-func transferBytes(src io.Reader, dest io.Writer, wg *sync.WaitGroup) (int64, error) {
-	defer wg.Done()
-	return io.Copy(dest, src)
-}
-
-// tryUpdateConnection attempt to upgrade the connection to a http pdy stream
-func tryUpdateConnection(req *http.Request, writer http.ResponseWriter, endpoint *url.URL) error {
-	// step: dial the endpoint
-	server, err := tryDialEndpoint(endpoint)
-	if err != nil {
-		return err
-	}
-	defer server.Close()
-
-	// @check the the response writer implements the Hijack method
-	if _, ok := writer.(http.Hijacker); !ok {
-		return errors.New("writer does not implement http.Hijacker method")
-	}
-
-	// @step: get the client connection object
-	client, _, err := writer.(http.Hijacker).Hijack()
-	if err != nil {
-		return err
-	}
-	defer client.Close()
-
-	// step: write the request to upstream
-	if err = req.Write(server); err != nil {
-		return err
-	}
-
-	// @step: copy the data between client and upstream endpoint
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() { _, _ = transferBytes(server, client, &wg) }()
-	go func() { _, _ = transferBytes(client, server, &wg) }()
-	wg.Wait()
-
-	return nil
-}
-
-// dialAddress extracts the dial address from the url
-func dialAddress(location *url.URL) string {
-	items := strings.Split(location.Host, ":")
-	if len(items) != 2 {
-		switch location.Scheme {
-		case unsecureScheme:
-			return location.Host + ":80"
-		default:
-			return location.Host + ":443"
-		}
-	}
-
-	return location.Host
 }
 
 // findCookie looks for a cookie in a list of cookies

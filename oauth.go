@@ -113,6 +113,10 @@ func getUserinfo(client *oauth2.Client, endpoint string, token string) (jose.Cla
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.New("token not validate by userinfo endpoint")
 	}

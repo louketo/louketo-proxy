@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -132,9 +133,10 @@ func TestAdmin(t *testing.T) {
 	}
 
 	resp, err := client.Do(req)
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
+	require.NoError(t, err)
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	buf, erb := ioutil.ReadAll(resp.Body)
@@ -168,9 +170,10 @@ func TestAdmin(t *testing.T) {
 	}
 
 	resp, err = client.Do(req)
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
+	require.NoError(t, err)
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	buf, erb = ioutil.ReadAll(resp.Body)
@@ -196,9 +199,11 @@ func TestAdmin(t *testing.T) {
 		Header: h,
 	}
 	resp, err = client.Do(req)
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
+	require.NoError(t, err)
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	buf, erb = ioutil.ReadAll(resp.Body)
 	assert.NoError(t, erb)

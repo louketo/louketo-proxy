@@ -132,13 +132,6 @@ func onRedirect(req *http.Request, via []*http.Request) error {
 	return nil
 }
 
-// controlledRedirect is a client RoundTripper to capture all cookies exchanged during the redirection process
-// (assuming HttpOnly is not set for testing purpose)
-type controlledRedirect struct {
-	Transport        http.RoundTripper
-	CollectedCookies map[string]*http.Cookie
-}
-
 func (c controlledRedirect) RoundTrip(req *http.Request) (resp *http.Response, err error) {
 	tr := c.Transport
 	if tr == nil {

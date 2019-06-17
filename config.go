@@ -38,8 +38,11 @@ func newDefaultConfig() *Config {
 		AccessTokenDuration:           time.Duration(720) * time.Hour,
 		CookieAccessName:              accessCookie,
 		CookieRefreshName:             refreshCookie,
+		CSRFCookieName:                "kc-csrf",
+		CSRFHeader:                    "X-Csrf-Token",
 		EnableAuthorizationCookies:    true,
 		EnableAuthorizationHeader:     true,
+		EnableCSRF:                    false,
 		EnableDefaultDeny:             true,
 		EnableSessionCookies:          true,
 		EnableTokenHeader:             true,
@@ -60,7 +63,7 @@ func newDefaultConfig() *Config {
 		SecureCookie:                  true,
 		ServerIdleTimeout:             120 * time.Second,
 		ServerReadTimeout:             10 * time.Second,
-		ServerWriteTimeout:            10 * time.Second,
+		ServerWriteTimeout:            11 * time.Second, // make it upstream timeout + 1s to avoid closing the connection before headers are sent
 		SkipOpenIDProviderTLSVerify:   false,
 		SkipUpstreamTLSVerify:         true,
 		Tags:                          make(map[string]string),
@@ -71,9 +74,6 @@ func newDefaultConfig() *Config {
 		UpstreamTLSHandshakeTimeout:   10 * time.Second,
 		UpstreamTimeout:               10 * time.Second,
 		UseLetsEncrypt:                false,
-		EnableCSRF:                    false,
-		CSRFCookieName:                "kc-csrf",
-		CSRFHeader:                    "X-Csrf-Token",
 	}
 }
 
@@ -348,7 +348,8 @@ func (r *Config) isTLSValid() error {
 }
 
 func (r *Config) isReverseProxyValid() error {
-	if r.Upstream == "" {
+	switch r.Upstream {
+	case "":
 		if r.EnableDefaultDeny && !r.EnableDefaultNotFound {
 			return errors.New("you expect some default fallback routing, but have not specified an upstream endpoint to proxy to")
 		}
@@ -357,11 +358,12 @@ func (r *Config) isReverseProxyValid() error {
 				return fmt.Errorf("you did not set any default upstream and you have not specified an upstream endpoint to proxy to on resource: %s", resource.URL)
 			}
 		}
-	} else {
+	default:
 		if _, err := url.Parse(r.Upstream); err != nil {
 			return fmt.Errorf("the upstream endpoint is invalid, %s", err)
 		}
 	}
+
 	if r.SkipUpstreamTLSVerify && r.UpstreamCA != "" {
 		return fmt.Errorf("you cannot both require to skip upstream tls and load a root ca to verify it: %s", r.UpstreamCA)
 	}
@@ -402,10 +404,6 @@ func (r *Config) isReverseProxyValid() error {
 		}
 		if !found {
 			return fmt.Errorf("flag EnableCSRF is set but no protected resource sets EnableCSRF")
-		}
-		// TODO: this option should disappear and always be left to default
-		if r.CorsDisableUpstream {
-			return fmt.Errorf("flag EnableCSRF requires headers to be added to upstream response. This won't work if CorsDisableUpstream is set")
 		}
 	}
 	return nil

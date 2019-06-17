@@ -143,6 +143,9 @@ func TestUpstreams(t *testing.T) {
 
 	resp, err := client.Do(req)
 	require.NoError(t, err)
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	buf, err := ioutil.ReadAll(resp.Body)

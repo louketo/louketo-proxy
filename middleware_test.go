@@ -300,6 +300,10 @@ func (f *fakeProxy) performUserLogin(uri string) error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+
 	for _, c := range resp.Cookies() {
 		if c.Name == f.config.CookieAccessName || c.Name == f.config.CookieRefreshName {
 			f.cookies[c.Name] = &http.Cookie{

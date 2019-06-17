@@ -22,11 +22,11 @@ with users authenticated against Keycloak.
 
 Our primary target is browser apps (e.g. react) directly using this proxy to access API resources.
 
-> **Disclaimer**: although we try not to regress on what we see as non-goals, we don't provide any further testing than the one already in place, 
+> **Disclaimer**: although we try not to regress on what we see as non-goals, we don't provide any further testing than the one already in place
 > on forward proxying, backend session-stores and login UI with templates.
 
-Authentication is stateful: gatekeeper creates a session for authenticated users. This session may be either stored in some backend or in an
-(encrypted) cookie.
+Authentication is stateful: gatekeeper creates a session for authenticated users. This session may be either stored in some backend or in
+(encrypted) cookies.
 
 ### Authentication modes
 
@@ -38,22 +38,29 @@ which acquire a token through the proxy authentication service, then use a cooki
 Protected resources may be unauthenticated, authenticated with custom headers deduced from the token claims or carry out full authentication again from
 the `Authorization` header (defense in depth).
 
-> NOTE: gatekeeper expects to be listed in the audience claim of ID tokens brought back by keycloak
+> NOTE: gatekeeper expects to be listed in the audience claim of ID tokens brought back by keycloak.
+> So you should ensure your gatekeeper client in keycloak is configured with a proper "audience" token mapper.
 
 ### Authorization
 
 Protected resources (URIs) may be guarded with some basic RBAC rules checking groups and roles provided by keycloak.
 
 > NOTE: group rules support trailing wildcards, so you may configure group claims to be the full group hierarchical path.
+> This requires your token mapper in keycloak to map groups in claim with path rather than group name.
 
 ### Features
 
 * Proxied access token exchange flow
 * CORS support
+* HTTP/2 support (caution: HTTP/2 push not supported yet)
 * Authentication support with cookie or token in header
+* Hybrid authentication modes allowed, e.g. token in header vs cookies
+* Cookies compression
 * Large cookies are split in chunks
-* When authenticating with cookies, an automatic CSRF mechanism may be used for additional protection
+* Opt-in: When authenticating with cookies, an automatic CSRF mechanism may be used for additional protection
 * Access tokens managed by cookies are refreshed automatically
+* mutual TLS & TLS fine-tuning settings (cipher suites, etc.)
+* routing to multiple upstreams (e.g. with base path)
 
 ### Topology
 
@@ -64,6 +71,9 @@ When used as gateway, you may route to different upstreams, with some basic path
 When used as sidecar, or when set with multiple instances on different upstreams, you must ensure that cookies domain and cookies encryption key
 are shared by all instances.
 
+Multiple gatekeepers may be set up: if you are using cookies to authenticate, you must:
+1. Deploy multiple instances with the same encryption secret
+2. Define a common domain for cookies to be shared
 
 ### Operations
 
@@ -83,6 +93,22 @@ There is an opt-in live profiler endpoint for debugging performance issues:
 
 This serves commands from the pprof handler described [here](https://golang.org/pkg/net/http/pprof/#pkg-index).
 
+TODOS
+----------------------------------
+
+There is still quite some room for improvement:
+
+* [ ] opencensus tracing
+* [ ] cookie compression (allow this as an option)
+* [ ] virtual hosts w/ routing rules
+* [ ] http2 support w/ push
+* [ ] csrf cookie w/ session store (at the moment, csrf state is only supported as a client-side cookie)
+* [ ] refactor session store to move to internal packages
+* [ ] upgrade from coreos/oidc V1
+* [ ] support ECDSA-signed tokens
+* [ ] support keycloak client admin URL features (nbf policy push, logout push)
+* [ ] support leeway to avoid shared-state race conditions on refreshing acess tokens with revokable refresh tokens
+
 Reporting security vulnerabilities
 ----------------------------------
 
@@ -96,7 +122,7 @@ This fork:
 
 * [Issues](https://github.com/oneconcern/keycloak-gatekeeper/issues) - Issue tracker for bugs and feature requests
 
-Resources with original repo:
+Resources associated to the original repo:
 
 * [JIRA](https://issues.jboss.org/projects/KEYCLOAK) - Issue tracker for bugs and feature requests
 * [Documentation](https://www.keycloak.org/docs/latest/securing_apps/index.html#_keycloak_generic_adapter) - User Guide

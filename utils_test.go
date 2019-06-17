@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"os"
 	"reflect"
 	"testing"
@@ -368,7 +367,7 @@ func TestHasAccessBad(t *testing.T) {
 	}
 }
 
-func TestHasAccessWildcar(t *testing.T) {
+func TestHasAccessWildcard(t *testing.T) {
 	cs := []struct {
 		Have     []string
 		Need     []string
@@ -454,20 +453,6 @@ func BenchmarkContainsSubString(t *testing.B) {
 	for n := 0; n < t.N; n++ {
 		containsSubString("svc.cluster.local", []string{"nginx.pr1.svc.cluster.local"})
 	}
-}
-
-func TestDialAddress(t *testing.T) {
-	assert.Equal(t, dialAddress(getFakeURL("http://127.0.0.1")), "127.0.0.1:80")
-	assert.Equal(t, dialAddress(getFakeURL("https://127.0.0.1")), "127.0.0.1:443")
-	assert.Equal(t, dialAddress(getFakeURL("http://127.0.0.1:8080")), "127.0.0.1:8080")
-}
-
-func TestIsUpgradedConnection(t *testing.T) {
-	header := http.Header{}
-	header.Add(headerUpgrade, "")
-	assert.False(t, isUpgradedConnection(&http.Request{Header: header}))
-	header.Set(headerUpgrade, "set")
-	assert.True(t, isUpgradedConnection(&http.Request{Header: header}))
 }
 
 func TestIdValidHTTPMethod(t *testing.T) {
@@ -636,11 +621,6 @@ redirection_url: http://127.0.0.1:3000
 		}
 		os.Remove(file.Name())
 	}
-}
-
-func getFakeURL(location string) *url.URL {
-	u, _ := url.Parse(location)
-	return u
 }
 
 func writeFakeConfigFile(t *testing.T, content string) *os.File {

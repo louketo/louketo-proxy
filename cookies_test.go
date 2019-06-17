@@ -22,13 +22,17 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCookieDomainHostHeader(t *testing.T) {
 	svc := newTestService()
 	resp, err := makeTestCodeFlowLogin(svc + "/admin")
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	var cookie *http.Cookie
 	for _, c := range resp.Cookies() {
@@ -44,8 +48,11 @@ func TestCookieDomain(t *testing.T) {
 	p, _, svc := newTestProxyService(nil)
 	p.config.CookieDomain = "domain.com"
 	resp, err := makeTestCodeFlowLogin(svc + "/admin")
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	var cookie *http.Cookie
 	for _, c := range resp.Cookies() {

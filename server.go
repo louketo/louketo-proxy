@@ -38,9 +38,9 @@ import (
 
 	proxyproto "github.com/armon/go-proxyproto"
 	"github.com/coreos/go-oidc/oidc"
-	"github.com/elazarl/goproxy"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"github.com/oneconcern/keycloak-gatekeeper/version"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
@@ -82,7 +82,7 @@ func newProxy(config *Config) (*oauthProxy, error) {
 		return nil, err
 	}
 
-	log.Info("starting the service", zap.String("prog", prog), zap.String("author", author), zap.String("version", version))
+	log.Info("starting the service", zap.String("prog", version.Prog), zap.String("author", version.Author), zap.String("version", version.GetVersion()))
 	svc := &oauthProxy{
 		config:         config,
 		log:            log,
@@ -367,10 +367,8 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 		if listener, err = net.Listen("unix", socket); err != nil {
 			return nil, err
 		}
-	} else {
-		if listener, err = net.Listen("tcp", config.listen); err != nil {
-			return nil, err
-		}
+	} else if listener, err = net.Listen("tcp", config.listen); err != nil {
+		return nil, err
 	}
 
 	// does it require proxy protocol?
@@ -464,13 +462,10 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 		// @check if we are doing mutual tls
 		if len(config.clientCerts) > 0 {
 			r.log.Info("enabling mutual tls support with client certs")
-			caCertPool := x509.NewCertPool()
-			for _, clientCert := range config.clientCerts {
-				clientPEMCert, err := ioutil.ReadFile(clientCert)
-				if err != nil {
-					return nil, err
-				}
-				caCertPool.AppendCertsFromPEM(clientPEMCert)
+			caCertPool, erp := makeCertPool("client", config.clientCerts...)
+			if erp != nil {
+				r.log.Error("unable to read client CA certificate", zap.Error(erp))
+				return nil, erp
 			}
 			tlsConfig.ClientCAs = caCertPool
 			tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
@@ -514,6 +509,14 @@ func (r *oauthProxy) newOpenIDClient() (*oidc.Client, oidc.ProviderConfig, *http
 	}
 
 	// step: create a idp http client
+	var pool *x509.CertPool
+	if r.config.OpenIDProviderCA != "" {
+		pool, err = makeCertPool("OpenID provider", r.config.OpenIDProviderCA)
+		if err != nil {
+			r.log.Error("unable to read OpenIDProvider CA certificate", zap.String("path", r.config.OpenIDProviderCA), zap.Error(err))
+			return nil, config, nil, err
+		}
+	}
 	hc := &http.Client{
 		Transport: &http.Transport{
 			Proxy: func(_ *http.Request) (*url.URL, error) {
@@ -531,6 +534,7 @@ func (r *oauthProxy) newOpenIDClient() (*oidc.Client, oidc.ProviderConfig, *http
 			TLSClientConfig: &tls.Config{
 				//nolint:gas
 				InsecureSkipVerify: r.config.SkipOpenIDProviderTLSVerify,
+				RootCAs:            pool,
 			},
 		},
 		Timeout: time.Second * 10,
@@ -583,26 +587,7 @@ func (r *oauthProxy) Render(w io.Writer, name string, data interface{}) error {
 	return r.templates.ExecuteTemplate(w, name, data)
 }
 
-// createUpstreamProxy creates a reverse http proxy client to the upstream
-func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) error {
-	dialer := (&net.Dialer{
-		KeepAlive: r.config.UpstreamKeepaliveTimeout,
-		Timeout:   r.config.UpstreamTimeout,
-	}).Dial
-
-	// are we using a unix socket?
-	if upstream != nil && upstream.Scheme == "unix" {
-		r.log.Info("using unix socket for upstream", zap.String("socket", fmt.Sprintf("%s%s", upstream.Host, upstream.Path)))
-
-		socketPath := fmt.Sprintf("%s%s", upstream.Host, upstream.Path)
-		dialer = func(network, address string) (net.Conn, error) {
-			return net.Dial("unix", socketPath)
-		}
-		upstream.Path = ""
-		upstream.Host = "domain-sock"
-		upstream.Scheme = unsecureScheme
-	}
-	// create the upstream tls configuration
+func (r *oauthProxy) buildProxyTLSConfig() (*tls.Config, error) {
 	//nolint:gas
 	tlsConfig := &tls.Config{InsecureSkipVerify: r.config.SkipUpstreamTLSVerify}
 
@@ -610,47 +595,39 @@ func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) error {
 	// @TODO provide a means to reload the client certificate when it expires. I'm not sure if it's just a
 	// case of update the http transport settings - Also where to place this go-routine?
 	if r.config.TLSClientCertificate != "" {
-		cert, err := ioutil.ReadFile(r.config.TLSClientCertificate)
+		pool, err := makeCertPool("client", r.config.TLSClientCertificate)
 		if err != nil {
 			r.log.Error("unable to read client certificate", zap.String("path", r.config.TLSClientCertificate), zap.Error(err))
-			return err
+			return nil, err
 		}
-		pool := x509.NewCertPool()
-		pool.AppendCertsFromPEM(cert)
 		tlsConfig.ClientCAs = pool
 		tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
 	}
 
-	// @check if we have a upstream ca to verify the upstream
+	// @check if we have an upstream ca to verify the upstream
 	if r.config.UpstreamCA != "" {
 		r.log.Info("loading the upstream ca", zap.String("path", r.config.UpstreamCA))
-		ca, err := ioutil.ReadFile(r.config.UpstreamCA)
+		pool, err := makeCertPool("upstream CA", r.config.UpstreamCA)
 		if err != nil {
-			return err
+			r.log.Error("unable to read upstream CA certificate", zap.String("path", r.config.UpstreamCA), zap.Error(err))
+			return nil, err
 		}
-		pool := x509.NewCertPool()
-		pool.AppendCertsFromPEM(ca)
 		tlsConfig.RootCAs = pool
 	}
+	return tlsConfig, nil
+}
 
-	// create the forwarding proxy
-	proxy := goproxy.NewProxyHttpServer()
-	proxy.KeepDestinationHeaders = !r.config.CorsDisableUpstream
-	proxy.Logger = httplog.New(ioutil.Discard, "", 0)
-	proxy.KeepDestinationHeaders = !r.config.CorsDisableUpstream
-	r.upstream = proxy
-
-	// update the tls configuration of the reverse proxy
-	r.upstream.(*goproxy.ProxyHttpServer).Tr = &http.Transport{
-		Dial:                  dialer,
-		DisableKeepAlives:     !r.config.UpstreamKeepalives,
-		ExpectContinueTimeout: r.config.UpstreamExpectContinueTimeout,
-		ResponseHeaderTimeout: r.config.UpstreamResponseHeaderTimeout,
-		TLSClientConfig:       tlsConfig,
-		TLSHandshakeTimeout:   r.config.UpstreamTLSHandshakeTimeout,
-		MaxIdleConns:          r.config.MaxIdleConns,
-		MaxIdleConnsPerHost:   r.config.MaxIdleConnsPerHost,
+func makeCertPool(who string, certs ...string) (*x509.CertPool, error) {
+	caCertPool := x509.NewCertPool()
+	for _, cert := range certs {
+		caPEMCert, err := ioutil.ReadFile(cert)
+		if err != nil {
+			return nil, fmt.Errorf("cannot read cert file for %s: %q: %v", who, cert, err)
+		}
+		ok := caCertPool.AppendCertsFromPEM(caPEMCert)
+		if !ok {
+			return nil, fmt.Errorf("invalid %s PEM certificate", who)
+		}
 	}
-
-	return nil
+	return caCertPool, nil
 }

@@ -44,7 +44,11 @@ jobs:
           name: Build docker image then push to gcloud repo
           command: |
             VERSION=$(git describe --tags)
-            docker build --progress plain -t ${REPOSITORY}/${IMAGE}:${VERSION} -t ${REPOSITORY}/${IMAGE}:latest .
+            SHA1=$(git rev-parse HEAD)
+            BUILD=$(date +%s)
+            docker build --progress plain -t ${REPOSITORY}/${IMAGE}:${VERSION} \
+            --build-arg TAG=${VERSION} --build-arg SHA1=${SHA1} --build-arg BUILD=${BUILD} \
+            -t ${REPOSITORY}/${IMAGE}:latest .
             docker push ${REPOSITORY}/${IMAGE}:${VERSION}
             docker push ${REPOSITORY}/${IMAGE}:latest
 
@@ -58,6 +62,6 @@ workflows:
           context: "OC Common"
           filters:
             tags:
-              only: /^v.*/
+              only: /^v.*-1c/
             branches:
               only: /oneconcern-release/

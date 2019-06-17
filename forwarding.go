@@ -20,12 +20,16 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
+	httplog "log"
+	"net"
 	"net/http"
 	"time"
 
 	"github.com/coreos/go-oidc/jose"
 	"github.com/coreos/go-oidc/oidc"
 	"github.com/elazarl/goproxy"
+	"github.com/oneconcern/keycloak-gatekeeper/version"
 	"go.uber.org/zap"
 )
 
@@ -58,7 +62,7 @@ func (r *oauthProxy) createForwardingProxy() error {
 	if r.config.SkipUpstreamTLSVerify {
 		r.log.Warn("tls verification switched off. In forward signing mode it's recommended you verify! (--skip-upstream-tls-verify=false)")
 	}
-	if err := r.createUpstreamProxy(nil); err != nil {
+	if err := r.createProxy(); err != nil {
 		return err
 	}
 	forwardingHandler := r.forwardProxyHandler()
@@ -251,7 +255,40 @@ func (r *oauthProxy) forwardProxyHandler() func(*http.Request, *http.Response) {
 		// is the host being signed?
 		if len(r.config.ForwardingDomains) == 0 || containsSubString(hostname, r.config.ForwardingDomains) {
 			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", state.token.Encode()))
-			req.Header.Set("X-Forwarded-Agent", prog)
+			req.Header.Set("X-Forwarded-Agent", version.Prog)
 		}
 	}
+}
+
+// createProxy creates a reverse http proxy client to the upstream
+func (r *oauthProxy) createProxy() error {
+	dialer := (&net.Dialer{
+		KeepAlive: r.config.UpstreamKeepaliveTimeout,
+		Timeout:   r.config.UpstreamTimeout,
+	}).Dial
+
+	tlsConfig, err := r.buildProxyTLSConfig()
+	if err != nil {
+		return err
+	}
+
+	// create the forwarding proxy
+	proxy := goproxy.NewProxyHttpServer()
+	proxy.KeepDestinationHeaders = true
+	proxy.Logger = httplog.New(ioutil.Discard, "", 0)
+	r.upstream = proxy
+
+	// update the tls configuration of the reverse proxy
+	r.upstream.(*goproxy.ProxyHttpServer).Tr = &http.Transport{
+		Dial:                  dialer,
+		DisableKeepAlives:     !r.config.UpstreamKeepalives,
+		ExpectContinueTimeout: r.config.UpstreamExpectContinueTimeout,
+		ResponseHeaderTimeout: r.config.UpstreamResponseHeaderTimeout,
+		TLSClientConfig:       tlsConfig,
+		TLSHandshakeTimeout:   r.config.UpstreamTLSHandshakeTimeout,
+		MaxIdleConns:          r.config.MaxIdleConns,
+		MaxIdleConnsPerHost:   r.config.MaxIdleConnsPerHost,
+	}
+
+	return nil
 }

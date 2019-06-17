@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -79,7 +80,11 @@ func TestCorsWithUpstream(t *testing.T) {
 		URL:    u,
 		Header: h,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+
 	buf, erb := ioutil.ReadAll(resp.Body)
 	assert.NoError(t, erb)
 	assert.Contains(t, string(buf), `"message": "test"`) // check this is our test resource
