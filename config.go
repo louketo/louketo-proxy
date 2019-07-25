@@ -61,6 +61,7 @@ func newDefaultConfig() *Config {
 		SelfSignedTLSHostnames:        hostnames,
 		RequestIDHeader:               "X-Request-ID",
 		ResponseHeaders:               make(map[string]string),
+		SameSiteCookie:                SameSiteLax,
 		SecureCookie:                  true,
 		ServerIdleTimeout:             120 * time.Second,
 		ServerReadTimeout:             10 * time.Second,
@@ -106,6 +107,10 @@ func (r *Config) isValid() error {
 
 	if r.EnableTracing && r.TracingAgentEndpoint == "" {
 		return fmt.Errorf("an agent endpoint must be specified when enabling tracing")
+	}
+
+	if r.SameSiteCookie != "" && r.SameSiteCookie != SameSiteStrict && r.SameSiteCookie != SameSiteLax && r.SameSiteCookie != SameSiteNone {
+		return errors.New("same-site-cookie must be one of Strict|Lax|None")
 	}
 
 	return r.isReverseProxyValid()
