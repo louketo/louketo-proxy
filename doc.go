@@ -264,6 +264,8 @@ type Config struct {
 	SecureCookie bool `json:"secure-cookie" yaml:"secure-cookie" usage:"enforces the cookie to be secure"`
 	// HTTPOnlyCookie enforces the cookie as http only
 	HTTPOnlyCookie bool `json:"http-only-cookie" yaml:"http-only-cookie" usage:"enforces the cookie is in http only mode"`
+	// SameSiteCookie enforces cookies to be send only to same site requests.
+	SameSiteCookie string `json:"same-site-cookie" yaml:"same-site-cookie" usage:"enforces cookies to be send only to same site requests according to the policy (can be Strict|Lax|None)"`
 
 	// MatchClaims is a series of checks, the claims in the token must match those here
 	MatchClaims map[string]string `json:"match-claims" yaml:"match-claims" usage:"keypair values for matching access token claims e.g. aud=myapp, iss=http://example.*"`

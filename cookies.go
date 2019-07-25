@@ -25,6 +25,13 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
+// SameSite cookie config options
+const (
+	SameSiteStrict = "Strict"
+	SameSiteLax    = "Lax"
+	SameSiteNone   = "None"
+)
+
 // dropCookie drops a cookie into the response
 func (r *oauthProxy) dropCookie(w http.ResponseWriter, host, name, value string, duration time.Duration) {
 	// step: default to the host header, else the config domain
@@ -48,6 +55,13 @@ func (r *oauthProxy) dropCookie(w http.ResponseWriter, host, name, value string,
 		cookie.Expires = time.Now().Add(duration)
 	}
 
+	switch r.config.SameSiteCookie {
+	case SameSiteStrict:
+		cookie.SameSite = http.SameSiteStrictMode
+	case SameSiteLax:
+		cookie.SameSite = http.SameSiteLaxMode
+	}
+
 	http.SetCookie(w, cookie)
 }
 
@@ -64,6 +78,12 @@ func (r *oauthProxy) getMaxCookieChunkLength(req *http.Request, cookieName strin
 	}
 	if !r.config.EnableSessionCookies {
 		maxCookieChunkLength -= len("Expires=Mon, 02 Jan 2006 03:04:05 MST; ")
+	}
+	switch r.config.SameSiteCookie {
+	case SameSiteStrict:
+		maxCookieChunkLength -= len("SameSite=Strict ")
+	case SameSiteLax:
+		maxCookieChunkLength -= len("SameSite=Lax ")
 	}
 	if r.config.SecureCookie {
 		maxCookieChunkLength -= len("Secure")

@@ -56,6 +56,7 @@ func newDefaultConfig() *Config {
 		SelfSignedTLSHostnames:        hostnames,
 		RequestIDHeader:               "X-Request-ID",
 		ResponseHeaders:               make(map[string]string),
+		SameSiteCookie:                SameSiteLax,
 		SecureCookie:                  true,
 		ServerIdleTimeout:             120 * time.Second,
 		ServerReadTimeout:             10 * time.Second,
@@ -92,6 +93,9 @@ func (r *Config) isValid() error {
 	}
 	if r.MaxIdleConnsPerHost < 0 || r.MaxIdleConnsPerHost > r.MaxIdleConns {
 		return errors.New("maxi-idle-connections-per-host must be a number > 0 and <= max-idle-connections")
+	}
+	if r.SameSiteCookie != "" && r.SameSiteCookie != SameSiteStrict && r.SameSiteCookie != SameSiteLax && r.SameSiteCookie != SameSiteNone {
+		return errors.New("same-site-cookie must be one of Strict|Lax|None")
 	}
 	if r.TLSCertificate != "" && r.TLSPrivateKey == "" {
 		return errors.New("you have not provided a private key")
