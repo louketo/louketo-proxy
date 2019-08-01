@@ -75,7 +75,7 @@ func looseEntrypointMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		keep := req.URL.Path
 		keepRaw := req.URL.RawPath
-		keepUri := req.RequestURI
+		keepURI := req.RequestURI
 
 		purell.NormalizeURL(req.URL, looseNormalizeFlags)
 
@@ -99,7 +99,7 @@ func looseEntrypointMiddleware(next http.Handler) http.Handler {
 		// place back the original uri for proxying request
 		req.URL.Path = keep
 		req.URL.RawPath = keepRaw
-		req.RequestURI = keepUri
+		req.RequestURI = keepURI
 	})
 }
 
