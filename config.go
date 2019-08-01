@@ -45,6 +45,7 @@ func newDefaultConfig() *Config {
 		EnableTokenHeader:             true,
 		HTTPOnlyCookie:                true,
 		Headers:                       make(map[string]string),
+		LoosePathNormalization:        false,
 		LetsEncryptCacheDir:           "./cache/",
 		MatchClaims:                   make(map[string]string),
 		MaxIdleConns:                  100,

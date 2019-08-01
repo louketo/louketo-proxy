@@ -168,7 +168,13 @@ func (r *oauthProxy) createReverseProxy() error {
 		engine.Use(r.requestIDMiddleware(r.config.RequestIDHeader))
 	}
 	// @step: enable the entrypoint middleware
-	engine.Use(entrypointMiddleware)
+	if r.config.LoosePathNormalization {
+		r.log.Info("Path Normalization is Loose.")
+		engine.Use(looseEntrypointMiddleware)
+	} else {
+		r.log.Info("Path Normalization is Strict.")
+		engine.Use(entrypointMiddleware)
+	}
 
 	if r.config.EnableLogging {
 		engine.Use(r.loggingMiddleware)

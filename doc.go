@@ -360,6 +360,10 @@ type Config struct {
 	// ForwardingDomains is a collection of domains to signs
 	ForwardingDomains []string `json:"forwarding-domains" yaml:"forwarding-domains" usage:"list of domains which should be signed; everything else is relayed unsigned"`
 
+	// LoosePathNormalization uses a looser filter to the proxied request.
+	// This can be useful to proxy to services that require a not normalized path like Jenkins.
+	LoosePathNormalization bool `json:"loose-path-normalization" yaml:"loose-path-normalization" usage:"looser path normalization. allow for double slashes in url and does not decode url. Enable only if you know what you are doing."`
+
 	// DisableAllLogging indicates no logging at all
 	DisableAllLogging bool `json:"disable-all-logging" yaml:"disable-all-logging" usage:"disables all logging to stdout and stderr"`
 }

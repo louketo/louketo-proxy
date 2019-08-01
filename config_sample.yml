@@ -86,3 +86,6 @@ cors-methods: []
 cors-credentials: true|false
 # the max age (Access-Control-Max-Age)
 cors-max-age: 1h
+
+# enable looser path normalization. allow for double slashes in url and does not decode url. Enable only if you know what you are doing ( default: false)
+loose-path-normalization: false|true

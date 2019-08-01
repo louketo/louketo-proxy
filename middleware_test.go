@@ -538,6 +538,25 @@ func TestNoProxyingRequests(t *testing.T) {
 	newFakeProxy(c).RunTests(t, requests)
 }
 
+func TestLooseNormalizationProxyingRequests(t *testing.T) {
+	c := newFakeKeycloakConfig()
+	c.LoosePathNormalization = true
+	c.Resources = []*Resource{
+		{
+			URL:     "/*",
+			Methods: allHTTPMethods,
+		},
+	}
+	requests := []fakeRequest{
+		{ // check for loose path normalization
+			URI:          "/testForReverseProxySetup/https%3A%2F%2Flocalhost%3A6001%2Fmanage/",
+			Redirects:    true,
+			ExpectedCode: http.StatusTemporaryRedirect,
+		},
+	}
+	newFakeProxy(c).RunTests(t, requests)
+}
+
 const testAdminURI = "/admin/test"
 
 func TestStrangeAdminRequests(t *testing.T) {
