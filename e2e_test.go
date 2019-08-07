@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"path"
@@ -30,6 +31,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/net/http2"
 )
 
 func makeTestCACertPool() *x509.CertPool {
@@ -60,12 +62,18 @@ func checkListenOrBail(endpoint string) bool {
 		maxWaitCycles = 10
 		waitTime      = 100 * time.Millisecond
 	)
-	checkListen := http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				RootCAs: makeTestCACertPool(),
-			},
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			RootCAs:    makeTestCACertPool(),
+			NextProtos: []string{"h2", "http/1.1"},
 		},
+	}
+	err := http2.ConfigureTransport(transport)
+	if err != nil {
+		log.Fatalf("cannot configure test transport: %v", err)
+	}
+	checkListen := http.Client{
+		Transport: transport,
 	}
 	resp, err := checkListen.Get(endpoint)
 	if err == nil {

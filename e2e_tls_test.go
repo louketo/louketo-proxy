@@ -150,7 +150,8 @@ func runTestTLSApp(t *testing.T, listener, route string) error {
 func runTestTLSConnect(t *testing.T, config *Config, listener, route string) (string, []*http.Cookie, error) {
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
-			RootCAs: makeTestCACertPool(),
+			RootCAs:    makeTestCACertPool(),
+			NextProtos: []string{"h2", "http/1.1"},
 		},
 	}
 	if err := http2.ConfigureTransport(transport); err != nil {

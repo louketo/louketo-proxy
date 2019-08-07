@@ -13,6 +13,7 @@ require (
 	github.com/garyburd/redigo v1.6.0 // indirect
 	github.com/go-chi/chi v4.0.1+incompatible
 	github.com/gorilla/csrf v1.5.1
+	github.com/gorilla/websocket v1.4.0
 	github.com/jonboulle/clockwork v0.1.0 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/kylelemons/godebug v0.0.0-20170820004349-d65d576e9348 // indirect

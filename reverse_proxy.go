@@ -321,8 +321,7 @@ func (r *oauthProxy) createStdProxy(upstream *url.URL) error {
 		ExpectContinueTimeout: r.config.UpstreamExpectContinueTimeout,
 		ResponseHeaderTimeout: r.config.UpstreamResponseHeaderTimeout,
 	}
-	err = http2.ConfigureTransport(transport)
-	if err != nil {
+	if err = http2.ConfigureTransport(transport); err != nil {
 		return err
 	}
 	r.upstream = &httputil.ReverseProxy{
