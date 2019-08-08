@@ -41,16 +41,18 @@ jobs:
           command: |
             echo $GCLOUD_SERVICE_KEY | docker login -u _json_key --password-stdin https://gcr.io
       - run:
-          name: Build docker image then push to gcloud repo
+          name: Build tagged docker image then push to gcloud repo
           command: |
-            VERSION=$(git describe --tags)
+            VERSION=$(git describe --tags --exact-match || true)
             SHA1=$(git rev-parse HEAD)
             BUILD=$(date +%s)
-            docker build --progress plain -t ${REPOSITORY}/${IMAGE}:${VERSION} \
-            --build-arg TAG=${VERSION} --build-arg SHA1=${SHA1} --build-arg BUILD=${BUILD} \
-            -t ${REPOSITORY}/${IMAGE}:latest .
-            docker push ${REPOSITORY}/${IMAGE}:${VERSION}
-            docker push ${REPOSITORY}/${IMAGE}:latest
+            if [[ -n "${VERSION}" ]] ; then
+              docker build --progress plain -t ${REPOSITORY}/${IMAGE}:${VERSION} \
+              --build-arg TAG=${VERSION} --build-arg SHA1=${SHA1} --build-arg BUILD=${BUILD} \
+              -t ${REPOSITORY}/${IMAGE}:latest .
+              docker push ${REPOSITORY}/${IMAGE}:${VERSION}
+              docker push ${REPOSITORY}/${IMAGE}:latest
+            fi
 
 workflows:
   version: 2
