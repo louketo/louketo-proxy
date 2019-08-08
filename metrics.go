@@ -18,7 +18,7 @@ var (
 	oauthTokensMetric = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "proxy_oauth_tokens_total",
-			Help: "A summary of the tokens issuesd, renewed or failed logins",
+			Help: "A summary of the tokens issued, renewed or failed logins",
 		},
 		[]string{"action"},
 	)
