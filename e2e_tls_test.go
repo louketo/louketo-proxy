@@ -47,6 +47,7 @@ const (
 	authKey      = "fixtures/certs/auth.pem"
 
 	e2eTLSUpstreamProxyListener = "gatekeeper.localtest.me:23328"
+	e2eTLSAdminEndpointListener = "gatekeeper.localtest.me:23330"
 
 	e2eTLSUpstreamOauthListener    = "auth.localtest.me:13455"
 	e2eTLSUpstreamUpstreamListener = "upstream.localtest.me:18511"
@@ -339,6 +340,8 @@ func testBuildTLSUpstreamConfig() *Config {
 		},
 	}
 	config.EncryptionKey = secretForCookie
+	config.ListenAdmin = e2eTLSAdminEndpointListener
+
 	return config
 }
 
@@ -346,6 +349,11 @@ func TestTLSUpstream(t *testing.T) {
 	//log.SetOutput(ioutil.Discard)
 
 	config := testBuildTLSUpstreamConfig()
+	require.NoError(t, config.isValid())
+
+	config.EnableTracing = true
+	require.Error(t, config.isValid())
+	config.TracingAgentEndpoint = "localhost:5468"
 	require.NoError(t, config.isValid())
 
 	// launch fake oauth OIDC server (http for simplicity)
@@ -461,6 +469,7 @@ func TestTLSUpstream(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	buf, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
+
 	claims = make(map[string]interface{})
 	err = json.Unmarshal(buf, &claims)
 	require.NoError(t, err)
@@ -510,4 +519,60 @@ func TestTLSUpstream(t *testing.T) {
 	jti = refreshClaims["jti"].(string)
 	// refresh token is a different token
 	assert.NotEqual(t, jti, newjti)
+
+	// check out health status
+	u, _ = url.Parse("https://" + e2eTLSAdminEndpointListener + "/oauth/health")
+	req.URL = u
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	buf, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.JSONEq(t, `{"status":"OK"}`, string(buf))
+
+	// check out zpages
+	u, _ = url.Parse("https://" + e2eTLSAdminEndpointListener + "/oauth/trace/rpcz")
+	req = &http.Request{
+		Method: "GET",
+		URL:    u,
+	}
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	buf, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	//t.Logf("rpcz: %s", string(buf))
+	assert.Contains(t, string(buf), `<!DOCTYPE html>`)
+
+	u, _ = url.Parse("https://" + e2eTLSAdminEndpointListener + "/oauth/trace/tracez")
+	req.URL = u
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	buf, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	//t.Logf("tracez: %s", string(buf))
+	assert.Contains(t, string(buf), `<!DOCTYPE html>`)
+
+	u, _ = url.Parse("https://" + e2eTLSAdminEndpointListener + `/oauth/trace/tracez?zspanname=%2foauth%2frefresh&ztype=1&zsubtype=4`)
+	req.URL = u
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	buf, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	//t.Logf("tracez: %s", string(buf))
+	assert.Contains(t, string(buf), `<!DOCTYPE html>`)
 }
