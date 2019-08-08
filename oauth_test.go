@@ -228,13 +228,22 @@ func (r *fakeAuthServer) userInfoHandler(w http.ResponseWriter, req *http.Reques
 	})
 }
 
-func (r *fakeAuthServer) tokenHandler(w http.ResponseWriter, req *http.Request) {
+func (r *fakeAuthServer) makeToken(newJTI ...bool) (*jose.JWT, time.Time, error) {
 	expires := time.Now().Add(r.expiration)
 	unsigned := newTestToken(r.getLocation())
 	unsigned.setExpiration(expires)
 
+	if len(newJTI) > 0 && newJTI[0] {
+		// generates new jti claim
+		unsigned.newJTI()
+	}
 	// sign the token with the private key
 	token, err := jose.NewSignedJWT(unsigned.claims, r.signer)
+	return token, expires, err
+}
+
+func (r *fakeAuthServer) tokenHandler(w http.ResponseWriter, req *http.Request) {
+	token, expires, err := r.makeToken()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -262,7 +271,14 @@ func (r *fakeAuthServer) tokenHandler(w http.ResponseWriter, req *http.Request) 
 			"error_description": "invalid user credentials",
 		})
 	case oauth2.GrantTypeRefreshToken:
-		fallthrough
+		token, expires, _ = r.makeToken(true)
+		refreshToken, _, _ := r.makeToken(true)
+		renderJSON(http.StatusOK, w, req, tokenResponse{
+			IDToken:      token.Encode(),
+			AccessToken:  token.Encode(),
+			RefreshToken: refreshToken.Encode(),
+			ExpiresIn:    expires.Second(),
+		})
 	case oauth2.GrantTypeAuthCode:
 		renderJSON(http.StatusOK, w, req, tokenResponse{
 			IDToken:      token.Encode(),

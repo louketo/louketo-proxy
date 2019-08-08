@@ -45,18 +45,7 @@ func (r *oauthProxy) createReverseProxy() error {
 	r.useDefaultStack(engine)
 
 	// @step: configure CORS middleware
-	if len(r.config.CorsOrigins) > 0 {
-		c := cors.New(cors.Options{
-			AllowedOrigins:   r.config.CorsOrigins,
-			AllowedMethods:   r.config.CorsMethods,
-			AllowedHeaders:   r.config.CorsHeaders,
-			AllowCredentials: r.config.CorsCredentials,
-			ExposedHeaders:   r.config.CorsExposedHeaders,
-			MaxAge:           int(r.config.CorsMaxAge.Seconds()),
-			Debug:            r.config.Verbose,
-		})
-		engine.Use(c.Handler)
-	}
+	r.useCors(engine)
 
 	r.router = engine
 
@@ -83,6 +72,10 @@ func (r *oauthProxy) createReverseProxy() error {
 			e.With(r.authenticationMiddleware()).Get(logoutURL, r.logoutHandler)
 			e.With(r.authenticationMiddleware()).Get(tokenURL, r.tokenHandler)
 
+			if r.config.EnableRefreshTokens {
+				e.With(r.authenticationMiddleware()).Get(refreshURL, r.refreshHandler)
+			}
+
 			e.Post(loginURL, r.loginHandler)
 
 			if r.config.ListenAdmin == "" {
@@ -91,6 +84,7 @@ func (r *oauthProxy) createReverseProxy() error {
 		})
 
 	if r.config.ListenAdmin == "" {
+		// if no dedicated admin listener is set, publish debug routes on main listener
 		if debugEngine := r.createDebugRoutes(); debugEngine != nil {
 			engine.With(proxyDenyMiddleware).Mount(debugURL, debugEngine)
 		}
@@ -100,7 +94,8 @@ func (r *oauthProxy) createReverseProxy() error {
 	if err := r.createTemplates(); err != nil {
 		return err
 	}
-	// step: provision in the protected resources
+
+	// step: provision the protected resources
 	addDefaultDeny := r.config.EnableDefaultDeny
 	for _, x := range r.config.Resources {
 		if x.URL[len(x.URL)-1:] == "/" {
@@ -334,4 +329,19 @@ func (r *oauthProxy) createStdProxy(upstream *url.URL) error {
 	}
 
 	return nil
+}
+
+func (r *oauthProxy) useCors(engine chi.Router) {
+	if len(r.config.CorsOrigins) > 0 {
+		c := cors.New(cors.Options{
+			AllowedOrigins:   r.config.CorsOrigins,
+			AllowedMethods:   r.config.CorsMethods,
+			AllowedHeaders:   r.config.CorsHeaders,
+			AllowCredentials: r.config.CorsCredentials,
+			ExposedHeaders:   r.config.CorsExposedHeaders,
+			MaxAge:           int(r.config.CorsMaxAge.Seconds()),
+			Debug:            r.config.Verbose,
+		})
+		engine.Use(c.Handler)
+	}
 }

@@ -56,7 +56,7 @@ type controlledRedirect struct {
 }
 
 // checkListenOrBail waits on a endpoint listener to respond.
-// This avoids race conditions with test listieners as go routines
+// This avoids race conditions with test listeners as go routines
 func checkListenOrBail(endpoint string) bool {
 	const (
 		maxWaitCycles = 10

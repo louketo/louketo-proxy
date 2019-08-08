@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc/jose"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -575,6 +576,12 @@ func (t *fakeToken) getToken() jose.JWT {
 // setExpiration sets the expiration of the token
 func (t *fakeToken) setExpiration(tm time.Time) {
 	t.claims.Add("exp", float64(tm.Unix()))
+}
+
+// newJTI sets a new random jti for this token
+func (t *fakeToken) newJTI() {
+	id, _ := uuid.NewRandom()
+	t.claims.Add("jti", id)
 }
 
 // addGroups adds groups to then token

@@ -18,17 +18,18 @@ package main
 import (
 	"crypto/tls"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 	"path"
 	"testing"
 	"time"
 
+	"github.com/coreos/go-oidc/jose"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/http2"
@@ -62,12 +63,13 @@ const (
 func runTestTLSUpstream(t *testing.T, listener, route string, markers ...string) error {
 	go func() {
 		upstreamHandler := func(w http.ResponseWriter, req *http.Request) {
-
-			dump, _ := httputil.DumpRequest(req, false)
+			// NOTE: to debug, enable request dump
+			//dump, _ := httputil.DumpRequest(req, false)
+			//t.Logf("upstream received: %q", string(dump))
 			nowPushing := false
 			inBody := make([]string, 0, len(markers))
 			inPushed := make([]string, 0, len(markers))
-			t.Logf("upstream received: %q", string(dump))
+			assert.Equal(t, 2, req.ProtoMajor) // assert request is relayed as HTTP/2
 			for _, m := range markers {
 				if m == "push" {
 					nowPushing = true
@@ -311,6 +313,7 @@ func testBuildTLSUpstreamConfig() *Config {
 	config.SkipUpstreamTLSVerify = false
 	config.UpstreamCA = caCert
 	config.TLSUseModernSettings = true
+	config.EnableRefreshTokens = true
 
 	config.CorsOrigins = []string{"*"}
 	config.EnableCSRF = false
@@ -402,15 +405,109 @@ func TestTLSUpstream(t *testing.T) {
 		_ = resp.Body.Close()
 	}()
 
-	dump, err := httputil.DumpResponse(resp, true)
-	require.NoError(t, err)
-	t.Logf("%q", dump)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	// NOTE: to debug, enable response dump
+	//dump, err := httputil.DumpResponse(resp, true)
+	//require.NoError(t, err)
+	//t.Logf("%q", dump)
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 	// also interactive test may produce HTTP/2 traces:
 	// GODEBUG=http2debug=2 ; go test -v -run TLSUpstream
 	assert.Equal(t, 2, resp.ProtoMajor) // assert response is HTTP/2
 	buf, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	assert.Contains(t, string(buf), "mark1")
-	t.Logf(string(buf))
+
+	// NOTE: to debug, enable response dump
+	//t.Logf(string(buf))
+
+	// test token endpoint: this returns the json content of the access token
+	// e.g:  {"aud":"test","azp":"clientid","client_session":"f0105893-369a-46bc-9661-ad8c747b1a69","email":"gambol99@gmail.com","exp":1565256043,"family_name":"Jayawardene","given_name":"Rohith","iat":1565252443,"iss":"https://auth.localtest.me:13455/auth/realms/hod-test","jti":"4ee75b8e-3ee6-4382-92d4-3390b4b4937b","name":"Rohith Jayawardene","nbf":0,"preferred_username":"rjayawardene","session_state":"98f4c3d2-1b8c-4932-b8c4-92ec0ea7e195","sub":"1e11e539-8256-4b3b-bda8-cc0d56cddb48","typ":"Bearer"}
+	u, _ = url.Parse("https://" + e2eTLSUpstreamProxyListener + "/oauth/token")
+	req.URL = u
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	buf, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	claims := make(map[string]interface{})
+	err = json.Unmarshal(buf, &claims)
+	require.NoError(t, err)
+	assert.Contains(t, claims, "aud")
+	assert.Contains(t, claims, "email")
+	assert.Contains(t, claims, "name")
+	require.Contains(t, claims, "iat")
+	require.Contains(t, claims, "jti")
+	require.Contains(t, claims, "exp")
+
+	iat := claims["iat"].(float64)
+	expires := claims["exp"].(float64)
+	jti := claims["jti"].(string)
+
+	// test refresh endpoint: this returns the json content of a refreshed access token
+	// cookie is updated as well
+	time.Sleep(time.Second) // time resolution at 1s in claims
+
+	u, _ = url.Parse("https://" + e2eTLSUpstreamProxyListener + "/oauth/refresh")
+	req.URL = u
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	buf, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	claims = make(map[string]interface{})
+	err = json.Unmarshal(buf, &claims)
+	require.NoError(t, err)
+	assert.Contains(t, claims, "aud")
+	assert.Contains(t, claims, "email")
+	assert.Contains(t, claims, "name")
+	require.Contains(t, claims, "iat")
+	require.Contains(t, claims, "jti")
+	require.Contains(t, claims, "exp")
+
+	newiat := claims["iat"].(float64)
+	newexpires := claims["exp"].(float64)
+	newjti := claims["jti"].(string)
+	assert.True(t, iat < newiat)
+	assert.True(t, expires < newexpires)
+	assert.NotEqual(t, jti, newjti)
+
+	// assert new cookies after token refresh
+	newAccessTokenInCookie := getCookie(resp, accessCookie)
+	newRefreshTokenInCookie := getCookie(resp, refreshCookie)
+
+	// NOTE: in this test config, access token is not encrypted in cookie
+	decodedAccessToken, err := jose.ParseJWT(newAccessTokenInCookie.Value)
+	require.NoError(t, err)
+	accessClaims, err := decodedAccessToken.Claims()
+	require.NoError(t, err)
+	require.Contains(t, accessClaims, "iat")
+	require.Contains(t, accessClaims, "jti")
+	require.Contains(t, accessClaims, "exp")
+
+	iat = accessClaims["iat"].(float64)
+	expires = accessClaims["exp"].(float64)
+	jti = accessClaims["jti"].(string)
+
+	assert.Equal(t, newiat, iat)
+	assert.Equal(t, newexpires, expires)
+	assert.Equal(t, jti, newjti)
+
+	// NOTE: refresh token is encrypted in cookie
+	decryptedRefreshToken, err := decodeText(newRefreshTokenInCookie.Value, secretForCookie)
+	require.NoError(t, err)
+	decodedRefreshToken, err := jose.ParseJWT(decryptedRefreshToken)
+	require.NoError(t, err)
+	refreshClaims, err := decodedRefreshToken.Claims()
+	require.NoError(t, err)
+	require.Contains(t, refreshClaims, "jti")
+	jti = refreshClaims["jti"].(string)
+	// refresh token is a different token
+	assert.NotEqual(t, jti, newjti)
 }

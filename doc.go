@@ -41,6 +41,7 @@ const (
 	metricsURL       = "/metrics"
 	tokenURL         = "/token"
 	debugURL         = "/debug/pprof"
+	refreshURL       = "/refresh"
 
 	// default claims used to analyze access token
 	claimAudience       = "aud"

@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/purell"
-	"github.com/coreos/go-oidc/jose"
 	"github.com/go-chi/chi/middleware"
 	gcsrf "github.com/gorilla/csrf"
 	uuid "github.com/satori/go.uuid"
@@ -111,6 +110,7 @@ func (r *oauthProxy) authenticationMiddleware() func(http.Handler) http.Handler 
 				next.ServeHTTP(w, req.WithContext(r.redirectToAuthorization(w, req)))
 				return
 			}
+
 			// create the request scope
 			scope := req.Context().Value(contextScopeName).(*RequestScope)
 			scope.Identity = user
@@ -147,7 +147,7 @@ func (r *oauthProxy) authenticationMiddleware() func(http.Handler) http.Handler 
 
 				// step: check if we are refreshing the access tokens and if not re-auth
 				if !r.config.EnableRefreshTokens {
-					r.log.Warn("session expired and access token refreshing is disabled",
+					r.log.Warn("session expired and access token refresh is disabled",
 						zap.String("client_ip", clientIP),
 						zap.String("email", user.name),
 						zap.String("expired_on", user.expiresAt.String()))
@@ -156,100 +156,21 @@ func (r *oauthProxy) authenticationMiddleware() func(http.Handler) http.Handler 
 					return
 				}
 
-				r.log.Info("accces token for user has expired, attemping to refresh the token",
+				r.log.Info("accces token for user has expired, attempting to refresh the token",
 					zap.String("client_ip", clientIP),
 					zap.String("email", user.email))
 
-				// step: check if the user has refresh token
-				refresh, encrypted, err := r.retrieveRefreshToken(req.WithContext(ctx), user)
-				if err != nil {
-					r.log.Warn("unable to find a refresh token for user",
-						zap.String("client_ip", clientIP),
-						zap.String("email", user.email),
-						zap.Error(err))
-
-					next.ServeHTTP(w, req.WithContext(r.redirectToAuthorization(w, req)))
-					return
-				}
-
-				// attempt to refresh the access token, possibly with a renewed refresh token
-				//
-				// NOTE: atm, this does not retrieve explicit refresh token expiry from oauth2,
-				// and take identity expiry instead: with keycloak, they are the same and equal to
-				// "SSO session idle" keycloak setting.
-				//
-				// exp: expiration of the access token
-				// expiresIn: expiration of the ID token
-				token, newRefreshToken, accessExpiresAt, refreshExpiresIn, err := getRefreshedToken(r.client, refresh)
-				if err != nil {
+				// step : refresh the token, update user and session
+				if err = r.refreshToken(w, req.WithContext(ctx), user); err != nil {
 					switch err {
-					case ErrRefreshTokenExpired:
-						r.log.Warn("refresh token has expired, cannot retrieve access token",
-							zap.String("client_ip", clientIP),
-							zap.String("email", user.email))
-
-						r.clearAllCookies(req.WithContext(ctx), w)
+					case ErrEncode, ErrEncryption:
+						r.errorResponse(w, err.Error(), http.StatusInternalServerError, err)
 					default:
-						r.log.Error("failed to refresh the access token", zap.Error(err))
+						next.ServeHTTP(w, req.WithContext(r.redirectToAuthorization(w, req.WithContext(ctx))))
 					}
-					next.ServeHTTP(w, req.WithContext(r.redirectToAuthorization(w, req)))
-
 					return
 				}
-
-				accessExpiresIn := time.Until(accessExpiresAt)
-
-				// get the expiration of the new refresh token
-				if newRefreshToken != "" {
-					refresh = newRefreshToken
-				}
-				if refreshExpiresIn == 0 {
-					// refresh token expiry claims not available: try to parse refresh token
-					refreshExpiresIn = r.getAccessCookieExpiration(token, refresh)
-				}
-
-				r.log.Info("injecting the refreshed access token cookie",
-					zap.String("client_ip", clientIP),
-					zap.String("cookie_name", r.config.CookieAccessName),
-					zap.String("email", user.email),
-					zap.Duration("refresh_expires_in", refreshExpiresIn),
-					zap.Duration("expires_in", accessExpiresIn))
-
-				accessToken := token.Encode()
-				if r.config.EnableEncryptedToken || r.config.ForceEncryptedCookie {
-					if accessToken, err = encodeText(accessToken, r.config.EncryptionKey); err != nil {
-						r.errorResponse(w, "unable to encode the access token", http.StatusInternalServerError, err)
-						return
-					}
-				}
-				// step: inject the refreshed access token
-				r.dropAccessTokenCookie(req.WithContext(ctx), w, accessToken, accessExpiresIn)
-
-				// step: inject the renewed refresh token
-				if newRefreshToken != "" {
-					r.log.Debug("renew refresh cookie with new refresh token",
-						zap.Duration("refresh_expires_in", refreshExpiresIn))
-					encryptedRefreshToken, err := encodeText(newRefreshToken, r.config.EncryptionKey)
-					if err != nil {
-						r.errorResponse(w, "failed to encrypt the refresh token", http.StatusInternalServerError, err)
-						return
-					}
-					r.dropRefreshTokenCookie(req.WithContext(ctx), w, encryptedRefreshToken, refreshExpiresIn)
-				}
-
-				if r.useStore() {
-					go func(old, new jose.JWT, encrypted string) {
-						if err := r.DeleteRefreshToken(old); err != nil {
-							r.log.Error("failed to remove old token", zap.Error(err))
-						}
-						if err := r.StoreRefreshToken(new, encrypted); err != nil {
-							r.log.Error("failed to store refresh token", zap.Error(err))
-							return
-						}
-					}(user.token, token, encrypted)
-				}
-				// update the with the new access token and inject into the context
-				user.token = token
+				// store user in scope
 				ctx = context.WithValue(req.Context(), contextScopeName, scope)
 			}
 

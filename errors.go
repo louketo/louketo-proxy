@@ -26,6 +26,10 @@ var (
 	ErrNoTokenAudience = errors.New("the token does not audience in claims")
 	// ErrDecryption indicates we can't decrypt the token
 	ErrDecryption = errors.New("failed to decrypt token")
+	// ErrEncode indicates a failure to encode the token
+	ErrEncode = errors.New("failed to encode token")
+	// ErrEncryption indicates a failure to encrypt the token
+	ErrEncryption = errors.New("failed to encrypt token")
 )
 
 func methodNotAllowedHandler(w http.ResponseWriter, req *http.Request) {
@@ -58,7 +62,7 @@ func errorResponse(w http.ResponseWriter, msg string, code int) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(code)
 	if len(msg) > 0 {
-		fmt.Fprintln(w, fmt.Sprintf(`{%q}`, msg))
+		fmt.Fprintln(w, fmt.Sprintf(`{"error": %q}`, msg))
 	}
 }
 

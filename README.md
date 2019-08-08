@@ -50,17 +50,21 @@ Protected resources (URIs) may be guarded with some basic RBAC rules checking gr
 
 ### Features
 
-* Proxied access token exchange flow
+* Proxied access token exchange flow (`/oauth/authorize` endpoint)
 * CORS support
 * HTTP/2 support (caution: HTTP/2 push not supported yet)
 * Authentication support with cookie or token in header
 * Hybrid authentication modes allowed, e.g. token in header vs cookies
 * Cookies compression
 * Large cookies are split in chunks
-* Opt-in: When authenticating with cookies, an automatic CSRF mechanism may be used for additional protection
+* Opt-in: when authenticating with cookies, an automatic CSRF mechanism may be used for additional protection
 * Access tokens managed by cookies are refreshed automatically
-* mutual TLS & TLS fine-tuning settings (cipher suites, etc.)
-* routing to multiple upstreams (e.g. with base path)
+* Mutual TLS & TLS fine-tuning settings (cipher suites, etc.)
+* Routing to multiple upstreams (e.g. with base path)
+* Client may force instant token refresh (`/oauth/refresh` endpoint)
+* Client logout (`/oauth/logout` endpoint)
+* Client access to token claims (`/oauth/token` endpoint)
+* Client may check the expiry status of its access token (`/oauth/expired` endpoint)
 
 ### Topology
 
@@ -68,8 +72,8 @@ The reverse proxy may be deployed either as a gateway or as a sidecar.
 
 When used as gateway, you may route to different upstreams, with some basic path prefix stripping rules.
 
-When used as sidecar, or when set with multiple instances on different upstreams, you must ensure that cookies domain and cookies encryption key
-are shared by all instances.
+When relying on cookies, and when used as sidecar or when set with multiple instances on different upstreams,
+you must ensure that cookies domain and cookies encryption key are shared by all instances.
 
 Multiple gatekeepers may be set up: if you are using cookies to authenticate, you must:
 1. Deploy multiple instances with the same encryption secret

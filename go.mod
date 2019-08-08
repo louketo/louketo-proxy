@@ -12,6 +12,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/garyburd/redigo v1.6.0 // indirect
 	github.com/go-chi/chi v4.0.1+incompatible
+	github.com/google/uuid v1.1.1
 	github.com/gorilla/csrf v1.5.1
 	github.com/gorilla/websocket v1.4.0
 	github.com/jonboulle/clockwork v0.1.0 // indirect
@@ -24,6 +25,7 @@ require (
 	github.com/prometheus/procfs v0.0.0-20190203183350-488faf799f86 // indirect
 	github.com/rs/cors v1.6.0
 	github.com/satori/go.uuid v1.2.0
+	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.3.0
 	github.com/unrolled/secure v0.0.0-20190103195806-76e6d4e9b90c
 	github.com/urfave/cli v0.0.0-20180226030253-8e01ec4cd3e2
