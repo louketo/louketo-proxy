@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"net"
 
 	"net/http"
 	"net/http/pprof"
@@ -513,17 +512,6 @@ func (r *oauthProxy) debugHandler(w http.ResponseWriter, req *http.Request) {
 			r.errorResponse(w, "", http.StatusNotFound, nil)
 		}
 	}
-}
-
-// proxyMetricsHandler forwards the request into the prometheus handler
-func (r *oauthProxy) proxyMetricsHandler(w http.ResponseWriter, req *http.Request) {
-	if r.config.LocalhostMetrics {
-		if !net.ParseIP(realIP(req)).IsLoopback() {
-			r.accessForbidden(w, req)
-			return
-		}
-	}
-	r.metricsHandler.ServeHTTP(w, req)
 }
 
 // retrieveRefreshToken retrieves the refresh token from store or cookie

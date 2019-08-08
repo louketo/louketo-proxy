@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc/jose"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 type contextKey int8
@@ -71,42 +70,6 @@ const (
 	authorizationHeader = "Authorization"
 	//headerUpgrade       = "Upgrade"
 	versionHeader = "X-Auth-Proxy-Version"
-)
-
-var (
-	certificateRotationMetric = prometheus.NewCounter(
-		prometheus.CounterOpts{
-			Name: "proxy_certificate_rotation_total",
-			Help: "The total amount of times the certificate has been rotated",
-		},
-	)
-	oauthTokensMetric = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "proxy_oauth_tokens_total",
-			Help: "A summary of the tokens issuesd, renewed or failed logins",
-		},
-		[]string{"action"},
-	)
-	oauthLatencyMetric = prometheus.NewSummaryVec(
-		prometheus.SummaryOpts{
-			Name: "proxy_oauth_request_latency_sec",
-			Help: "A summary of the request latancy for requests against the openid provider",
-		},
-		[]string{"action"},
-	)
-	latencyMetric = prometheus.NewSummary(
-		prometheus.SummaryOpts{
-			Name: "proxy_request_duration_sec",
-			Help: "A summary of the http request latency for proxy requests",
-		},
-	)
-	statusMetric = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "proxy_request_status_total",
-			Help: "The HTTP requests partitioned by status code",
-		},
-		[]string{"code", "method"},
-	)
 )
 
 // Config is the configuration for the proxy
