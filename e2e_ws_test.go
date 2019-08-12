@@ -53,29 +53,28 @@ func runTestWSTLSUpstream(t *testing.T, listener, route string) error {
 			//dump, _ := httputil.DumpRequest(req, false)
 			//t.Logf("upstream received: %q", string(dump))
 			c, err := upgrader.Upgrade(w, req, nil)
-			//if !assert.NoErrorf(t, err, "upgrade error: %v", err) {
 			if err != nil {
 				t.Logf("server upgrade error: %v", err)
+				t.Fail()
 				return
 			}
 			defer c.Close()
 			for {
 				mt, message, err := c.ReadMessage()
-				//if !assert.NoErrorf(t, err, "read error: %v", err) {
 				if err != nil {
 					if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
 						t.Logf("server ack client bailed. OK")
 					} else {
-						t.Fail()
 						t.Logf("server read error: %v", err)
+						t.Fail()
 					}
 					break
 				}
 				t.Logf("server recv: %s", message)
 				err = c.WriteMessage(mt, message)
 				if err != nil {
-					t.Fail()
 					t.Logf("server write error: %v", err)
+					t.Fail()
 					break
 				}
 			}
@@ -145,7 +144,7 @@ func runTestWSTLSAuth(t *testing.T, listener, realm string) error {
 		authorizeHandler := func(w http.ResponseWriter, req *http.Request) {
 			redirect := req.FormValue("redirect_uri")
 			state := req.FormValue("state")
-			code := "zyx"
+			code := "zzz"
 			location, _ := url.PathUnescape(redirect)
 			u, _ := url.Parse(location)
 			v := u.Query()
@@ -281,7 +280,6 @@ func TestWSTLSUpstream(t *testing.T) {
 		defer close(done)
 		for {
 			_, message, err := c.ReadMessage()
-			//require.NoErrorf(t, err, "read:", err)
 			if err != nil {
 				_, isNetError := err.(*net.OpError)
 				if isNetError || websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {

@@ -41,37 +41,28 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/oneconcern/keycloak-gatekeeper/version"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 )
 
 type oauthProxy struct {
-	client         *oidc.Client
-	config         *Config
-	endpoint       *url.URL
-	idp            oidc.ProviderConfig
-	idpClient      *http.Client
-	listener       net.Listener
-	log            *zap.Logger
-	metricsHandler http.Handler
-	router         http.Handler
-	adminRouter    http.Handler
-	server         *http.Server
-	store          storage
-	templates      *template.Template
-	upstream       reverseProxy
-	csrf           func(http.Handler) http.Handler
+	client      *oidc.Client
+	config      *Config
+	endpoint    *url.URL
+	idp         oidc.ProviderConfig
+	idpClient   *http.Client
+	listener    net.Listener
+	log         *zap.Logger
+	router      http.Handler
+	adminRouter http.Handler
+	server      *http.Server
+	store       storage
+	templates   *template.Template
+	upstream    reverseProxy
+	csrf        func(http.Handler) http.Handler
 }
 
 func init() {
-	_, _ = time.LoadLocation("UTC")      // ensure all time is in UTC [NOTE(fredbi): no this does just nothing]
 	runtime.GOMAXPROCS(runtime.NumCPU()) // set the core
-	prometheus.MustRegister(certificateRotationMetric)
-	prometheus.MustRegister(latencyMetric)
-	prometheus.MustRegister(oauthLatencyMetric)
-	prometheus.MustRegister(oauthTokensMetric)
-	prometheus.MustRegister(statusMetric)
 }
 
 // newProxy create's a new proxy from configuration
@@ -84,9 +75,8 @@ func newProxy(config *Config) (*oauthProxy, error) {
 
 	log.Info("starting the service", zap.String("prog", version.Prog), zap.String("author", version.Author), zap.String("version", version.GetVersion()))
 	svc := &oauthProxy{
-		config:         config,
-		log:            log,
-		metricsHandler: promhttp.Handler(),
+		config: config,
+		log:    log,
 	}
 
 	// parse the upstream endpoint
