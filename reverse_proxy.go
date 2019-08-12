@@ -19,8 +19,6 @@ import (
 	"context"
 	"fmt"
 
-	//"io/ioutil"
-	//httplog "log"
 	"net"
 	"net/http"
 	"net/url"
@@ -322,9 +320,9 @@ func (r *oauthProxy) createStdProxy(upstream *url.URL) error {
 	r.upstream = &httputil.ReverseProxy{
 		Director:  func(*http.Request) {}, // most of the work is already done by middleware above. Some of this could be done by Director just as well
 		Transport: transport,
-		ErrorHandler: func(w http.ResponseWriter, _ *http.Request, err error) {
+		ErrorHandler: func(w http.ResponseWriter, req *http.Request, err error) {
 			r.log.Warn("reverse proxy error", zap.Error(err))
-			errorResponse(w, "", http.StatusBadGateway)
+			r.errorResponse(w, req, "", http.StatusBadGateway, err)
 		},
 	}
 

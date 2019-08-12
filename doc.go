@@ -41,6 +41,7 @@ const (
 	tokenURL         = "/token"
 	debugURL         = "/debug/pprof"
 	refreshURL       = "/refresh"
+	traceURL         = "/trace"
 
 	// default claims used to analyze access token
 	claimAudience       = "aud"
@@ -175,9 +176,13 @@ type Config struct {
 	// EnableHTTPSRedirect indicate we should redirect http -> https
 	EnableHTTPSRedirect bool `json:"enable-https-redirection" yaml:"enable-https-redirection" usage:"enable the http to https redirection on the http service"`
 	// EnableProfiling indicates if profiles is switched on
-	EnableProfiling bool `json:"enable-profiling" yaml:"enable-profiling" usage:"switching on the golang profiling via pprof on /debug/pprof, /debug/pprof/heap etc"`
-	// EnableMetrics indicates if the metrics is enabled
-	EnableMetrics bool `json:"enable-metrics" yaml:"enable-metrics" usage:"enable the prometheus metrics collector on /oauth/metrics"`
+	EnableProfiling bool `json:"enable-profiling" yaml:"enable-profiling" usage:"switching on the golang profiling via pprof on /debug/pprof, /debug/pprof/heap etc" env:"ENABLE_PROFILING"`
+	// EnableMetrics indicates if the metrics is enabled (default: true)
+	EnableMetrics bool `json:"enable-metrics" yaml:"enable-metrics" usage:"enable the prometheus metrics collector on /oauth/metrics (enabled by default)" env:"ENABLE_METRICS"`
+	// EnableTracing indicates if a tracing exporter is enabled
+	EnableTracing bool `json:"enable-tracing" yaml:"enable-tracing" usage:"enable the opencensus trace collector on /oauth/zpages" env:"ENABLE_TRACING"`
+	// TracingAgentEndpoint register the jaeger agent collecting trace spans
+	TracingAgentEndpoint string `json:"tracing-agent-endpoint" yaml:"tracing-agent-endpoint" usage:"register the opencensus trace collector agent" env:"TRACING_AGENT_ENDPOINT"`
 	// EnableBrowserXSSFilter indicates you want the filter on
 	EnableBrowserXSSFilter bool `json:"filter-browser-xss" yaml:"filter-browser-xss" usage:"enable the adds the X-XSS-Protection header with mode=block"`
 	// EnableContentNoSniff indicates you want the filter on

@@ -80,29 +80,54 @@ Multiple gatekeepers may be set up: if you are using cookies to authenticate, yo
 2. Define a common domain for cookies to be shared
 
 ### Operations
+All the below endpoints may be optionally exposed on a separate port, or restricted to localhost requests.
 
-Gatekeeper exposes prometheus metrics and health status endpoint.
+#### Metrics
+
+Gatekeeper exposes prometheus metrics and health status endpoint. Metrics are enabled by default.
+```
+enable-metrics: true
+```
 
 ```
 /oauth/metrics
+```
+
+#### Health status
+
+```
 /oauth/health
 ```
 
-These may be optionally exposed on a separate port, or restricted to localhost requests.
-
+#### Profiling
 There is an opt-in live profiler endpoint for debugging performance issues:
+```
+enable-profiling: true
+```
+
 ```
 /debug/pprof/{name}
 ```
 
 This serves commands from the pprof handler described [here](https://golang.org/pkg/net/http/pprof/#pkg-index).
 
+#### Tracing
+
+Opencensus tracing may be enabled with the `enable-tracing: true` parameter. When enabled a trace collecting agent _must_ be configured (e.g. Jaeger agent).
+
+The admin listener (or main listener if not enabled) exposes zpages (rpcz, tracez):
+
+```
+/oauth/trace/rpcz
+/oauth/trace/tracez
+```
+
 TODOS
 ----------------------------------
 
 There is still quite some room for improvement:
 
-* [ ] opencensus tracing
+* [x] opencensus tracing
 * [ ] cookie compression (allow this as an option)
 * [ ] virtual hosts w/ routing rules
 * [ ] http2 support w/ push

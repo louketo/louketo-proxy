@@ -69,6 +69,7 @@ func (r *oauthProxy) revokeProxy(w http.ResponseWriter, req *http.Request) conte
 
 // redirectToURL redirects the user and aborts the context
 func (r *oauthProxy) redirectToURL(url string, w http.ResponseWriter, req *http.Request, statusCode int) context.Context {
+	r.log.Debug("redirecting to", zap.String("location", url))
 	w.Header().Add("Cache-Control", "nocache, no-store, must-revalidate, max-age=0")
 	http.Redirect(w, req, url, statusCode)
 
@@ -78,7 +79,7 @@ func (r *oauthProxy) redirectToURL(url string, w http.ResponseWriter, req *http.
 // redirectToAuthorization redirects the user to authorization handler
 func (r *oauthProxy) redirectToAuthorization(w http.ResponseWriter, req *http.Request) context.Context {
 	if r.config.NoRedirects {
-		r.errorResponse(w, "", http.StatusUnauthorized, nil)
+		r.errorResponse(w, req, "", http.StatusUnauthorized, nil)
 		return r.revokeProxy(w, req)
 	}
 
@@ -88,7 +89,7 @@ func (r *oauthProxy) redirectToAuthorization(w http.ResponseWriter, req *http.Re
 
 	// step: if verification is switched off, we can't authorize
 	if r.config.SkipTokenVerification {
-		r.errorResponse(w, "refusing to redirect to authorization endpoint, skip token verification switched on", http.StatusForbidden, nil)
+		r.errorResponse(w, req, "refusing to redirect to authorization endpoint, skip token verification switched on", http.StatusForbidden, nil)
 		return r.revokeProxy(w, req)
 	}
 	if r.config.InvalidAuthRedirectsWith303 {

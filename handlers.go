@@ -41,6 +41,11 @@ import (
 
 // getRedirectionURL returns the redirectionURL for the oauth flow
 func (r *oauthProxy) getRedirectionURL(w http.ResponseWriter, req *http.Request) string {
+	ctx, span, logger := r.traceSpan(req.Context(), "getRedirectionURL")
+	if span != nil {
+		defer span.End()
+	}
+
 	var redirect string
 	switch r.config.RedirectionURL {
 	case "":
@@ -60,7 +65,9 @@ func (r *oauthProxy) getRedirectionURL(w http.ResponseWriter, req *http.Request)
 
 	state, _ := req.Cookie(requestStateCookie)
 	if state != nil && req.URL.Query().Get("state") != state.Value {
-		r.errorResponse(w, "state parameter mismatch", http.StatusForbidden, nil)
+		logger.Error("state in cookie and url query parameter do not match", zap.String("cookie-state", state.Value),
+			zap.String("url-state", req.URL.Query().Get("state")))
+		r.errorResponse(w, req.WithContext(ctx), "state parameter mismatch", http.StatusForbidden, nil)
 		return ""
 	}
 	return fmt.Sprintf("%s%s", redirect, r.config.WithOAuthURI("callback"))
@@ -68,13 +75,19 @@ func (r *oauthProxy) getRedirectionURL(w http.ResponseWriter, req *http.Request)
 
 // oauthAuthorizationHandler is responsible for performing the redirection to oauth provider
 func (r *oauthProxy) oauthAuthorizationHandler(w http.ResponseWriter, req *http.Request) {
+	ctx, span, logger := r.traceSpan(req.Context(), "authorization handler")
+	if span != nil {
+		defer span.End()
+	}
+
 	if r.config.SkipTokenVerification {
-		r.errorResponse(w, "", http.StatusNotAcceptable, nil)
+		r.errorResponse(w, req.WithContext(ctx), "", http.StatusNotAcceptable, nil)
 		return
 	}
-	client, err := r.getOAuthClient(r.getRedirectionURL(w, req))
+
+	client, err := r.getOAuthClient(r.getRedirectionURL(w, req.WithContext(ctx)))
 	if err != nil {
-		r.errorResponse(w, "failed to retrieve the oauth client for authorization", http.StatusInternalServerError, err)
+		r.errorResponse(w, req.WithContext(ctx), "failed to retrieve the oauth client for authorization", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -85,7 +98,7 @@ func (r *oauthProxy) oauthAuthorizationHandler(w http.ResponseWriter, req *http.
 	}
 
 	authURL := client.AuthCodeURL(req.URL.Query().Get("state"), accessType, "")
-	r.log.Debug("incoming authorization request from client address",
+	logger.Debug("incoming authorization request from client address",
 		zap.String("access_type", accessType),
 		zap.String("auth_url", authURL),
 		zap.String("client_ip", req.RemoteAddr))
@@ -101,31 +114,36 @@ func (r *oauthProxy) oauthAuthorizationHandler(w http.ResponseWriter, req *http.
 		return
 	}
 
-	r.redirectToURL(authURL, w, req, http.StatusTemporaryRedirect)
+	r.redirectToURL(authURL, w, req.WithContext(ctx), http.StatusTemporaryRedirect)
 }
 
 // oauthCallbackHandler is responsible for handling the response from oauth service
 func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Request) {
+	ctx, span, logger := r.traceSpan(req.Context(), "oauthCallbackHandler")
+	if span != nil {
+		defer span.End()
+	}
+
 	if r.config.SkipTokenVerification {
-		r.errorResponse(w, "", http.StatusNotAcceptable, nil)
+		r.errorResponse(w, req.WithContext(ctx), "", http.StatusNotAcceptable, nil)
 		return
 	}
 	// step: ensure we have a authorization code
 	code := req.URL.Query().Get("code")
 	if code == "" {
-		r.errorResponse(w, "no code in query", http.StatusBadRequest, nil)
+		r.errorResponse(w, req.WithContext(ctx), "no code in query", http.StatusBadRequest, nil)
 		return
 	}
 
-	client, err := r.getOAuthClient(r.getRedirectionURL(w, req))
+	client, err := r.getOAuthClient(r.getRedirectionURL(w, req.WithContext(ctx)))
 	if err != nil {
-		r.errorResponse(w, "unable to create a oauth2 client", http.StatusInternalServerError, err)
+		r.errorResponse(w, req.WithContext(ctx), "unable to create a oauth2 client", http.StatusInternalServerError, err)
 		return
 	}
 
 	resp, err := exchangeAuthenticationCode(client, code)
 	if err != nil {
-		r.accessForbidden(w, req, "unable to exchange code for access token", err.Error())
+		r.accessForbidden(w, req.WithContext(ctx), "unable to exchange code for access token", err.Error())
 		return
 	}
 
@@ -134,7 +152,7 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 	// to the ID Token.
 	token, identity, err := parseToken(resp.IDToken)
 	if err != nil {
-		r.accessForbidden(w, req, "unable to parse ID token for identity", err.Error())
+		r.accessForbidden(w, req.WithContext(ctx), "unable to parse ID token for identity", err.Error())
 		return
 	}
 	access, id, err := parseToken(resp.AccessToken)
@@ -142,12 +160,12 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 		token = access
 		identity = id
 	} else {
-		r.log.Warn("unable to parse the access token, using id token only", zap.Error(err))
+		logger.Warn("unable to parse the access token, using id token only", zap.Error(err))
 	}
 
 	// step: check the access token is valid
 	if err = verifyToken(r.client, token); err != nil {
-		r.accessForbidden(w, req, "unable to verify the ID token", err.Error())
+		r.accessForbidden(w, req.WithContext(ctx), "unable to verify the ID token", err.Error())
 		return
 	}
 	accessToken := token.Encode()
@@ -155,12 +173,12 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 	// step: are we encrypting the access token?
 	if r.config.EnableEncryptedToken || r.config.ForceEncryptedCookie {
 		if accessToken, err = encodeText(accessToken, r.config.EncryptionKey); err != nil {
-			r.errorResponse(w, "unable to encode the access token", http.StatusInternalServerError, err)
+			r.errorResponse(w, req.WithContext(ctx), "unable to encode the access token", http.StatusInternalServerError, err)
 			return
 		}
 	}
 
-	r.log.Info("issuing access token for user",
+	logger.Info("issuing access token for user",
 		zap.String("email", identity.Email),
 		zap.String("expires", identity.ExpiresAt.Format(time.RFC3339)),
 		zap.String("duration", time.Until(identity.ExpiresAt).String()))
@@ -173,28 +191,29 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 		var encrypted string
 		encrypted, err = encodeText(resp.RefreshToken, r.config.EncryptionKey)
 		if err != nil {
-			r.errorResponse(w, "failed to encrypt the refresh token", http.StatusInternalServerError, err)
+			r.errorResponse(w, req.WithContext(ctx), "failed to encrypt the refresh token", http.StatusInternalServerError, err)
 			return
 		}
+
 		// drop in the access token - cookie expiration = access token
-		r.dropAccessTokenCookie(req, w, accessToken, r.getAccessCookieExpiration(token, resp.RefreshToken))
+		r.dropAccessTokenCookie(req.WithContext(ctx), w, accessToken, r.getAccessCookieExpiration(token, resp.RefreshToken))
 
 		switch r.useStore() {
 		case true:
 			if err = r.StoreRefreshToken(token, encrypted); err != nil {
-				r.log.Warn("failed to save the refresh token in the store", zap.Error(err))
+				logger.Warn("failed to save the refresh token in the store", zap.Error(err))
 			}
 		default:
 			// notes: not all idp refresh tokens are readable, google for example, so we attempt to decode into
 			// a jwt and if possible extract the expiration, else we default to 10 days
 			if _, ident, err := parseToken(resp.RefreshToken); err != nil {
-				r.dropRefreshTokenCookie(req, w, encrypted, 0)
+				r.dropRefreshTokenCookie(req.WithContext(ctx), w, encrypted, 0)
 			} else {
-				r.dropRefreshTokenCookie(req, w, encrypted, time.Until(ident.ExpiresAt))
+				r.dropRefreshTokenCookie(req.WithContext(ctx), w, encrypted, time.Until(ident.ExpiresAt))
 			}
 		}
 	} else {
-		r.dropAccessTokenCookie(req, w, accessToken, time.Until(identity.ExpiresAt))
+		r.dropAccessTokenCookie(req.WithContext(ctx), w, accessToken, time.Until(identity.ExpiresAt))
 	}
 
 	// step: decode the request variable
@@ -206,7 +225,7 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 			// some clients URL-escape padding characters
 			unescapedValue, err := url.PathUnescape(encodedRequestURI.Value)
 			if err != nil {
-				r.log.Warn("app did send a corrupted redirectURI in cookie: invalid url espcaping", zap.Error(err))
+				logger.Warn("app did send a corrupted redirectURI in cookie: invalid url espcaping", zap.Error(err))
 			}
 			// Since the value is passed with a cookie, we do not expect the client to use base64url (but the
 			// base64-encoded value may itself be url-encoded).
@@ -214,24 +233,29 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 			// which natively use base64url encoding, and url-escape padding '=' characters.
 			decoded, err := base64.StdEncoding.DecodeString(unescapedValue)
 			if err != nil {
-				r.log.Warn("app did send a corrupted redirectURI in cookie: invalid base64url encoding",
+				logger.Warn("app did send a corrupted redirectURI in cookie: invalid base64url encoding",
 					zap.Error(err),
 					zap.String("encoded_value", unescapedValue))
 			}
 			redirectURI = string(decoded)
 		}
 	}
+
 	if r.config.BaseURI != "" {
 		// assuming state starts with slash
 		redirectURI = r.config.BaseURI + redirectURI
 	}
 
-	r.log.Debug("redirecting to", zap.String("location", redirectURI))
-	r.redirectToURL(redirectURI, w, req, http.StatusTemporaryRedirect)
+	r.redirectToURL(redirectURI, w, req.WithContext(ctx), http.StatusTemporaryRedirect)
 }
 
 // loginHandler provide's a generic endpoint for clients to perform a user_credentials login to the provider
 func (r *oauthProxy) loginHandler(w http.ResponseWriter, req *http.Request) {
+	ctx, span, _ := r.traceSpan(req.Context(), "login handler")
+	if span != nil {
+		defer span.End()
+	}
+
 	errorMsg, code, err := func() (string, int, error) {
 		if !r.config.EnableLoginHandler {
 			return "attempt to login when login handler is disabled", http.StatusNotImplemented, errors.New("login handler disabled")
@@ -263,26 +287,27 @@ func (r *oauthProxy) loginHandler(w http.ResponseWriter, req *http.Request) {
 			return "unable to decode the access token", http.StatusNotImplemented, err
 		}
 
-		r.dropAccessTokenCookie(req, w, token.AccessToken, time.Until(identity.ExpiresAt))
+		r.dropAccessTokenCookie(req.WithContext(ctx), w, token.AccessToken, time.Until(identity.ExpiresAt))
 
 		// @metric a token has been issued
 		oauthTokensMetric.WithLabelValues("login").Inc()
 
 		w.Header().Set("Content-Type", jsonMime)
-		if err := json.NewEncoder(w).Encode(tokenResponse{
+		err = json.NewEncoder(w).Encode(tokenResponse{
 			IDToken:      token.IDToken,
 			AccessToken:  token.AccessToken,
 			RefreshToken: token.RefreshToken,
 			ExpiresIn:    token.Expires,
 			Scope:        token.Scope,
-		}); err != nil {
+		})
+		if err != nil {
 			return "", http.StatusInternalServerError, err
 		}
 
 		return "", http.StatusOK, nil
 	}()
 	if err != nil {
-		r.errorResponse(w, strings.Join([]string{errorMsg, "client_ip", req.RemoteAddr}, ","), code, err)
+		r.errorResponse(w, req.WithContext(ctx), strings.Join([]string{errorMsg, "client_ip", req.RemoteAddr}, ","), code, err)
 	}
 }
 
@@ -294,6 +319,11 @@ func emptyHandler(w http.ResponseWriter, req *http.Request) {}
 //  - if the user has a refresh token, the token is invalidated by the provider
 //  - optionally, the user can be redirected by to a url
 func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
+	ctx, span, logger := r.traceSpan(req.Context(), "logout handler")
+	if span != nil {
+		defer span.End()
+	}
+
 	// @check if the redirection is there
 	var redirectURL string
 	for k := range req.URL.Query() {
@@ -309,7 +339,7 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 	// @step: drop the access token
 	user, err := r.getIdentity(req)
 	if err != nil {
-		r.errorResponse(w, "", http.StatusBadRequest, nil)
+		r.errorResponse(w, req.WithContext(ctx), "", http.StatusBadRequest, nil)
 		return
 	}
 
@@ -327,7 +357,7 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 	if r.useStore() {
 		go func() {
 			if err := r.DeleteRefreshToken(user.token); err != nil {
-				r.log.Error("unable to remove the refresh token from store", zap.Error(err))
+				logger.Error("unable to remove the refresh token from store", zap.Error(err))
 			}
 		}()
 	}
@@ -362,7 +392,7 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 	if revocationURL != "" {
 		client, err := r.client.OAuthClient()
 		if err != nil {
-			r.errorResponse(w, "unable to retrieve the openid client", http.StatusInternalServerError, err)
+			r.errorResponse(w, req.WithContext(ctx), "unable to retrieve the openid client", http.StatusInternalServerError, err)
 			return
 		}
 
@@ -373,7 +403,7 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 		// step: construct the url for revocation
 		request, err := http.NewRequest(http.MethodPost, revocationURL, bytes.NewBufferString(fmt.Sprintf("refresh_token=%s", identityToken)))
 		if err != nil {
-			r.errorResponse(w, "unable to construct the revocation request", http.StatusInternalServerError, err)
+			r.errorResponse(w, req.WithContext(ctx), "unable to construct the revocation request", http.StatusInternalServerError, err)
 			return
 		}
 
@@ -384,7 +414,7 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 		start := time.Now()
 		response, err := client.HttpClient().Do(request)
 		if err != nil {
-			r.log.Error("unable to post to revocation endpoint", zap.Error(err))
+			logger.Error("unable to post to revocation endpoint", zap.Error(err))
 			return
 		}
 		defer func() {
@@ -396,17 +426,18 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 		// step: check the response
 		switch response.StatusCode {
 		case http.StatusNoContent:
-			r.log.Info("successfully logged out of the endpoint", zap.String("email", user.email))
+			logger.Info("successfully logged out of the endpoint", zap.String("email", user.email))
 		default:
 			content, _ := ioutil.ReadAll(response.Body)
-			r.log.Error("invalid response from revocation endpoint",
+			logger.Error("invalid response from revocation endpoint",
 				zap.Int("status", response.StatusCode),
 				zap.String("response", fmt.Sprintf("%s", content)))
 		}
 	}
+
 	// step: should we redirect the user
 	if redirectURL != "" {
-		r.redirectToURL(redirectURL, w, req, http.StatusTemporaryRedirect)
+		r.redirectToURL(redirectURL, w, req.WithContext(ctx), http.StatusTemporaryRedirect)
 	} else {
 		w.Header().Set("Content-Type", jsonMime)
 		w.WriteHeader(http.StatusOK)
@@ -415,9 +446,14 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 
 // expirationHandler checks if the token has expired
 func (r *oauthProxy) expirationHandler(w http.ResponseWriter, req *http.Request) {
+	ctx, span, _ := r.traceSpan(req.Context(), "expiration handler")
+	if span != nil {
+		defer span.End()
+	}
+
 	user, err := r.getIdentity(req)
 	if err != nil || user.isExpired() {
-		r.errorResponse(w, "", http.StatusUnauthorized, nil)
+		r.errorResponse(w, req.WithContext(ctx), "", http.StatusUnauthorized, nil)
 		return
 	}
 	w.Header().Set("Content-Type", jsonMime)
@@ -426,15 +462,20 @@ func (r *oauthProxy) expirationHandler(w http.ResponseWriter, req *http.Request)
 
 // refreshHandler forces a token refresh
 func (r *oauthProxy) refreshHandler(w http.ResponseWriter, req *http.Request) {
+	ctx, span, logger := r.traceSpan(req.Context(), "logout handler")
+	if span != nil {
+		defer span.End()
+	}
+
 	user, err := r.getIdentity(req)
 	if err != nil {
-		r.errorResponse(w, "", http.StatusUnauthorized, nil)
+		r.errorResponse(w, req.WithContext(ctx), "", http.StatusUnauthorized, nil)
 		return
 	}
 
 	if !r.config.EnableRefreshTokens {
 		clientIP := req.RemoteAddr
-		r.log.Warn("access token refresh is disabled",
+		logger.Warn("access token refresh is disabled",
 			zap.String("client_ip", clientIP),
 			zap.String("email", user.name),
 			zap.String("expired_on", user.expiresAt.String()))
@@ -443,12 +484,12 @@ func (r *oauthProxy) refreshHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err = r.refreshToken(w, req, user); err != nil {
+	if err = r.refreshToken(w, req.WithContext(ctx), user); err != nil {
 		switch err {
 		case ErrEncode, ErrEncryption:
-			r.errorResponse(w, err.Error(), http.StatusInternalServerError, err)
+			r.errorResponse(w, req.WithContext(ctx), err.Error(), http.StatusInternalServerError, err)
 		default:
-			r.errorResponse(w, err.Error(), http.StatusUnauthorized, err)
+			r.errorResponse(w, req.WithContext(ctx), err.Error(), http.StatusUnauthorized, err)
 		}
 		return
 	}
@@ -460,9 +501,14 @@ func (r *oauthProxy) refreshHandler(w http.ResponseWriter, req *http.Request) {
 
 // tokenHandler display access token to screen
 func (r *oauthProxy) tokenHandler(w http.ResponseWriter, req *http.Request) {
+	ctx, span, _ := r.traceSpan(req.Context(), "token handler")
+	if span != nil {
+		defer span.End()
+	}
+
 	user, err := r.getIdentity(req)
 	if err != nil {
-		r.errorResponse(w, "", http.StatusUnauthorized, nil)
+		r.errorResponse(w, req.WithContext(ctx), "", http.StatusUnauthorized, nil)
 		return
 	}
 	w.Header().Set("Content-Type", jsonMime)
@@ -480,6 +526,11 @@ func (r *oauthProxy) healthHandler(w http.ResponseWriter, req *http.Request) {
 
 // debugHandler is responsible for providing the pprof
 func (r *oauthProxy) debugHandler(w http.ResponseWriter, req *http.Request) {
+	ctx, span, _ := r.traceSpan(req.Context(), "debug handler")
+	if span != nil {
+		defer span.End()
+	}
+
 	const symbolProfile = "symbol"
 	name := chi.URLParam(req, "name")
 	switch req.Method {
@@ -492,7 +543,7 @@ func (r *oauthProxy) debugHandler(w http.ResponseWriter, req *http.Request) {
 		case "block":
 			fallthrough
 		case "threadcreate":
-			pprof.Handler(name).ServeHTTP(w, req)
+			pprof.Handler(name).ServeHTTP(w, req.WithContext(ctx))
 		case "cmdline":
 			pprof.Cmdline(w, req)
 		case "profile":
@@ -502,14 +553,14 @@ func (r *oauthProxy) debugHandler(w http.ResponseWriter, req *http.Request) {
 		case symbolProfile:
 			pprof.Symbol(w, req)
 		default:
-			r.errorResponse(w, "", http.StatusNotFound, nil)
+			r.errorResponse(w, req.WithContext(ctx), "", http.StatusNotFound, nil)
 		}
 	case http.MethodPost:
 		switch name {
 		case symbolProfile:
 			pprof.Symbol(w, req)
 		default:
-			r.errorResponse(w, "", http.StatusNotFound, nil)
+			r.errorResponse(w, req.WithContext(ctx), "", http.StatusNotFound, nil)
 		}
 	}
 }
@@ -536,12 +587,17 @@ func (r *oauthProxy) csrfErrorHandler(w http.ResponseWriter, req *http.Request) 
 }
 
 func (r *oauthProxy) refreshToken(w http.ResponseWriter, req *http.Request, user *userContext) error {
+	ctx, span, logger := r.traceSpan(req.Context(), "logout handler")
+	if span != nil {
+		defer span.End()
+	}
+
 	clientIP := req.RemoteAddr
 
 	// step: check if the user has refresh token
-	refresh, encrypted, err := r.retrieveRefreshToken(req, user)
+	refresh, encrypted, err := r.retrieveRefreshToken(req.WithContext(ctx), user)
 	if err != nil {
-		r.log.Warn("unable to find a refresh token for user",
+		logger.Warn("unable to find a refresh token for user",
 			zap.String("client_ip", clientIP),
 			zap.String("email", user.email),
 			zap.Error(err))
@@ -561,7 +617,7 @@ func (r *oauthProxy) refreshToken(w http.ResponseWriter, req *http.Request, user
 	if err != nil {
 		switch err {
 		case ErrRefreshTokenExpired:
-			r.log.Warn("refresh token has expired, cannot retrieve access token",
+			logger.Warn("refresh token has expired, cannot retrieve access token",
 				zap.String("client_ip", clientIP),
 				zap.String("email", user.email))
 
@@ -584,7 +640,7 @@ func (r *oauthProxy) refreshToken(w http.ResponseWriter, req *http.Request, user
 		refreshExpiresIn = r.getAccessCookieExpiration(token, refresh)
 	}
 
-	r.log.Info("injecting the refreshed access token cookie",
+	logger.Info("injecting the refreshed access token cookie",
 		zap.String("client_ip", clientIP),
 		zap.String("cookie_name", r.config.CookieAccessName),
 		zap.String("email", user.email),
@@ -595,35 +651,35 @@ func (r *oauthProxy) refreshToken(w http.ResponseWriter, req *http.Request, user
 	if r.config.EnableEncryptedToken || r.config.ForceEncryptedCookie {
 		// encrypt access token
 		if accessToken, err = encodeText(accessToken, r.config.EncryptionKey); err != nil {
-			r.log.Error("internal error while encoding access token",
+			logger.Error("internal error while encoding access token",
 				zap.String("client_ip", clientIP), zap.String("email", user.email), zap.Error(err))
 			return ErrEncode
 		}
 	}
 
 	// step: inject the refreshed access token
-	r.dropAccessTokenCookie(req, w, accessToken, accessExpiresIn)
+	r.dropAccessTokenCookie(req.WithContext(ctx), w, accessToken, accessExpiresIn)
 
 	// step: inject the renewed refresh token
 	if newRefreshToken != "" {
-		r.log.Debug("renew refresh cookie with new refresh token",
+		logger.Debug("renew refresh cookie with new refresh token",
 			zap.Duration("refresh_expires_in", refreshExpiresIn))
 		encryptedRefreshToken, err := encodeText(newRefreshToken, r.config.EncryptionKey)
 		if err != nil {
-			r.log.Error("internal error while encrypting refresh token",
+			logger.Error("internal error while encrypting refresh token",
 				zap.String("client_ip", clientIP), zap.String("email", user.email), zap.Error(err))
 			return ErrEncryption
 		}
-		r.dropRefreshTokenCookie(req, w, encryptedRefreshToken, refreshExpiresIn)
+		r.dropRefreshTokenCookie(req.WithContext(ctx), w, encryptedRefreshToken, refreshExpiresIn)
 	}
 
 	if r.useStore() {
 		go func(old, new jose.JWT, encrypted string) {
 			if err := r.DeleteRefreshToken(old); err != nil {
-				r.log.Error("failed to remove old token", zap.Error(err))
+				logger.Error("failed to remove old token", zap.Error(err))
 			}
 			if err := r.StoreRefreshToken(new, encrypted); err != nil {
-				r.log.Error("failed to store refresh token", zap.Error(err))
+				logger.Error("failed to store refresh token", zap.Error(err))
 				return
 			}
 		}(user.token, token, encrypted)

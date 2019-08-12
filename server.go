@@ -132,10 +132,12 @@ func createLogger(config *Config) (*zap.Logger, error) {
 	c := zap.NewProductionConfig()
 	c.DisableStacktrace = true
 	c.DisableCaller = true
+
 	// are we enabling json logging?
 	if !config.EnableJSONLogging {
 		c.Encoding = "console"
 	}
+
 	// are we running verbose mode?
 	if config.Verbose {
 		httplog.SetOutput(os.Stderr)
@@ -167,6 +169,10 @@ func (r *oauthProxy) useDefaultStack(engine chi.Router) {
 
 	if r.config.EnableSecurityFilter {
 		engine.Use(r.securityMiddleware)
+	}
+
+	if r.config.EnableTracing {
+		engine.Use(r.proxyTracingMiddleware)
 	}
 }
 

@@ -83,11 +83,16 @@ func (r *oauthProxy) requestIDMiddleware(header string) func(http.Handler) http.
 // loggingMiddleware is a custom http logger
 func (r *oauthProxy) loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		ctx, span, logger := r.traceSpan(req.Context(), "logging middleware")
+		if span != nil {
+			defer span.End()
+		}
+
 		start := time.Now()
 		resp := w.(middleware.WrapResponseWriter)
-		next.ServeHTTP(resp, req)
+		next.ServeHTTP(resp, req.WithContext(ctx))
 		addr := req.RemoteAddr
-		r.log.Info("client request",
+		logger.Info("client request",
 			zap.Duration("latency", time.Since(start)),
 			zap.Int("status", resp.Status()),
 			zap.Int("bytes", resp.BytesWritten()),
@@ -102,30 +107,36 @@ func (r *oauthProxy) loggingMiddleware(next http.Handler) http.Handler {
 func (r *oauthProxy) authenticationMiddleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			ctx, span, logger := r.traceSpan(req.Context(), "authentication middleware")
+			if span != nil {
+				defer span.End()
+			}
+
 			clientIP := req.RemoteAddr
+
 			// grab the user identity from the request
-			user, err := r.getIdentity(req)
+			user, err := r.getIdentity(req.WithContext(ctx))
 			if err != nil {
-				r.log.Warn("no session found in request, redirecting for authorization", zap.Error(err))
-				next.ServeHTTP(w, req.WithContext(r.redirectToAuthorization(w, req)))
+				logger.Warn("no session found in request, redirecting for authorization", zap.Error(err))
+				next.ServeHTTP(w, req.WithContext(r.redirectToAuthorization(w, req.WithContext(ctx))))
 				return
 			}
 
 			// create the request scope
 			scope := req.Context().Value(contextScopeName).(*RequestScope)
 			scope.Identity = user
-			ctx := context.WithValue(req.Context(), contextScopeName, scope)
+			ctx = context.WithValue(ctx, contextScopeName, scope)
 
 			// step: skip if we are running skip-token-verification
 			if r.config.SkipTokenVerification {
 				r.log.Warn("skip token verification enabled, skipping verification - TESTING ONLY")
 				if user.isExpired() {
-					r.log.Warn("the session has expired and token verification is switched off",
+					logger.Warn("the session has expired and token verification is switched off",
 						zap.String("client_ip", clientIP),
 						zap.String("username", user.name),
 						zap.String("expired_on", user.expiresAt.String()))
 
-					next.ServeHTTP(w, req.WithContext(r.redirectToAuthorization(w, req)))
+					next.ServeHTTP(w, req.WithContext(r.redirectToAuthorization(w, req.WithContext(ctx))))
 					return
 				}
 				next.ServeHTTP(w, req.WithContext(ctx))
@@ -137,17 +148,17 @@ func (r *oauthProxy) authenticationMiddleware() func(http.Handler) http.Handler 
 				// expired error we immediately throw an access forbidden - as there is
 				// something messed up in the token
 				if err != ErrAccessTokenExpired {
-					r.log.Warn("access token failed verification",
+					logger.Warn("access token failed verification",
 						zap.String("client_ip", clientIP),
 						zap.Error(err))
 
-					next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req)))
+					next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req.WithContext(ctx))))
 					return
 				}
 
 				// step: check if we are refreshing the access tokens and if not re-auth
 				if !r.config.EnableRefreshTokens {
-					r.log.Warn("session expired and access token refresh is disabled",
+					logger.Warn("session expired and access token refresh is disabled",
 						zap.String("client_ip", clientIP),
 						zap.String("email", user.name),
 						zap.String("expired_on", user.expiresAt.String()))
@@ -156,7 +167,7 @@ func (r *oauthProxy) authenticationMiddleware() func(http.Handler) http.Handler 
 					return
 				}
 
-				r.log.Info("accces token for user has expired, attempting to refresh the token",
+				logger.Info("accces token for user has expired, attempting to refresh the token",
 					zap.String("client_ip", clientIP),
 					zap.String("email", user.email))
 
@@ -164,14 +175,14 @@ func (r *oauthProxy) authenticationMiddleware() func(http.Handler) http.Handler 
 				if err = r.refreshToken(w, req.WithContext(ctx), user); err != nil {
 					switch err {
 					case ErrEncode, ErrEncryption:
-						r.errorResponse(w, err.Error(), http.StatusInternalServerError, err)
+						r.errorResponse(w, req, err.Error(), http.StatusInternalServerError, err)
 					default:
 						next.ServeHTTP(w, req.WithContext(r.redirectToAuthorization(w, req.WithContext(ctx))))
 					}
 					return
 				}
 				// store user in scope
-				ctx = context.WithValue(req.Context(), contextScopeName, scope)
+				ctx = context.WithValue(ctx, contextScopeName, scope)
 			}
 
 			next.ServeHTTP(w, req.WithContext(ctx))
@@ -247,8 +258,13 @@ func (r *oauthProxy) admissionMiddleware(resource *Resource) func(http.Handler) 
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			ctx, span, logger := r.traceSpan(req.Context(), "admission middleware")
+			if span != nil {
+				defer span.End()
+			}
+
 			// we don't need to continue is a decision has been made
-			scope := req.Context().Value(contextScopeName).(*RequestScope)
+			scope := ctx.Value(contextScopeName).(*RequestScope)
 			if scope.AccessDenied {
 				next.ServeHTTP(w, req)
 				return
@@ -257,43 +273,43 @@ func (r *oauthProxy) admissionMiddleware(resource *Resource) func(http.Handler) 
 
 			// @step: we need to check the roles
 			if !hasAccess(resource.Roles, user.roles, !resource.RequireAnyRole, false) {
-				r.log.Warn("access denied, invalid roles",
+				logger.Warn("access denied, invalid roles",
 					zap.String("access", "denied"),
 					zap.String("email", user.email),
 					zap.String("resource", resource.URL),
 					zap.String("roles", resource.getRoles()))
 
-				next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req)))
+				next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req.WithContext(ctx))))
 				return
 			}
 
 			// @step: check if we have any groups, the groups are there
 			if !hasAccess(resource.Groups, user.groups, false, true) {
-				r.log.Warn("access denied, invalid groups",
+				logger.Warn("access denied, invalid groups",
 					zap.String("access", "denied"),
 					zap.String("email", user.email),
 					zap.String("resource", resource.URL),
 					zap.String("groups", strings.Join(resource.Groups, ",")))
 
-				next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req)))
+				next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req.WithContext(ctx))))
 				return
 			}
 
 			// step: if we have any claim matching, lets validate the tokens has the claims
 			for claimName, match := range claimMatches {
 				if !r.checkClaim(user, claimName, match, resource.URL) {
-					next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req)))
+					next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req.WithContext(ctx))))
 					return
 				}
 			}
 
-			r.log.Debug("access permitted to resource",
+			logger.Debug("access permitted to resource",
 				zap.String("access", "permitted"),
 				zap.String("email", user.email),
 				zap.Duration("expires", time.Until(user.expiresAt)),
 				zap.String("resource", resource.URL))
 
-			next.ServeHTTP(w, req)
+			next.ServeHTTP(w, req.WithContext(ctx))
 		})
 	}
 }
@@ -378,13 +394,18 @@ func (r *oauthProxy) securityMiddleware(next http.Handler) http.Handler {
 	})
 
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if err := secure.Process(w, req); err != nil {
-			r.log.Warn("failed security middleware", zap.Error(err))
-			next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req)))
+		ctx, span, logger := r.traceSpan(req.Context(), "security middleware")
+		if span != nil {
+			defer span.End()
+		}
+
+		if err := secure.Process(w, req.WithContext(ctx)); err != nil {
+			logger.Warn("failed security middleware", zap.Error(err))
+			next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req.WithContext(ctx))))
 			return
 		}
 
-		next.ServeHTTP(w, req)
+		next.ServeHTTP(w, req.WithContext(ctx))
 	})
 }
 

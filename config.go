@@ -103,6 +103,11 @@ func (r *Config) isValid() error {
 	if r.EnableForwarding {
 		return r.isForwardingValid()
 	}
+
+	if r.EnableTracing && r.TracingAgentEndpoint == "" {
+		return fmt.Errorf("an agent endpoint must be specified when enabling tracing")
+	}
+
 	return r.isReverseProxyValid()
 }
 

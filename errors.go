@@ -42,18 +42,26 @@ func methodNotFoundHandler(w http.ResponseWriter, req *http.Request) {
 	_, _ = w.Write(nil)
 }
 
-func (r *oauthProxy) errorResponse(w http.ResponseWriter, msg string, code int, err error) {
+func (r *oauthProxy) errorResponse(w http.ResponseWriter, req *http.Request, msg string, code int, err error) {
+	span, logger := r.traceSpanRequest(req)
+
 	if err == nil {
-		r.log.Warn(msg, zap.Int("http_status", code))
+		logger.Warn(msg, zap.Int("http_status", code))
 	} else {
-		if code == http.StatusInternalServerError {
+		switch code {
+		case http.StatusInternalServerError:
 			// we log internal server errors as ERROR
-			r.log.Error(msg, zap.Int("http_status", code), zap.Error(err))
-		} else {
+			logger.Error(msg, zap.Int("http_status", code), zap.Error(err))
+		default:
 			// we log user errors as WARNING
-			r.log.Warn(msg, zap.Int("http_status", code), zap.Error(err))
+			logger.Warn(msg, zap.Int("http_status", code), zap.Error(err))
 		}
 	}
+
+	if span != nil {
+		traceError(span, err, code)
+	}
+
 	errorResponse(w, msg, code)
 }
 
@@ -68,6 +76,8 @@ func errorResponse(w http.ResponseWriter, msg string, code int) {
 
 // accessForbidden redirects the user to the forbidden page
 func (r *oauthProxy) accessForbidden(w http.ResponseWriter, req *http.Request, msgs ...string) context.Context {
+	_, logger := r.traceSpanRequest(req)
+
 	// are we using a custom http template for 403?
 	if r.config.hasCustomForbiddenPage() {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -75,19 +85,19 @@ func (r *oauthProxy) accessForbidden(w http.ResponseWriter, req *http.Request, m
 		w.WriteHeader(http.StatusForbidden)
 		name := path.Base(r.config.ForbiddenPage)
 		if err := r.Render(w, name, r.config.Tags); err != nil {
-			r.log.Error("failed to render the template", zap.Error(err), zap.String("template", name))
+			logger.Error("failed to render the template", zap.Error(err), zap.String("template", name))
 		}
 	} else {
 		var msg string
 		if len(msgs) > 0 {
 			msg = msgs[0]
 			if len(msgs) > 1 {
-				// extraMsg goes to log but not to return end user error
+				// extraMsg goes to log but not to be returned as end user error
 				extraMsg := strings.Join(msgs[1:], " ")
 				r.log.Warn(extraMsg)
 			}
 		}
-		r.errorResponse(w, msg, http.StatusForbidden, nil)
+		r.errorResponse(w, req, msg, http.StatusForbidden, nil)
 	}
 	return r.revokeProxy(w, req)
 }

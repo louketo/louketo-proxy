@@ -1,36 +1,38 @@
 package main
 
 import (
+	"net/http"
 	"path"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"go.opencensus.io/zpages"
 	"go.uber.org/zap"
 )
 
 // createAdminServices creates administrative endpoints
 func (r *oauthProxy) createAdminServices() {
-	if r.config.ListenAdmin != "" {
-		// mount admin and debug engines separately
-		r.log.Info("mounting admin endpoints on separate listener")
-		adminEngine := chi.NewRouter()
-		adminEngine.MethodNotAllowed(emptyHandler)
-		adminEngine.NotFound(emptyHandler)
-		adminEngine.Use(middleware.Recoverer)
-		adminEngine.Use(proxyDenyMiddleware)
-
-		adminEngine.Route(r.config.OAuthURI,
-			func(e chi.Router) {
-				e.Mount("/", r.createAdminRoutes())
-			})
-		if debugEngine := r.createDebugRoutes(); debugEngine != nil {
-			adminEngine.Mount(debugURL, debugEngine)
-		}
-		r.adminRouter = adminEngine
-	} else {
+	if r.config.ListenAdmin == "" {
 		r.log.Info("mounting admin endpoints on main reverse proxy listener")
+		return
 	}
+	// mount admin and debug engines separately
+	r.log.Info("mounting admin endpoints on separate listener", zap.String("admin_endpoint", r.config.ListenAdmin))
+	adminEngine := chi.NewRouter()
+	adminEngine.MethodNotAllowed(emptyHandler)
+	//adminEngine.NotFound(emptyHandler)
+	adminEngine.Use(middleware.Recoverer)
+	adminEngine.Use(proxyDenyMiddleware)
 
+	adminEngine.Route(r.config.OAuthURI,
+		func(e chi.Router) {
+			e.Mount("/", r.createAdminRoutes())
+		})
+
+	if debugEngine := r.createDebugRoutes(); debugEngine != nil {
+		adminEngine.Mount(debugURL, debugEngine)
+	}
+	r.adminRouter = adminEngine
 }
 
 func (r *oauthProxy) createAdminRoutes() chi.Router {
@@ -43,6 +45,17 @@ func (r *oauthProxy) createAdminRoutes() chi.Router {
 	if r.config.EnableMetrics {
 		r.log.Info("enabling metrics service", zap.String("path", path.Clean(r.config.WithOAuthURI(metricsURL))))
 		admin.Get(metricsURL, r.proxyMetricsHandler)
+	}
+
+	// step: tracing
+	if r.config.EnableTracing {
+		r.log.Info("enabling tracing service",
+			zap.String("path", path.Clean(r.config.WithOAuthURI(path.Join(traceURL, "rpcz")))),
+			zap.String("path", path.Clean(r.config.WithOAuthURI(path.Join(traceURL, "tracez")))))
+
+		mux := http.NewServeMux()
+		zpages.Handle(mux, r.config.WithOAuthURI(traceURL))
+		admin.Mount(traceURL, mux)
 	}
 	return admin
 }
