@@ -32,6 +32,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc/oauth2"
+	"github.com/coreos/go-oidc/oidc"
 
 	"github.com/go-chi/chi"
 	"go.uber.org/zap"
@@ -196,19 +197,24 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 		// drop in the access token - cookie expiration = access token
 		r.dropAccessTokenCookie(req, w, accessToken, r.getAccessCookieExpiration(token, resp.RefreshToken))
 
+		var expiration time.Duration
+		// notes: not all idp refresh tokens are readable, google for example, so we attempt to decode into
+		// a jwt and if possible extract the expiration, else we default to 10 days
+		var ident *oidc.Identity
+
+		if _, ident, err = parseToken(resp.RefreshToken); err != nil {
+			expiration = 0
+		} else {
+			expiration = time.Until(ident.ExpiresAt)
+		}
+
 		switch r.useStore() {
 		case true:
-			if err = r.StoreRefreshToken(token, encrypted); err != nil {
+			if err = r.StoreRefreshToken(token, encrypted, expiration); err != nil {
 				r.log.Warn("failed to save the refresh token in the store", zap.Error(err))
 			}
 		default:
-			// notes: not all idp refresh tokens are readable, google for example, so we attempt to decode into
-			// a jwt and if possible extract the expiration, else we default to 10 days
-			if _, ident, err := parseToken(resp.RefreshToken); err != nil {
-				r.dropRefreshTokenCookie(req, w, encrypted, 0)
-			} else {
-				r.dropRefreshTokenCookie(req, w, encrypted, time.Until(ident.ExpiresAt))
-			}
+			r.dropRefreshTokenCookie(req, w, encrypted, expiration)
 		}
 	} else {
 		r.dropAccessTokenCookie(req, w, accessToken, time.Until(identity.ExpiresAt))
@@ -300,7 +306,7 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 		if k == "redirect" {
 			redirectURL = req.URL.Query().Get("redirect")
 			if redirectURL == "" {
-				// than we can default to redirection url
+				// then we can default to redirection url
 				redirectURL = strings.TrimSuffix(r.config.RedirectionURL, "/oauth/callback")
 			}
 		}

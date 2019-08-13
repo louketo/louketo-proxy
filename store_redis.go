@@ -47,8 +47,8 @@ func newRedisStore(location *url.URL) (storage, error) {
 }
 
 // Set adds a token to the store
-func (r redisStore) Set(key, value string) error {
-	if err := r.client.Set(key, value, time.Duration(0)); err.Err() != nil {
+func (r redisStore) Set(key, value string, expiration time.Duration) error {
+	if err := r.client.Set(key, value, expiration); err.Err() != nil {
 		return err.Err()
 	}
 
@@ -62,7 +62,7 @@ func (r redisStore) Get(key string) (string, error) {
 		return "", result.Err()
 	}
 
-	return result.String(), nil
+	return result.Val(), nil
 }
 
 // Delete remove the key

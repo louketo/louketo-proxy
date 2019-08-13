@@ -18,6 +18,7 @@ package main
 import (
 	"fmt"
 	"net/url"
+	"time"
 
 	"github.com/coreos/go-oidc/jose"
 	"go.uber.org/zap"
@@ -50,8 +51,8 @@ func (r *oauthProxy) useStore() bool {
 }
 
 // StoreRefreshToken the token to the store
-func (r *oauthProxy) StoreRefreshToken(token jose.JWT, value string) error {
-	return r.store.Set(getHashKey(&token), value)
+func (r *oauthProxy) StoreRefreshToken(token jose.JWT, value string, expiration time.Duration) error {
+	return r.store.Set(getHashKey(&token), value, expiration)
 }
 
 // Get retrieves a token from the store, the key we are using here is the access token

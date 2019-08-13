@@ -156,7 +156,7 @@ func (r *oauthProxy) authenticationMiddleware() func(http.Handler) http.Handler 
 						zap.String("email", user.email))
 
 					// step: check if the user has refresh token
-					refresh, encrypted, err := r.retrieveRefreshToken(req.WithContext(ctx), user)
+					refresh, _, err := r.retrieveRefreshToken(req.WithContext(ctx), user)
 					if err != nil {
 						r.log.Error("unable to find a refresh token for user",
 							zap.String("client_ip", clientIP),
@@ -231,20 +231,22 @@ func (r *oauthProxy) authenticationMiddleware() func(http.Handler) http.Handler 
 							w.WriteHeader(http.StatusInternalServerError)
 							return
 						}
-						r.dropRefreshTokenCookie(req.WithContext(ctx), w, encryptedRefreshToken, refreshExpiresIn)
+
+						if r.useStore() {
+							go func(old, new jose.JWT, encrypted string) {
+								if err := r.DeleteRefreshToken(old); err != nil {
+									r.log.Error("failed to remove old token", zap.Error(err))
+								}
+								if err := r.StoreRefreshToken(new, encrypted, refreshExpiresIn); err != nil {
+									r.log.Error("failed to store refresh token", zap.Error(err))
+									return
+								}
+							}(user.token, token, encryptedRefreshToken)
+						} else {
+							r.dropRefreshTokenCookie(req.WithContext(ctx), w, encryptedRefreshToken, refreshExpiresIn)
+						}
 					}
 
-					if r.useStore() {
-						go func(old, new jose.JWT, encrypted string) {
-							if err := r.DeleteRefreshToken(old); err != nil {
-								r.log.Error("failed to remove old token", zap.Error(err))
-							}
-							if err := r.StoreRefreshToken(new, encrypted); err != nil {
-								r.log.Error("failed to store refresh token", zap.Error(err))
-								return
-							}
-						}(user.token, token, encrypted)
-					}
 					// update the with the new access token and inject into the context
 					user.token = token
 					ctx = context.WithValue(req.Context(), contextScopeName, scope)

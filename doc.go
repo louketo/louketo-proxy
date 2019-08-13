@@ -391,7 +391,7 @@ type RequestScope struct {
 // the default practice of a encrypted cookie
 type storage interface {
 	// Set the token to the store
-	Set(string, string) error
+	Set(string, string, time.Duration) error
 	// Get retrieves a token from the store
 	Get(string) (string, error)
 	// Delete removes a key from the store
