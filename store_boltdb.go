@@ -60,7 +60,7 @@ func newBoltDBStore(location *url.URL) (storage, error) {
 }
 
 // Set adds a token to the store
-func (r *boltdbStore) Set(key, value string) error {
+func (r *boltdbStore) Set(key, value string, expiration time.Duration) error {
 	return r.client.Update(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket([]byte(dbName))
 		if bucket == nil {
