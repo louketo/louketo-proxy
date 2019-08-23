@@ -401,6 +401,7 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 				zap.Int("status", response.StatusCode),
 				zap.String("response", fmt.Sprintf("%s", content)))
 		}
+		defer response.Body.Close()
 	}
 	// step: should we redirect the user
 	if redirectURL != "" {

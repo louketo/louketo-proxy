@@ -310,6 +310,7 @@ func (f *fakeProxy) performUserLogin(uri string) error {
 			}
 		}
 	}
+	defer resp.Body.Close()
 
 	return nil
 }

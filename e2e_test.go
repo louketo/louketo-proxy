@@ -45,10 +45,12 @@ func checkListenOrBail(endpoint string) bool {
 		waitTime      = 100 * time.Millisecond
 	)
 	checkListen := http.Client{}
+	//nolint:bodyclose
 	_, err := checkListen.Get(endpoint)
 	limit := 0
 	for err != nil && limit < maxWaitCycles {
 		time.Sleep(waitTime)
+		//nolint:bodyclose
 		_, err = checkListen.Get(endpoint)
 		limit++
 	}
@@ -161,4 +163,5 @@ func TestCorsWithUpstream(t *testing.T) {
 		// check the returned upstream response after proxying contains CORS headers
 		assert.Equal(t, []string{"*"}, resp.Header["Access-Control-Allow-Origin"])
 	}
+	defer resp.Body.Close()
 }

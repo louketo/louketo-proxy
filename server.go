@@ -296,6 +296,7 @@ func (r *oauthProxy) createForwardingProxy() error {
 	if err := r.createUpstreamProxy(nil); err != nil {
 		return err
 	}
+	//nolint:bodyclose
 	forwardingHandler := r.forwardProxyHandler()
 
 	// set the http handler
@@ -453,7 +454,7 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 		if listener, err = net.Listen("unix", socket); err != nil {
 			return nil, err
 		}
-	} else {
+	} else { //nolint:gocritic
 		if listener, err = net.Listen("tcp", config.listen); err != nil {
 			return nil, err
 		}

@@ -126,7 +126,7 @@ func (r *oauthProxy) authenticationMiddleware(resource *Resource) func(http.Hand
 					next.ServeHTTP(w, req.WithContext(r.redirectToAuthorization(w, req)))
 					return
 				}
-			} else {
+			} else { //nolint:gocritic
 				if err := verifyToken(r.client, user.token); err != nil {
 					// step: if the error post verification is anything other than a token
 					// expired error we immediately throw an access forbidden - as there is
