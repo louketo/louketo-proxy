@@ -97,9 +97,9 @@ vet:
 	fi
 
 lint:
-	@echo "--> Running golint"
-	@which golint 2>/dev/null ; if [ $$? -eq 1 ]; then \
-		go get -u github.com/golang/lint/golint; \
+	@echo "--> Running golangci-lint"
+	@which golangci-lint 2>/dev/null ; if [ $$? -eq 1 ]; then \
+		go get -u github.com/golangci/golangci-lint/cmd/golangci-lint; \
 	fi
 	@golint .
 
@@ -114,7 +114,7 @@ gofmt:
 
 verify:
 	@echo "--> Verifying the code"
-	gometalinter --disable=errcheck --disable=gocyclo --disable=gas --disable=aligncheck --errors
+	golangci-lint run
 
 format:
 	@echo "--> Running go fmt"

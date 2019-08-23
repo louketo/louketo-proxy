@@ -124,6 +124,7 @@ func getUserinfo(client *oauth2.Client, endpoint string, token string) (jose.Cla
 	if err := json.Unmarshal(content, &claims); err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
 	return claims, nil
 }

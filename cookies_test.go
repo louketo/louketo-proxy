@@ -36,13 +36,16 @@ func TestCookieDomainHostHeader(t *testing.T) {
 			cookie = c
 		}
 	}
+	defer resp.Body.Close()
+
 	assert.NotNil(t, cookie)
 	assert.Equal(t, cookie.Domain, "127.0.0.1")
 }
 
 func TestCookieBasePath(t *testing.T) {
+	const baseURI = "/base-uri"
 	cfg := newFakeKeycloakConfig()
-	cfg.BaseURI = "/base-uri"
+	cfg.BaseURI = baseURI
 
 	_, _, svc := newTestProxyService(cfg)
 
@@ -52,12 +55,14 @@ func TestCookieBasePath(t *testing.T) {
 
 	var cookie *http.Cookie
 	for _, c := range resp.Cookies() {
-		if c.Name == "kc-access" {
+		if c.Name == accessCookie {
 			cookie = c
 		}
 	}
+	defer resp.Body.Close()
+
 	assert.NotNil(t, cookie)
-	assert.Equal(t, "/base-uri", cookie.Path)
+	assert.Equal(t, baseURI, cookie.Path)
 }
 
 func TestCookieWithoutBasePath(t *testing.T) {
@@ -71,10 +76,12 @@ func TestCookieWithoutBasePath(t *testing.T) {
 
 	var cookie *http.Cookie
 	for _, c := range resp.Cookies() {
-		if c.Name == "kc-access" {
+		if c.Name == accessCookie {
 			cookie = c
 		}
 	}
+	defer resp.Body.Close()
+
 	assert.NotNil(t, cookie)
 	assert.Equal(t, "/", cookie.Path)
 }
@@ -92,6 +99,8 @@ func TestCookieDomain(t *testing.T) {
 			cookie = c
 		}
 	}
+	defer resp.Body.Close()
+
 	assert.NotNil(t, cookie)
 	assert.Equal(t, cookie.Domain, "domain.com")
 }
