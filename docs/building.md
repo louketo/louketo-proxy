@@ -2,7 +2,7 @@
 
 Ensure you have Golang 1.11 (or newer) and Git installed
 
-    go -version
+    go version
     git --version
     
 First clone the Gatekeeper repository:
