@@ -121,7 +121,7 @@ func getRequestHostURL(r *http.Request) string {
 	}
 
 	scheme := "http"
-	if r.TLS != nil {
+	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
 		scheme = "https"
 	}
 
