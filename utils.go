@@ -120,9 +120,9 @@ func getRequestHostURL(r *http.Request) string {
 		hostname = r.Header.Get("X-Forwarded-Host")
 	}
 
-	scheme := "http"
-	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
-		scheme = "https"
+	scheme := unsecureScheme
+	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == secureScheme {
+		scheme = secureScheme
 	}
 
 	return fmt.Sprintf("%s://%s", scheme, hostname)
