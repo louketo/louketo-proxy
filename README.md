@@ -6,7 +6,8 @@ This repository contains the source code for the Keycloak Gatekeeper. The Gateke
 
 ## Help and Documentation
 
-* [Documentation](https://www.keycloak.org/documentation.html)
+* [Gatekeeper documentation](https://www.keycloak.org/docs/latest/securing_apps/index.html#_keycloak_generic_adapter)
+* [Keycloak documentation](https://www.keycloak.org/documentation.html)
 * [User Mailing List](https://lists.jboss.org/mailman/listinfo/keycloak-user) - Mailing list for help and general questions about Keycloak
 * [JIRA](https://issues.jboss.org/projects/KEYCLOAK) - Issue tracker for bugs and feature requests
 
@@ -32,7 +33,7 @@ Alternatively, you can use the Docker image by running:
 
     docker run -it --rm quay.io/keycloak/keycloak-gatekeeper
     
-For more details refer to the [Keycloak Documentation](https://www.keycloak.org/documentation.html).
+For more details refer to the [Documentation](https://www.keycloak.org/docs/latest/securing_apps/index.html#_keycloak_generic_adapter).
 
 
 ## Building from Source
