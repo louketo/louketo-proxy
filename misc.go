@@ -70,7 +70,7 @@ func (r *oauthProxy) revokeProxy(w http.ResponseWriter, req *http.Request) conte
 // redirectToURL redirects the user and aborts the context
 func (r *oauthProxy) redirectToURL(url string, w http.ResponseWriter, req *http.Request, statusCode int) context.Context {
 	r.log.Debug("redirecting to", zap.String("location", url))
-	w.Header().Add("Cache-Control", "nocache, no-store, must-revalidate, max-age=0")
+	w.Header().Add("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
 	http.Redirect(w, req, url, statusCode)
 
 	return r.revokeProxy(w, req)
