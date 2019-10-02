@@ -130,7 +130,7 @@ func TestDropCookie(t *testing.T) {
 	p.config.SecureCookie = true
 	p.dropCookie(resp, req.Host, "test-cookie", "test-value", 0)
 	assert.NotEqual(t, resp.Header().Get("Set-Cookie"),
-		"test-cookie=test-value; Path=/; Domain=127.0.0.2; HttpOnly; Secure",
+		"test-cookie=test-value; Path=/; HttpOnly; Secure",
 		"we have not set the cookie, headers: %v", resp.Header())
 
 	p.config.CookieDomain = "test.com"
@@ -174,7 +174,7 @@ func TestSameSiteCookie(t *testing.T) {
 	p.dropCookie(resp, req.Host, "test-cookie", "test-value", 0)
 
 	assert.Equal(t, resp.Header().Get("Set-Cookie"),
-		"test-cookie=test-value; Path=/; Domain=127.0.0.1",
+		"test-cookie=test-value; Path=/",
 		"we have not set the cookie, headers: %v", resp.Header())
 
 	req = newFakeHTTPRequest("GET", "/admin")
@@ -183,7 +183,7 @@ func TestSameSiteCookie(t *testing.T) {
 	p.dropCookie(resp, req.Host, "test-cookie", "test-value", 0)
 
 	assert.Equal(t, resp.Header().Get("Set-Cookie"),
-		"test-cookie=test-value; Path=/; Domain=127.0.0.1; SameSite=Strict",
+		"test-cookie=test-value; Path=/; SameSite=Strict",
 		"we have not set the cookie, headers: %v", resp.Header())
 
 	req = newFakeHTTPRequest("GET", "/admin")
@@ -192,7 +192,7 @@ func TestSameSiteCookie(t *testing.T) {
 	p.dropCookie(resp, req.Host, "test-cookie", "test-value", 0)
 
 	assert.Equal(t, resp.Header().Get("Set-Cookie"),
-		"test-cookie=test-value; Path=/; Domain=127.0.0.1; SameSite=Lax",
+		"test-cookie=test-value; Path=/; SameSite=Lax",
 		"we have not set the cookie, headers: %v", resp.Header())
 
 	req = newFakeHTTPRequest("GET", "/admin")
@@ -201,7 +201,7 @@ func TestSameSiteCookie(t *testing.T) {
 	p.dropCookie(resp, req.Host, "test-cookie", "test-value", 0)
 
 	assert.Equal(t, resp.Header().Get("Set-Cookie"),
-		"test-cookie=test-value; Path=/; Domain=127.0.0.1",
+		"test-cookie=test-value; Path=/",
 		"we have not set the cookie, headers: %v", resp.Header())
 }
 
