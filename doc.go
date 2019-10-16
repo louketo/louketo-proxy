@@ -27,7 +27,7 @@ import (
 )
 
 var (
-	release  = "7.0.0"
+	release  = "7.0.1"
 	gitsha   = "no gitsha provided"
 	compiled = "0"
 	version  = ""
@@ -248,7 +248,7 @@ type Config struct {
 	// ContentSecurityPolicy allows the Content-Security-Policy header value to be set with a custom value
 	ContentSecurityPolicy string `json:"content-security-policy" yaml:"content-security-policy" usage:"specify the content security policy"`
 	// LocalhostMetrics indicated the metrics can only be consume via localhost
-	LocalhostMetrics bool `json:"localhost-metrics" yaml:"localhost-metrics" usage:"enforces the metrics page can only been requested from 127.0.0.1"`
+	LocalhostMetrics bool `json:"localhost-metrics" yaml:"localhost-metrics" usage:"enforces the metrics page can only been requested from 127.0.1.1"`
 
 	// AccessTokenDuration is default duration applied to the access token cookie
 	AccessTokenDuration time.Duration `json:"access-token-duration" yaml:"access-token-duration" usage:"fallback cookie duration for the access token when using refresh tokens"`
@@ -300,7 +300,7 @@ type Config struct {
 	Hostnames []string `json:"hostnames" yaml:"hostnames" usage:"list of hostnames the service will respond to"`
 
 	// Store is a url for a store resource, used to hold the refresh tokens
-	StoreURL string `json:"store-url" yaml:"store-url" usage:"url for the storage subsystem, e.g redis://127.0.0.1:6379, file:///etc/tokens.file"`
+	StoreURL string `json:"store-url" yaml:"store-url" usage:"url for the storage subsystem, e.g redis://127.0.1.1:6379, file:///etc/tokens.file"`
 	// EncryptionKey is the encryption key used to encrypt the refresh token
 	EncryptionKey string `json:"encryption-key" yaml:"encryption-key" usage:"encryption key used to encryption the session state" env:"ENCRYPTION_KEY"`
 
