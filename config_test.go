@@ -30,13 +30,16 @@ func TestNewDefaultConfig(t *testing.T) {
 
 func TestIsConfig(t *testing.T) {
 	tests := []struct {
+		Name   string
 		Config *Config
 		Ok     bool
 	}{
 		{
+			Name:   "empty config",
 			Config: &Config{},
 		},
 		{
+			Name: "wrong discovery URL",
 			Config: &Config{
 				DiscoveryURL: "http://127.0.0.1:8080",
 			},
@@ -69,27 +72,31 @@ func TestIsConfig(t *testing.T) {
 		},
 		{
 			Config: &Config{
-				Listen:              ":8080",
-				DiscoveryURL:        "http://127.0.0.1:8080",
-				ClientID:            "client",
-				ClientSecret:        "client",
-				RedirectionURL:      "http://120.0.0.1",
-				Upstream:            "http://120.0.0.1",
-				MaxIdleConns:        100,
-				MaxIdleConnsPerHost: 50,
+				Listen:                ":8080",
+				DiscoveryURL:          "http://127.0.0.1:8080",
+				ClientID:              "client",
+				ClientSecret:          "client",
+				RedirectionURL:        "http://120.0.0.1",
+				SkipUpstreamTLSVerify: false,
+				Upstream:              "http://120.0.0.1",
+				UpstreamCA:            "someCA",
+				MaxIdleConns:          100,
+				MaxIdleConnsPerHost:   50,
 			},
 			Ok: true,
 		},
 		{
 			Config: &Config{
-				Listen:              ":8080",
-				DiscoveryURL:        "http://127.0.0.1:8080",
-				ClientID:            "client",
-				ClientSecret:        "client",
-				RedirectionURL:      "http://120.0.0.1",
-				Upstream:            "http://120.0.0.1",
-				MaxIdleConns:        0,
-				MaxIdleConnsPerHost: 0,
+				Listen:                ":8080",
+				DiscoveryURL:          "http://127.0.0.1:8080",
+				ClientID:              "client",
+				ClientSecret:          "client",
+				RedirectionURL:        "http://120.0.0.1",
+				SkipUpstreamTLSVerify: false,
+				Upstream:              "http://120.0.0.1",
+				UpstreamCA:            "someCA",
+				MaxIdleConns:          0,
+				MaxIdleConnsPerHost:   0,
 			},
 		},
 		{
@@ -120,27 +127,32 @@ func TestIsConfig(t *testing.T) {
 			},
 		},
 		{
+			Name: "happy path",
 			Config: &Config{
 				Listen:                ":8080",
 				SkipTokenVerification: true,
 				Upstream:              "http://120.0.0.1",
+				UpstreamCA:            "someCA",
 				MaxIdleConns:          100,
 				MaxIdleConnsPerHost:   50,
 			},
 			Ok: true,
 		},
 		{
+			Name: "invalid",
 			Config: &Config{
-				DiscoveryURL:        "http://127.0.0.1:8080",
-				ClientID:            "client",
-				ClientSecret:        "client",
-				RedirectionURL:      "http://120.0.0.1",
-				Upstream:            "http://120.0.0.1",
-				MaxIdleConns:        100,
-				MaxIdleConnsPerHost: 50,
+				DiscoveryURL:          "http://127.0.0.1:8080",
+				ClientID:              "client",
+				ClientSecret:          "client",
+				RedirectionURL:        "http://120.0.0.1",
+				SkipUpstreamTLSVerify: true,
+				Upstream:              "http://120.0.0.1",
+				MaxIdleConns:          100,
+				MaxIdleConnsPerHost:   50,
 			},
 		},
 		{
+			Name: "invalid (2)",
 			Config: &Config{
 				Listen:              ":8080",
 				DiscoveryURL:        "http://127.0.0.1:8080",
@@ -152,49 +164,58 @@ func TestIsConfig(t *testing.T) {
 			},
 		},
 		{
+			Name: "invalid (3)",
 			Config: &Config{
-				Listen:              ":8080",
-				DiscoveryURL:        "http://127.0.0.1:8080",
-				ClientID:            "client",
-				ClientSecret:        "client",
-				RedirectionURL:      "http://120.0.0.1",
-				Upstream:            "this should fail",
-				MaxIdleConns:        100,
-				MaxIdleConnsPerHost: 50,
+				Listen:                ":8080",
+				DiscoveryURL:          "http://127.0.0.1:8080",
+				ClientID:              "client",
+				ClientSecret:          "client",
+				RedirectionURL:        "http://120.0.0.1",
+				SkipUpstreamTLSVerify: false,
+				Upstream:              "this should fail",
+				MaxIdleConns:          100,
+				MaxIdleConnsPerHost:   50,
 			},
 		},
 		{
+			Name: "invalid upstream",
 			Config: &Config{
-				Listen:              ":8080",
-				DiscoveryURL:        "http://127.0.0.1:8080",
-				ClientID:            "client",
-				ClientSecret:        "client",
-				RedirectionURL:      "http://120.0.0.1",
-				Upstream:            "this should fail",
-				SecureCookie:        true,
-				MaxIdleConns:        100,
-				MaxIdleConnsPerHost: 50,
+				Listen:                ":8080",
+				DiscoveryURL:          "http://127.0.0.1:8080",
+				ClientID:              "client",
+				ClientSecret:          "client",
+				RedirectionURL:        "http://120.0.0.1",
+				SkipUpstreamTLSVerify: true,
+				Upstream:              "this should fail",
+				SecureCookie:          true,
+				MaxIdleConns:          100,
+				MaxIdleConnsPerHost:   50,
 			},
 		},
 		{
+			Name: "happy path",
 			Config: &Config{
-				Listen:              ":8080",
-				DiscoveryURL:        "http://127.0.0.1:8080",
-				ClientID:            "client",
-				ClientSecret:        "client",
-				RedirectionURL:      "https://120.0.0.1",
-				Upstream:            "this should fail",
-				SecureCookie:        true,
-				MaxIdleConns:        100,
-				MaxIdleConnsPerHost: 50,
+				Listen:                ":8080",
+				DiscoveryURL:          "http://127.0.0.1:8080",
+				ClientID:              "client",
+				ClientSecret:          "client",
+				RedirectionURL:        "https://120.0.0.1",
+				SkipUpstreamTLSVerify: true,
+				Upstream:              "this should not fail",
+				SecureCookie:          true,
+				MaxIdleConns:          100,
+				MaxIdleConnsPerHost:   50,
 			},
 			Ok: true,
 		},
 	}
 
 	for i, c := range tests {
-		if err := c.Config.isValid(); err != nil && c.Ok {
-			t.Errorf("test case %d, the config should not have errored, error: %s", i, err)
+		err := c.Config.isValid()
+		if c.Ok {
+			assert.NoErrorf(t, err, "test case %d (%q), the config should not have errored, error: %v", i, c.Name, err)
+		} else {
+			assert.Errorf(t, err, "test case %d (%q), the config should have errored", i, c.Name)
 		}
 	}
 }

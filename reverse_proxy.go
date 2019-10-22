@@ -184,6 +184,10 @@ func (r *oauthProxy) createReverseProxy() error {
 		r.log.Info("session access tokens will be encrypted")
 	}
 
+	if r.config.SkipUpstreamTLSVerify && r.config.UpstreamCA != "" {
+		r.log.Warn("you have specified an upstream CA to check, but have left the skip-upstream-tls-verify parameter to true (the default)")
+	}
+
 	return nil
 }
 
