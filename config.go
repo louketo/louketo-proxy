@@ -370,8 +370,8 @@ func (r *Config) isReverseProxyValid() error {
 		}
 	}
 
-	if r.SkipUpstreamTLSVerify && r.UpstreamCA != "" {
-		return fmt.Errorf("you cannot both require to skip upstream tls and load a root ca to verify it: %s", r.UpstreamCA)
+	if !r.SkipUpstreamTLSVerify && r.UpstreamCA == "" {
+		return fmt.Errorf("you cannot require to check upstream tls and omit to specify the root ca to verify it: %s", r.UpstreamCA)
 	}
 
 	// step: if token verification is enabled (skip is off), we need the below checks
