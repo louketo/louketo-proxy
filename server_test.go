@@ -281,23 +281,20 @@ func TestTokenEncryption(t *testing.T) {
 	c.EncryptionKey = "US36S5kubc4BXbfzCIKTQcTzG6lvixVv"
 	requests := []fakeRequest{
 		{
-			URI:           "/auth_all/test",
-			HasLogin:      true,
-			ExpectedProxy: true,
-			Redirects:     true,
-			ExpectedProxyHeaders: map[string]string{
-				"X-Auth-Email":    "gambol99@gmail.com",
-				"X-Auth-Userid":   "rjayawardene",
-				"X-Auth-Username": "rjayawardene",
-				"X-Forwarded-For": "127.0.0.1",
-			},
-			ExpectedCode: http.StatusOK,
+			URI:               "/auth_all/test",
+			HasToken:          true,
+			HasCookieToken:    true,
+			HasEncryptedToken: true,
+			ExpectedProxy:     true,
+			ExpectedCode:      http.StatusOK,
 		},
 		// the token must be encrypted
 		{
-			URI:          "/auth_all/test",
-			HasToken:     true,
-			ExpectedCode: http.StatusUnauthorized,
+			URI:               "/auth_all/test",
+			HasToken:          true,
+			HasCookieToken:    true,
+			HasEncryptedToken: false,
+			ExpectedCode:      http.StatusUnauthorized,
 		},
 	}
 	newFakeProxy(c).RunTests(t, requests)

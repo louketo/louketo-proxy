@@ -33,7 +33,8 @@ func (r *oauthProxy) getIdentity(req *http.Request) (*userContext, error) {
 	if err != nil {
 		return nil, err
 	}
-	if r.config.EnableEncryptedToken || r.config.ForceEncryptedCookie && !isBearer {
+
+	if r.config.EnableEncryptedToken && !isBearer || r.config.ForceEncryptedCookie && !isBearer {
 		if access, err = decodeText(access, r.config.EncryptionKey); err != nil {
 			return nil, ErrDecryption
 		}

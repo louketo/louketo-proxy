@@ -42,6 +42,7 @@ type fakeRequest struct {
 	BasicAuth               bool
 	Cookies                 []*http.Cookie
 	Expires                 time.Duration
+	HasEncryptedToken       bool
 	FormValues              map[string]string
 	Groups                  []string
 	HasCookieToken          bool
@@ -197,10 +198,22 @@ func (f *fakeProxy) RunTests(t *testing.T, requests []fakeRequest) {
 			}
 			if c.NotSigned {
 				authToken := token.getToken()
-				setRequestAuthentication(f.config, client, request, &c, authToken.Encode())
+				encodedToken := authToken.Encode()
+
+				if c.HasEncryptedToken {
+					encodedToken, _ = encodeText(encodedToken, f.config.EncryptionKey)
+				}
+
+				setRequestAuthentication(f.config, client, request, &c, encodedToken)
 			} else {
 				signed, _ := f.idp.signToken(token.claims)
-				setRequestAuthentication(f.config, client, request, &c, signed.Encode())
+				signedToken := signed.Encode()
+
+				if c.HasEncryptedToken {
+					signedToken, _ = encodeText(signedToken, f.config.EncryptionKey)
+				}
+
+				setRequestAuthentication(f.config, client, request, &c, signedToken)
 			}
 		}
 

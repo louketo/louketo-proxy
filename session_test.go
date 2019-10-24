@@ -62,6 +62,66 @@ func TestGetIndentity(t *testing.T) {
 	}
 }
 
+func TestGetIdentityFromBearerEncryptionEnabled(t *testing.T) {
+	encryptionKey := "qwertzuiopasdfgh"
+	config := newFakeKeycloakConfig()
+	config.EnableEncryptedToken = true
+	config.EncryptionKey = encryptionKey
+	p, idp, _ := newTestProxyService(config)
+	token := newTestToken(idp.getLocation()).getToken()
+	encoded := token.Encode()
+	encryptedAccessToken, _ := encodeText(encoded, encryptionKey)
+
+	cases := []struct {
+		AuthHeader *http.Header
+		Cookies    *http.Cookie
+		Expected   string
+		Ok         bool
+	}{
+		{
+			Cookies: &http.Cookie{
+				Name:   "kc-access",
+				Path:   "/",
+				Domain: "127.0.0.1",
+				Value:  encryptedAccessToken,
+			},
+			Expected: token.RawPayload,
+			Ok:       true,
+		},
+		{
+			AuthHeader: &http.Header{
+				"Authorization": []string{fmt.Sprintf("Bearer %s", encoded)},
+			},
+			Expected: token.RawPayload,
+			Ok:       true,
+		},
+	}
+
+	for _, x := range cases {
+		req := newFakeHTTPRequest(http.MethodGet, "/")
+
+		if x.Cookies != nil {
+			req.AddCookie(x.Cookies)
+		}
+
+		if x.AuthHeader != nil {
+			req.Header = *x.AuthHeader
+		}
+
+		ctx, err := p.getIdentity(req)
+
+		switch x.Ok {
+		case true:
+			assert.NoError(t, err)
+			assert.NotEmpty(t, ctx.token)
+			assert.Equal(t, x.Expected, ctx.token.RawPayload)
+		default:
+			assert.Error(t, err)
+			assert.Empty(t, ctx)
+		}
+	}
+}
+
 func TestGetTokenInRequest(t *testing.T) {
 	defaultName := newDefaultConfig().CookieAccessName
 	token := newTestToken("test").getToken()
