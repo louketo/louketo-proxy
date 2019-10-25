@@ -120,8 +120,8 @@ type Config struct {
 	EnableClaimsHeaders bool `json:"enable-claims-headers" yaml:"enable-claims-headers" usage:"adds decoded claims as headers X-Auth-{claim} to the upstream endpoint. Defaults to true" env:"ENABLE_CLAIMS_HEADERS"`
 	// EnableAuthorizationHeader indicates we should pass the authorization header to the upstream endpoint
 	EnableAuthorizationHeader bool `json:"enable-authorization-header" yaml:"enable-authorization-header" usage:"adds the authorization header to the proxy request" env:"ENABLE_AUTHORIZATION_HEADER"`
-	// EnableAuthorizationCookies indicates we should pass the authorization cookies to the upstream endpoint
-	EnableAuthorizationCookies bool `json:"enable-authorization-cookies" yaml:"enable-authorization-cookies" usage:"adds the authorization cookies to the uptream proxy request" env:"ENABLE_AUTHORIZATION_COOKIES"`
+	// EnableAuthorizationCookies indicates we should pass the authorization cookies to the upstream endpoint. Defaults to false.
+	EnableAuthorizationCookies bool `json:"enable-authorization-cookies" yaml:"enable-authorization-cookies" usage:"adds the authorization cookies to the uptream proxy request. Defaults to false" env:"ENABLE_AUTHORIZATION_COOKIES"`
 	// EnableHTTPSRedirect indicate we should redirect http -> https
 	EnableHTTPSRedirect bool `json:"enable-https-redirection" yaml:"enable-https-redirection" usage:"enable the http to https redirection on the http service"`
 	// EnableProfiling indicates if profiles is switched on
@@ -146,7 +146,7 @@ type Config struct {
 	// AccessTokenDuration is default duration applied to the access token cookie
 	AccessTokenDuration time.Duration `json:"access-token-duration" yaml:"access-token-duration" usage:"fallback cookie duration for the access token when using refresh tokens"`
 	// CookieDomain is a list of domains the cookie is available to
-	CookieDomain string `json:"cookie-domain" yaml:"cookie-domain" usage:"domain the access cookie is available to, defaults host header"`
+	CookieDomain string `json:"cookie-domain" yaml:"cookie-domain" usage:"domain the access cookie is available to, defaults host header" env:"COOKIE_DOMAIN"`
 	// CookieAccessName is the name of the access cookie holding the access token
 	CookieAccessName string `json:"cookie-access-name" yaml:"cookie-access-name" usage:"name of the cookie use to hold the access token"`
 	// CookieRefreshName is the name of the refresh cookie

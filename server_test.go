@@ -386,7 +386,7 @@ func TestDisableAuthorizationCookie(t *testing.T) {
 				{Name: "mycookie", Value: "myvalue"},
 			},
 			HasToken:                true,
-			ExpectedContentContains: "kc-access=censored; mycookie=myvalue",
+			ExpectedContentContains: "kc-access=redacted; mycookie=myvalue",
 			ExpectedCode:            http.StatusOK,
 			ExpectedProxy:           true,
 		},

@@ -48,8 +48,8 @@ func checkUpstreamCookies(t *testing.T, req *http.Request) {
 	for _, kc := range checkedCookies {
 		k, err := req.Cookie(kc)
 		if err == nil {
-			if !assert.Equal(t, "censored", k.Value) {
-				t.Logf("expected a censored value for cookie %s", k.Name)
+			if !assert.Equal(t, "redacted", k.Value) {
+				t.Logf("expected a redacted value for cookie %s", k.Name)
 			}
 		}
 	}
