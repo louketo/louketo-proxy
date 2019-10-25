@@ -438,3 +438,14 @@ func realIP(req *http.Request) string {
 	}
 	return ra
 }
+
+// backported from https://github.com/coreos/go-oidc/blob/master/oidc/verification.go#L28-L37
+// I'll raise another PR to make it public in the go-oidc package so we can just use `oidc.ContainsString()`
+func containsString(needle string, haystack []string) bool {
+	for _, v := range haystack {
+		if v == needle {
+			return true
+		}
+	}
+	return false
+}

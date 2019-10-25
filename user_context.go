@@ -95,15 +95,30 @@ func extractIdentity(token jose.JWT) (*userContext, error) {
 	}, nil
 }
 
-// backported from https://github.com/coreos/go-oidc/blob/master/oidc/verification.go#L28-L37
-// I'll raise another PR to make it public in the go-oidc package so we can just use `oidc.ContainsString()`
-func containsString(needle string, haystack []string) bool {
-	for _, v := range haystack {
-		if v == needle {
-			return true
-		}
-	}
-	return false
+// userContext holds the information extracted the token
+type userContext struct {
+	// the id of the user
+	id string
+	// the audience for the token
+	audiences []string
+	// whether the context is from a session cookie or authorization header
+	bearerToken bool
+	// the claims associated to the token
+	claims jose.Claims
+	// the email associated to the user
+	email string
+	// the expiration of the access token
+	expiresAt time.Time
+	// groups is a collection of groups the user in in
+	groups []string
+	// a name of the user
+	name string
+	// preferredName is the name of the user
+	preferredName string
+	// roles is a collection of roles the users holds
+	roles []string
+	// the access token itself
+	token jose.JWT
 }
 
 // isAudience checks the audience
