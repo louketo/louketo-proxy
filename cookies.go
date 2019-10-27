@@ -60,9 +60,15 @@ func (r *oauthProxy) dropCookie(w http.ResponseWriter, host, name, value string,
 	http.SetCookie(w, cookie)
 }
 
+const (
+	// taking a conservative margin for cases such as safari
+	cookieMargin          = 12 + len("set-cookie: ") + 3
+	baseCookieChunkLength = 4096 - cookieMargin
+)
+
 // maxCookieChunkSize calculates max cookie chunk size, which can be used for cookie value
 func (r *oauthProxy) getMaxCookieChunkLength(req *http.Request, cookieName string) int {
-	maxCookieChunkLength := 4069 - len("; Path=/") - len(cookieName)
+	maxCookieChunkLength := baseCookieChunkLength - len(cookieName) - len("; Path=/")
 	if r.config.CookieDomain != "" {
 		maxCookieChunkLength -= len("Domain=; ")
 		maxCookieChunkLength -= len(r.config.CookieDomain)
@@ -77,9 +83,9 @@ func (r *oauthProxy) getMaxCookieChunkLength(req *http.Request, cookieName strin
 	}
 	switch r.config.SameSiteCookie {
 	case SameSiteStrict:
-		maxCookieChunkLength -= len("SameSite=Strict ")
+		maxCookieChunkLength -= len("SameSite=Strict; ")
 	case SameSiteLax:
-		maxCookieChunkLength -= len("SameSite=Lax ")
+		maxCookieChunkLength -= len("SameSite=Lax; ")
 	}
 	if r.config.SecureCookie {
 		maxCookieChunkLength -= len("Secure")
