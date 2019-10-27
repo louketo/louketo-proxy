@@ -30,7 +30,7 @@ require (
 	github.com/rs/cors v1.6.0
 	github.com/satori/go.uuid v1.2.0
 	github.com/stretchr/testify v1.3.0
-	github.com/unrolled/secure v1.0.1
+	github.com/unrolled/secure v1.0.4
 	github.com/urfave/cli v1.21.0
 	go.opencensus.io v0.22.0
 	go.uber.org/atomic v1.4.0 // indirect

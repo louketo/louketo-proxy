@@ -382,7 +382,13 @@ func (r *oauthProxy) identityHeadersMiddleware(custom []string) func(http.Handle
 
 // securityMiddleware performs numerous security checks on the request
 func (r *oauthProxy) securityMiddleware(next http.Handler) http.Handler {
-	r.log.Info("enabling the security filter middleware")
+	r.log.Info("enabling the security filter middleware",
+		zap.Strings("AllowedHosts", r.config.Hostnames),
+		zap.Bool("BrowserXssFilter", r.config.EnableBrowserXSSFilter),
+		zap.String("ContentSecurityPolicy", r.config.ContentSecurityPolicy),
+		zap.Bool("ContentTypeNosniff", r.config.EnableContentNoSniff),
+		zap.Bool("FrameDeny", r.config.EnableFrameDeny),
+	)
 	secure := secure.New(secure.Options{
 		AllowedHosts:          r.config.Hostnames,
 		BrowserXssFilter:      r.config.EnableBrowserXSSFilter,
