@@ -19,58 +19,7 @@ Package main provides a transparent authentication proxy suited for use with Key
 package main
 
 import (
-	"net/http"
 	"time"
-
-	"github.com/coreos/go-oidc/jose"
-)
-
-type contextKey int8
-
-const (
-	envPrefix = "PROXY_"
-
-	// defaults proxy endpoints
-	authorizationURL = "/authorize"
-	callbackURL      = "/callback"
-	expiredURL       = "/expired"
-	healthURL        = "/health"
-	loginURL         = "/login"
-	logoutURL        = "/logout"
-	metricsURL       = "/metrics"
-	tokenURL         = "/token"
-	debugURL         = "/debug/pprof"
-	refreshURL       = "/refresh"
-	traceURL         = "/trace"
-
-	// default claims used to analyze access token
-	claimAudience       = "aud"
-	claimPreferredName  = "preferred_username"
-	claimRealmAccess    = "realm_access"
-	claimResourceAccess = "resource_access"
-	claimResourceRoles  = "roles"
-	claimGroups         = "groups"
-
-	// default cookies names
-	accessCookie       = "kc-access"
-	refreshCookie      = "kc-state"
-	requestURICookie   = "request_uri"
-	requestStateCookie = "OAuth_Token_Request_State"
-
-	unsecureScheme = "http"
-	secureScheme   = "https"
-	anyMethod      = "ANY"
-	allRoutes      = "/*"
-
-	_ contextKey = iota
-	contextScopeName
-
-	jsonMime            = "application/json; charset=utf-8"
-	headerXForwardedFor = "X-Forwarded-For"
-	headerXRealIP       = "X-Real-IP"
-	authorizationHeader = "Authorization"
-	//headerUpgrade       = "Upgrade"
-	versionHeader = "X-Auth-Proxy-Version"
 )
 
 // Config is the configuration for the proxy
@@ -117,8 +66,8 @@ type Config struct {
 	Resources []*Resource `json:"resources" yaml:"resources" usage:"list of resources 'uri=/admin*|methods=GET,PUT|roles=role1,role2'"`
 	// Headers permits adding customs headers across the board
 	Headers map[string]string `json:"headers" yaml:"headers" usage:"custom headers to the upstream request, key=value"`
-	// PreserveHost preserves the host header of the proxied request in the upstream request
-	PreserveHost bool `json:"preserve-host" yaml:"preserve-host" usage:"preserve the host header of the proxied request in the upstream request"`
+	// PreserveHost preserves the host header of the proxied request in the upstream request. Disabled by default.
+	PreserveHost bool `json:"preserve-host" yaml:"preserve-host" usage:"preserve the host header of the proxied request in the upstream request. Disabled by default" env:"PRESERVE_HOST"`
 	// RequestIDHeader is the header name for request ids
 	RequestIDHeader string `json:"request-id-header" yaml:"request-id-header" usage:"the http header name for request id" env:"REQUEST_ID_HEADER"`
 	// ResponseHeader is a map of response headers to add to the response
@@ -171,8 +120,8 @@ type Config struct {
 	EnableClaimsHeaders bool `json:"enable-claims-headers" yaml:"enable-claims-headers" usage:"adds decoded claims as headers X-Auth-{claim} to the upstream endpoint. Defaults to true" env:"ENABLE_CLAIMS_HEADERS"`
 	// EnableAuthorizationHeader indicates we should pass the authorization header to the upstream endpoint
 	EnableAuthorizationHeader bool `json:"enable-authorization-header" yaml:"enable-authorization-header" usage:"adds the authorization header to the proxy request" env:"ENABLE_AUTHORIZATION_HEADER"`
-	// EnableAuthorizationCookies indicates we should pass the authorization cookies to the upstream endpoint
-	EnableAuthorizationCookies bool `json:"enable-authorization-cookies" yaml:"enable-authorization-cookies" usage:"adds the authorization cookies to the uptream proxy request" env:"ENABLE_AUTHORIZATION_COOKIES"`
+	// EnableAuthorizationCookies indicates we should pass the authorization cookies to the upstream endpoint. Defaults to false.
+	EnableAuthorizationCookies bool `json:"enable-authorization-cookies" yaml:"enable-authorization-cookies" usage:"adds the authorization cookies to the uptream proxy request. Defaults to false" env:"ENABLE_AUTHORIZATION_COOKIES"`
 	// EnableHTTPSRedirect indicate we should redirect http -> https
 	EnableHTTPSRedirect bool `json:"enable-https-redirection" yaml:"enable-https-redirection" usage:"enable the http to https redirection on the http service"`
 	// EnableProfiling indicates if profiles is switched on
@@ -197,18 +146,17 @@ type Config struct {
 	// AccessTokenDuration is default duration applied to the access token cookie
 	AccessTokenDuration time.Duration `json:"access-token-duration" yaml:"access-token-duration" usage:"fallback cookie duration for the access token when using refresh tokens"`
 	// CookieDomain is a list of domains the cookie is available to
-	CookieDomain string `json:"cookie-domain" yaml:"cookie-domain" usage:"domain the access cookie is available to, defaults host header"`
+	CookieDomain string `json:"cookie-domain" yaml:"cookie-domain" usage:"domain the access cookie is available to, defaults host header" env:"COOKIE_DOMAIN"`
 	// CookieAccessName is the name of the access cookie holding the access token
 	CookieAccessName string `json:"cookie-access-name" yaml:"cookie-access-name" usage:"name of the cookie use to hold the access token"`
 	// CookieRefreshName is the name of the refresh cookie
 	CookieRefreshName string `json:"cookie-refresh-name" yaml:"cookie-refresh-name" usage:"name of the cookie used to hold the encrypted refresh token"`
-	// SecureCookie enforces the cookie as secure
-	SecureCookie bool `json:"secure-cookie" yaml:"secure-cookie" usage:"enforces the cookie to be secure"`
-	// HTTPOnlyCookie enforces the cookie as http only
-	HTTPOnlyCookie bool `json:"http-only-cookie" yaml:"http-only-cookie" usage:"enforces the cookie is in http only mode"`
-	// SameSiteCookie enforces cookies to be send only to same site requests.
-	SameSiteCookie string `json:"same-site-cookie" yaml:"same-site-cookie" usage:"enforces cookies to be send only to same site requests according to the policy (can be Strict|Lax|None)"`
-
+	// SameSiteCookie enforces cookies to be send only to same site requests. Defaults to Lax.
+	SameSiteCookie string `json:"same-site-cookie" yaml:"same-site-cookie" usage:"enforces cookies to be send only to same site requests according to the policy (can be Strict|Lax|None). Defaults to Lax" env:"SAME_SITE_COOKIE"`
+	// SecureCookie enforces the cookie as secure. Defaults to true.
+	SecureCookie bool `json:"secure-cookie" yaml:"secure-cookie" usage:"enforces the cookie to be secure. Defaults to true." env:"SECURE_COOKIE"`
+	// HTTPOnlyCookie enforces the cookie as http only. Defaults to true.
+	HTTPOnlyCookie bool `json:"http-only-cookie" yaml:"http-only-cookie" usage:"enforces the cookie is in http only mode. Defaults to true" env:"HTTP_ONLY_COOKIE"`
 	// MatchClaims is a series of checks, the claims in the token must match those here
 	MatchClaims map[string]string `json:"match-claims" yaml:"match-claims" usage:"keypair values for matching access token claims e.g. aud=myapp, iss=http://example.*"`
 	// AddClaims is a series of claims that should be added to the auth headers
@@ -342,50 +290,6 @@ type RequestScope struct {
 	AccessDenied bool
 	// Identity is the user Identity of the request
 	Identity *userContext
-}
-
-// storage is used to hold the offline refresh token, assuming you don't want to use
-// the default practice of a encrypted cookie
-type storage interface {
-	// Set the token to the store
-	Set(string, string) error
-	// Get retrieves a token from the store
-	Get(string) (string, error)
-	// Delete removes a key from the store
-	Delete(string) error
-	// Close is used to close off any resources
-	Close() error
-}
-
-// reverseProxy is a wrapper
-type reverseProxy interface {
-	ServeHTTP(rw http.ResponseWriter, req *http.Request)
-}
-
-// userContext holds the information extracted the token
-type userContext struct {
-	// the id of the user
-	id string
-	// the audience for the token
-	audiences []string
-	// whether the context is from a session cookie or authorization header
-	bearerToken bool
-	// the claims associated to the token
-	claims jose.Claims
-	// the email associated to the user
-	email string
-	// the expiration of the access token
-	expiresAt time.Time
-	// groups is a collection of groups the user in in
-	groups []string
-	// a name of the user
-	name string
-	// preferredName is the name of the user
-	preferredName string
-	// roles is a collection of roles the users holds
-	roles []string
-	// the access token itself
-	token jose.JWT
 }
 
 // tokenResponse

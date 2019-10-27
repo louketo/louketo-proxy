@@ -243,15 +243,17 @@ func (r *oauthProxy) proxyMiddleware(resource *Resource) func(http.Handler) http
 				req.Header.Set(k, v)
 			}
 
+			cookieFilter := make([]string, 0, 4)
+			cookieFilter = append(cookieFilter, requestURICookie, requestStateCookie)
 			if r.config.EnableCSRF {
 				// remove csrf header
 				req.Header.Del(r.config.CSRFHeader)
-				if !r.config.EnableAuthorizationCookies {
-					_ = filterCookies(req, []string{requestURICookie, r.config.CSRFCookieName})
-				}
-			} else if !r.config.EnableAuthorizationCookies {
-				_ = filterCookies(req, []string{requestURICookie})
+				cookieFilter = append(cookieFilter, r.config.CSRFCookieName)
 			}
+			if !r.config.EnableAuthorizationCookies {
+				cookieFilter = append(cookieFilter, r.config.CookieAccessName, r.config.CookieRefreshName)
+			}
+			_ = filterCookies(req, cookieFilter)
 
 			req.URL.Host = upstreamHost
 			req.URL.Scheme = upstreamScheme

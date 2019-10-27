@@ -40,7 +40,7 @@ func newDefaultConfig() *Config {
 		CookieRefreshName:             refreshCookie,
 		CSRFCookieName:                "kc-csrf",
 		CSRFHeader:                    "X-Csrf-Token",
-		EnableAuthorizationCookies:    true,
+		EnableAuthorizationCookies:    false,
 		EnableAuthorizationHeader:     true,
 		EnableCSRF:                    false,
 		EnableDefaultDeny:             true,
