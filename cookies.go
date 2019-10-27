@@ -24,6 +24,13 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
+// SameSite cookie config options
+const (
+	SameSiteStrict = "Strict"
+	SameSiteLax    = "Lax"
+	SameSiteNone   = "None"
+)
+
 // dropCookie drops a cookie into the response
 func (r *oauthProxy) dropCookie(w http.ResponseWriter, host, name, value string, duration time.Duration) {
 	// step: default to the host header, else the config domain
@@ -42,12 +49,26 @@ func (r *oauthProxy) dropCookie(w http.ResponseWriter, host, name, value string,
 	if !r.config.EnableSessionCookies && duration != 0 {
 		cookie.Expires = time.Now().Add(duration)
 	}
+
+	switch r.config.SameSiteCookie {
+	case SameSiteStrict:
+		cookie.SameSite = http.SameSiteStrictMode
+	case SameSiteLax:
+		cookie.SameSite = http.SameSiteLaxMode
+	}
+
 	http.SetCookie(w, cookie)
 }
 
+const (
+	// taking a conservative margin for cases such as safari
+	cookieMargin          = 12 + len("set-cookie: ") + 3
+	baseCookieChunkLength = 4096 - cookieMargin
+)
+
 // maxCookieChunkSize calculates max cookie chunk size, which can be used for cookie value
 func (r *oauthProxy) getMaxCookieChunkLength(req *http.Request, cookieName string) int {
-	maxCookieChunkLength := 4069 - len("; Path=/") - len(cookieName)
+	maxCookieChunkLength := baseCookieChunkLength - len(cookieName) - len("; Path=/")
 	if r.config.CookieDomain != "" {
 		maxCookieChunkLength -= len("Domain=; ")
 		maxCookieChunkLength -= len(r.config.CookieDomain)
@@ -59,6 +80,12 @@ func (r *oauthProxy) getMaxCookieChunkLength(req *http.Request, cookieName strin
 	}
 	if !r.config.EnableSessionCookies {
 		maxCookieChunkLength -= len("Expires=Mon, 02 Jan 2006 03:04:05 MST; ")
+	}
+	switch r.config.SameSiteCookie {
+	case SameSiteStrict:
+		maxCookieChunkLength -= len("SameSite=Strict; ")
+	case SameSiteLax:
+		maxCookieChunkLength -= len("SameSite=Lax; ")
 	}
 	if r.config.SecureCookie {
 		maxCookieChunkLength -= len("Secure")
