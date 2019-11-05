@@ -150,8 +150,6 @@ func parseTLS(config *tlsAdvancedConfig) (*tlsSettings, error) {
 
 	if config.tlsMinVersion != "" {
 		switch config.tlsMinVersion {
-		case "SSL3.0":
-			parsed.tlsMinVersion = tls.VersionSSL30
 		case "TLS1.0":
 			parsed.tlsMinVersion = tls.VersionTLS10
 		case "TLS1.1":
@@ -159,7 +157,7 @@ func parseTLS(config *tlsAdvancedConfig) (*tlsSettings, error) {
 		case "TLS1.2":
 			parsed.tlsMinVersion = tls.VersionTLS12
 		default:
-			return nil, errors.New("invalid TLS version configured. Accepted values are: SSL3.0, TLS1.0, TLS1.1, TLS1.2")
+			return nil, errors.New("invalid TLS version configured. Accepted values are: TLS1.0, TLS1.1, TLS1.2")
 		}
 	} else if config.tlsUseModernSettings {
 		// standard modern setting

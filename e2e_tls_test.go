@@ -130,6 +130,7 @@ func runTestTLSUpstream(t *testing.T, listener, route string, markers ...string)
 	return nil
 }
 
+// nolint: dupl
 func runTestTLSApp(t *testing.T, listener, route string) error {
 	go func() {
 		mux := http.NewServeMux()
@@ -229,6 +230,7 @@ func runTestTLSConnect(t *testing.T, config *Config, listener, route string) (st
 	return accessToken, collected, nil
 }
 
+// nolint: dupl
 func runTestTLSAuth(t *testing.T, listener, realm string) error {
 	// a stub OIDC provider
 	fake := newFakeAuthServer()
