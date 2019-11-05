@@ -67,6 +67,8 @@ func (r *oauthProxy) getRedirectionURL(w http.ResponseWriter, req *http.Request)
 	if state != nil && req.URL.Query().Get("state") != state.Value {
 		logger.Error("state in cookie and url query parameter do not match", zap.String("cookie-state", state.Value),
 			zap.String("url-state", req.URL.Query().Get("state")))
+		// clear all cookies in response
+		r.clearAllCookies(req, w)
 		r.errorResponse(w, req.WithContext(ctx), "state parameter mismatch", http.StatusForbidden, nil)
 		return ""
 	}

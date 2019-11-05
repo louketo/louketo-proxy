@@ -21,3 +21,8 @@ linters:
     - lll
     - gochecknoinits
     - gochecknoglobals
+    - wsl
+    - whitespace
+    - gocognit
+    - funlen
+    - godox

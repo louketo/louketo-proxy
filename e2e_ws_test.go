@@ -95,6 +95,7 @@ func runTestWSTLSUpstream(t *testing.T, listener, route string) error {
 	return nil
 }
 
+/*
 func runTestWSTLSApp(t *testing.T, listener, route string) error {
 	go func() {
 		mux := http.NewServeMux()
@@ -114,7 +115,9 @@ func runTestWSTLSApp(t *testing.T, listener, route string) error {
 	t.Logf("test WS/TLS app server: %s%s", listener, route)
 	return nil
 }
+*/
 
+// nolint: dupl
 func runTestWSTLSAuth(t *testing.T, listener, realm string) error {
 	// a stub OIDC provider
 	fake := newFakeAuthServer()
@@ -271,6 +274,7 @@ func TestWSTLSUpstream(t *testing.T) {
 		RootCAs:    makeTestCACertPool(),
 		NextProtos: []string{"http/1.1"}, // h2: not supported by gorilla/websocket
 	}
+	// nolint: bodyclose
 	c, _, err := wsDialer.Dial(u.String(), req.Header)
 	require.NoErrorf(t, err, "dial error: %v", err)
 	defer c.Close()

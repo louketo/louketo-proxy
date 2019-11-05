@@ -65,6 +65,7 @@ func (r *oauthProxy) createForwardingProxy() error {
 	if err := r.createProxy(); err != nil {
 		return err
 	}
+	// nolint: bodyclose
 	forwardingHandler := r.forwardProxyHandler()
 
 	// set the http handler

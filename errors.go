@@ -59,7 +59,7 @@ func (r *oauthProxy) errorResponse(w http.ResponseWriter, req *http.Request, msg
 	}
 
 	if span != nil {
-		traceError(span, err, code)
+		_ = traceError(span, err, code)
 	}
 
 	errorResponse(w, msg, code)
