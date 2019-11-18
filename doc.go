@@ -217,6 +217,8 @@ type Config struct {
 	EnableLogging bool `json:"enable-logging" yaml:"enable-logging" usage:"enable http logging of the requests"`
 	// EnableJSONLogging is the logging format
 	EnableJSONLogging bool `json:"enable-json-logging" yaml:"enable-json-logging" usage:"switch on json logging rather than text"`
+	// EnableISO8601TimeEncoder indicates if ISO8601 format timestamp logging is enabled.
+	EnableISO8601TimeEncoder bool `json:"enable-iso8601-time-encoder" yaml:"enable-iso8601-time-encoder" usage:"switch on ISO8601 format TimeStamp logging."`
 	// EnableForwarding enables the forwarding proxy
 	EnableForwarding bool `json:"enable-forwarding" yaml:"enable-forwarding" usage:"enables the forwarding proxy mode, signing outbound request"`
 	// EnableSecurityFilter enabled the security handler

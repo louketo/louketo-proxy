@@ -12,6 +12,8 @@ listen: 127.0.0.1:3000
 enable-refresh-tokens: true
 # log all incoming requests
 enable-logging: true
+# timeformat for timestamp to be set as iso8601.
+enable-iso8601-time-encoder: false
 # log in json format
 enable-json-logging: true
 # should the access token be encrypted - you need an encryption-key if 'true'

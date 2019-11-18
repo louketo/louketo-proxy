@@ -71,6 +71,7 @@ func newDefaultConfig() *Config {
 		UpstreamTLSHandshakeTimeout:   10 * time.Second,
 		UpstreamTimeout:               10 * time.Second,
 		UseLetsEncrypt:                false,
+		EnableISO8601TimeEncoder:      false,
 	}
 }
 

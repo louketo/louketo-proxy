@@ -45,6 +45,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type oauthProxy struct {
@@ -135,6 +136,9 @@ func createLogger(config *Config) (*zap.Logger, error) {
 	}
 
 	c := zap.NewProductionConfig()
+	if config.EnableISO8601TimeEncoder {
+		c.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	}
 	c.DisableStacktrace = true
 	c.DisableCaller = true
 	// are we enabling json logging?
