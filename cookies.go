@@ -81,11 +81,8 @@ func (r *oauthProxy) getMaxCookieChunkLength(req *http.Request, cookieName strin
 	if !r.config.EnableSessionCookies {
 		maxCookieChunkLength -= len("Expires=Mon, 02 Jan 2006 03:04:05 MST; ")
 	}
-	switch r.config.SameSiteCookie {
-	case SameSiteStrict:
-		maxCookieChunkLength -= len("SameSite=Strict; ")
-	case SameSiteLax:
-		maxCookieChunkLength -= len("SameSite=Lax; ")
+	if r.config.SameSiteCookie != "" {
+		maxCookieChunkLength -= len("SameSite=" + r.config.SameSiteCookie + "; ")
 	}
 	if r.config.SecureCookie {
 		maxCookieChunkLength -= len("Secure")

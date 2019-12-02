@@ -277,6 +277,11 @@ func (r *oauthProxy) proxyMiddleware(resource *Resource) func(http.Handler) http
 			r.log.Debug("proxying to upstream", zap.String("matched_resource", matched), zap.Stringer("upstream_url", req.URL), zap.String("host_header", req.Host))
 
 			r.upstream.ServeHTTP(w, req)
+
+			if r.config.Verbose {
+				// debug response headers
+				r.log.Debug("response from gatekeeper", zap.Any("headers", w.Header()))
+			}
 		})
 	}
 }
@@ -329,6 +334,38 @@ func (r *oauthProxy) createStdProxy(upstream *url.URL) error {
 		ErrorHandler: func(w http.ResponseWriter, req *http.Request, err error) {
 			r.log.Warn("reverse proxy error", zap.Error(err))
 			r.errorResponse(w, req, "", http.StatusBadGateway, err)
+		},
+		ModifyResponse: func(res *http.Response) error {
+			if r.config.Verbose {
+				// debug response headers
+				r.log.Debug("response from upstream",
+					zap.Int("status code", res.StatusCode),
+					zap.String("proto", res.Proto),
+					zap.Int64("content-length", res.ContentLength),
+					zap.Any("headers", res.Header))
+			}
+			// filter out possible conflicting headers from upstream (i.e. gatekeeper value override)
+			if r.config.EnableSecurityFilter {
+				if r.config.EnableBrowserXSSFilter {
+					res.Header.Del(headerXXSSProtection)
+				}
+				if r.config.ContentSecurityPolicy != "" {
+					res.Header.Del(headerXSTS)
+				}
+				if r.config.EnableContentNoSniff {
+					res.Header.Del(headerXContentTypeOptions)
+				}
+				if r.config.EnableFrameDeny {
+					res.Header.Del(headerXFrameOptions)
+				}
+				if r.config.EnableSTS || r.config.EnableSTSPreload {
+					res.Header.Del(headerXSTS)
+				}
+			}
+			for hdr := range r.config.Headers {
+				res.Header.Del(hdr)
+			}
+			return nil
 		},
 	}
 

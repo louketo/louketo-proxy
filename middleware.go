@@ -25,6 +25,7 @@ import (
 
 	"github.com/PuerkitoBio/purell"
 	"github.com/go-chi/chi/middleware"
+	"github.com/gorilla/csrf"
 	gcsrf "github.com/gorilla/csrf"
 	uuid "github.com/satori/go.uuid"
 	"github.com/unrolled/secure"
@@ -388,8 +389,10 @@ func (r *oauthProxy) securityMiddleware(next http.Handler) http.Handler {
 		zap.String("ContentSecurityPolicy", r.config.ContentSecurityPolicy),
 		zap.Bool("ContentTypeNosniff", r.config.EnableContentNoSniff),
 		zap.Bool("FrameDeny", r.config.EnableFrameDeny),
+		zap.Bool("StrictTransportSecurity", r.config.EnableSTS || r.config.EnableSTSPreload),
+		zap.Bool("StrictTransportSecurity with HSTS preload", r.config.EnableSTSPreload),
 	)
-	secure := secure.New(secure.Options{
+	opts := secure.Options{
 		AllowedHosts:          r.config.Hostnames,
 		BrowserXssFilter:      r.config.EnableBrowserXSSFilter,
 		ContentSecurityPolicy: r.config.ContentSecurityPolicy,
@@ -397,15 +400,20 @@ func (r *oauthProxy) securityMiddleware(next http.Handler) http.Handler {
 		FrameDeny:             r.config.EnableFrameDeny,
 		SSLProxyHeaders:       map[string]string{"X-Forwarded-Proto": "https"},
 		SSLRedirect:           r.config.EnableHTTPSRedirect,
-	})
+	}
+	if r.config.EnableSTS || r.config.EnableSTSPreload {
+		opts.STSSeconds = 31536000
+		opts.STSIncludeSubdomains = true
+		opts.STSPreload = r.config.EnableSTSPreload
+	}
+	secureFilter := secure.New(opts)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		ctx, span, logger := r.traceSpan(req.Context(), "security middleware")
 		if span != nil {
 			defer span.End()
 		}
-
-		if err := secure.Process(w, req.WithContext(ctx)); err != nil {
+		if err := secureFilter.Process(w, req.WithContext(ctx)); err != nil {
 			logger.Warn("failed security middleware", zap.Error(err))
 			next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req.WithContext(ctx))))
 			return
@@ -413,6 +421,19 @@ func (r *oauthProxy) securityMiddleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, req.WithContext(ctx))
 	})
+}
+
+func csrfSameSiteValue(value string) csrf.SameSiteMode {
+	switch value {
+	case SameSiteLax:
+		return csrf.SameSiteLaxMode
+	case SameSiteStrict:
+		return csrf.SameSiteStrictMode
+	case SameSiteNone:
+		fallthrough
+	default:
+		return csrf.SameSiteNoneMode
+	}
 }
 
 func (r *oauthProxy) csrfConfigMiddleware() func(http.Handler) http.Handler {
@@ -424,6 +445,7 @@ func (r *oauthProxy) csrfConfigMiddleware() func(http.Handler) http.Handler {
 			gcsrf.CookieName(r.config.CSRFCookieName),
 			gcsrf.RequestHeader(r.config.CSRFHeader),
 			gcsrf.Domain(r.config.CookieDomain),
+			gcsrf.SameSite(csrfSameSiteValue(r.config.SameSiteCookie)),
 			gcsrf.HttpOnly(r.config.HTTPOnlyCookie),
 			gcsrf.Secure(r.config.SecureCookie),
 			gcsrf.Path("/"),

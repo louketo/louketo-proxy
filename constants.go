@@ -40,10 +40,14 @@ const (
 	_ contextKey = iota
 	contextScopeName
 
-	jsonMime            = "application/json; charset=utf-8"
-	headerXForwardedFor = "X-Forwarded-For"
-	headerXRealIP       = "X-Real-IP"
-	authorizationHeader = "Authorization"
-	//headerUpgrade       = "Upgrade"
-	versionHeader = "X-Auth-Proxy-Version"
+	jsonMime                  = "application/json; charset=utf-8"
+	headerXForwardedFor       = "X-Forwarded-For"
+	headerXRealIP             = "X-Real-IP"
+	authorizationHeader       = "Authorization"
+	versionHeader             = "X-Auth-Proxy-Version"
+	headerXContentTypeOptions = "X-Content-Type-Options"
+	headerXXSSProtection      = "X-XSS-Protection"
+	headerXFrameOptions       = "X-Frame-Options"
+	headerXSTS                = "X-Strict-Transport-Security"
+	headerXPolicy             = "X-Content-Security-Policy"
 )

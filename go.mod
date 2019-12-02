@@ -18,8 +18,8 @@ require (
 	github.com/garyburd/redigo v1.6.0 // indirect
 	github.com/go-chi/chi v4.0.2+incompatible
 	github.com/google/uuid v1.1.1
-	github.com/gorilla/csrf v1.6.0
-	github.com/gorilla/websocket v1.4.0
+	github.com/gorilla/csrf v1.6.2
+	github.com/gorilla/websocket v1.4.1
 	github.com/jonboulle/clockwork v0.1.0 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
@@ -30,8 +30,8 @@ require (
 	github.com/rs/cors v1.6.0
 	github.com/satori/go.uuid v1.2.0
 	github.com/stretchr/testify v1.3.0
-	github.com/unrolled/secure v1.0.4
-	github.com/urfave/cli v1.21.0
+	github.com/unrolled/secure v1.0.6
+	github.com/urfave/cli v1.22.0
 	go.opencensus.io v0.22.0
 	go.uber.org/atomic v1.4.0 // indirect
 	go.uber.org/multierr v1.1.0 // indirect

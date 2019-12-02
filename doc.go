@@ -140,6 +140,10 @@ type Config struct {
 	EnableFrameDeny bool `json:"filter-frame-deny" yaml:"filter-frame-deny" usage:"enable to the frame deny header"`
 	// ContentSecurityPolicy allows the Content-Security-Policy header value to be set with a custom value
 	ContentSecurityPolicy string `json:"content-security-policy" yaml:"content-security-policy" usage:"specify the content security policy"`
+	// EnableSTS adds the X-Transport-Strict-Transport-Security with some sensible default seconds and subdomains allowed (no STS preload)
+	EnableSTS bool `json:"filter-sts" yaml:"filter-sts" usage:"adds the X-Transport-Strict-Transport-Security header, without the preload option"`
+	// EnableSTSPreload adds the X-Transport-Strict-Transport-Security with some sensible default seconds and subdomains allowed (with STS preload)
+	EnableSTSPreload bool `json:"filter-sts-preload" yaml:"filter-sts-preload" usage:"adds the X-Transport-Strict-Transport-Security header (with STS preload)"`
 	// LocalhostMetrics indicates that metrics can only be consumed from localhost
 	LocalhostMetrics bool `json:"localhost-metrics" yaml:"localhost-metrics" usage:"enforces the metrics page can only been requested from 127.0.0.1"`
 

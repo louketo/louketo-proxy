@@ -65,9 +65,13 @@ func (r *oauthProxy) errorResponse(w http.ResponseWriter, req *http.Request, msg
 	errorResponse(w, msg, code)
 }
 
+func noSniff(w http.ResponseWriter) {
+	w.Header().Set(headerXContentTypeOptions, "nosniff")
+}
+
 func errorResponse(w http.ResponseWriter, msg string, code int) {
 	w.Header().Set("Content-Type", jsonMime)
-	w.Header().Set("X-Content-Type-Options", "nosniff")
+	noSniff(w)
 	w.WriteHeader(code)
 	if len(msg) > 0 {
 		fmt.Fprintln(w, fmt.Sprintf(`{"error": %q}`, msg))
@@ -81,7 +85,7 @@ func (r *oauthProxy) accessForbidden(w http.ResponseWriter, req *http.Request, m
 	// are we using a custom http template for 403?
 	if r.config.hasCustomForbiddenPage() {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Header().Set("X-Content-Type-Options", "nosniff")
+		noSniff(w)
 		w.WriteHeader(http.StatusForbidden)
 		name := path.Base(r.config.ForbiddenPage)
 		if err := r.Render(w, name, r.config.Tags); err != nil {
