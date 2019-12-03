@@ -1,5 +1,5 @@
 [![GoDoc](http://godoc.org/github.com/oneconcern/keycloak-gatekeeper?status.png)](http://godoc.org/github.com/oneconcern/keycloak-gatekeeper)
-[![GitHub version](https://badge.fury.io/gh/oneconcern%2Fkeycloak-gatekeeper.svg)](https://badge.fury.io/gh/oneconcern%2Fkeycloak-gatekeeper)
+[![GitHub version](https://img.shields.io/github/v/tag/oneconcern/keycloak-gatekeeper)](https://img.shields.io/github/v/tag/oneconcern/keycloak-gatekeeper)
 [![Go Report Card](https://goreportcard.com/badge/github.com/oneconcern/keycloak-gatekeeper)](https://goreportcard.com/report/github.com/oneconcern/keycloak-gatekeeper)
 [![CircleCI](https://circleci.com/gh/oneconcern/keycloak-gatekeeper.svg?style=svg)](https://circleci.com/gh/oneconcern/keycloak-gatekeeper)
 

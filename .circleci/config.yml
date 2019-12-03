@@ -47,9 +47,11 @@ jobs:
             SHA1=$(git rev-parse HEAD)
             BUILD=$(date +%s)
             if [[ -n "${VERSION}" ]] ; then
-              docker build --progress plain -t ${REPOSITORY}/${IMAGE}:${VERSION} \
+              docker build --progress plain \
               --build-arg TAG=${VERSION} --build-arg SHA1=${SHA1} --build-arg BUILD=${BUILD} \
-              -t ${REPOSITORY}/${IMAGE}:latest .
+              -t ${REPOSITORY}/${IMAGE}:${VERSION} \
+              -t ${REPOSITORY}/${IMAGE}:latest \
+              .
               docker push ${REPOSITORY}/${IMAGE}:${VERSION}
               docker push ${REPOSITORY}/${IMAGE}:latest
             fi
@@ -62,6 +64,8 @@ workflows:
           context: "OC Common"
       - build_image:
           context: "OC Common"
+          requires:
+            - test
           filters:
             tags:
               only: /^v.*-1c/
