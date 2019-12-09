@@ -66,31 +66,37 @@ func TestGetTokenInRequest(t *testing.T) {
 	defaultName := newDefaultConfig().CookieAccessName
 	token := newTestToken("test").getToken()
 	cs := []struct {
-		Token    string
-		IsBearer bool
-		Error    error
+		Token      string
+		AuthScheme string
+		Error      error
 	}{
 		{
-			Token: "",
-			Error: ErrSessionNotFound,
+			Token:      "",
+			AuthScheme: "",
+			Error:      ErrSessionNotFound,
 		},
 		{
-			Token: token.Encode(),
-			Error: nil,
+			Token:      token.Encode(),
+			AuthScheme: "",
+			Error:      nil,
 		},
 		{
-			Token:    token.Encode(),
-			IsBearer: true,
-			Error:    nil,
+			Token:      token.Encode(),
+			AuthScheme: "Bearer",
+			Error:      nil,
+		},
+		{
+			Token:      "QWxhZGRpbjpPcGVuU2VzYW1l",
+			AuthScheme: "Basic",
+			Error:      ErrSessionNotFound,
 		},
 	}
 	for i, x := range cs {
 		req := newFakeHTTPRequest(http.MethodGet, "/")
 		if x.Token != "" {
-			switch x.IsBearer {
-			case true:
-				req.Header.Set(authorizationHeader, "Bearer "+x.Token)
-			default:
+			if x.AuthScheme != "" {
+				req.Header.Set(authorizationHeader, x.AuthScheme+" "+x.Token)
+			} else {
 				req.AddCookie(&http.Cookie{
 					Name:   defaultName,
 					Path:   req.URL.Path,
@@ -103,7 +109,7 @@ func TestGetTokenInRequest(t *testing.T) {
 		switch x.Error {
 		case nil:
 			assert.NoError(t, err, "case %d should not have thrown an error", i)
-			assert.Equal(t, x.IsBearer, bearer)
+			assert.Equal(t, x.AuthScheme == "Bearer", bearer)
 			assert.Equal(t, token.Encode(), access)
 		default:
 			assert.Equal(t, x.Error, err, "case %d, expected error: %s", i, x.Error)
