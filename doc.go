@@ -212,6 +212,8 @@ type Config struct {
 	EnableDefaultDeny bool `json:"enable-default-deny" yaml:"enable-default-deny" usage:"enables a default denial on all requests, you have to explicitly say what is permitted (recommended)"`
 	// EnableEncryptedToken indicates the access token should be encoded
 	EnableEncryptedToken bool `json:"enable-encrypted-token" yaml:"enable-encrypted-token" usage:"enable encryption for the access tokens"`
+	// ForceEncryptedCookie indicates that the access token in the cookie should be encoded, regardless what EnableEncryptedToken says. This way, gatekeeper may receive tokens in header in the clear, whereas tokens in cookies remain encrypted
+	ForceEncryptedCookie bool `json:"force-encrypted-cookie" yaml:"force-encrypted-cookie" usage:"force encryption for the access tokens in cookies"`
 	// EnableLogging indicates if we should log all the requests
 	EnableLogging bool `json:"enable-logging" yaml:"enable-logging" usage:"enable http logging of the requests"`
 	// EnableJSONLogging is the logging format
@@ -228,7 +230,7 @@ type Config struct {
 	EnableLoginHandler bool `json:"enable-login-handler" yaml:"enable-login-handler" usage:"enables the handling of the refresh tokens" env:"ENABLE_LOGIN_HANDLER"`
 	// EnableTokenHeader adds the JWT token to the upstream authentication headers
 	EnableTokenHeader bool `json:"enable-token-header" yaml:"enable-token-header" usage:"enables the token authentication header X-Auth-Token to upstream"`
-	// EnableAuthorizationHeader indicates we should pass the authorization header
+	// EnableAuthorizationHeader indicates we should pass the authorization header to the upstream endpoint
 	EnableAuthorizationHeader bool `json:"enable-authorization-header" yaml:"enable-authorization-header" usage:"adds the authorization header to the proxy request" env:"ENABLE_AUTHORIZATION_HEADER"`
 	// EnableAuthorizationCookies indicates we should pass the authorization cookies to the upstream endpoint
 	EnableAuthorizationCookies bool `json:"enable-authorization-cookies" yaml:"enable-authorization-cookies" usage:"adds the authorization cookies to the uptream proxy request" env:"ENABLE_AUTHORIZATION_COOKIES"`
@@ -263,6 +265,8 @@ type Config struct {
 	SecureCookie bool `json:"secure-cookie" yaml:"secure-cookie" usage:"enforces the cookie to be secure"`
 	// HTTPOnlyCookie enforces the cookie as http only
 	HTTPOnlyCookie bool `json:"http-only-cookie" yaml:"http-only-cookie" usage:"enforces the cookie is in http only mode"`
+	// SameSiteCookie enforces cookies to be send only to same site requests.
+	SameSiteCookie string `json:"same-site-cookie" yaml:"same-site-cookie" usage:"enforces cookies to be send only to same site requests according to the policy (can be Strict|Lax|None)"`
 
 	// MatchClaims is a series of checks, the claims in the token must match those here
 	MatchClaims map[string]string `json:"match-claims" yaml:"match-claims" usage:"keypair values for matching access token claims e.g. aud=myapp, iss=http://example.*"`
@@ -294,7 +298,6 @@ type Config struct {
 	CorsCredentials bool `json:"cors-credentials" yaml:"cors-credentials" usage:"credentials access control header (Access-Control-Allow-Credentials)"`
 	// CorsMaxAge is the age for CORS
 	CorsMaxAge time.Duration `json:"cors-max-age" yaml:"cors-max-age" usage:"max age applied to cors headers (Access-Control-Max-Age)"`
-
 	// Hostnames is a list of hostname's the service should response to
 	Hostnames []string `json:"hostnames" yaml:"hostnames" usage:"list of hostnames the service will respond to"`
 

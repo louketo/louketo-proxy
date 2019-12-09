@@ -98,7 +98,7 @@ func (r *oauthProxy) loggingMiddleware(next http.Handler) http.Handler {
 }
 
 // authenticationMiddleware is responsible for verifying the access token
-func (r *oauthProxy) authenticationMiddleware(resource *Resource) func(http.Handler) http.Handler {
+func (r *oauthProxy) authenticationMiddleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			clientIP := req.RemoteAddr
@@ -126,7 +126,7 @@ func (r *oauthProxy) authenticationMiddleware(resource *Resource) func(http.Hand
 					next.ServeHTTP(w, req.WithContext(r.redirectToAuthorization(w, req)))
 					return
 				}
-			} else {
+			} else { //nolint:gocritic
 				if err := verifyToken(r.client, user.token); err != nil {
 					// step: if the error post verification is anything other than a token
 					// expired error we immediately throw an access forbidden - as there is
@@ -167,8 +167,15 @@ func (r *oauthProxy) authenticationMiddleware(resource *Resource) func(http.Hand
 						return
 					}
 
-					// attempt to refresh the access token
-					token, exp, err := getRefreshedToken(r.client, refresh)
+					// attempt to refresh the access token, possibly with a renewed refresh token
+					//
+					// NOTE: atm, this does not retrieve explicit refresh token expiry from oauth2,
+					// and take identity expiry instead: with keycloak, they are the same and equal to
+					// "SSO session idle" keycloak setting.
+					//
+					// exp: expiration of the access token
+					// expiresIn: expiration of the ID token
+					token, newRefreshToken, accessExpiresAt, refreshExpiresIn, err := getRefreshedToken(r.client, refresh)
 					if err != nil {
 						switch err {
 						case ErrRefreshTokenExpired:
@@ -184,17 +191,27 @@ func (r *oauthProxy) authenticationMiddleware(resource *Resource) func(http.Hand
 
 						return
 					}
-					// get the expiration of the new access token
-					expiresIn := r.getAccessCookieExpiration(token, refresh)
+
+					accessExpiresIn := time.Until(accessExpiresAt)
+
+					// get the expiration of the new refresh token
+					if newRefreshToken != "" {
+						refresh = newRefreshToken
+					}
+					if refreshExpiresIn == 0 {
+						// refresh token expiry claims not available: try to parse refresh token
+						refreshExpiresIn = r.getAccessCookieExpiration(token, refresh)
+					}
 
 					r.log.Info("injecting the refreshed access token cookie",
 						zap.String("client_ip", clientIP),
 						zap.String("cookie_name", r.config.CookieAccessName),
 						zap.String("email", user.email),
-						zap.Duration("expires_in", time.Until(exp)))
+						zap.Duration("refresh_expires_in", refreshExpiresIn),
+						zap.Duration("expires_in", accessExpiresIn))
 
 					accessToken := token.Encode()
-					if r.config.EnableEncryptedToken {
+					if r.config.EnableEncryptedToken || r.config.ForceEncryptedCookie {
 						if accessToken, err = encodeText(accessToken, r.config.EncryptionKey); err != nil {
 							r.log.Error("unable to encode the access token", zap.Error(err))
 							w.WriteHeader(http.StatusInternalServerError)
@@ -202,7 +219,20 @@ func (r *oauthProxy) authenticationMiddleware(resource *Resource) func(http.Hand
 						}
 					}
 					// step: inject the refreshed access token
-					r.dropAccessTokenCookie(req.WithContext(ctx), w, accessToken, expiresIn)
+					r.dropAccessTokenCookie(req.WithContext(ctx), w, accessToken, accessExpiresIn)
+
+					// step: inject the renewed refresh token
+					if newRefreshToken != "" {
+						r.log.Debug("renew refresh cookie with new refresh token",
+							zap.Duration("refresh_expires_in", refreshExpiresIn))
+						encryptedRefreshToken, err := encodeText(newRefreshToken, r.config.EncryptionKey)
+						if err != nil {
+							r.log.Error("failed to encrypt the refresh token", zap.Error(err))
+							w.WriteHeader(http.StatusInternalServerError)
+							return
+						}
+						r.dropRefreshTokenCookie(req.WithContext(ctx), w, encryptedRefreshToken, refreshExpiresIn)
+					}
 
 					if r.useStore() {
 						go func(old, new jose.JWT, encrypted string) {

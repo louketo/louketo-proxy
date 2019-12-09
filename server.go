@@ -39,8 +39,8 @@ import (
 	proxyproto "github.com/armon/go-proxyproto"
 	"github.com/coreos/go-oidc/oidc"
 	"github.com/elazarl/goproxy"
-	"github.com/pressly/chi"
-	"github.com/pressly/chi/middleware"
+	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
@@ -185,6 +185,7 @@ func (r *oauthProxy) createReverseProxy() error {
 			AllowCredentials: r.config.CorsCredentials,
 			ExposedHeaders:   r.config.CorsExposedHeaders,
 			MaxAge:           int(r.config.CorsMaxAge.Seconds()),
+			Debug:            r.config.Verbose,
 		})
 		engine.Use(c.Handler)
 	}
@@ -203,8 +204,8 @@ func (r *oauthProxy) createReverseProxy() error {
 		e.Get(callbackURL, r.oauthCallbackHandler)
 		e.Get(expiredURL, r.expirationHandler)
 		e.Get(healthURL, r.healthHandler)
-		e.Get(logoutURL, r.logoutHandler)
-		e.Get(tokenURL, r.tokenHandler)
+		e.With(r.authenticationMiddleware()).Get(logoutURL, r.logoutHandler)
+		e.With(r.authenticationMiddleware()).Get(tokenURL, r.tokenHandler)
 		e.Post(loginURL, r.loginHandler)
 		if r.config.EnableMetrics {
 			r.log.Info("enabled the service metrics middleware", zap.String("path", r.config.WithOAuthURI(metricsURL)))
@@ -259,7 +260,7 @@ func (r *oauthProxy) createReverseProxy() error {
 	for _, x := range r.config.Resources {
 		r.log.Info("protecting resource", zap.String("resource", x.String()))
 		e := engine.With(
-			r.authenticationMiddleware(x),
+			r.authenticationMiddleware(),
 			r.admissionMiddleware(x),
 			r.identityHeadersMiddleware(r.config.AddClaims))
 
@@ -295,6 +296,7 @@ func (r *oauthProxy) createForwardingProxy() error {
 	if err := r.createUpstreamProxy(nil); err != nil {
 		return err
 	}
+	//nolint:bodyclose
 	forwardingHandler := r.forwardProxyHandler()
 
 	// set the http handler
@@ -452,7 +454,7 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 		if listener, err = net.Listen("unix", socket); err != nil {
 			return nil, err
 		}
-	} else {
+	} else { //nolint:gocritic
 		if listener, err = net.Listen("tcp", config.listen); err != nil {
 			return nil, err
 		}
@@ -605,6 +607,11 @@ func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) error {
 
 	// create the forwarding proxy
 	proxy := goproxy.NewProxyHttpServer()
+
+	// headers formed by middleware before proxying to upstream shall be
+	// kept in response. This is true for CORS headers ([KEYCOAK-9045])
+	// and for refreshed cookies (htts://github.com/keycloak/keycloak-gatekeeper/pulls/456])
+	proxy.KeepDestinationHeaders = true
 	proxy.Logger = httplog.New(ioutil.Discard, "", 0)
 	r.upstream = proxy
 

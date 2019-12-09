@@ -84,6 +84,7 @@ func (r *oauthProxy) accessForbidden(w http.ResponseWriter, req *http.Request) c
 
 // redirectToURL redirects the user and aborts the context
 func (r *oauthProxy) redirectToURL(url string, w http.ResponseWriter, req *http.Request, statusCode int) context.Context {
+	w.Header().Add("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
 	http.Redirect(w, req, url, statusCode)
 
 	return r.revokeProxy(w, req)
@@ -115,10 +116,10 @@ func (r *oauthProxy) redirectToAuthorization(w http.ResponseWriter, req *http.Re
 	return r.revokeProxy(w, req)
 }
 
-// getAccessCookieExpiration calucates the expiration of the access token cookie
+// getAccessCookieExpiration calculates the expiration of the access token cookie
 func (r *oauthProxy) getAccessCookieExpiration(token jose.JWT, refresh string) time.Duration {
 	// notes: by default the duration of the access token will be the configuration option, if
-	// however we can decode the refresh token, we will set the duration to the duraction of the
+	// however we can decode the refresh token, we will set the duration to the duration of the
 	// refresh token
 	duration := r.config.AccessTokenDuration
 	if _, ident, err := parseToken(refresh); err == nil {
@@ -126,6 +127,9 @@ func (r *oauthProxy) getAccessCookieExpiration(token jose.JWT, refresh string) t
 		if delta > 0 {
 			duration = delta
 		}
+		r.log.Debug("parsed refresh token with new duration", zap.Duration("new duration", delta))
+	} else {
+		r.log.Debug("refresh token is opaque and cannot be used to extend calculated duration")
 	}
 
 	return duration

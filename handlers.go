@@ -33,7 +33,7 @@ import (
 
 	"github.com/coreos/go-oidc/oauth2"
 
-	"github.com/pressly/chi"
+	"github.com/go-chi/chi"
 	"go.uber.org/zap"
 )
 
@@ -142,8 +142,8 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	// Flow: once we exchange the authorization code we parse the ID Token; we then check for a access token,
-	// if a access token is present and we can decode it, we use that as the session token, otherwise we default
+	// Flow: once we exchange the authorization code we parse the ID Token; we then check for an access token,
+	// if an access token is present and we can decode it, we use that as the session token, otherwise we default
 	// to the ID Token.
 	token, identity, err := parseToken(resp.IDToken)
 	if err != nil {
@@ -168,7 +168,7 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 	accessToken := token.Encode()
 
 	// step: are we encrypting the access token?
-	if r.config.EnableEncryptedToken {
+	if r.config.EnableEncryptedToken || r.config.ForceEncryptedCookie {
 		if accessToken, err = encodeText(accessToken, r.config.EncryptionKey); err != nil {
 			r.log.Error("unable to encode the access token", zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
@@ -181,10 +181,10 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 		zap.String("expires", identity.ExpiresAt.Format(time.RFC3339)),
 		zap.String("duration", time.Until(identity.ExpiresAt).String()))
 
-	// @metric a token has beeb issued
+	// @metric a token has been issued
 	oauthTokensMetric.WithLabelValues("issued").Inc()
 
-	// step: does the response has a refresh token and we are NOT ignore refresh tokens?
+	// step: does the response have a refresh token and we do NOT ignore refresh tokens?
 	if r.config.EnableRefreshTokens && resp.RefreshToken != "" {
 		var encrypted string
 		encrypted, err = encodeText(resp.RefreshToken, r.config.EncryptionKey)
@@ -401,6 +401,7 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 				zap.Int("status", response.StatusCode),
 				zap.String("response", fmt.Sprintf("%s", content)))
 		}
+		defer response.Body.Close()
 	}
 	// step: should we redirect the user
 	if redirectURL != "" {
@@ -489,7 +490,7 @@ func (r *oauthProxy) proxyMetricsHandler(w http.ResponseWriter, req *http.Reques
 }
 
 // retrieveRefreshToken retrieves the refresh token from store or cookie
-func (r *oauthProxy) retrieveRefreshToken(req *http.Request, user *userContext) (token, ecrypted string, err error) {
+func (r *oauthProxy) retrieveRefreshToken(req *http.Request, user *userContext) (token, encrypted string, err error) {
 	switch r.useStore() {
 	case true:
 		token, err = r.GetRefreshToken(user.token)
@@ -500,7 +501,7 @@ func (r *oauthProxy) retrieveRefreshToken(req *http.Request, user *userContext) 
 		return
 	}
 
-	ecrypted = token // returns encryped, avoid encoding twice
+	encrypted = token // returns encrypted, avoids encoding twice
 	token, err = decodeText(token, r.config.EncryptionKey)
 	return
 }
