@@ -42,6 +42,20 @@ func TestGetIndentity(t *testing.T) {
 		},
 		{
 			Request: &http.Request{
+				Header: http.Header{
+					"Authorization": []string{"Basic QWxhZGRpbjpPcGVuU2VzYW1l"},
+				},
+			},
+		},
+		{
+			Request: &http.Request{
+				Header: http.Header{
+					"Authorization": []string{fmt.Sprintf("Test %s", encoded)},
+				},
+			},
+		},
+		{
+			Request: &http.Request{
 				Header: http.Header{},
 			},
 		},
@@ -88,6 +102,11 @@ func TestGetTokenInRequest(t *testing.T) {
 		{
 			Token:      "QWxhZGRpbjpPcGVuU2VzYW1l",
 			AuthScheme: "Basic",
+			Error:      ErrSessionNotFound,
+		},
+		{
+			Token:      token.Encode(),
+			AuthScheme: "Test",
 			Error:      ErrSessionNotFound,
 		},
 	}
