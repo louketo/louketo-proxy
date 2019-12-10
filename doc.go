@@ -153,6 +153,8 @@ type Resource struct {
 
 // Config is the configuration for the proxy
 type Config struct {
+	// IdpHint
+	IdpHint string `json:"idp-hint" yaml:"idp-hint" usage:"idp hint name configuration" env:"IDP_HINT"`
 	// ConfigFile is the binding interface
 	ConfigFile string `json:"config" yaml:"config" usage:"path the a configuration file" env:"CONFIG_FILE"`
 	// Listen is the binding interface
