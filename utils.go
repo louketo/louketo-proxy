@@ -50,6 +50,8 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+var Now = time.Now
+
 var (
 	allHTTPMethods = []string{
 		http.MethodDelete,
@@ -80,8 +82,8 @@ func createCertificate(key *rsa.PrivateKey, hostnames []string, expire time.Dura
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		IsCA:                  false,
 		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-		NotAfter:              time.Now().Add(expire),
-		NotBefore:             time.Now().Add(-30 * time.Second),
+		NotAfter:              Now().Add(expire),
+		NotBefore:             Now().Add(-30 * time.Second),
 		PublicKeyAlgorithm:    x509.ECDSA,
 		SerialNumber:          serial,
 		SignatureAlgorithm:    x509.SHA512WithRSA,
@@ -444,7 +446,7 @@ func loadCA(cert, key string) (*tls.Certificate, error) {
 // getWithin calculates a duration of x percent of the time period, i.e. something
 // expires in 1 hours, get me a duration within 80%
 func getWithin(expires time.Time, within float64) time.Duration {
-	left := expires.UTC().Sub(time.Now().UTC()).Seconds()
+	left := expires.UTC().Sub(Now().UTC()).Seconds()
 	if left <= 0 {
 		return time.Duration(0)
 	}

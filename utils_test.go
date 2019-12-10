@@ -438,22 +438,25 @@ func TestFileExists(t *testing.T) {
 }
 
 func TestGetWithin(t *testing.T) {
+	Now = func() time.Time { return time.Date(2019, time.December, 25, 0, 0, 0, 0, time.UTC) }
 	cs := []struct {
 		Expires  time.Time
 		Percent  float64
 		Expected time.Duration
 	}{
 		{
-			Expires:  time.Now().Add(time.Duration(1) * time.Hour),
+			Expires:  Now().Add(time.Duration(1) * time.Hour),
 			Percent:  0.10,
 			Expected: 359000000000,
 		},
 		{
-			Expires:  time.Now().Add(time.Duration(1) * time.Hour),
+			Expires:  Now().Add(time.Duration(1) * time.Hour),
 			Percent:  0.20,
 			Expected: 719000000000,
 		},
 	}
+
+	Now = func() time.Time { return time.Date(2019, time.December, 25, 0, 0, 1, 0, time.UTC) }
 	for _, x := range cs {
 		assert.Equal(t, x.Expected, getWithin(x.Expires, x.Percent))
 	}
