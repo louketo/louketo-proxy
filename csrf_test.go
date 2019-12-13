@@ -315,7 +315,7 @@ func postUpstreamWithAccessTokenTest(t *testing.T, config *Config, cookies []*ht
 	u, _ := url.Parse("http://" + e2eCsrfProxyListener + e2eCsrfUpstreamURL)
 	h := make(http.Header, 10)
 	h.Set("Content-Type", "application/json")
-	h.Add("Authorization", "Bearer: "+accessToken)
+	h.Add("Authorization", "Bearer "+accessToken)
 	req := &http.Request{
 		Method: "POST",
 		URL:    u,
@@ -379,7 +379,6 @@ func postUpstream2Test(t *testing.T, config *Config, cookies []*http.Cookie) (st
 }
 
 func TestCSRF(t *testing.T) {
-	//log.SetOutput(ioutil.Discard)
 	config := newDefaultConfig()
 	config.Verbose = false
 	config.DisableAllLogging = true

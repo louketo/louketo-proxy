@@ -98,6 +98,9 @@ func getTokenInBearer(req *http.Request) (string, error) {
 		return "", ErrInvalidSession
 	}
 
+	if items[0] != authorizationType { // only accept bearer authorization type
+		return "", ErrSessionNotFound
+	}
 	return items[1], nil
 }
 
