@@ -212,11 +212,11 @@ func decodeKeyPairs(list []string) (map[string]string, error) {
 	kp := make(map[string]string)
 
 	for _, x := range list {
-		items := strings.Split(x, "=")
-		if len(items) != 2 {
-			return kp, fmt.Errorf("invalid tag '%s' should be key=pair", x)
+		splitIdx := strings.Index(x, "=")
+		if splitIdx < 0 {
+			return kp, fmt.Errorf("invalid tag '%s', should be key=pair", x)
 		}
-		kp[items[0]] = items[1]
+		kp[x[:splitIdx]] = x[splitIdx+1:]
 	}
 
 	return kp, nil
