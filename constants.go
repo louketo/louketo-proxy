@@ -50,4 +50,5 @@ const (
 	headerXFrameOptions       = "X-Frame-Options"
 	headerXSTS                = "X-Strict-Transport-Security"
 	headerXPolicy             = "X-Content-Security-Policy"
+	authorizationType         = "Bearer"
 )
