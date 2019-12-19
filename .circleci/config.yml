@@ -62,12 +62,18 @@ workflows:
     jobs:
       - test:
           context: "OC Common"
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              only: /.*/
       - build_image:
           context: "OC Common"
           requires:
             - test
           filters:
             tags:
+              # ignore tags from original repo, just OneConcern tags
               only: /^v.*-1c/
             branches:
-              only: /oneconcern-release/
+              ignore: /.*/
