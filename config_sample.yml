@@ -1,5 +1,5 @@
 
-# is the url for retrieve the openid configuration - normally the <server>/auth/realm/<realm_name>
+# is the url for retrieving the openid configuration - normally the <server>/auth/realm/<realm_name>
 discovery-url: https://keycloak.example.com/auth/realms/commons
 # the client id for the 'client' application
 client-id: <CLIENT_ID>
@@ -16,7 +16,7 @@ enable-logging: true
 enable-json-logging: true
 # should the access token be encrypted - you need an encryption-key if 'true'
 enable-encrypted-token: false
-# do not redirec the request, simple 307 it
+# do not redirect the request, simple 307 it
 no-redirects: false
 # the location of a certificate you wish the proxy to use for TLS support
 tls-cert:
@@ -38,14 +38,14 @@ upstream-url: http://127.0.0.1:80
 upstream-keepalives: true
 # skip the tls verification of the upstream url
 skip-upstream-tls-verify: true|false
-# additional scopes to add to add to the default (openid+email+profile)
+# additional scopes to add to the default (openid+email+profile)
 scopes: []
-# enables a more extra secuirty features
+# enables more extra security features
 enable-security-filter: true
 # headers permits you to inject custom headers into all requests
 headers:
   myheader_name: my_header_value
-# a map of claims that MUST exist in the token presented and the value is it MUST match
+# a map of claims that MUST exist in the token presented and the value it MUST match
 # So for example, you could match the audience or the issuer or some custom attribute
 match-claims:
   aud: openvpn
@@ -55,7 +55,7 @@ add-claims:
 - given_name
 - family_name
 - name
-# a collection of resource i.e. urls that you wish to protect
+# a collection of resources i.e. urls that you wish to protect
 resources:
 - uri: /admin/test*
   # the methods on this url that should be protected, if missing, we assuming all
