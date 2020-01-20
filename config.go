@@ -38,6 +38,7 @@ func newDefaultConfig() *Config {
 		ClientAuthMethod:              authMethodBasic,
 		CookieAccessName:              accessCookie,
 		CookieRefreshName:             refreshCookie,
+		UseAuthorizationHeader:        true,
 		EnableAuthorizationCookies:    true,
 		EnableAuthorizationHeader:     true,
 		EnableDefaultDeny:             true,

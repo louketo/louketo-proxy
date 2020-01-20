@@ -35,3 +35,5 @@ require (
 	gopkg.in/resty.v1 v1.10.3
 	gopkg.in/yaml.v2 v2.2.2
 )
+
+go 1.13

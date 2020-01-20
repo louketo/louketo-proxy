@@ -447,6 +447,7 @@ func newFakeKeycloakConfig() *Config {
 		CookieRefreshName:          "kc-state",
 		DisableAllLogging:          true,
 		DiscoveryURL:               "127.0.0.1:0",
+		UseAuthorizationHeader:     true,
 		EnableAuthorizationCookies: true,
 		EnableAuthorizationHeader:  true,
 		EnableLogging:              false,
