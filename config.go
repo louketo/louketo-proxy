@@ -62,7 +62,7 @@ func newDefaultConfig() *Config {
 		ServerReadTimeout:             10 * time.Second,
 		ServerWriteTimeout:            10 * time.Second,
 		SkipOpenIDProviderTLSVerify:   false,
-		SkipUpstreamTLSVerify:         true,
+		SkipUpstreamTLSVerify:         false,
 		Tags:                          make(map[string]string),
 		UpstreamExpectContinueTimeout: 10 * time.Second,
 		UpstreamKeepaliveTimeout:      10 * time.Second,
