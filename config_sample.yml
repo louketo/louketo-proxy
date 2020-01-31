@@ -31,9 +31,9 @@ redirection-url: http://127.0.0.3000
 # the encryption key used to encode the session state
 encryption-key: vGcLt8ZUdPX5fXhtLZaPHZkGWHZrT6T8xKHWf5RPfqAocuiQ6nUbNHyc3oF2toO2tr
 # the name of the access cookie, defaults to kc-access
-cookie-access-name:
+cookie-access-name: kc-access
 # the name of the refresh cookie, default to kc-state
-cookie-refresh-name:
+cookie-refresh-name: kc-state
 # the upstream endpoint which we should proxy request
 upstream-url: http://127.0.0.1:80
 # upstream-keepalives specified wheather you want keepalive on the upstream endpoint
