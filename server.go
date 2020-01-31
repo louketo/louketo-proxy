@@ -189,8 +189,14 @@ func (r *oauthProxy) createReverseProxy() error {
 		})
 		engine.Use(c.Handler)
 	}
-
-	engine.Use(r.proxyMiddleware)
+	// proxying request only if not forward auth mode
+	if r.config.Upstream != forwardAuthUpstream {
+		engine.Use(r.proxyMiddleware)
+	}
+	// modify request in hostname mode
+	if r.config.HostnameMode {
+		engine.Use(r.hostnameMiddleware)
+	}
 	r.router = engine
 
 	if len(r.config.ResponseHeaders) > 0 {

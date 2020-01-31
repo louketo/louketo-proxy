@@ -64,15 +64,16 @@ const (
 	claimResourceRoles  = "roles"
 	claimGroups         = "groups"
 
-	accessCookie       = "kc-access"
-	refreshCookie      = "kc-state"
-	requestURICookie   = "request_uri"
-	requestStateCookie = "OAuth_Token_Request_State"
-	unsecureScheme     = "http"
-	secureScheme       = "https"
-	anyMethod          = "ANY"
-	authMethodBasic    = "secret-basic"
-	authMethodBody     = "secret-body"
+	accessCookie        = "kc-access"
+	refreshCookie       = "kc-state"
+	requestURICookie    = "request_uri"
+	requestStateCookie  = "OAuth_Token_Request_State"
+	unsecureScheme      = "http"
+	secureScheme        = "https"
+	anyMethod           = "ANY"
+	authMethodBasic     = "secret-basic"
+	authMethodBody      = "secret-body"
+	forwardAuthUpstream = "none"
 
 	_ contextKey = iota
 	contextScopeName
@@ -183,7 +184,7 @@ type Config struct {
 	// Scopes is a list of scope we should request
 	Scopes []string `json:"scopes" yaml:"scopes" usage:"list of scopes requested when authenticating the user"`
 	// Upstream is the upstream endpoint i.e whom were proxying to
-	Upstream string `json:"upstream-url" yaml:"upstream-url" usage:"url for the upstream endpoint you wish to proxy" env:"UPSTREAM_URL"`
+	Upstream string `json:"upstream-url" yaml:"upstream-url" usage:"url for the upstream endpoint you wish to proxy. If 'none' it will return 200 code." env:"UPSTREAM_URL"`
 	// UpstreamCA is the path to a CA certificate in PEM format to validate the upstream certificate
 	UpstreamCA string `json:"upstream-ca" yaml:"upstream-ca" usage:"the path to a file container a CA certificate to validate the upstream tls endpoint"`
 	// Resources is a list of protected resources
@@ -364,6 +365,8 @@ type Config struct {
 
 	// DisableAllLogging indicates no logging at all
 	DisableAllLogging bool `json:"disable-all-logging" yaml:"disable-all-logging" usage:"disables all logging to stdout and stderr"`
+	// Hostname mode
+	HostnameMode bool `json:"hostname-mode" yaml:"hostname-mode" usage:"check hostname in uri. URI Example: /my.app.com/*"`
 }
 
 // getVersion returns the proxy version

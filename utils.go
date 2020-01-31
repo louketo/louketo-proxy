@@ -113,19 +113,24 @@ func createCertificate(key *rsa.PrivateKey, hostnames []string, expire time.Dura
 	return tls.X509KeyPair(certPEM, keyPEM)
 }
 
-// getRequestHostURL returns the hostname from the request
-func getRequestHostURL(r *http.Request) string {
+// getRequestHost returns the hostname from the request
+func getRequestHost(r *http.Request) string {
 	hostname := r.Host
 	if r.Header.Get("X-Forwarded-Host") != "" {
 		hostname = r.Header.Get("X-Forwarded-Host")
 	}
 
+	return hostname
+}
+
+// getRequestHostURL returns the hostname from the request
+func getRequestHostURL(r *http.Request) string {
 	scheme := "http"
 	if r.TLS != nil {
 		scheme = "https"
 	}
 
-	return fmt.Sprintf("%s://%s", scheme, hostname)
+	return fmt.Sprintf("%s://%s", scheme, getRequestHost(r))
 }
 
 // readConfigFile reads and parses the configuration file
