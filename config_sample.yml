@@ -1,6 +1,8 @@
 
 # is the url for retrieving the openid configuration - normally the <server>/auth/realm/<realm_name>
 discovery-url: https://keycloak.example.com/auth/realms/commons
+# skip the tls verification of openid provider
+skip-openid-provider-tls-verify: true|false
 # the client id for the 'client' application
 client-id: <CLIENT_ID>
 # the secret associated to the 'client' application - note the client_secret is optional, required for
