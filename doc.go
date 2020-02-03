@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -54,6 +55,7 @@ const (
 	loginURL         = "/login"
 	logoutURL        = "/logout"
 	metricsURL       = "/metrics"
+	resourcesURL     = "/resources"
 	tokenURL         = "/token"
 	debugURL         = "/debug/pprof"
 
@@ -141,6 +143,8 @@ var (
 type Resource struct {
 	// URL the url for the resource
 	URL string `json:"uri" yaml:"uri"`
+	// Custom upstream for the resource
+	Upstream string `json:"upstream-url" yaml:"upstream-url"`
 	// Methods the method type
 	Methods []string `json:"methods" yaml:"methods"`
 	// WhiteListed permits the prefix through
@@ -241,6 +245,8 @@ type Config struct {
 	EnableProfiling bool `json:"enable-profiling" yaml:"enable-profiling" usage:"switching on the golang profiling via pprof on /debug/pprof, /debug/pprof/heap etc"`
 	// EnableMetrics indicates if the metrics is enabled
 	EnableMetrics bool `json:"enable-metrics" yaml:"enable-metrics" usage:"enable the prometheus metrics collector on /oauth/metrics"`
+	// EnableMetrics indicates if the resources API is enabled
+	EnableResources bool `json:"enable-resources-api" yaml:"enable-resources-api" usage:"enable the resorces API endpoint on /oauth/resources"`
 	// EnableBrowserXSSFilter indicates you want the filter on
 	EnableBrowserXSSFilter bool `json:"filter-browser-xss" yaml:"filter-browser-xss" usage:"enable the adds the X-XSS-Protection header with mode=block"`
 	// EnableContentNoSniff indicates you want the filter on
@@ -251,6 +257,8 @@ type Config struct {
 	ContentSecurityPolicy string `json:"content-security-policy" yaml:"content-security-policy" usage:"specify the content security policy"`
 	// LocalhostMetrics indicated the metrics can only be consume via localhost
 	LocalhostMetrics bool `json:"localhost-metrics" yaml:"localhost-metrics" usage:"enforces the metrics page can only been requested from 127.0.0.1"`
+	// ControlNetworks indicated list of networks allowed for metrics and resources endpoints
+	ControlNetworks []string `json:"control-networks" yaml:"control-networks" usage:"enforces the the metrics and resources can only been from specified networks"`
 
 	// AccessTokenDuration is default duration applied to the access token cookie
 	AccessTokenDuration time.Duration `json:"access-token-duration" yaml:"access-token-duration" usage:"fallback cookie duration for the access token when using refresh tokens"`
@@ -365,7 +373,7 @@ type Config struct {
 
 	// DisableAllLogging indicates no logging at all
 	DisableAllLogging bool `json:"disable-all-logging" yaml:"disable-all-logging" usage:"disables all logging to stdout and stderr"`
-	// Hostname mode
+	// Hostname mode indicates resource URI must containe request hostname
 	HostnameMode bool `json:"hostname-mode" yaml:"hostname-mode" usage:"check hostname in uri. URI Example: /my.app.com/*"`
 }
 
@@ -388,6 +396,7 @@ type RequestScope struct {
 	AccessDenied bool
 	// Identity is the user Identity of the request
 	Identity *userContext
+	Upstream *url.URL
 }
 
 // storage is used to hold the offline refresh token, assuming you don't want to use

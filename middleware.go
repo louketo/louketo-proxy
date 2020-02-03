@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -335,10 +336,24 @@ func (r *oauthProxy) admissionMiddleware(resource *Resource) func(http.Handler) 
 		claimMatches[k] = regexp.MustCompile(v)
 	}
 
+	// parse the upstream endpoint
+	endpoint, err := url.Parse(resource.Upstream)
+	if err != nil {
+		endpoint = nil
+	}
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			// we don't need to continue is a decision has been made
 			scope := req.Context().Value(contextScopeName).(*RequestScope)
+
+			// Deny access if upstream-url is invalid
+			if endpoint.Host == "" && r.endpoint.Host == "" {
+				r.log.Debug("Access Denied by endpoint", zap.String("uri", resource.URL))
+				next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req)))
+				return
+			}
+
 			if scope.AccessDenied {
 				next.ServeHTTP(w, req)
 				return
@@ -377,11 +392,14 @@ func (r *oauthProxy) admissionMiddleware(resource *Resource) func(http.Handler) 
 				}
 			}
 
+			scope.Upstream = endpoint
+
 			r.log.Debug("access permitted to resource",
 				zap.String("access", "permitted"),
 				zap.String("email", user.email),
 				zap.Duration("expires", time.Until(user.expiresAt)),
-				zap.String("resource", resource.URL))
+				zap.String("resource", resource.URL),
+				zap.String("upstream", r.endpoint.Host))
 
 			next.ServeHTTP(w, req)
 		})

@@ -480,13 +480,36 @@ func (r *oauthProxy) debugHandler(w http.ResponseWriter, req *http.Request) {
 
 // proxyMetricsHandler forwards the request into the prometheus handler
 func (r *oauthProxy) proxyMetricsHandler(w http.ResponseWriter, req *http.Request) {
-	if r.config.LocalhostMetrics {
-		if !net.ParseIP(realIP(req)).IsLoopback() {
-			r.accessForbidden(w, req)
+	ip := net.ParseIP(realIP(req))
+
+	for _, block := range r.controlCIDR {
+		if block.Contains(ip) {
+			r.metricsHandler.ServeHTTP(w, req)
 			return
 		}
 	}
-	r.metricsHandler.ServeHTTP(w, req)
+
+	r.accessForbidden(w, req)
+}
+
+// proxyResorcesHandler return list of active resources
+func (r *oauthProxy) proxyResorcesHandler(w http.ResponseWriter, req *http.Request) {
+	ip := net.ParseIP(realIP(req))
+
+	for _, block := range r.controlCIDR {
+		if block.Contains(ip) {
+			w.Header().Set("Content-Type", "application/json")
+
+			if err := json.NewEncoder(w).Encode(r.config.Resources); err != nil {
+				r.log.Error("unable dump resources", zap.Error(err))
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+
+			return
+		}
+	}
+
+	r.accessForbidden(w, req)
 }
 
 // retrieveRefreshToken retrieves the refresh token from store or cookie

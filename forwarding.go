@@ -32,10 +32,14 @@ func (r *oauthProxy) proxyMiddleware(next http.Handler) http.Handler {
 
 		// @step: retrieve the request scope
 		scope := req.Context().Value(contextScopeName)
+		endpoint := r.endpoint
 		if scope != nil {
 			sc := scope.(*RequestScope)
 			if sc.AccessDenied {
 				return
+			}
+			if sc.Upstream != nil && sc.Upstream.Host != "" {
+				endpoint = sc.Upstream
 			}
 		}
 
@@ -54,18 +58,18 @@ func (r *oauthProxy) proxyMiddleware(next http.Handler) http.Handler {
 		}
 
 		// @note: by default goproxy only provides a forwarding proxy, thus all requests have to be absolute and we must update the host headers
-		req.URL.Host = r.endpoint.Host
-		req.URL.Scheme = r.endpoint.Scheme
+		req.URL.Host = endpoint.Host
+		req.URL.Scheme = endpoint.Scheme
 		if v := req.Header.Get("Host"); v != "" {
 			req.Host = v
 			req.Header.Del("Host")
 		} else if !r.config.PreserveHost {
-			req.Host = r.endpoint.Host
+			req.Host = endpoint.Host
 		}
 
 		if isUpgradedConnection(req) {
 			r.log.Debug("upgrading the connnection", zap.String("client_ip", req.RemoteAddr))
-			if err := tryUpdateConnection(req, w, r.endpoint); err != nil {
+			if err := tryUpdateConnection(req, w, endpoint); err != nil {
 				r.log.Error("failed to upgrade connection", zap.Error(err))
 				w.WriteHeader(http.StatusInternalServerError)
 				return

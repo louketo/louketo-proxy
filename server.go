@@ -61,6 +61,7 @@ type oauthProxy struct {
 	store          storage
 	templates      *template.Template
 	upstream       reverseProxy
+	controlCIDR    []*net.IPNet
 }
 
 func init() {
@@ -111,6 +112,18 @@ func newProxy(config *Config) (*oauthProxy, error) {
 
 	if config.ClientID == "" && config.ClientSecret == "" {
 		log.Warn("client credentials are not set, depending on provider (confidential|public) you might be unable to auth")
+	}
+
+	if config.LocalhostMetrics {
+		config.ControlNetworks = []string{"127.0.0.0/8", "::1/128"}
+	} else if len(config.ControlNetworks) == 0 {
+		config.ControlNetworks = []string{"0.0.0.0/0", "::/0"}
+	}
+
+	for _, cidr := range config.ControlNetworks {
+		if _, block, err := net.ParseCIDR(cidr); err == nil {
+			svc.controlCIDR = append(svc.controlCIDR, block)
+		}
 	}
 
 	// are we running in forwarding mode?
@@ -216,6 +229,10 @@ func (r *oauthProxy) createReverseProxy() error {
 		if r.config.EnableMetrics {
 			r.log.Info("enabled the service metrics middleware", zap.String("path", r.config.WithOAuthURI(metricsURL)))
 			e.Get(metricsURL, r.proxyMetricsHandler)
+		}
+		if r.config.EnableResources {
+			r.log.Info("enabled the service resources middleware", zap.String("path", r.config.WithOAuthURI(resourcesURL)))
+			e.Get(resourcesURL, r.proxyResorcesHandler)
 		}
 	})
 
