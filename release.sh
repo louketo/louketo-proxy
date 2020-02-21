@@ -28,7 +28,7 @@ release() {
     for ARCH in $ARCHITECTURES; do
       env GOOS=$PLATFORM GOARCH=$ARCH CGO_ENABLED=0 go build -a -tags netgo -ldflags " -w $LFLAGS" -o bin/$NAME$EXT
       tar -czvf release/"$NAME-$PLATFORM-$ARCH".tar.gz -C bin/ $NAME$EXT >/dev/null
-      sha1sum release/"$NAME-$PLATFORM-$ARCH".tar.gz | cut -d " " -f1 > release/"$NAME-$GOOS-$GOARCH".tar.gz.sha1
+      sha1sum release/"$NAME-$PLATFORM-$ARCH".tar.gz | cut -d " " -f1 > release/"$NAME-$PLATFORM-$ARCH".tar.gz.sha1
       # Test if tar file is not corrupted
       if ! tar -tf release/"$NAME-$PLATFORM-$ARCH".tar.gz &>/dev/null;then 
         echo "Corrupted tar file"
