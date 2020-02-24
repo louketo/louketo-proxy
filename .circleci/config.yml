@@ -19,7 +19,7 @@ jobs:
           password: $GCLOUD_SERVICE_KEY
     environment:
       REPOSITORY: 'gcr.io/onec-co'
-      GOOGLE_PROJECT_ID: "onec-co"
+      GOOGLE_PROJECT_ID: ${GOOGLE_PROJECT_ID}
       GOOGLE_COMPUTE_ZONE: us-west2-c
       IMAGE: gatekeeper
     shell: /bin/bash
@@ -31,7 +31,7 @@ jobs:
             gcloud --quiet config set project ${GOOGLE_PROJECT_ID}
             gcloud --quiet config set compute/zone ${GOOGLE_COMPUTE_ZONE}
             gcloud --quiet config set container/new_scopes_behavior true
-            gcloud --quiet container clusters get-credentials onec-dev
+            gcloud --quiet container clusters get-credentials ${CLUSTER}
       - checkout
       - setup_remote_docker:
           version: 18.09.3
