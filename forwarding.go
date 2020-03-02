@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc/jose"
+	"github.com/coreos/go-oidc/oauth2"
 	"github.com/coreos/go-oidc/oidc"
 	"go.uber.org/zap"
 )
@@ -107,11 +108,23 @@ func (r *oauthProxy) forwardProxyHandler() func(*http.Request, *http.Response) {
 
 			// step: do we have a access token
 			if state.login {
-				r.log.Info("requesting access token for user",
-					zap.String("username", r.config.ForwardingUsername))
-
 				// step: login into the service
-				resp, err := client.UserCredsToken(r.config.ForwardingUsername, r.config.ForwardingPassword)
+				var resp oauth2.TokenResponse
+				switch r.config.ForwardingGrantType {
+				case oauth2.GrantTypeClientCreds:
+					r.log.Info("requesting access token for client (client_credentials grant) ",
+						zap.String("client_id", r.config.ClientID))
+					resp, err = client.ClientCredsToken([]string{r.config.ClientID, r.config.ClientSecret})
+				case oauth2.GrantTypeUserCreds:
+					r.log.Info("requesting access token for user (password grant) ",
+						zap.String("username", r.config.ForwardingUsername))
+					resp, err = client.UserCredsToken(r.config.ForwardingUsername, r.config.ForwardingPassword)
+				default:
+					r.log.Info("Chosen grant type is not supported", zap.String("forwarding_grant_type", r.config.ForwardingGrantType))
+					<-time.After(time.Duration(5) * time.Second)
+					continue
+				}
+
 				if err != nil {
 					r.log.Error("failed to login to authentication service", zap.Error(err))
 					// step: back-off and reschedule
