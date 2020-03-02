@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/boltdb/bolt"
+	"github.com/etcd-io/bbolt"
 )
 
 const (
@@ -35,13 +35,13 @@ var (
 
 // A local file store used to hold the refresh tokens
 type boltdbStore struct {
-	client *bolt.DB
+	client *bbolt.DB
 }
 
 func newBoltDBStore(location *url.URL) (storage, error) {
 	// step: drop the initial slash
 	path := strings.TrimPrefix(location.Path, "/")
-	db, err := bolt.Open(path, 0600, &bolt.Options{
+	db, err := bbolt.Open(path, 0600, &bbolt.Options{
 		Timeout: 10 * time.Second,
 	})
 	if err != nil {
@@ -49,7 +49,7 @@ func newBoltDBStore(location *url.URL) (storage, error) {
 	}
 
 	// step: create the bucket
-	err = db.Update(func(tx *bolt.Tx) error {
+	err = db.Update(func(tx *bbolt.Tx) error {
 		_, e := tx.CreateBucketIfNotExists([]byte(dbName))
 		return e
 	})
@@ -61,7 +61,7 @@ func newBoltDBStore(location *url.URL) (storage, error) {
 
 // Set adds a token to the store
 func (r *boltdbStore) Set(key, value string) error {
-	return r.client.Update(func(tx *bolt.Tx) error {
+	return r.client.Update(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket([]byte(dbName))
 		if bucket == nil {
 			return ErrNoBoltdbBucket
@@ -73,7 +73,7 @@ func (r *boltdbStore) Set(key, value string) error {
 // Get retrieves a token from the store
 func (r *boltdbStore) Get(key string) (string, error) {
 	var value string
-	err := r.client.View(func(tx *bolt.Tx) error {
+	err := r.client.View(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket([]byte(dbName))
 		if bucket == nil {
 			return ErrNoBoltdbBucket
@@ -87,7 +87,7 @@ func (r *boltdbStore) Get(key string) (string, error) {
 
 // Delete removes the key from the bucket
 func (r *boltdbStore) Delete(key string) error {
-	return r.client.Update(func(tx *bolt.Tx) error {
+	return r.client.Update(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket([]byte(dbName))
 		if bucket == nil {
 			return ErrNoBoltdbBucket
