@@ -147,9 +147,12 @@ func createLogger(config *Config) (*zap.Logger, error) {
 		c.DisableCaller = false
 		c.Development = true
 		c.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
-	}
+    }
 	// Set Time Logging Format
-	c.EncoderConfig.EncodeTime.UnmarshalText([]byte(config.LoggingTimeFormat))
+    err := c.EncoderConfig.EncodeTime.UnmarshalText([]byte(config.LoggingTimeFormat))
+    if(err != nil){
+        retur nil,err
+    }
 	return c.Build()
 }
 
