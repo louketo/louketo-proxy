@@ -45,7 +45,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
 type oauthProxy struct {
@@ -150,17 +149,7 @@ func createLogger(config *Config) (*zap.Logger, error) {
 		c.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
 	}
 	// Set Time Logging Format
-	switch strings.ToLower(config.LoggingTimeFormat) {
-	case "iso8601":
-		c.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	case "millis":
-		c.EncoderConfig.EncodeTime = zapcore.EpochMillisTimeEncoder
-	case "nanos":
-		c.EncoderConfig.EncodeTime = zapcore.EpochNanosTimeEncoder
-	default:
-		c.EncoderConfig.EncodeTime = zapcore.EpochTimeEncoder
-	}
-
+	c.EncoderConfig.EncodeTime.UnmarshalText([]byte(config.LoggingTimeFormat))
 	return c.Build()
 }
 
