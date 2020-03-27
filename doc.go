@@ -364,6 +364,8 @@ type Config struct {
 
 	// DisableAllLogging indicates no logging at all
 	DisableAllLogging bool `json:"disable-all-logging" yaml:"disable-all-logging" usage:"disables all logging to stdout and stderr"`
+	// LoggingTimeFormat indicates the set time format (epoch, millis, nano, or iso8601)
+	LoggingTimeFormat string `json:"logging-time-format" yaml:"logging-time-format" usage:"logging time format can be set to epoch, millis, nano, or iso8601" `
 }
 
 // getVersion returns the proxy version
