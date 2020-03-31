@@ -171,6 +171,7 @@ func setZapConfiguration(c *zap.Config, config *Config) error {
 			return err
 		}
 	}
+
 	return nil
 }
 
