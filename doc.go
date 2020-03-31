@@ -364,8 +364,10 @@ type Config struct {
 
 	// DisableAllLogging indicates no logging at all
 	DisableAllLogging bool `json:"disable-all-logging" yaml:"disable-all-logging" usage:"disables all logging to stdout and stderr"`
-	// LoggingTimeFormat indicates the set time format (epoch, millis, nano, or iso8601)
-	LoggingTimeFormat string `json:"logging-time-format" yaml:"logging-time-format" usage:"logging time format can be set to epoch, millis, nano, or iso8601" `
+	// ZapTimeEncoding indicates the set time format (epoch, millis, nano, or iso8601)
+	ZapTimeEncoding string `json:"zap-time-encoding" yaml:"zap-time-encoding" usage:"logging time format can be set to epoch, millis, nano, or iso8601" `
+	// ZapLevel can be a string or integer - Sets the zap log level (`debug`, `info`, `error`, or an integer value greater than 0). If 4 or greater the verbosity of client-go will be set to this level.
+	ZapLevel string `json:"zap-level" yaml:"zap-level" usage:"used to set the zap log level ('debug', 'info', 'error', or an integer value greater than 0). If 4 or greater the verbosity of client-go will be set to this level." `
 }
 
 // getVersion returns the proxy version

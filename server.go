@@ -148,13 +148,30 @@ func createLogger(config *Config) (*zap.Logger, error) {
 		c.Development = true
 		c.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
 	}
-	// Set Time Logging Format
-	err := c.EncoderConfig.EncodeTime.UnmarshalText([]byte(config.LoggingTimeFormat))
+	// Parse and Set Zap Configuration Flags.
+	err := setZapConfiguration(&c, config)
 	if err != nil {
 		return nil, err
 	}
-
 	return c.Build()
+}
+
+func setZapConfiguration(c *zap.Config, config *Config) error {
+	// Set Time Logging Format
+	if len(strings.TrimSpace(config.ZapTimeEncoding)) == 0 {
+		err := c.EncoderConfig.EncodeTime.UnmarshalText([]byte(config.ZapTimeEncoding))
+		if err != nil {
+			return err
+		}
+	}
+	// Set Logging Level
+	if len(strings.TrimSpace(config.ZapLevel)) == 0 {
+		err := c.Level.UnmarshalText([]byte(config.ZapLevel))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // createReverseProxy creates a reverse proxy
