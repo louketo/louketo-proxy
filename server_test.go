@@ -28,6 +28,7 @@ import (
 
 	"github.com/coreos/go-oidc/jose"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/net/websocket"
 )
 
 const (
@@ -529,15 +530,36 @@ type fakeUpstreamService struct{}
 
 func (f *fakeUpstreamService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set(testProxyAccepted, "true")
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	content, _ := json.Marshal(&fakeUpstreamResponse{
-		URI:     r.RequestURI,
-		Method:  r.Method,
-		Address: r.RemoteAddr,
-		Headers: r.Header,
-	})
-	_, _ = w.Write(content)
+
+	upgrade := strings.ToLower(r.Header.Get("Upgrade"))
+	if upgrade == "websocket" {
+		websocket.Handler(func(ws *websocket.Conn) {
+			defer ws.Close()
+			var data []byte
+			err := websocket.Message.Receive(ws, &data)
+			if err != nil {
+				ws.WriteClose(http.StatusBadRequest)
+				return
+			}
+			content, _ := json.Marshal(&fakeUpstreamResponse{
+				URI:     r.RequestURI,
+				Method:  r.Method,
+				Address: r.RemoteAddr,
+				Headers: r.Header,
+			})
+			_ = websocket.Message.Send(ws, content)
+		}).ServeHTTP(w, r)
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		content, _ := json.Marshal(&fakeUpstreamResponse{
+			URI:     r.RequestURI,
+			Method:  r.Method,
+			Address: r.RemoteAddr,
+			Headers: r.Header,
+		})
+		_, _ = w.Write(content)
+	}
 }
 
 type fakeToken struct {
