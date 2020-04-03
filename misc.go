@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"path"
 	"strings"
 	"time"
@@ -133,4 +134,25 @@ func (r *oauthProxy) getAccessCookieExpiration(token jose.JWT, refresh string) t
 	}
 
 	return duration
+}
+
+// MergeURI parses the 2 URI strings, and merges in baseUri host:port/prefix to avoid making a https://host:port/https://host:port/strng mess
+func MergeURI(baseURI, resultURI string) *url.URL {
+	base, _ := url.Parse(baseURI)
+	result, _ := url.Parse(resultURI)
+
+	if base.Host != "" { // this has the port in it
+		result.Scheme = base.Scheme
+		result.Host = base.Host
+	}
+
+	if base.Path != "" {
+		if strings.HasSuffix(base.Path, "/") || strings.HasPrefix(result.Path, "/") {
+			result.Path = fmt.Sprintf("%s%s", base.Path, result.Path)
+		} else {
+			result.Path = fmt.Sprintf("%s/%s", base.Path, result.Path)
+		}
+	}
+
+	return result
 }
