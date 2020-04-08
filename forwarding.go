@@ -18,6 +18,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/coreos/go-oidc/jose"
@@ -53,19 +54,25 @@ func (r *oauthProxy) proxyMiddleware(next http.Handler) http.Handler {
 			req.Header.Set(k, v)
 		}
 
+		r.upstream.ServeHTTP(w, req)
+	})
+}
+
+func (r *oauthProxy) forwardToUpstream(upstreamURL *url.URL, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		// @note: by default goproxy only provides a forwarding proxy, thus all requests have to be absolute and we must update the host headers
-		req.URL.Host = r.endpoint.Host
-		req.URL.Scheme = r.endpoint.Scheme
+		req.URL.Host = upstreamURL.Host
+		req.URL.Scheme = upstreamURL.Scheme
 		if v := req.Header.Get("Host"); v != "" {
 			req.Host = v
 			req.Header.Del("Host")
 		} else if !r.config.PreserveHost {
-			req.Host = r.endpoint.Host
+			req.Host = upstreamURL.Host
 		}
 
 		if isUpgradedConnection(req) {
 			r.log.Debug("upgrading the connnection", zap.String("client_ip", req.RemoteAddr))
-			if err := tryUpdateConnection(req, w, r.endpoint); err != nil {
+			if err := tryUpdateConnection(req, w, upstreamURL); err != nil {
 				r.log.Error("failed to upgrade connection", zap.Error(err))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
@@ -73,7 +80,7 @@ func (r *oauthProxy) proxyMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		r.upstream.ServeHTTP(w, req)
+		next.ServeHTTP(w, req)
 	})
 }
 

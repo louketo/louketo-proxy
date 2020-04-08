@@ -142,6 +142,15 @@ func (r *Config) isValid() error {
 		if r.Upstream == "" {
 			return errors.New("you have not specified an upstream endpoint to proxy to")
 		}
+
+		if len(r.UpstreamPaths) > 0 {
+			for _, p := range r.UpstreamPaths {
+				if _, err := url.Parse(p.Upstream); err != nil {
+					return fmt.Errorf("the upstream endpoint `%s` is invalid, %s", p, err)
+				}
+			}
+		}
+
 		if _, err := url.Parse(r.Upstream); err != nil {
 			return fmt.Errorf("the upstream endpoint is invalid, %s", err)
 		}

@@ -155,9 +155,10 @@ func createLogger(config *Config) (*zap.Logger, error) {
 // createReverseProxy creates a reverse proxy
 func (r *oauthProxy) createReverseProxy() error {
 	r.log.Info("enabled reverse proxy mode, upstream url", zap.String("url", r.config.Upstream))
-	if err := r.createUpstreamProxy(r.endpoint); err != nil {
+	if err := r.createDefaultUpstreamProxy(); err != nil {
 		return err
 	}
+
 	engine := chi.NewRouter()
 	engine.MethodNotAllowed(emptyHandler)
 	engine.NotFound(emptyHandler)
@@ -287,20 +288,22 @@ func (r *oauthProxy) createReverseProxy() error {
 }
 
 // createForwardingProxy creates a forwarding proxy
+//nolint:funlen
 func (r *oauthProxy) createForwardingProxy() error {
 	r.log.Info("enabling forward signing mode, listening on", zap.String("interface", r.config.Listen))
 
 	if r.config.SkipUpstreamTLSVerify {
 		r.log.Warn("tls verification switched off. In forward signing mode it's recommended you verify! (--skip-upstream-tls-verify=false)")
 	}
-	if err := r.createUpstreamProxy(nil); err != nil {
+
+	proxy, err := r.createUpstreamProxy(nil)
+	if err != nil {
 		return err
 	}
 	//nolint:bodyclose
 	forwardingHandler := r.forwardProxyHandler()
 
 	// set the http handler
-	proxy := r.upstream.(*goproxy.ProxyHttpServer)
 	r.router = proxy
 
 	// setup the tls configuration
@@ -553,8 +556,44 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 	return listener, nil
 }
 
+func (r *oauthProxy) createDefaultUpstreamProxy() error {
+	defaultUpstream, err := r.createUpstreamProxy(r.endpoint)
+	if err != nil {
+		return err
+	}
+
+	if len(r.config.UpstreamPaths) > 0 {
+		engine := chi.NewRouter()
+
+		for _, x := range r.config.UpstreamPaths {
+			path := x
+
+			upstreamURL, err := url.Parse(path.Upstream)
+			if err != nil {
+				return err
+			}
+
+			proxy, err := r.createUpstreamProxy(upstreamURL)
+			if err != nil {
+				return err
+			}
+
+			engine.Mount(path.URL, r.forwardToUpstream(upstreamURL, proxy))
+		}
+
+		engine.NotFound(r.forwardToUpstream(r.endpoint, defaultUpstream).ServeHTTP)
+
+		r.upstream = engine
+	} else {
+		r.upstream = r.forwardToUpstream(r.endpoint, defaultUpstream)
+	}
+
+	return nil
+}
+
 // createUpstreamProxy create a reverse http proxy from the upstream
-func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) error {
+//nolint:funlen
+func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) (*goproxy.ProxyHttpServer, error) {
 	dialer := (&net.Dialer{
 		KeepAlive: r.config.UpstreamKeepaliveTimeout,
 		Timeout:   r.config.UpstreamTimeout,
@@ -583,7 +622,7 @@ func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) error {
 		cert, err := ioutil.ReadFile(r.config.TLSClientCertificate)
 		if err != nil {
 			r.log.Error("unable to read client certificate", zap.String("path", r.config.TLSClientCertificate), zap.Error(err))
-			return err
+			return nil, err
 		}
 		pool := x509.NewCertPool()
 		pool.AppendCertsFromPEM(cert)
@@ -597,7 +636,7 @@ func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) error {
 			r.log.Info("loading the upstream ca", zap.String("path", r.config.UpstreamCA))
 			ca, err := ioutil.ReadFile(r.config.UpstreamCA)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			pool := x509.NewCertPool()
 			pool.AppendCertsFromPEM(ca)
@@ -614,10 +653,9 @@ func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) error {
 	proxy.KeepDestinationHeaders = true
 	proxy.Logger = httplog.New(ioutil.Discard, "", 0)
 	proxy.KeepDestinationHeaders = true
-	r.upstream = proxy
 
 	// update the tls configuration of the reverse proxy
-	r.upstream.(*goproxy.ProxyHttpServer).Tr = &http.Transport{
+	proxy.Tr = &http.Transport{
 		Dial:                  dialer,
 		DisableKeepAlives:     !r.config.UpstreamKeepalives,
 		ExpectContinueTimeout: r.config.UpstreamExpectContinueTimeout,
@@ -628,7 +666,7 @@ func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) error {
 		MaxIdleConnsPerHost:   r.config.MaxIdleConnsPerHost,
 	}
 
-	return nil
+	return proxy, nil
 }
 
 // createTemplates loads the custom template
