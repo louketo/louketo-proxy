@@ -395,7 +395,13 @@ func (r *oauthProxy) responseHeaderMiddleware(headers map[string]string) func(ht
 func (r *oauthProxy) identityHeadersMiddleware(custom []string) func(http.Handler) http.Handler {
 	customClaims := make(map[string]string)
 	for _, x := range custom {
-		customClaims[x] = fmt.Sprintf("X-Auth-%s", toHeader(x))
+		xslices := strings.Split(x, "|")
+		x = xslices[0]
+		if len(xslices) > 1 {
+			customClaims[x] = toHeader(xslices[1])
+		} else {
+			customClaims[x] = fmt.Sprintf("X-Auth-%s", toHeader(x))
+		}
 	}
 
 	cookieFilter := []string{r.config.CookieAccessName, r.config.CookieRefreshName}
