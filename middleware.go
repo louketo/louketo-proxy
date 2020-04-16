@@ -397,6 +397,7 @@ func (r *oauthProxy) identityHeadersMiddleware(custom []string) func(http.Handle
 	for _, x := range custom {
 		xslices := strings.Split(x, "|")
 		x = xslices[0]
+
 		if len(xslices) > 1 {
 			customClaims[x] = toHeader(xslices[1])
 		} else {
