@@ -452,9 +452,17 @@ func getWithin(expires time.Time, within float64) time.Duration {
 	return time.Duration(seconds) * time.Second
 }
 
+// DEPRECATED To be removed in the future and replaced _getHashKey
 // getHashKey returns a hash of the encodes jwt token
 func getHashKey(token *jose.JWT) string {
 	hash := sha.Sum256([]byte(token.Encode()))
+	return base64.RawStdEncoding.EncodeToString(hash[:])
+}
+
+// FIXME Rename once we identify that things are stable
+// getHashKey returns a hash of the encodes jwt token
+func _getHashKey(token string) string {
+	hash := sha.Sum256([]byte(token))
 	return base64.RawStdEncoding.EncodeToString(hash[:])
 }
 

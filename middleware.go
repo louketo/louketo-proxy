@@ -200,7 +200,7 @@ func (r *oauthProxy) authenticationMiddleware() func(http.Handler) http.Handler 
 					}
 					if refreshExpiresIn == 0 {
 						// refresh token expiry claims not available: try to parse refresh token
-						refreshExpiresIn = r.getAccessCookieExpiration(token, refresh)
+						refreshExpiresIn = r.getAccessCookieExpiration(refresh)
 					}
 
 					r.log.Info("injecting the refreshed access token cookie",

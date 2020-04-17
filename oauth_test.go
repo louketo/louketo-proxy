@@ -29,7 +29,6 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc/jose"
-	"github.com/coreos/go-oidc/oauth2"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/stretchr/testify/assert"
@@ -241,7 +240,7 @@ func (r *fakeAuthServer) tokenHandler(w http.ResponseWriter, req *http.Request) 
 	}
 
 	switch req.FormValue("grant_type") {
-	case oauth2.GrantTypeUserCreds:
+	case GrantTypeUserCreds:
 		username := req.FormValue("username")
 		password := req.FormValue("password")
 		if username == "" || password == "" {
@@ -261,9 +260,9 @@ func (r *fakeAuthServer) tokenHandler(w http.ResponseWriter, req *http.Request) 
 			"error":             "invalid_grant",
 			"error_description": "invalid user credentials",
 		})
-	case oauth2.GrantTypeRefreshToken:
+	case GrantTypeRefreshToken:
 		fallthrough
-	case oauth2.GrantTypeAuthCode:
+	case GrantTypeAuthCode:
 		renderJSON(http.StatusOK, w, req, tokenResponse{
 			IDToken:      token.Encode(),
 			AccessToken:  token.Encode(),

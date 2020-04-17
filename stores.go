@@ -50,9 +50,16 @@ func (r *oauthProxy) useStore() bool {
 	return r.store != nil
 }
 
+// DEPRECATED To be removed in the future and replaced by _StoreRefreshToken
 // StoreRefreshToken the token to the store
 func (r *oauthProxy) StoreRefreshToken(token jose.JWT, value string, expiration time.Duration) error {
 	return r.store.Set(getHashKey(&token), value, expiration)
+}
+
+// FIXME Rename once we identify that things are stable
+// StoreRefreshToken the token to the store
+func (r *oauthProxy) _StoreRefreshToken(token string, value string, expiration time.Duration) error {
+	return r.store.Set(_getHashKey(token), value, expiration)
 }
 
 // Get retrieves a token from the store, the key we are using here is the access token

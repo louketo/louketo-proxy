@@ -31,7 +31,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/go-oidc/oauth2"
 	"github.com/coreos/go-oidc/oidc"
 
 	"github.com/go-chi/chi"
@@ -72,7 +71,7 @@ func (r *oauthProxy) oauthAuthorizationHandler(w http.ResponseWriter, req *http.
 		w.WriteHeader(http.StatusNotAcceptable)
 		return
 	}
-	client, err := r.getOAuthClient(r.getRedirectionURL(w, req), getClientAuthMethod(r.config.ClientAuthMethod))
+	client, err := r.getOAuthConf(r.getRedirectionURL(w, req))
 	if err != nil {
 		r.log.Error("failed to retrieve the oauth client for authorization", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
@@ -85,7 +84,7 @@ func (r *oauthProxy) oauthAuthorizationHandler(w http.ResponseWriter, req *http.
 		accessType = "offline"
 	}
 
-	authURL := client.AuthCodeURL(req.URL.Query().Get("state"), accessType, "")
+	authURL := client.AuthCodeURL(req.URL.Query().Get("state"))
 	r.log.Debug("incoming authorization request from client address",
 		zap.String("access_type", accessType),
 		zap.String("auth_url", authURL),
@@ -108,9 +107,9 @@ func (r *oauthProxy) oauthAuthorizationHandler(w http.ResponseWriter, req *http.
 func getClientAuthMethod(authMethod string) string {
 	switch authMethod {
 	case authMethodBasic:
-		return oauth2.AuthMethodClientSecretBasic
+		return AuthMethodClientSecretBasic
 	case authMethodBody:
-		return oauth2.AuthMethodClientSecretPost
+		return AuthMethodClientSecretPost
 	default:
 		return ""
 	}
@@ -129,14 +128,14 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	client, err := r.getOAuthClient(r.getRedirectionURL(w, req), getClientAuthMethod(r.config.ClientAuthMethod))
-	if err != nil {
-		r.log.Error("unable to create a oauth2 client", zap.Error(err))
+	conf, _err := r.getOAuthConf(r.getRedirectionURL(w, req))
+	if _err != nil {
+		r.log.Error("unable to create a oauth2 configuration", zap.Error(_err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	resp, err := exchangeAuthenticationCode(client, code)
+	resp, err := _exchangeAuthenticationCode(conf, code)
 	if err != nil {
 		r.log.Error("unable to exchange code for access token", zap.Error(err))
 		r.accessForbidden(w, req)
@@ -146,12 +145,20 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 	// Flow: once we exchange the authorization code we parse the ID Token; we then check for an access token,
 	// if an access token is present and we can decode it, we use that as the session token, otherwise we default
 	// to the ID Token.
-	token, identity, err := parseToken(resp.IDToken)
+	rawIDToken, ok := resp.Extra("id_token").(string)
+	if !ok {
+		r.log.Error("unable to obtain id token", zap.Error(err))
+		r.accessForbidden(w, req)
+		return
+	}
+
+	token, identity, err := parseToken(rawIDToken)
 	if err != nil {
 		r.log.Error("unable to parse id token for identity", zap.Error(err))
 		r.accessForbidden(w, req)
 		return
 	}
+
 	access, id, err := parseToken(resp.AccessToken)
 	if err == nil {
 		token = access
@@ -195,7 +202,7 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 			return
 		}
 		// drop in the access token - cookie expiration = access token
-		r.dropAccessTokenCookie(req, w, accessToken, r.getAccessCookieExpiration(token, resp.RefreshToken))
+		r.dropAccessTokenCookie(req, w, accessToken, r.getAccessCookieExpiration(resp.RefreshToken))
 
 		var expiration time.Duration
 		// notes: not all idp refresh tokens are readable, google for example, so we attempt to decode into
@@ -252,7 +259,7 @@ func (r *oauthProxy) loginHandler(w http.ResponseWriter, req *http.Request) {
 		start := time.Now()
 		token, err := client.UserCredsToken(username, password)
 		if err != nil {
-			if strings.HasPrefix(err.Error(), oauth2.ErrorInvalidGrant) {
+			if strings.HasPrefix(err.Error(), ErrorInvalidGrant) {
 				return "invalid user credentials provided", http.StatusUnauthorized, err
 			}
 			return "unable to request the access token via grant_type 'password'", http.StatusInternalServerError, err
