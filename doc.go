@@ -438,10 +438,10 @@ type userContext struct {
 
 // tokenResponse
 type tokenResponse struct {
-	TokenType    string `json:"token_type"`
-	AccessToken  string `json:"access_token"`
-	IDToken      string `json:"id_token"`
-	RefreshToken string `json:"refresh_token,omitempty"`
-	ExpiresIn    int    `json:"expires_in"`
-	Scope        string `json:"scope,omitempty"`
+	TokenType    string  `json:"token_type"`
+	AccessToken  string  `json:"access_token"`
+	IDToken      string  `json:"id_token"`
+	RefreshToken string  `json:"refresh_token,omitempty"`
+	ExpiresIn    float64 `json:"expires_in"`
+	Scope        string  `json:"scope,omitempty"`
 }
