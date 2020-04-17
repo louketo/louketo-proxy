@@ -16,6 +16,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
@@ -28,8 +29,9 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/oauth2"
+
 	"github.com/coreos/go-oidc/jose"
-	"github.com/coreos/go-oidc/oauth2"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/stretchr/testify/assert"
@@ -241,7 +243,7 @@ func (r *fakeAuthServer) tokenHandler(w http.ResponseWriter, req *http.Request) 
 	}
 
 	switch req.FormValue("grant_type") {
-	case oauth2.GrantTypeUserCreds:
+	case GrantTypeUserCreds:
 		username := req.FormValue("username")
 		password := req.FormValue("password")
 		if username == "" || password == "" {
@@ -253,7 +255,7 @@ func (r *fakeAuthServer) tokenHandler(w http.ResponseWriter, req *http.Request) 
 				IDToken:      token.Encode(),
 				AccessToken:  token.Encode(),
 				RefreshToken: token.Encode(),
-				ExpiresIn:    expires.UTC().Second(),
+				ExpiresIn:    float64(expires.UTC().Second()),
 			})
 			return
 		}
@@ -261,14 +263,14 @@ func (r *fakeAuthServer) tokenHandler(w http.ResponseWriter, req *http.Request) 
 			"error":             "invalid_grant",
 			"error_description": "invalid user credentials",
 		})
-	case oauth2.GrantTypeRefreshToken:
+	case GrantTypeRefreshToken:
 		fallthrough
-	case oauth2.GrantTypeAuthCode:
+	case GrantTypeAuthCode:
 		renderJSON(http.StatusOK, w, req, tokenResponse{
 			IDToken:      token.Encode(),
 			AccessToken:  token.Encode(),
 			RefreshToken: token.Encode(),
-			ExpiresIn:    expires.Second(),
+			ExpiresIn:    float64(expires.Second()),
 		})
 	default:
 		w.WriteHeader(http.StatusBadRequest)
@@ -278,7 +280,10 @@ func (r *fakeAuthServer) tokenHandler(w http.ResponseWriter, req *http.Request) 
 func TestGetUserinfo(t *testing.T) {
 	px, idp, _ := newTestProxyService(nil)
 	token := newTestToken(idp.getLocation()).getToken()
-	client, _ := px.client.OAuthClient()
+	tokenSource := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: token.Encode()},
+	)
+	client := oauth2.NewClient(context.Background(), tokenSource)
 	claims, err := getUserinfo(client, px.idp.UserInfoEndpoint.String(), token.Encode())
 	assert.NoError(t, err)
 	assert.NotEmpty(t, claims)
