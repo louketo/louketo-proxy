@@ -394,6 +394,7 @@ func (r *oauthProxy) responseHeaderMiddleware(headers map[string]string) func(ht
 // identityHeadersMiddleware is responsible for add the authentication headers for the upstream
 func (r *oauthProxy) identityHeadersMiddleware(custom []string) func(http.Handler) http.Handler {
 	customClaims := make(map[string]string)
+
 	const minSliceLength int = 1
 
 	for _, x := range custom {
