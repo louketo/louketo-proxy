@@ -32,6 +32,8 @@ import (
 	"strings"
 	"time"
 
+	"go.uber.org/zap/zapcore"
+
 	"golang.org/x/crypto/acme/autocert"
 
 	httplog "log"
@@ -137,6 +139,8 @@ func createLogger(config *Config) (*zap.Logger, error) {
 	c := zap.NewProductionConfig()
 	c.DisableStacktrace = true
 	c.DisableCaller = true
+	// Use human-readable timestamps in the logs until KEYCLOAK-12100 is fixed
+	c.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 	// are we enabling json logging?
 	if !config.EnableJSONLogging {
 		c.Encoding = "console"
