@@ -385,6 +385,11 @@ type RequestScope struct {
 	AccessDenied bool
 	// Identity is the user Identity of the request
 	Identity *userContext
+	// The parsed (unescaped) value of the request path
+	Path string
+	// Preserve the original request path: KEYCLOAK-10864, KEYCLOAK-11276, KEYCLOAK-13315
+	// The exact path received in the request, if different than Path
+	RawPath string
 }
 
 // storage is used to hold the offline refresh token, assuming you don't want to use

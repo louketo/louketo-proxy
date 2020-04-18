@@ -334,16 +334,17 @@ func TestMetricsMiddleware(t *testing.T) {
 	cfg.LocalhostMetrics = true
 	requests := []fakeRequest{
 		{
-			URI:                     cfg.WithOAuthURI(metricsURL),
-			ExpectedCode:            http.StatusOK,
-			ExpectedContentContains: "proxy_request_status_total",
-		},
-		{
 			URI: cfg.WithOAuthURI(metricsURL),
 			Headers: map[string]string{
 				"X-Forwarded-For": "10.0.0.1",
 			},
 			ExpectedCode: http.StatusForbidden,
+		},
+		// Some request must run before this one to generate request status numbers
+		{
+			URI:                     cfg.WithOAuthURI(metricsURL),
+			ExpectedCode:            http.StatusOK,
+			ExpectedContentContains: "proxy_request_status_total",
 		},
 	}
 	newFakeProxy(cfg).RunTests(t, requests)
@@ -433,6 +434,100 @@ func TestMethodExclusions(t *testing.T) {
 	newFakeProxy(cfg).RunTests(t, requests)
 }
 
+func TestPreserveURLEncoding(t *testing.T) {
+	cfg := newFakeKeycloakConfig()
+	cfg.EnableLogging = true
+	cfg.Resources = []*Resource{
+		{
+			URL:     "/api/v2/*",
+			Methods: allHTTPMethods,
+			Roles:   []string{"dev"},
+		},
+		{
+			URL:     "/api/v1/auth*",
+			Methods: allHTTPMethods,
+			Roles:   []string{"admin"},
+		},
+		{
+			URL:         "/api/v1/*",
+			Methods:     allHTTPMethods,
+			WhiteListed: true,
+		},
+		{
+			URL:     "/*",
+			Methods: allHTTPMethods,
+			Roles:   []string{"user"},
+		},
+	}
+	requests := []fakeRequest{
+		{
+			URI:          "/test",
+			HasToken:     true,
+			Roles:        []string{"nothing"},
+			ExpectedCode: http.StatusForbidden,
+		},
+		{
+			URI:          "/",
+			ExpectedCode: http.StatusUnauthorized,
+		},
+		{ // See KEYCLOAK-10864
+			URI:                     "/administrativeMonitor/hudson.diagnosis.ReverseProxySetupMonitor/testForReverseProxySetup/https%3A%2F%2Flocalhost%3A6001%2Fmanage/",
+			ExpectedContentContains: `"uri":"/administrativeMonitor/hudson.diagnosis.ReverseProxySetupMonitor/testForReverseProxySetup/https%3A%2F%2Flocalhost%3A6001%2Fmanage/"`,
+			HasToken:                true,
+			Roles:                   []string{"user"},
+			ExpectedProxy:           true,
+			ExpectedCode:            http.StatusOK,
+		},
+		{ // See KEYCLOAK-11276
+			URI:                     "/iiif/2/edepot_local:ST%2F00001%2FST00005_00001.jpg/full/1000,/0/default.png",
+			ExpectedContentContains: `"uri":"/iiif/2/edepot_local:ST%2F00001%2FST00005_00001.jpg/full/1000,/0/default.png"`,
+			HasToken:                true,
+			Roles:                   []string{"user"},
+			ExpectedProxy:           true,
+			ExpectedCode:            http.StatusOK,
+		},
+		{ // See KEYCLOAK-13315
+			URI:                     "/rabbitmqui/%2F/replicate-to-central",
+			ExpectedContentContains: `"uri":"/rabbitmqui/%2F/replicate-to-central"`,
+			HasToken:                true,
+			Roles:                   []string{"user"},
+			ExpectedProxy:           true,
+			ExpectedCode:            http.StatusOK,
+		},
+		{ // should work
+			URI:           "/api/v1/auth",
+			HasToken:      true,
+			Roles:         []string{"admin"},
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
+		},
+		{ // should work
+			URI:                     "/api/v1/auth?referer=https%3A%2F%2Fwww.example.com%2Fauth",
+			ExpectedContentContains: `"uri":"/api/v1/auth?referer=https%3A%2F%2Fwww.example.com%2Fauth"`,
+			HasToken:                true,
+			Roles:                   []string{"admin"},
+			ExpectedProxy:           true,
+			ExpectedCode:            http.StatusOK,
+		},
+		{
+			URI:          "/api/v1/auth?referer=https%3A%2F%2Fwww.example.com%2Fauth",
+			HasToken:     true,
+			Roles:        []string{"user"},
+			ExpectedCode: http.StatusForbidden,
+		},
+		{ // should work
+			URI:                     "/api/v3/auth?referer=https%3A%2F%2Fwww.example.com%2Fauth",
+			ExpectedContentContains: `"uri":"/api/v3/auth?referer=https%3A%2F%2Fwww.example.com%2Fauth"`,
+			HasToken:                true,
+			Roles:                   []string{"user"},
+			ExpectedProxy:           true,
+			ExpectedCode:            http.StatusOK,
+		},
+	}
+
+	newFakeProxy(cfg).RunTests(t, requests)
+}
+
 func TestStrangeRoutingError(t *testing.T) {
 	cfg := newFakeKeycloakConfig()
 	cfg.Resources = []*Resource{
@@ -459,12 +554,13 @@ func TestStrangeRoutingError(t *testing.T) {
 	}
 	requests := []fakeRequest{
 		{ // should work
-			URI:           "/api/v1/events/123456789",
-			HasToken:      true,
-			Redirects:     true,
-			Roles:         []string{"user"},
-			ExpectedProxy: true,
-			ExpectedCode:  http.StatusOK,
+			URI:                     "/api/v1/events/123456789",
+			HasToken:                true,
+			Redirects:               true,
+			Roles:                   []string{"user"},
+			ExpectedProxy:           true,
+			ExpectedCode:            http.StatusOK,
+			ExpectedContentContains: `"uri":"/api/v1/events/123456789"`,
 		},
 		{ // should break with bad role
 			URI:          "/api/v1/events/123456789",
