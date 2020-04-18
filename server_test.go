@@ -85,9 +85,10 @@ func TestReverseProxyHeaders(t *testing.T) {
 	token := newTestToken(p.idp.getLocation())
 	token.addRealmRoles([]string{fakeAdminRole})
 	signed, _ := p.idp.signToken(token.claims)
+	uri := "/auth_all/test"
 	requests := []fakeRequest{
 		{
-			URI:           "/auth_all/test",
+			URI:           uri,
 			RawToken:      signed.Encode(),
 			ExpectedProxy: true,
 			ExpectedProxyHeaders: map[string]string{
@@ -98,7 +99,8 @@ func TestReverseProxyHeaders(t *testing.T) {
 				"X-Auth-Userid":   "rjayawardene",
 				"X-Auth-Username": "rjayawardene",
 			},
-			ExpectedCode: http.StatusOK,
+			ExpectedCode:            http.StatusOK,
+			ExpectedContentContains: `"uri":"` + uri + `"`,
 		},
 	}
 	p.RunTests(t, requests)
@@ -532,7 +534,10 @@ func (f *fakeUpstreamService) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	content, _ := json.Marshal(&fakeUpstreamResponse{
-		URI:     r.RequestURI,
+		// r.RequestURI is what was received by the proxy.
+		// r.URL.String() is what is actually sent to the upstream service.
+		// KEYCLOAK-10864, KEYCLOAK-11276, KEYCLOAK-13315
+		URI:     r.URL.String(),
 		Method:  r.Method,
 		Address: r.RemoteAddr,
 		Headers: r.Header,

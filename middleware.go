@@ -40,30 +40,35 @@ const (
 // entrypointMiddleware is custom filtering for incoming requests
 func entrypointMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		keep := req.URL.Path
+		// @step: create a context for the request
+		scope := &RequestScope{}
+		// Save the exact formatting of the incoming request so we can use it later
+		scope.Path = req.URL.Path
+		scope.RawPath = req.URL.RawPath
+
+		// We want to Normalize the URL so that we can more easily and accurately
+		// parse it to apply resource protection rules.
 		purell.NormalizeURL(req.URL, normalizeFlags)
 
 		// ensure we have a slash in the url
 		if !strings.HasPrefix(req.URL.Path, "/") {
 			req.URL.Path = "/" + req.URL.Path
 		}
-		req.RequestURI = req.URL.RawPath
-		req.URL.RawPath = req.URL.Path
+		req.URL.RawPath = req.URL.EscapedPath()
 
-		// @step: create a context for the request
-		scope := &RequestScope{}
 		resp := middleware.NewWrapResponseWriter(w, 1)
 		start := time.Now()
+		// All the processing, including forwarding the request upstream and getting the response,
+		// happens here in this chain.
 		next.ServeHTTP(resp, req.WithContext(context.WithValue(req.Context(), contextScopeName, scope)))
 
 		// @metric record the time taken then response code
 		latencyMetric.Observe(time.Since(start).Seconds())
 		statusMetric.WithLabelValues(fmt.Sprintf("%d", resp.Status()), req.Method).Inc()
 
-		// place back the original uri for proxying request
-		req.URL.Path = keep
-		req.URL.RawPath = keep
-		req.RequestURI = keep
+		// place back the original uri for any later consumers
+		req.URL.Path = scope.Path
+		req.URL.RawPath = scope.RawPath
 	})
 }
 
@@ -87,13 +92,24 @@ func (r *oauthProxy) loggingMiddleware(next http.Handler) http.Handler {
 		resp := w.(middleware.WrapResponseWriter)
 		next.ServeHTTP(resp, req)
 		addr := req.RemoteAddr
-		r.log.Info("client request",
-			zap.Duration("latency", time.Since(start)),
-			zap.Int("status", resp.Status()),
-			zap.Int("bytes", resp.BytesWritten()),
-			zap.String("client_ip", addr),
-			zap.String("method", req.Method),
-			zap.String("path", req.URL.Path))
+		if req.URL.Path == req.URL.RawPath || req.URL.RawPath == "" {
+			r.log.Info("client request",
+				zap.Duration("latency", time.Since(start)),
+				zap.Int("status", resp.Status()),
+				zap.Int("bytes", resp.BytesWritten()),
+				zap.String("client_ip", addr),
+				zap.String("method", req.Method),
+				zap.String("path", req.URL.Path))
+		} else {
+			r.log.Info("client request",
+				zap.Duration("latency", time.Since(start)),
+				zap.Int("status", resp.Status()),
+				zap.Int("bytes", resp.BytesWritten()),
+				zap.String("client_ip", addr),
+				zap.String("method", req.Method),
+				zap.String("path", req.URL.Path),
+				zap.String("raw path", req.URL.RawPath))
+		}
 	})
 }
 

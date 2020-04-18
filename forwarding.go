@@ -32,8 +32,9 @@ func (r *oauthProxy) proxyMiddleware(next http.Handler) http.Handler {
 
 		// @step: retrieve the request scope
 		scope := req.Context().Value(contextScopeName)
+		var sc *RequestScope
 		if scope != nil {
-			sc := scope.(*RequestScope)
+			sc = scope.(*RequestScope)
 			if sc.AccessDenied {
 				return
 			}
@@ -56,6 +57,12 @@ func (r *oauthProxy) proxyMiddleware(next http.Handler) http.Handler {
 		// @note: by default goproxy only provides a forwarding proxy, thus all requests have to be absolute and we must update the host headers
 		req.URL.Host = r.endpoint.Host
 		req.URL.Scheme = r.endpoint.Scheme
+		// Restore the unprocessed original path, so that we pass upstream exactly what we received
+		// as the resource request. KEYCLOAK-10864, KEYCLOAK-11276, KEYCLOAK-13315
+		if sc != nil {
+			req.URL.Path = sc.Path
+			req.URL.RawPath = sc.RawPath
+		}
 		if v := req.Header.Get("Host"); v != "" {
 			req.Host = v
 			req.Header.Del("Host")
