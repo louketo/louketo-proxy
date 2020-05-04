@@ -383,7 +383,7 @@ func (r *oauthProxy) Run() error {
 	r.listener = listener
 
 	go func() {
-		r.log.Info("keycloak proxy service starting", zap.String("interface", r.config.Listen))
+		r.log.Info("Louketo proxy service starting", zap.String("interface", r.config.Listen))
 		if err = server.Serve(listener); err != nil {
 			if err != http.ErrServerClosed {
 				r.log.Fatal("failed to start the http service", zap.Error(err))
@@ -393,7 +393,7 @@ func (r *oauthProxy) Run() error {
 
 	// step: are we running http service as well?
 	if r.config.ListenHTTP != "" {
-		r.log.Info("keycloak proxy http service starting", zap.String("interface", r.config.ListenHTTP))
+		r.log.Info("Louketo proxy http service starting", zap.String("interface", r.config.ListenHTTP))
 		httpListener, err := r.createHTTPListener(listenerConfig{
 			listen:        r.config.ListenHTTP,
 			proxyProtocol: r.config.EnableProxyProtocol,
@@ -610,7 +610,7 @@ func (r *oauthProxy) createUpstreamProxy(upstream *url.URL) error {
 
 	// headers formed by middleware before proxying to upstream shall be
 	// kept in response. This is true for CORS headers ([KEYCOAK-9045])
-	// and for refreshed cookies (htts://github.com/keycloak/keycloak-gatekeeper/pulls/456])
+	// and for refreshed cookies (htts://github.com/louketo/louketo-proxy/pulls/456])
 	proxy.KeepDestinationHeaders = true
 	proxy.Logger = httplog.New(ioutil.Discard, "", 0)
 	proxy.KeepDestinationHeaders = true

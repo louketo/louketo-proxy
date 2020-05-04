@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	dbName = "keycloak"
+	dbName = "louketo"
 )
 
 var (

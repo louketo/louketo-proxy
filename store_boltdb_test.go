@@ -39,7 +39,7 @@ func (f *fakeBoltDBStore) close() {
 }
 
 func newTestBoldDB(t *testing.T) *fakeBoltDBStore {
-	tmpfile, err := ioutil.TempFile("/tmp", "keycloak-gatekeeper")
+	tmpfile, err := ioutil.TempFile("/tmp", "louketo-proxy")
 	if err != nil {
 		t.Fatalf("unable to create temporary file, error: %s", err)
 	}

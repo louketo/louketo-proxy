@@ -1,5 +1,5 @@
-NAME=keycloak-gatekeeper
-AUTHOR=keycloak
+NAME=louketo-proxy
+AUTHOR=louketo
 REGISTRY=docker.io
 GOVERSION ?= 1.10.2
 ROOT_DIR=${PWD}
@@ -43,9 +43,9 @@ docker-build:
 docker-test:
 	@echo "--> Running the docker test"
 	docker run --rm -ti -p 3000:3000 \
-    -v ${ROOT_DIR}/config.yml:/etc/keycloak/config.yml:ro \
+    -v ${ROOT_DIR}/config.yml:/etc/louketo/config.yml:ro \
     -v ${ROOT_DIR}/tests:/opt/tests:ro \
-    ${REGISTRY}/${AUTHOR}/${NAME}:${VERSION} --config /etc/keycloak/config.yml
+    ${REGISTRY}/${AUTHOR}/${NAME}:${VERSION} --config /etc/louketo/config.yml
 
 docker-release:
 	@echo "--> Building a release image"

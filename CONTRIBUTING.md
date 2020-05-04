@@ -1,28 +1,28 @@
-# Keycloak Community
+# Louketo Community
 
-Keycloak Gatekeeper is an Open Source adapter solution to protect non-Java modern Applications and Services.
+Louketo Proxy is an Open Source adapter solution to protect non-Java modern Applications and Services.
 
 ## Building and working with the codebase
 
 Details for building from source and working with the codebase are provided in the [building and working with the code base](docs/building.md) guide.
 
-## Contributing to Gatekeeper
+## Contributing to Louketo
 
-Gatekeeper is an Open Source community-driven project and we welcome contributions as well as feedback from the community.
+Louketo is an Open Source community-driven project and we welcome contributions as well as feedback from the community.
 
 We do have a few guidelines in place to help you be successful with your contribution.
 
 Here's a quick checklist for a good PR, more details below:
 
-1. [Keycloak Dev Mailing List](https://groups.google.com/forum/#!forum/keycloak-dev)
-2. A JIRA associated with the PR
+1. [Louketo Mailing List](https://groups.google.com/forum/#!forum/louketo)
+2. The issue number associated with the PR
 3. One feature/change per PR
 4. One commit per PR
 5. PR rebased on master (`git rebase`, not `git pull`) 
-5. Commit message is prefixed by JIRA number
-6. No changes to code not directly related to your PR
-7. Includes test
-8. Includes documentation
+6. Commit message including the GitHub issue number
+7. No changes to code not directly related to your PR
+8. Includes test
+9. Includes documentation
 
 Once you have submitted your PR please monitor it for comments/feedback. We reserve the right to close inactive PRs if
 you do not respond within 2 weeks (bear in mind you can always open a new PR if it is closed due to inactivity).
@@ -32,21 +32,21 @@ not be able to respond to your PR immediately. The best place to ping us is on t
 
 ### Finding something to work on
 
-If you would like to contribute to Keycloak, but are not sure exactly what to work on, you can find a number of open
+If you would like to contribute to Louketo, but are not sure exactly what to work on, you can find a number of open
 issues that are awaiting contributions in the 
-[Keycloak JIRA](https://issues.jboss.org/projects/KEYCLOAK/versions/12340167).
+[GitHub Issues](https://github.com/louketo/louketo-proxy/issues).
 
-### Open a discussion on Keycloak Dev Mailing List
+### Open a discussion on Louketo Mailing List
 
-As Keycloak is a community-driven project we require contributors to send a description of what they are planning to 
-work on to the [Keycloak Dev Mailing List](https://groups.google.com/forum/#!forum/keycloak-dev).
+As Louketo is a community-driven project we require contributors to send a description of what they are planning to 
+work on to the [Louketo Mailing List](https://groups.google.com/forum/#!forum/Louketo-dev).
 
 We recommend starting the discussion prior to submitting your PR. Through the mailing list you can get valuable
-feedback both from the core Keycloak team as well as the wider community.
+feedback both from the core Louketo team as well as the wider community.
 
-### Create an issue in Keycloak JIRA
+### Create an issue in GitHub Issues
 
-Take your time to write a proper JIRA including a good summary and description. 
+Take your time to write a proper issue including a good summary and description. 
 
 Remember this may be the first thing a reviewer of your PR will look at to get an idea of what you are proposing 
 and it will also be used by the community in the future to find about what new features and enhancements are included in 
@@ -63,9 +63,9 @@ refactoring.
 
 ### Documentation
 
-We require contributions to include relevant documentation. Alongside your PR for code changes, prepare a PR to the [Keycloak Documentation](https://github.com/keycloak/keycloak-documentation).
+We require contributions to include relevant documentation. Alongside your PR for code changes, prepare a PR to the [Louketo Documentation](https://github.com/Louketo/Louketo-documentation).
 
-In the description of your PR include a link to the PR to [Keycloak Documentation](https://github.com/keycloak/keycloak-documentation).
+In the description of your PR include a link to the PR to [Louketo Documentation](https://github.com/Louketo/Louketo-documentation).
 
 ### Submitting your PR
 
@@ -82,5 +82,5 @@ for more details.
 The above helps us review your PR and also makes it easier for us to maintain the repository. It is also required by
 our automatic merging process. 
 
-We also require that the commit message is prefixed with the Keycloak JIRA issue number (example commit message 
-"KEYCLOAK-9876 My super cool new feature").
+We also require that the commit message is prefixed with the GitHub issue number (example commit message 
+"My super cool new feature #9876").

@@ -147,12 +147,12 @@ func TestEncryptDataBlock(t *testing.T) {
 		Ok   bool
 	}{
 		{
-			Text: "hello world, my name is keycloak proxy",
+			Text: "hello world, my name is Louketo proxy",
 			Key:  "DtNMS2eO7Fi5vsuLrW55nrRbir2kPfTw",
 			Ok:   true,
 		},
 		{
-			Text: "hello world, my name is keycloak proxy",
+			Text: "hello world, my name is Louketo proxy",
 			Key:  "DtNMS2eO7Fi5vsu",
 		},
 		{
@@ -250,7 +250,7 @@ func TestDecryptDataBlock(t *testing.T) {
 		Ok   bool
 	}{
 		{
-			Text: "hello world, my name is keycloak proxy",
+			Text: "hello world, my name is Louketo proxy",
 			Key:  "DtNMS2eO7Fi5vsuLrW55nrRbir2kPfss",
 			Ok:   true,
 		},
