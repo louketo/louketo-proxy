@@ -87,7 +87,7 @@ func createCertificate(key *rsa.PrivateKey, hostnames []string, expire time.Dura
 		SignatureAlgorithm:    x509.SHA512WithRSA,
 		Subject: pkix.Name{
 			CommonName:   hostnames[0],
-			Organization: []string{"Keycloak Proxy"},
+			Organization: []string{"Louketo Proxy"},
 		},
 	}
 

@@ -1,4 +1,4 @@
-module github.com/keycloak/keycloak-gatekeeper
+module github.com/louketo/louketo-proxy
 
 require (
 	github.com/PuerkitoBio/purell v1.1.0

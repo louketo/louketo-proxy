@@ -1,6 +1,7 @@
 
 *.swp
 .idea/
+.vscode/
 bin/
 vendor/
 release/
@@ -11,6 +12,7 @@ test.sock
 tests/redis.conf
 tests/*.csr
 *.orig
+*.code-workspace
 debug
 
 *.iml

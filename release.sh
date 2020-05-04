@@ -1,5 +1,5 @@
 #!/bin/bash -e
-NAME="keycloak-gatekeeper"
+NAME="louketo-proxy"
 PLATFORMS="darwin linux windows"
 ARCHITECTURES="amd64"
 GIT_SHA=$(git --no-pager describe --always --dirty)
@@ -7,7 +7,8 @@ BUILD_TIME=$(date '+%s')
 LFLAGS="-X main.gitsha=$GIT_SHA -X main.compiled=$BUILD_TIME"
 
 DIR="$PWD"
-VERSION=`./get-version.sh`
+# Release an Alpha so we can provide all the binaries for people to give it a try
+VERSION="1.0.0-alpha"
 echo "Version: $VERSION"
 
 TMP=`mktemp -d`
@@ -45,11 +46,12 @@ echo ""
 clean
 release
 
-echo "------------------------------------------------------------------------------------------------------------"
-echo "Upload to jboss.org:"
-echo ""
+# TODO Use goreleases instead
+#echo "------------------------------------------------------------------------------------------------------------"
+#echo "Upload to jboss.org:"
+#echo ""
 
-rsync -rv --protocol=28 $DIR/release/* keycloak@filemgmt.jboss.org:/downloads_htdocs/keycloak/$VERSION/gatekeeper/
+#rsync -rv --protocol=28 $DIR/release/* keycloak@filemgmt.jboss.org:/downloads_htdocs/keycloak/$VERSION/louketo/
 
 echo "------------------------------------------------------------------------------------------------------------"
 echo "Done"

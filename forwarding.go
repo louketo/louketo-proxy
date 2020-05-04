@@ -45,7 +45,7 @@ func (r *oauthProxy) proxyMiddleware(next http.Handler) http.Handler {
 		req.Header.Set("X-Forwarded-Proto", req.Header.Get("X-Forwarded-Proto"))
 
 		if len(r.config.CorsOrigins) > 0 {
-			// if CORS is enabled by gatekeeper, do not propagate CORS requests upstream
+			// if CORS is enabled by Louketo Proxy, do not propagate CORS requests upstream
 			req.Header.Del("Origin")
 		}
 		// @step: add any custom headers to the request

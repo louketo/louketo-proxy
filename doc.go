@@ -36,9 +36,9 @@ var (
 type contextKey int8
 
 const (
-	prog        = "keycloak-gatekeeper"
-	author      = "Keycloak"
-	email       = "keycloak-user@lists.jboss.org"
+	prog        = "louketo-proxy"
+	author      = "Louketo"
+	email       = "louketo@googlegroups.com"
 	description = "is a proxy using the keycloak service for auth and authorization"
 
 	authorizationHeader = "Authorization"
@@ -212,7 +212,7 @@ type Config struct {
 	EnableDefaultDeny bool `json:"enable-default-deny" yaml:"enable-default-deny" usage:"enables a default denial on all requests, you have to explicitly say what is permitted (recommended)"`
 	// EnableEncryptedToken indicates the access token should be encoded
 	EnableEncryptedToken bool `json:"enable-encrypted-token" yaml:"enable-encrypted-token" usage:"enable encryption for the access tokens"`
-	// ForceEncryptedCookie indicates that the access token in the cookie should be encoded, regardless what EnableEncryptedToken says. This way, gatekeeper may receive tokens in header in the clear, whereas tokens in cookies remain encrypted
+	// ForceEncryptedCookie indicates that the access token in the cookie should be encoded, regardless what EnableEncryptedToken says. This way, Louketo Proxy may receive tokens in header in the clear, whereas tokens in cookies remain encrypted
 	ForceEncryptedCookie bool `json:"force-encrypted-cookie" yaml:"force-encrypted-cookie" usage:"force encryption for the access tokens in cookies"`
 	// EnableLogging indicates if we should log all the requests
 	EnableLogging bool `json:"enable-logging" yaml:"enable-logging" usage:"enable http logging of the requests"`
