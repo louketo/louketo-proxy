@@ -140,7 +140,6 @@ func (r *oauthProxy) forwardProxyHandler() func(*http.Request, *http.Response) {
 					zap.String("subject", state.identity.ID),
 					zap.String("email", state.identity.Email),
 					zap.String("expires", state.expiration.Format(time.RFC3339)))
-
 			} else {
 				r.log.Info("access token is about to expiry",
 					zap.String("subject", state.identity.ID),
@@ -182,7 +181,6 @@ func (r *oauthProxy) forwardProxyHandler() func(*http.Request, *http.Response) {
 						zap.String("subject", state.identity.ID),
 						zap.String("email", state.identity.Email),
 						zap.String("expires", state.expiration.Format(time.RFC3339)))
-
 				} else {
 					r.log.Info("session does not support refresh token, acquiring new token",
 						zap.String("subject", state.identity.ID),

@@ -1,0 +1,53 @@
+name: Build & Lint
+
+# Only trigger the event on pull-requests
+on: [pull_request]
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    # Test the latest release of Go
+    strategy:
+      matrix:
+        go: [ '1.14', '1.13' ]
+    steps:
+      # Setup the workflow to use the specific version of Go
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go }}
+        id: go
+      # Checkout the repository
+      - name: Checkout
+        uses: actions/checkout@v2
+      # Verify downloaded dependencies
+      - name: Verify dependencies
+        run: go mod verify
+      # Run tests and generates a coverage profile
+      - name: Test
+        run: |
+          go test -v -coverprofile=profile.cov ./...
+      # Run Go benchmarks
+      - name: Benchmark
+        run: |
+          go test -bench=. -benchmem
+      # Sends code coverage report to Coveralls
+      - name: Coveralls
+        env:
+          COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          GO111MODULE=off go get github.com/mattn/goveralls
+          $(go env GOPATH)/bin/goveralls -coverprofile=profile.cov -service=github
+  # Run the linter as a separate job
+  golangci:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v0.1.7
+        with:
+          version: v1.26
+          github-token: "${{ secrets.GITHUB_TOKEN }}"

@@ -512,7 +512,6 @@ func (r *oauthProxy) createHTTPListener(config listenerConfig) (net.Listener, er
 				return nil, err
 			}
 			getCertificate = rotate.GetCertificate
-
 		}
 
 		if config.useFileTLS {
