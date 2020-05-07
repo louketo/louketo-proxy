@@ -21,7 +21,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/tls"
-	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -47,10 +47,10 @@ type selfSignedCertificate struct {
 // newSelfSignedCertificate creates and returns a self signed certificate manager
 func newSelfSignedCertificate(hostnames []string, expiry time.Duration, log *zap.Logger) (*selfSignedCertificate, error) {
 	if len(hostnames) == 0 {
-		return nil, errors.New("no hostnames specified")
+		return nil, fmt.Errorf("no hostnames specified")
 	}
 	if expiry < 5*time.Minute {
-		return nil, errors.New("expiration must be greater then 5 minutes")
+		return nil, fmt.Errorf("expiration must be greater then 5 minutes")
 	}
 
 	// @step: generate a certificate pair

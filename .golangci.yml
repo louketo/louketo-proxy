@@ -4,7 +4,7 @@ linters-settings:
   golint:
     min-confidence: 0
   gocyclo:
-    min-complexity: 60
+    min-complexity: 64
   maligned:
     suggest-new: true
   dupl:
@@ -12,7 +12,11 @@ linters-settings:
   goconst:
     min-len: 2
     min-occurrences: 2
-
+  # TODO: Revisit after the refactor
+  funlen:
+    lines: 220
+    statements: 110
+  
 linters:
   enable-all: true
   disable:
@@ -21,3 +25,13 @@ linters:
     - lll
     - gochecknoinits
     - gochecknoglobals
+    - dupl
+    - wsl
+    - godox
+    - gomnd
+    # TODO: Revisit after the refactor
+    - gocognit
+    - testpackage
+    - goerr113
+    - godot
+    - nestif
