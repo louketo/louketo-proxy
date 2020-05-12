@@ -27,8 +27,8 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc/jose"
+	uuid "github.com/gofrs/uuid"
 	"github.com/rs/cors"
-	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"gopkg.in/resty.v1"

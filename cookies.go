@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	uuid "github.com/satori/go.uuid"
+	uuid "github.com/gofrs/uuid"
 )
 
 // SameSite cookie config options
@@ -121,11 +121,14 @@ func (r *oauthProxy) dropRefreshTokenCookie(req *http.Request, w http.ResponseWr
 
 // writeStateParameterCookie sets a state parameter cookie into the response
 func (r *oauthProxy) writeStateParameterCookie(req *http.Request, w http.ResponseWriter) string {
-	uuid := uuid.NewV4().String()
+	uuid, err := uuid.NewV4()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
 	requestURI := base64.StdEncoding.EncodeToString([]byte(req.URL.RequestURI()))
 	r.dropCookie(w, req.Host, requestURICookie, requestURI, 0)
-	r.dropCookie(w, req.Host, requestStateCookie, uuid, 0)
-	return uuid
+	r.dropCookie(w, req.Host, requestStateCookie, uuid.String(), 0)
+	return uuid.String()
 }
 
 // clearAllCookies is just a helper function for the below
