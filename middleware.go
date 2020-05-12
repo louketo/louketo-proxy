@@ -23,10 +23,11 @@ import (
 	"strings"
 	"time"
 
+	uuid "github.com/gofrs/uuid"
+
 	"github.com/PuerkitoBio/purell"
 	"github.com/coreos/go-oidc/jose"
 	"github.com/go-chi/chi/middleware"
-	uuid "github.com/satori/go.uuid"
 	"github.com/unrolled/secure"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -72,7 +73,11 @@ func (r *oauthProxy) requestIDMiddleware(header string) func(http.Handler) http.
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			if v := req.Header.Get(header); v == "" {
-				req.Header.Set(header, uuid.NewV1().String())
+				uuid, err := uuid.NewV1()
+				if err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+				}
+				req.Header.Set(header, uuid.String())
 			}
 
 			next.ServeHTTP(w, req)
