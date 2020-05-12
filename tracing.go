@@ -36,10 +36,12 @@ func (r *oauthProxy) proxyTracingMiddleware(next http.Handler) http.Handler {
 		ServiceName:   "gatekeeper",
 	})
 	if err != nil {
-		r.log.Info("jaeger trace span exporting disabled", zap.Error(err))
-	} else {
-		r.log.Info("jaeger trace span exporting enabled")
+		r.log.Warn("jaeger trace span exporting disabled", zap.Error(err))
+		r.config.EnableTracing = false
+		return next
 	}
+
+	r.log.Info("jaeger trace span exporting enabled")
 	trace.ApplyConfig(trace.Config{DefaultSampler: trace.AlwaysSample()})
 	trace.RegisterExporter(je)
 
