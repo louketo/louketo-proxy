@@ -14,7 +14,7 @@ VETARGS ?= -asmdecl -atomic -bool -buildtags -copylocks -methods -nilfunc -print
 PLATFORMS=darwin linux windows
 ARCHITECTURES=amd64
 
-.PHONY: test authors changelog build docker static release lint cover vet glide-install
+.PHONY: test authors changelog build docker static release lint cover vet
 
 default: build
 
