@@ -1,10 +1,10 @@
 # Louketo Proxy
 
-This repository contains the source code for the Louketo Proxy.
+This repository is a work in progress and contains the source code for the Louketo Proxy. You should be able to see what's being planned at our [milestones page](https://github.com/louketo/louketo-proxy/milestones).
 
 ## Help and Documentation
 
-* [Louketo Proxy documentation](https://louketo.github.io/)
+* [Louketo Proxy documentation](docs/user-guide.md)
 * [Mailing List](https://groups.google.com/forum/#!forum/louketo) - Mailing list for help and general questions about Keycloak
 * [Issue Tracker](https://github.com/louketo/louketo-proxy/issues) - Issue tracker for bugs and feature requests
 
@@ -26,7 +26,7 @@ To run Louketo Proxy, please refer to our [building and working with the code ba
 
     docker run -it --rm quay.io/louketo/louketo-proxy
     
-For more details refer to the [Documentation](https://louketo.github.io/).
+For more details refer to the [Documentation](docs/user-guide.md).
 
 ### Writing Tests
 
