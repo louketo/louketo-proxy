@@ -76,4 +76,4 @@ workflows:
               # ignore tags from original repo, just OneConcern tags
               only: /^v.*-1c/
             branches:
-              ignore: /.*/
+              only: /oneconcern-release/
