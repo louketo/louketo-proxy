@@ -19,7 +19,7 @@ jobs:
           password: $GCLOUD_SERVICE_KEY
     environment:
       REPOSITORY: 'gcr.io/onec-co'
-      GOOGLE_PROJECT_ID: ${GOOGLE_PROJECT_ID}
+      GOOGLE_PROJECT_ID: onec-co
       GOOGLE_COMPUTE_ZONE: us-west2-c
       IMAGE: gatekeeper
     shell: /bin/bash
