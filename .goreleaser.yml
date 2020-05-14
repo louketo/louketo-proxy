@@ -1,0 +1,57 @@
+# Mark the release as not ready for production in case there is an 
+# indicator for this in the tag e.g. v1.0.0-rc1
+# See: https://goreleaser.com/customization/release/
+release:
+  prerelease: auto
+# Prune any dependencies that are no longer needed before the build starts
+before:
+  hooks:
+    - go mod tidy
+builds:
+  # Make sure that cgo is disabled. See: https://golang.org/cmd/cgo/
+- env:
+    - CGO_ENABLED=0
+  # Adds some metadata to the build like version, commit reference and the date of the build
+  ldflags:
+    - -w -X "main.build={{.Version}}" -X "main.gitsha={{ .FullCommit }}" -X "main.compiled={{ .Date }}"
+- id: macos
+  goos: [darwin]
+  goarch: [amd64]
+  
+- id: linux
+  goos: [linux]
+  goarch: [amd64]
+  
+- id: windows
+  goos: [windows]
+  goarch: [amd64]
+# Generate the checksum for each file
+checksum:
+  name_template: '{{ .ProjectName }}-checksum.txt'
+  algorithm: sha512
+# Generate the changelog to be included into the release notes
+changelog:
+  sort: asc
+  filters:
+    # Exclude commit messages matching the regex listed below
+    exclude:
+      - "^test:"
+      - Merge pull request
+      - Merge branch
+# The artifacts to be uploaded
+archives:
+  - id: nix
+    builds: [macos, linux]
+    # Generate the compresed files based on the following templates
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    # All files will be in a single directory. For example: louketo_0.0.1_linux_amd64
+    wrap_in_directory: true
+    # Replacement for the Platform name. Instead of have -darwin, replace by macOS
+    replacements:
+      darwin: macOS
+    format: tar.gz
+  - id: windows
+    builds: [windows]
+    # All files will be in a single directory. For example: louketo_0.0.1_linux_amd64
+    wrap_in_directory: true
+    format: zip
