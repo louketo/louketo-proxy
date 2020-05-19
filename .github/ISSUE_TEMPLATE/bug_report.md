@@ -1,3 +1,12 @@
+---
+name: Bug report
+about: Report a bug encountered while running Louketo
+title: ''
+labels: ''
+assignees: ''
+
+---
+
 <!-- 
 Please use this template when submitting a new bug report with as much details as possible. Not doing so may result in the issue not being addressed in a timely manner or eventually closed.
 -->
@@ -44,5 +53,3 @@ All the detailed steps required to reproduce the issue
 <!-- 
 Any additional information that you believe worth mentioning
 -->
-
-

@@ -1,3 +1,12 @@
+---
+name: Feature request
+about: Suggest a feature to the Louketo Proxy project
+title: ''
+labels: ''
+assignees: ''
+
+---
+
 <!-- 
 Please use this template when submitting a new feature request with as much details as possible. Not doing so may result in the issue not being addressed in a timely manner or eventually closed.
 -->
@@ -34,5 +43,3 @@ What are the conditions that the implementation must meet to be considered accep
 <!-- 
 Any additional information that you believe worth mentioning
 -->
-
-
