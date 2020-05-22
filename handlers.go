@@ -352,7 +352,6 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 			sendTo = r.idp.EndSessionEndpoint.String()
 		}
 
-
 		// @step: if no redirect uri is set
 		if redirectURL == "" {
 			// @step: we first check for a redirection-url and then host header
