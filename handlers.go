@@ -348,6 +348,10 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 	// @check if we should redirect to the provider
 	if r.config.EnableLogoutRedirect {
 		sendTo := fmt.Sprintf("%s/protocol/openid-connect/logout", strings.TrimSuffix(r.config.DiscoveryURL, "/.well-known/openid-configuration"))
+		if r.idp.EndSessionEndpoint != nil {
+			sendTo = r.idp.EndSessionEndpoint.String()
+		}
+
 
 		// @step: if no redirect uri is set
 		if redirectURL == "" {
