@@ -16,10 +16,12 @@ limitations under the License.
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
 	"reflect"
+	"strings"
 	"syscall"
 	"time"
 
@@ -217,9 +219,54 @@ func parseCLIOptions(cx *cli.Context, config *Config) (err error) {
 			if err != nil {
 				return fmt.Errorf("invalid resource %s, %s", x, err)
 			}
+
 			config.Resources = append(config.Resources, resource)
 		}
 	}
 
+	if cx.IsSet("upstream-url-paths") {
+		for _, x := range cx.StringSlice("upstream-url-paths") {
+			path, err := cliParseUpstreamURLPath(x)
+			if err != nil {
+				return fmt.Errorf("invalid upstream-url-paths %s, %s", x, err)
+			}
+
+			config.UpstreamPaths = append(config.UpstreamPaths, path)
+		}
+	}
+
 	return nil
+}
+
+func cliParseUpstreamURLPath(resource string) (r UpstreamURLPath, err error) {
+	if resource == "" {
+		return r, errors.New("no value given")
+	}
+
+	for _, x := range strings.Split(resource, "|") {
+		kp := strings.Split(x, "=")
+		if len(kp) != 2 {
+			return r, errors.New("config pair, should be (uri|upstream-url)=value")
+		}
+
+		switch kp[0] {
+		//nolint:goconst
+		case "uri":
+			r.URL = kp[1]
+		case "upstream-url":
+			r.Upstream = kp[1]
+		default:
+			return r, fmt.Errorf("invalid identifier '%s', should be uri or upstream-url", kp[0])
+		}
+	}
+
+	if r.URL == "" {
+		return r, errors.New("uri config missing")
+	}
+
+	if r.Upstream == "" {
+		return r, errors.New("upstream-url config missing")
+	}
+
+	return r, err
 }

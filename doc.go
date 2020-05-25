@@ -136,6 +136,13 @@ var (
 	ErrDecryption = errors.New("failed to decrypt token")
 )
 
+type UpstreamURLPath struct {
+	// URL the url for the resource
+	URL string `json:"uri" yaml:"uri"`
+	// Upstream is the upstream endpoint i.e whom were proxying to
+	Upstream string `json:"upstream-url" yaml:"upstream-url"`
+}
+
 // Resource represents a url resource to protect
 type Resource struct {
 	// URL the url for the resource
@@ -184,6 +191,8 @@ type Config struct {
 	Scopes []string `json:"scopes" yaml:"scopes" usage:"list of scopes requested when authenticating the user"`
 	// Upstream is the upstream endpoint i.e whom were proxying to
 	Upstream string `json:"upstream-url" yaml:"upstream-url" usage:"url for the upstream endpoint you wish to proxy" env:"UPSTREAM_URL"`
+	// Resources is a list of protected resources
+	UpstreamPaths []UpstreamURLPath `json:"upstream-url-paths" yaml:"upstream-url-paths" usage:"list of upstream url paths 'uri=/admin*|upstream-url=http://server1|uri=/data*|upstream-url=http://server2:8080'"`
 	// UpstreamCA is the path to a CA certificate in PEM format to validate the upstream certificate
 	UpstreamCA string `json:"upstream-ca" yaml:"upstream-ca" usage:"the path to a file container a CA certificate to validate the upstream tls endpoint"`
 	// Resources is a list of protected resources
