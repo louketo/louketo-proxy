@@ -63,6 +63,15 @@ func extractIdentity(token jose.JWT) (*userContext, error) {
 		}
 	}
 
+	// @step: fallback to pure roles extraction if no realm roles were detected
+	if len(roleList) == 0 {
+		if roles, found := claims[claimResourceRoles]; found {
+			for _, r := range roles.([]interface{}) {
+				roleList = append(roleList, fmt.Sprintf("%s", r))
+			}
+		}
+	}
+
 	// @step: extract the client roles from the access token
 	if accesses, found := claims[claimResourceAccess].(map[string]interface{}); found {
 		for name, list := range accesses {
