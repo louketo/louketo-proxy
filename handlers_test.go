@@ -179,7 +179,7 @@ func TestLogoutHandlerGood(t *testing.T) {
 		{
 			URI:              c.WithOAuthURI(logoutURL) + "?redirect=http://example.com",
 			HasToken:         true,
-			ExpectedCode:     http.StatusTemporaryRedirect,
+			ExpectedCode:     http.StatusSeeOther,
 			ExpectedLocation: "http://example.com",
 		},
 	}
@@ -220,7 +220,7 @@ func TestServiceRedirect(t *testing.T) {
 		{
 			URI:              "/admin",
 			Redirects:        true,
-			ExpectedCode:     http.StatusTemporaryRedirect,
+			ExpectedCode:     http.StatusSeeOther,
 			ExpectedLocation: "/oauth/authorize?state",
 		},
 		{
@@ -248,25 +248,25 @@ func TestAuthorizationURL(t *testing.T) {
 			URI:              "/admin",
 			Redirects:        true,
 			ExpectedLocation: "/oauth/authorize?state",
-			ExpectedCode:     http.StatusTemporaryRedirect,
+			ExpectedCode:     http.StatusSeeOther,
 		},
 		{
 			URI:              "/admin/test",
 			Redirects:        true,
 			ExpectedLocation: "/oauth/authorize?state",
-			ExpectedCode:     http.StatusTemporaryRedirect,
+			ExpectedCode:     http.StatusSeeOther,
 		},
 		{
 			URI:              "/help/../admin",
 			Redirects:        true,
 			ExpectedLocation: "/oauth/authorize?state",
-			ExpectedCode:     http.StatusTemporaryRedirect,
+			ExpectedCode:     http.StatusSeeOther,
 		},
 		{
 			URI:              "/admin?test=yes&test1=test",
 			Redirects:        true,
 			ExpectedLocation: "/oauth/authorize?state",
-			ExpectedCode:     http.StatusTemporaryRedirect,
+			ExpectedCode:     http.StatusSeeOther,
 		},
 		{
 			URI:          "/oauth/test",
@@ -298,19 +298,19 @@ func TestCallbackURL(t *testing.T) {
 			URI:              cfg.WithOAuthURI(callbackURL) + "?code=fake",
 			ExpectedCookies:  map[string]string{cfg.CookieAccessName: ""},
 			ExpectedLocation: "/",
-			ExpectedCode:     http.StatusTemporaryRedirect,
+			ExpectedCode:     http.StatusSeeOther,
 		},
 		{
 			URI:              cfg.WithOAuthURI(callbackURL) + "?code=fake&state=/admin",
 			ExpectedCookies:  map[string]string{cfg.CookieAccessName: ""},
 			ExpectedLocation: "/",
-			ExpectedCode:     http.StatusTemporaryRedirect,
+			ExpectedCode:     http.StatusSeeOther,
 		},
 		{
 			URI:              cfg.WithOAuthURI(callbackURL) + "?code=fake&state=L2FkbWlu",
 			ExpectedCookies:  map[string]string{cfg.CookieAccessName: ""},
 			ExpectedLocation: "/",
-			ExpectedCode:     http.StatusTemporaryRedirect,
+			ExpectedCode:     http.StatusSeeOther,
 		},
 	}
 	newFakeProxy(cfg).RunTests(t, requests)

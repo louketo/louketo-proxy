@@ -107,11 +107,7 @@ func (r *oauthProxy) redirectToAuthorization(w http.ResponseWriter, req *http.Re
 		w.WriteHeader(http.StatusForbidden)
 		return r.revokeProxy(w, req)
 	}
-	if r.config.InvalidAuthRedirectsWith303 {
-		r.redirectToURL(r.config.WithOAuthURI(authorizationURL+authQuery), w, req, http.StatusSeeOther)
-	} else {
-		r.redirectToURL(r.config.WithOAuthURI(authorizationURL+authQuery), w, req, http.StatusTemporaryRedirect)
-	}
+	r.redirectToURL(r.config.WithOAuthURI(authorizationURL+authQuery), w, req, http.StatusSeeOther)
 
 	return r.revokeProxy(w, req)
 }

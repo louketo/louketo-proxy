@@ -101,7 +101,7 @@ func (r *oauthProxy) oauthAuthorizationHandler(w http.ResponseWriter, req *http.
 		return
 	}
 
-	r.redirectToURL(authURL, w, req, http.StatusTemporaryRedirect)
+	r.redirectToURL(authURL, w, req, http.StatusSeeOther)
 }
 
 // getClientAuthMethod maps the config value CLIENT_AUTH_METHOD to valid OAuth2 auth method keys
@@ -229,7 +229,7 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 		}
 	}
 
-	r.redirectToURL(redirectURI, w, req, http.StatusTemporaryRedirect)
+	r.redirectToURL(redirectURI, w, req, http.StatusSeeOther)
 }
 
 // loginHandler provide's a generic endpoint for clients to perform a user_credentials login to the provider
@@ -359,7 +359,7 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 			}
 		}
 
-		r.redirectToURL(fmt.Sprintf("%s?redirect_uri=%s", sendTo, url.QueryEscape(redirectURL)), w, req, http.StatusTemporaryRedirect)
+		r.redirectToURL(fmt.Sprintf("%s?redirect_uri=%s", sendTo, url.QueryEscape(redirectURL)), w, req, http.StatusSeeOther)
 
 		return
 	}
@@ -411,7 +411,7 @@ func (r *oauthProxy) logoutHandler(w http.ResponseWriter, req *http.Request) {
 	}
 	// step: should we redirect the user
 	if redirectURL != "" {
-		r.redirectToURL(redirectURL, w, req, http.StatusTemporaryRedirect)
+		r.redirectToURL(redirectURL, w, req, http.StatusSeeOther)
 	}
 }
 
