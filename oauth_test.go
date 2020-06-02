@@ -188,7 +188,7 @@ func (r *fakeAuthServer) authHandler(w http.ResponseWriter, req *http.Request) {
 	}
 	redirectionURL := fmt.Sprintf("%s?state=%s&code=%s", redirect, state, getRandomString(32))
 
-	http.Redirect(w, req, redirectionURL, http.StatusTemporaryRedirect)
+	http.Redirect(w, req, redirectionURL, http.StatusSeeOther)
 }
 
 func (r *fakeAuthServer) logoutHandler(w http.ResponseWriter, req *http.Request) {

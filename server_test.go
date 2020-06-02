@@ -508,7 +508,7 @@ func makeTestCodeFlowLogin(location string) (*http.Response, error) {
 		if err != nil {
 			return nil, err
 		}
-		if resp.StatusCode != http.StatusTemporaryRedirect {
+		if resp.StatusCode != http.StatusSeeOther {
 			return nil, errors.New("no redirection found in resp")
 		}
 		location = resp.Header.Get("Location")
