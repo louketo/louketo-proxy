@@ -457,7 +457,7 @@ func TestGetWithin(t *testing.T) {
 		},
 	}
 	for _, x := range cs {
-		assert.Equal(t, x.Expected, getWithin(x.Expires, x.Percent))
+		assert.InDelta(t, x.Expected, getWithin(x.Expires, x.Percent), 1000000001)
 	}
 }
 
