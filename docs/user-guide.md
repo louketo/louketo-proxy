@@ -452,7 +452,7 @@ By default, Louketo Proxy will immediately redirect you
 for authentication and hand back a 403 for access denied. Most users
 will probably want to present the user with a more friendly sign-in and
 access denied page. You can pass the command line options (or via config
-file) paths to the files with `--signin-page=PATH`. The sign-in page
+file) paths to the files with `--sign-in-page=PATH`. The sign-in page
 will have a 'redirect' variable passed into the scope and holding the
 OAuth redirection URL. If you wish to pass additional variables into the
 templates, such as title, sitename and so on, you can use the -`-tags
