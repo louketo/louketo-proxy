@@ -1,7 +1,7 @@
 NAME=louketo-proxy
 AUTHOR=louketo
 REGISTRY=docker.io
-GOVERSION ?= 1.10.2
+CONTAINER_TOOL=$(shell command -v podman 2>/dev/null || command -v docker)
 ROOT_DIR=${PWD}
 HARDWARE=$(shell uname -m)
 GIT_SHA=$(shell git --no-pager describe --always --dirty)
@@ -14,10 +14,10 @@ VETARGS ?= -asmdecl -atomic -bool -buildtags -copylocks -methods -nilfunc -print
 PLATFORMS=darwin linux windows
 ARCHITECTURES=amd64
 
-.PHONY: test authors changelog build docker static release lint cover vet
 
 default: build
 
+.PHONY: golang build static
 golang:
 	@echo "--> Go Version"
 	@go version
@@ -28,35 +28,42 @@ build: golang
 	go build -ldflags "${LFLAGS}" -o bin/${NAME}
 
 static: golang
-	@echo "--> Compiling the static binary"
+	@echo "--> Compiling the project statically"
 	@mkdir -p bin
 	CGO_ENABLED=0 GOOS=linux go build -a -tags netgo -ldflags "-w ${LFLAGS}" -o bin/${NAME}
 
+.PHONY: container-build docker-build
+container-build: docker-build
 docker-build:
-	@echo "--> Compiling the project"
-	docker run --rm \
-		-v ${ROOT_DIR}:/go/src/github.com/${AUTHOR}/${NAME} \
-		-w /go/src/github.com/${AUTHOR}/${NAME} \
-		-e GOOS=linux golang:${GOVERSION} \
-		make static
+	@echo "--> Compiling the project, inside a temporary container"
+	$(eval IMAGE=$(shell uuidgen))
+	${CONTAINER_TOOL} build --target build-env -t ${IMAGE} .
+	${CONTAINER_TOOL} run --rm ${IMAGE} /bin/cat /louketo-proxy > bin/louketo-proxy
+	${CONTAINER_TOOL} rmi ${IMAGE}
+	chmod +x bin/louketo-proxy
 
+.PHONY: container-test docker-test
+container-test: docker-test
 docker-test:
-	@echo "--> Running the docker test"
-	docker run --rm -ti -p 3000:3000 \
+	@echo "--> Running the container image tests"
+	${CONTAINER_TOOL} run --rm -ti -p 3000:3000 \
     -v ${ROOT_DIR}/config.yml:/etc/louketo/config.yml:ro \
     -v ${ROOT_DIR}/tests:/opt/tests:ro \
     ${REGISTRY}/${AUTHOR}/${NAME}:${VERSION} --config /etc/louketo/config.yml
 
-docker-release:
-	@echo "--> Building a release image"
-	@$(MAKE) static
-	@$(MAKE) docker
-	@docker push ${REGISTRY}/${AUTHOR}/${NAME}:${VERSION}
+.PHONY: container-release docker-release
+container-release: docker-release
+docker-release: docker
+	@echo "--> Releasing the container image"
+	${CONTAINER_TOOL} push ${REGISTRY}/${AUTHOR}/${NAME}:${VERSION}
 
+.PHONY: container docker
+container: docker
 docker:
-	@echo "--> Building the docker image"
-	docker build -t ${REGISTRY}/${AUTHOR}/${NAME}:${VERSION} .
+	@echo "--> Building the container image"
+	${CONTAINER_TOOL} build -t ${REGISTRY}/${AUTHOR}/${NAME}:${VERSION} .
 
+.PHONY: certs
 certs:
 	@echo "--> Generating the root CA"
 	@cfssl gencert -initca tests/ca-csr.json | cfssljson -bare tests/ca
@@ -68,6 +75,7 @@ certs:
 		-profile=server \
 		tests/proxy-csr.json | cfssljson -bare tests/proxy
 
+.PHONY: clean authors vet lint gofmt verify format bench coverage cover spelling
 clean:
 	rm -rf ./bin/* 2>/dev/null
 	rm -rf ./release/* 2>/dev/null
@@ -134,6 +142,7 @@ spelling:
 	@misspell -error *.go
 	@misspell -error *.md
 
+.PHONY: test all changelog
 test:
 	@echo "--> Running the tests"
 	@go test -v
