@@ -1308,7 +1308,7 @@ func TestCustomHeadersHandler(t *testing.T) {
 			},
 		},
 		{
-			Match: []string{"given_name", "family_name"},
+			Match: []string{"given_name", "family_name", "preferred_username|Custom-Header"},
 			Request: fakeRequest{
 				URI:      fakeAuthAllURL,
 				HasToken: true,
@@ -1322,6 +1322,7 @@ func TestCustomHeadersHandler(t *testing.T) {
 				ExpectedProxyHeaders: map[string]string{
 					"X-Auth-Given-Name":  "Rohith",
 					"X-Auth-Family-Name": "Jayawardene",
+					"Custom-Header":      "rjayawardene",
 				},
 				ExpectedProxy: true,
 				ExpectedCode:  http.StatusOK,
