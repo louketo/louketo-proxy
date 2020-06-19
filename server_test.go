@@ -455,6 +455,7 @@ func newFakeKeycloakConfig() *Config {
 		EnableLogging:              false,
 		EnableLoginHandler:         true,
 		EnableTokenHeader:          true,
+		EnableCompression:          false,
 		Listen:                     "127.0.0.1:0",
 		OAuthURI:                   "/oauth",
 		OpenIDProviderTimeout:      time.Second * 5,

@@ -44,6 +44,8 @@ skip-upstream-tls-verify: true|false
 scopes: []
 # enables more extra security features
 enable-security-filter: true
+# enables gzip compression for response
+enable-compression: true
 # headers permits you to inject custom headers into all requests
 headers:
   myheader_name: my_header_value

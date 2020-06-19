@@ -1598,3 +1598,66 @@ func TestRolesAdmissionHandlerClaims(t *testing.T) {
 		newFakeProxy(cfg).RunTests(t, []fakeRequest{c.Request})
 	}
 }
+
+func TestGzipCompression(t *testing.T) {
+	requests := []struct {
+		EnableCompression bool
+		Request           fakeRequest
+	}{
+		{
+			EnableCompression: true,
+			Request: fakeRequest{
+				URI:           "/gambol99.htm",
+				ExpectedProxy: true,
+				Headers: map[string]string{
+					"Accept-Encoding": "gzip, deflate, br",
+				},
+				ExpectedHeaders: map[string]string{
+					"Content-Encoding": "gzip",
+				},
+			},
+		},
+		{
+			EnableCompression: true,
+			Request: fakeRequest{
+				URI:           testAdminURI,
+				ExpectedProxy: false,
+				Headers: map[string]string{
+					"Accept-Encoding": "gzip, deflate, br",
+				},
+				ExpectedHeaders: map[string]string{
+					"Content-Encoding": "gzip",
+				},
+			},
+		},
+		{
+			EnableCompression: false,
+			Request: fakeRequest{
+				URI:           "/gambol99.htm",
+				ExpectedProxy: true,
+				Headers: map[string]string{
+					"Accept-Encoding": "gzip, deflate, br",
+				},
+				ExpectedNoProxyHeaders: []string{"Content-Encoding"},
+			},
+		},
+		{
+			EnableCompression: false,
+			Request: fakeRequest{
+				URI:           testAdminURI,
+				ExpectedProxy: false,
+				Headers: map[string]string{
+					"Accept-Encoding": "gzip, deflate, br",
+				},
+				ExpectedNoProxyHeaders: []string{"Content-Encoding"},
+			},
+		},
+	}
+
+	for _, c := range requests {
+		cfg := newFakeKeycloakConfig()
+		cfg.Resources = []*Resource{{URL: "/admin*", Methods: allHTTPMethods}}
+		cfg.EnableCompression = c.EnableCompression
+		newFakeProxy(cfg).RunTests(t, []fakeRequest{c.Request})
+	}
+}
