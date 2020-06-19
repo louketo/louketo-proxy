@@ -174,6 +174,9 @@ func (r *oauthProxy) createReverseProxy() error {
 	// @step: enable the entrypoint middleware
 	engine.Use(entrypointMiddleware)
 
+	if r.config.EnableCompression {
+		engine.Use(gzipMiddleware)
+	}
 	if r.config.EnableLogging {
 		engine.Use(r.loggingMiddleware)
 	}
