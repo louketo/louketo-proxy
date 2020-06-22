@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"net/http"
+	"os"
 
 	"contrib.go.opencensus.io/exporter/jaeger"
 	"github.com/go-chi/chi"
@@ -12,6 +13,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
+	datadog "github.com/DataDog/opencensus-go-exporter-datadog"
 	spanlog "github.com/oneconcern/keycloak-gatekeeper/internal/log"
 )
 
@@ -29,21 +31,44 @@ func (r *oauthProxy) proxyTracingMiddleware(next http.Handler) http.Handler {
 	if !r.config.EnableTracing {
 		return next
 	}
+	const svc = "gatekeeper"
 
-	// set up span exporter
-	je, err := jaeger.NewExporter(jaeger.Options{
-		AgentEndpoint: r.config.TracingAgentEndpoint,
-		ServiceName:   "gatekeeper",
-	})
-	if err != nil {
-		r.log.Warn("jaeger trace span exporting disabled", zap.Error(err))
-		r.config.EnableTracing = false
-		return next
+	switch r.config.TracingExporter {
+	case "jaeger":
+		// set up span exporter
+		je, err := jaeger.NewExporter(jaeger.Options{
+			AgentEndpoint: os.ExpandEnv(r.config.TracingAgentEndpoint),
+			ServiceName:   svc,
+		})
+		if err != nil {
+			r.log.Warn("jaeger trace span exporting disabled", zap.Error(err))
+			r.config.EnableTracing = false
+			return next
+		}
+		trace.RegisterExporter(je)
+		r.log.Info("jaeger trace span exporting enabled")
+	case "datadog":
+		exporterError := func(err error) {
+			r.log.Warn("could not export trace to datadog agent", zap.Error(err))
+		}
+		// enable trace exporting to datadog agent
+		de, err := datadog.NewExporter(datadog.Options{
+			Namespace: os.Getenv("DD_NAMESPACE"),
+			Service:   svc,
+			TraceAddr: os.ExpandEnv(r.config.TracingAgentEndpoint),
+			OnError:   exporterError,
+		})
+		if err != nil {
+			r.log.Info("datadog reporting disabled", zap.Error(err))
+			r.config.EnableTracing = false
+			return next
+		}
+		trace.RegisterExporter(de)
+		r.log.Info("datadog trace span exporting enabled")
+	default:
+		r.log.Warn("tracing is enabled, but no supported exporter is configured. Tracing disabled")
 	}
-
-	r.log.Info("jaeger trace span exporting enabled")
 	trace.ApplyConfig(trace.Config{DefaultSampler: trace.AlwaysSample()})
-	trace.RegisterExporter(je)
 
 	// insert instrumentation middleware
 	instrument1 := func(next http.Handler) http.Handler {

@@ -5,7 +5,8 @@ replace github.com/coreos/go-oidc => github.com/coreos/go-oidc v0.0.0-2017102018
 replace github.com/heptiolabs/healthcheck => github.com/heptiolabs/healthcheck v0.0.0-20180807145615-6ff867650f40
 
 require (
-	contrib.go.opencensus.io/exporter/jaeger v0.1.0
+	contrib.go.opencensus.io/exporter/jaeger v0.2.0
+	github.com/DataDog/opencensus-go-exporter-datadog v0.0.0-20200406135749-5c268882acf0
 	github.com/PuerkitoBio/purell v1.1.1
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/armon/go-proxyproto v0.0.0-20190211145416-68259f75880e
@@ -18,35 +19,30 @@ require (
 	github.com/garyburd/redigo v1.6.0 // indirect
 	github.com/go-chi/chi v4.0.2+incompatible
 	github.com/google/uuid v1.1.1
-	github.com/gorilla/csrf v1.6.2
-	github.com/gorilla/websocket v1.4.1
+	github.com/gorilla/csrf v1.7.0
+	github.com/gorilla/websocket v1.4.2
 	github.com/jonboulle/clockwork v0.1.0 // indirect
-	github.com/kr/pretty v0.1.0 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/onsi/ginkgo v1.8.0 // indirect
 	github.com/onsi/gomega v1.5.0 // indirect
-	github.com/pkg/errors v0.8.1 // indirect
-	github.com/prometheus/client_golang v1.1.0
-	github.com/rs/cors v1.6.0
+	github.com/prometheus/client_golang v1.7.0
+	github.com/rs/cors v1.7.0
 	github.com/satori/go.uuid v1.2.0
-	github.com/stretchr/testify v1.3.0
+	github.com/stretchr/objx v0.2.0 // indirect
+	github.com/stretchr/testify v1.6.1
+	github.com/uber/jaeger-client-go v2.24.0+incompatible // indirect
 	github.com/unrolled/secure v1.0.6
 	github.com/urfave/cli v1.22.0
-	go.opencensus.io v0.22.0
-	go.uber.org/atomic v1.4.0 // indirect
-	go.uber.org/multierr v1.1.0 // indirect
-	go.uber.org/zap v1.10.0
-	golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4
-	golang.org/x/net v0.0.0-20190724013045-ca1201d0de80
-	golang.org/x/sys v0.0.0-20190804053845-51ab0e2deafa // indirect
-	google.golang.org/api v0.7.0 // indirect
-	google.golang.org/genproto v0.0.0-20190716160619-c506a9f90610 // indirect
-	google.golang.org/grpc v1.22.0 // indirect
+	go.opencensus.io v0.22.4
+	go.uber.org/zap v1.15.0
+	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
+	golang.org/x/net v0.0.0-20200324143707-d3edc9973b7e
+	google.golang.org/api v0.28.0 // indirect
 	gopkg.in/bsm/ratelimit.v1 v1.0.0-20160220154919-db14e161995a // indirect
-	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/redis.v4 v4.2.4
 	gopkg.in/resty.v1 v1.12.0
-	gopkg.in/yaml.v2 v2.2.2
+	gopkg.in/yaml.v2 v2.2.5
+	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
 )
 
-go 1.13
+go 1.14

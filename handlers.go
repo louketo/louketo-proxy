@@ -538,17 +538,13 @@ func (r *oauthProxy) debugHandler(w http.ResponseWriter, req *http.Request) {
 	switch req.Method {
 	case http.MethodGet:
 		switch name {
-		case "heap":
-			fallthrough
-		case "goroutine":
-			fallthrough
-		case "block":
-			fallthrough
-		case "threadcreate":
+		case "heap", "goroutine", "allocs", "block", "threadcreate", "mutex":
+			// predefined profiles
 			pprof.Handler(name).ServeHTTP(w, req.WithContext(ctx))
 		case "cmdline":
 			pprof.Cmdline(w, req)
 		case "profile":
+			// cpu profile
 			pprof.Profile(w, req)
 		case "trace":
 			pprof.Trace(w, req)
