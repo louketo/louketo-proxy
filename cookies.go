@@ -22,6 +22,7 @@ import (
 	"time"
 
 	uuid "github.com/satori/go.uuid"
+	"go.uber.org/zap"
 )
 
 // SameSite cookie config options
@@ -33,31 +34,74 @@ const (
 
 // dropCookie drops a cookie into the response
 func (r *oauthProxy) dropCookie(w http.ResponseWriter, host, name, value string, duration time.Duration) {
-	// step: default to the host header, else the config domain
-	domain := strings.Split(host, ":")[0]
-	if r.config.CookieDomain != "" {
-		domain = r.config.CookieDomain
-	}
-	cookie := &http.Cookie{
-		Domain:   domain,
+	cookie := r.cookieDropper(host, name, value, duration)
+	r.log.Warn("returned cookie", zap.Any("cookie", *cookie))
+	http.SetCookie(w, cookie)
+}
+
+func (r *oauthProxy) makeCookieDropper() func(string, string, string, time.Duration) *http.Cookie {
+	// cookieDropper parses the configuration and delivers a fast cookie setter:
+	// config is evaluated only once
+
+	baseCookie := &http.Cookie{
+		Domain:   r.config.CookieDomain,
 		HttpOnly: r.config.HTTPOnlyCookie,
-		Name:     name,
 		Path:     "/",
 		Secure:   r.config.SecureCookie,
-		Value:    value,
-	}
-	if (!r.config.EnableSessionCookies && duration != 0) || duration < 0 {
-		cookie.Expires = time.Now().Add(duration)
 	}
 
 	switch r.config.SameSiteCookie {
 	case SameSiteStrict:
-		cookie.SameSite = http.SameSiteStrictMode
+		baseCookie.SameSite = http.SameSiteStrictMode
 	case SameSiteLax:
-		cookie.SameSite = http.SameSiteLaxMode
+		baseCookie.SameSite = http.SameSiteLaxMode
 	}
 
-	http.SetCookie(w, cookie)
+	makeBase := func(name, value string) *http.Cookie {
+		cookie := *baseCookie
+		cookie.Name = name
+		cookie.Value = value
+		return &cookie
+	}
+
+	switch {
+	case r.config.CookieDomain == "" && r.config.EnableSessionCookies:
+		return func(host, name, value string, duration time.Duration) *http.Cookie {
+			cookie := makeBase(name, value)
+			cookie.Domain = strings.Split(host, ":")[0]
+			if duration < 0 {
+				cookie.Expires = time.Now().Add(duration)
+			}
+			return cookie
+		}
+	case r.config.CookieDomain == "" && !r.config.EnableSessionCookies:
+		return func(host, name, value string, duration time.Duration) *http.Cookie {
+			cookie := makeBase(name, value)
+			cookie.Domain = strings.Split(host, ":")[0]
+			if duration != 0 {
+				cookie.Expires = time.Now().Add(duration)
+			}
+			return cookie
+		}
+	case r.config.CookieDomain != "" && r.config.EnableSessionCookies:
+		return func(_, name, value string, duration time.Duration) *http.Cookie {
+			cookie := makeBase(name, value)
+			if duration < 0 {
+				cookie.Expires = time.Now().Add(duration)
+			}
+			return cookie
+		}
+	case r.config.CookieDomain != "" && !r.config.EnableSessionCookies:
+		return func(host, name, value string, duration time.Duration) *http.Cookie {
+			cookie := makeBase(name, value)
+			if duration != 0 {
+				cookie.Expires = time.Now().Add(duration)
+			}
+			return cookie
+		}
+	default:
+		panic("dev error guard")
+	}
 }
 
 const (
@@ -68,13 +112,13 @@ const (
 
 // maxCookieChunkSize calculates max cookie chunk size, which can be used for cookie value
 func (r *oauthProxy) getMaxCookieChunkLength(req *http.Request, cookieName string) int {
-	maxCookieChunkLength := baseCookieChunkLength - len(cookieName) - len("; Path=/")
-	if r.config.CookieDomain != "" {
-		maxCookieChunkLength -= len("Domain=; ")
-		maxCookieChunkLength -= len(r.config.CookieDomain)
-	} else {
-		maxCookieChunkLength -= len(strings.Split(req.Host, ":")[0])
-	}
+	return r.cookieChunker(req.Host, cookieName)
+}
+
+func (r *oauthProxy) makeCookieChunker() func(string, string) int {
+	// chunkLengthCalculator parses the configuration and delivers a fast calculator:
+	// config is evaluated only once
+	maxCookieChunkLength := baseCookieChunkLength - len("; Path=/")
 	if r.config.HTTPOnlyCookie {
 		maxCookieChunkLength -= len("HttpOnly; ")
 	}
@@ -87,7 +131,16 @@ func (r *oauthProxy) getMaxCookieChunkLength(req *http.Request, cookieName strin
 	if r.config.SecureCookie {
 		maxCookieChunkLength -= len("Secure")
 	}
-	return maxCookieChunkLength
+	if r.config.CookieDomain != "" {
+		maxCookieChunkLength -= len("Domain=; ")
+		maxCookieChunkLength -= len(r.config.CookieDomain)
+		return func(_, cookieName string) int {
+			return maxCookieChunkLength - len(cookieName)
+		}
+	}
+	return func(host, cookieName string) int {
+		return maxCookieChunkLength - len(cookieName) - len(strings.Split(host, ":")[0])
+	}
 }
 
 // dropCookieWithChunks drops a cookie from the response, taking into account possible chunks

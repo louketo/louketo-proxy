@@ -59,6 +59,10 @@ type oauthProxy struct {
 	templates   *template.Template
 	upstream    reverseProxy
 	csrf        func(http.Handler) http.Handler
+
+	// preconfigured closures
+	cookieChunker func(string, string) int
+	cookieDropper func(string, string, string, time.Duration) *http.Cookie
 }
 
 func init() {
@@ -78,6 +82,8 @@ func newProxy(config *Config) (*oauthProxy, error) {
 		config: config,
 		log:    log,
 	}
+	svc.cookieChunker = svc.makeCookieChunker()
+	svc.cookieDropper = svc.makeCookieDropper()
 
 	// parse the upstream endpoint
 	if svc.endpoint, err = url.Parse(config.Upstream); err != nil {
