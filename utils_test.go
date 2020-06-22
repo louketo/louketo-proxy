@@ -630,7 +630,7 @@ func writeFakeConfigFile(t *testing.T, content string) *os.File {
 	}
 	f.Close()
 
-	if err := ioutil.WriteFile(f.Name(), []byte(content), 0700); err != nil {
+	if err := ioutil.WriteFile(f.Name(), []byte(content), 0600); err != nil {
 		t.Fatalf("unexpected error writing node label file: %v", err)
 	}
 

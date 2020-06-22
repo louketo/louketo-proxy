@@ -361,7 +361,7 @@ func (r *oauthProxy) createStdProxy(upstream *url.URL) error {
 					res.Header.Del(headerXXSSProtection)
 				}
 				if r.config.ContentSecurityPolicy != "" {
-					res.Header.Del(headerXSTS)
+					res.Header.Del(headerXPolicy)
 				}
 				if r.config.EnableContentNoSniff {
 					res.Header.Del(headerXContentTypeOptions)
