@@ -62,6 +62,7 @@ func (r *oauthProxy) createReverseProxy() error {
 		r.csrfProtectMiddleware(),
 		r.csrfHeaderMiddleware()).Route(r.config.OAuthURI,
 		func(e chi.Router) {
+			e.NotFound(http.NotFound)
 			e.MethodNotAllowed(methodNotAllowedHandler)
 
 			e.HandleFunc(authorizationURL, r.oauthAuthorizationHandler)

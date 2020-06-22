@@ -20,7 +20,7 @@ func (r *oauthProxy) createAdminServices() {
 	r.log.Info("mounting admin endpoints on separate listener", zap.String("admin_endpoint", r.config.ListenAdmin))
 	adminEngine := chi.NewRouter()
 	adminEngine.MethodNotAllowed(emptyHandler)
-	//adminEngine.NotFound(emptyHandler)
+	adminEngine.NotFound(http.NotFound)
 	adminEngine.Use(middleware.Recoverer)
 	adminEngine.Use(proxyDenyMiddleware)
 
