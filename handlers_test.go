@@ -30,7 +30,7 @@ func TestDebugHandler(t *testing.T) {
 		{URI: "/debug/pprof/heap", ExpectedCode: http.StatusOK},
 		{URI: "/debug/pprof/goroutine", ExpectedCode: http.StatusOK},
 		{URI: "/debug/pprof/block", ExpectedCode: http.StatusOK},
-		//{URI: "/debug/pprof/threadcreate", ExpectedCode: http.StatusOK}, //TODO(fred): no more working
+		{URI: "/debug/pprof/threadcreate", ExpectedCode: http.StatusOK},
 		{URI: "/debug/pprof/cmdline", ExpectedCode: http.StatusOK},
 		{URI: "/debug/pprof/trace", ExpectedCode: http.StatusOK},
 		{URI: "/debug/pprof/symbol", ExpectedCode: http.StatusOK},
