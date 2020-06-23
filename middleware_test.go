@@ -122,6 +122,7 @@ func (f *fakeProxy) RunTests(t *testing.T, requests []fakeRequest) {
 
 	for i := range requests {
 		c := requests[i]
+		//t.Logf("RunTests[%d]: %#v", i, c)
 		var upstream fakeUpstreamResponse
 
 		f.config.NoRedirects = !c.Redirects

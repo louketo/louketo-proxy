@@ -38,15 +38,18 @@ func TestCookieDomainHostHeader(t *testing.T) {
 	for _, c := range resp.Cookies() {
 		if c.Name == accessCookie {
 			cookie = c
+			break
 		}
 	}
-	assert.NotNil(t, cookie)
+	require.NotNil(t, cookie)
 	assert.Equal(t, cookie.Domain, "127.0.0.1")
 }
 
 func TestCookieDomain(t *testing.T) {
 	p, _, svc := newTestProxyService(nil)
 	p.config.CookieDomain = "domain.com"
+	p.cookieChunker = p.makeCookieChunker()
+	p.cookieDropper = p.makeCookieDropper()
 	resp, err := makeTestCodeFlowLogin(svc + "/admin")
 	require.NoError(t, err)
 	require.NotNil(t, resp)
@@ -58,6 +61,7 @@ func TestCookieDomain(t *testing.T) {
 	for _, c := range resp.Cookies() {
 		if c.Name == accessCookie {
 			cookie = c
+			break
 		}
 	}
 	assert.NotNil(t, cookie)
@@ -78,6 +82,8 @@ func TestDropCookie(t *testing.T) {
 	req = newFakeHTTPRequest("GET", "/admin")
 	resp = httptest.NewRecorder()
 	p.config.SecureCookie = false
+	p.cookieChunker = p.makeCookieChunker()
+	p.cookieDropper = p.makeCookieDropper()
 	p.dropCookie(resp, req.Host, "test-cookie", "test-value", 0)
 
 	assert.Equal(t, resp.Header().Get("Set-Cookie"),
@@ -87,6 +93,8 @@ func TestDropCookie(t *testing.T) {
 	req = newFakeHTTPRequest("GET", "/admin")
 	resp = httptest.NewRecorder()
 	p.config.SecureCookie = true
+	p.cookieChunker = p.makeCookieChunker()
+	p.cookieDropper = p.makeCookieDropper()
 	p.dropCookie(resp, req.Host, "test-cookie", "test-value", 0)
 	assert.NotEqual(t, resp.Header().Get("Set-Cookie"),
 		"test-cookie=test-value; Path=/; Domain=127.0.0.2; HttpOnly; Secure",
@@ -95,6 +103,8 @@ func TestDropCookie(t *testing.T) {
 	p.config.CookieDomain = "test.com"
 	p.dropCookie(resp, req.Host, "test-cookie", "test-value", 0)
 	p.config.SecureCookie = false
+	p.cookieChunker = p.makeCookieChunker()
+	p.cookieDropper = p.makeCookieDropper()
 	assert.NotEqual(t, resp.Header().Get("Set-Cookie"),
 		"test-cookie=test-value; Path=/; Domain=test.com;",
 		"we have not set the cookie, headers: %v", resp.Header())
@@ -115,6 +125,8 @@ func TestDropRefreshCookie(t *testing.T) {
 func TestSessionOnlyCookie(t *testing.T) {
 	p, _, _ := newTestProxyService(nil)
 	p.config.EnableSessionCookies = true
+	p.cookieChunker = p.makeCookieChunker()
+	p.cookieDropper = p.makeCookieDropper()
 
 	req := newFakeHTTPRequest("GET", "/admin")
 	resp := httptest.NewRecorder()
@@ -139,6 +151,8 @@ func TestSameSiteCookie(t *testing.T) {
 	req = newFakeHTTPRequest("GET", "/admin")
 	resp = httptest.NewRecorder()
 	p.config.SameSiteCookie = SameSiteStrict
+	p.cookieChunker = p.makeCookieChunker()
+	p.cookieDropper = p.makeCookieDropper()
 	p.dropCookie(resp, req.Host, "test-cookie", "test-value", 0)
 
 	assert.Equal(t, resp.Header().Get("Set-Cookie"),
@@ -148,6 +162,8 @@ func TestSameSiteCookie(t *testing.T) {
 	req = newFakeHTTPRequest("GET", "/admin")
 	resp = httptest.NewRecorder()
 	p.config.SameSiteCookie = SameSiteLax
+	p.cookieChunker = p.makeCookieChunker()
+	p.cookieDropper = p.makeCookieDropper()
 	p.dropCookie(resp, req.Host, "test-cookie", "test-value", 0)
 
 	assert.Equal(t, resp.Header().Get("Set-Cookie"),
@@ -157,6 +173,8 @@ func TestSameSiteCookie(t *testing.T) {
 	req = newFakeHTTPRequest("GET", "/admin")
 	resp = httptest.NewRecorder()
 	p.config.SameSiteCookie = SameSiteNone
+	p.cookieChunker = p.makeCookieChunker()
+	p.cookieDropper = p.makeCookieDropper()
 	p.dropCookie(resp, req.Host, "test-cookie", "test-value", 0)
 
 	assert.Equal(t, resp.Header().Get("Set-Cookie"),
@@ -178,6 +196,8 @@ func TestHTTPOnlyCookie(t *testing.T) {
 	req = newFakeHTTPRequest("GET", "/admin")
 	resp = httptest.NewRecorder()
 	p.config.HTTPOnlyCookie = true
+	p.cookieChunker = p.makeCookieChunker()
+	p.cookieDropper = p.makeCookieDropper()
 	p.dropCookie(resp, req.Host, "test-cookie", "test-value", 0)
 
 	assert.Equal(t, resp.Header().Get("Set-Cookie"),
@@ -225,10 +245,12 @@ func TestGetMaxCookieChunkLength(t *testing.T) {
 	p.config.SecureCookie = true
 	p.config.SameSiteCookie = "Strict"
 	p.config.CookieDomain = "1234567890"
+	p.cookieChunker = p.makeCookieChunker()
 	assert.Equal(t, 3999, p.getMaxCookieChunkLength(req, "1234567890"),
 		"cookie chunk calculation is not correct")
 
 	p.config.SameSiteCookie = "Lax"
+	p.cookieChunker = p.makeCookieChunker()
 	assert.Equal(t, 4002, p.getMaxCookieChunkLength(req, "1234567890"),
 		"cookie chunk calculation is not correct")
 
@@ -237,6 +259,7 @@ func TestGetMaxCookieChunkLength(t *testing.T) {
 	p.config.SecureCookie = false
 	p.config.SameSiteCookie = "None"
 	p.config.CookieDomain = ""
+	p.cookieChunker = p.makeCookieChunker()
 	assert.Equal(t, 3998, p.getMaxCookieChunkLength(req, ""),
 		"cookie chunk calculation is not correct")
 }

@@ -19,7 +19,6 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/rand"
 	cryptorand "crypto/rand"
 	"crypto/rsa"
 	sha "crypto/sha256"
@@ -76,7 +75,7 @@ const (
 // createCertificate is responsible for creating a certificate
 func createCertificate(key *rsa.PrivateKey, hostnames []string, expire time.Duration) (tls.Certificate, error) {
 	// @step: create a serial for the certificate
-	serial, err := cryptorand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+	serial, err := cryptorand.Int(cryptorand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
 	if err != nil {
 		return tls.Certificate{}, err
 	}

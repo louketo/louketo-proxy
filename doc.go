@@ -128,6 +128,8 @@ type Config struct {
 	EnableProfiling bool `json:"enable-profiling" yaml:"enable-profiling" usage:"switching on the golang profiling via pprof on /debug/pprof, /debug/pprof/heap etc" env:"ENABLE_PROFILING"`
 	// EnableMetrics indicates if the metrics is enabled (default: true)
 	EnableMetrics bool `json:"enable-metrics" yaml:"enable-metrics" usage:"enable the prometheus metrics collector on /oauth/metrics (enabled by default)" env:"ENABLE_METRICS"`
+	// TracingExporter defines the exporter for traces. Default is jaeger.
+	TracingExporter string `json:"tracing-exporter" yaml:"tracing-exporter" usage:"select tracing exporter (jaeger|datadog). Default is jaeger"`
 	// EnableTracing indicates if a tracing exporter is enabled
 	EnableTracing bool `json:"enable-tracing" yaml:"enable-tracing" usage:"enable the opencensus trace collector on /oauth/zpages" env:"ENABLE_TRACING"`
 	// TracingAgentEndpoint register the jaeger agent collecting trace spans

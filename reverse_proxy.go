@@ -29,6 +29,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/rs/cors"
+	"go.opencensus.io/plugin/ochttp/propagation/b3"
 	"go.uber.org/zap"
 	"golang.org/x/net/http2"
 )
@@ -61,6 +62,7 @@ func (r *oauthProxy) createReverseProxy() error {
 		r.csrfProtectMiddleware(),
 		r.csrfHeaderMiddleware()).Route(r.config.OAuthURI,
 		func(e chi.Router) {
+			e.NotFound(http.NotFound)
 			e.MethodNotAllowed(methodNotAllowedHandler)
 
 			e.HandleFunc(authorizationURL, r.oauthAuthorizationHandler)
@@ -215,6 +217,11 @@ func (r *oauthProxy) proxyMiddleware(resource *Resource) func(http.Handler) http
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			next.ServeHTTP(w, req)
 
+			_, span, logger := r.traceSpan(req.Context(), "reverse proxy middleware")
+			if span != nil {
+				defer span.End()
+			}
+
 			// @step: retrieve the request scope
 			scope := req.Context().Value(contextScopeName)
 			if scope != nil {
@@ -222,6 +229,11 @@ func (r *oauthProxy) proxyMiddleware(resource *Resource) func(http.Handler) http
 				if sc.AccessDenied {
 					return
 				}
+			}
+
+			if r.config.EnableTracing {
+				propagation := &b3.HTTPFormat{}
+				propagation.SpanContextToRequest(span.SpanContext(), req)
 			}
 
 			// @step: add the proxy forwarding headers
@@ -259,7 +271,7 @@ func (r *oauthProxy) proxyMiddleware(resource *Resource) func(http.Handler) http
 			req.URL.Scheme = upstreamScheme
 			if stripBasePath != "" {
 				// strip prefix if needed
-				r.log.Debug("stripping prefix from URL", zap.String("stripBasePath", stripBasePath), zap.String("original_path", req.URL.Path))
+				logger.Debug("stripping prefix from URL", zap.String("stripBasePath", stripBasePath), zap.String("original_path", req.URL.Path))
 				req.URL.Path = strings.TrimPrefix(req.URL.Path, stripBasePath)
 			}
 			if upstreamBasePath != "" {
@@ -274,13 +286,13 @@ func (r *oauthProxy) proxyMiddleware(resource *Resource) func(http.Handler) http
 			} else if !r.config.PreserveHost {
 				req.Host = upstreamHost
 			}
-			r.log.Debug("proxying to upstream", zap.String("matched_resource", matched), zap.Stringer("upstream_url", req.URL), zap.String("host_header", req.Host))
+			logger.Debug("proxying to upstream", zap.String("matched_resource", matched), zap.Stringer("upstream_url", req.URL), zap.String("host_header", req.Host))
 
 			r.upstream.ServeHTTP(w, req)
 
 			if r.config.Verbose {
 				// debug response headers
-				r.log.Debug("response from gatekeeper", zap.Any("headers", w.Header()))
+				logger.Debug("response from gatekeeper", zap.Any("headers", w.Header()))
 			}
 		})
 	}
@@ -350,7 +362,7 @@ func (r *oauthProxy) createStdProxy(upstream *url.URL) error {
 					res.Header.Del(headerXXSSProtection)
 				}
 				if r.config.ContentSecurityPolicy != "" {
-					res.Header.Del(headerXSTS)
+					res.Header.Del(headerXPolicy)
 				}
 				if r.config.EnableContentNoSniff {
 					res.Header.Del(headerXContentTypeOptions)

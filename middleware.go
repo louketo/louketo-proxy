@@ -25,7 +25,6 @@ import (
 
 	"github.com/PuerkitoBio/purell"
 	"github.com/go-chi/chi/middleware"
-	"github.com/gorilla/csrf"
 	gcsrf "github.com/gorilla/csrf"
 	uuid "github.com/satori/go.uuid"
 	"github.com/unrolled/secure"
@@ -423,16 +422,16 @@ func (r *oauthProxy) securityMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func csrfSameSiteValue(value string) csrf.SameSiteMode {
+func csrfSameSiteValue(value string) gcsrf.SameSiteMode {
 	switch value {
 	case SameSiteLax:
-		return csrf.SameSiteLaxMode
+		return gcsrf.SameSiteLaxMode
 	case SameSiteStrict:
-		return csrf.SameSiteStrictMode
+		return gcsrf.SameSiteStrictMode
 	case SameSiteNone:
 		fallthrough
 	default:
-		return csrf.SameSiteNoneMode
+		return gcsrf.SameSiteNoneMode
 	}
 }
 

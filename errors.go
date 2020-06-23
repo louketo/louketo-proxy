@@ -74,7 +74,7 @@ func errorResponse(w http.ResponseWriter, msg string, code int) {
 	noSniff(w)
 	w.WriteHeader(code)
 	if len(msg) > 0 {
-		fmt.Fprintln(w, fmt.Sprintf(`{"error": %q}`, msg))
+		fmt.Fprintf(w, `{"error": %q}`, msg)
 	}
 }
 
