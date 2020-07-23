@@ -266,10 +266,17 @@ func (r *oauthProxy) createReverseProxy() error {
 
 	for _, x := range r.config.Resources {
 		r.log.Info("protecting resource", zap.String("resource", x.String()))
-		e := engine.With(
-			r.authenticationMiddleware(),
+        e := engine.With(
+            r.authenticationMiddleware(),
 			r.admissionMiddleware(x),
-			r.identityHeadersMiddleware(r.config.AddClaims))
+            r.identityHeadersMiddleware(r.config.AddClaims))
+		if r.config.EnablePolicyEnforcement{
+			e = engine.With(
+				r.authenticationMiddleware(),
+				r.admissionMiddleware(x),
+				r.DecisionMiddleWare(x),
+				r.identityHeadersMiddleware(r.config.AddClaims))
+		}
 
 		for _, m := range x.Methods {
 			if !x.WhiteListed {

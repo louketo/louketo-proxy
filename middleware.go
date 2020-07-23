@@ -26,6 +26,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"encoding/json"
 
 	uuid "github.com/gofrs/uuid"
 
@@ -557,3 +558,94 @@ func proxyDenyMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(w, req.WithContext(ctx))
 	})
 }
+
+// Function to have the policy enforcement of Keycloak.
+func (r *oauthProxy) DecisionMiddleWare(resource *Resource) func(http.Handler) http.Handler {
+    return func(next http.Handler) http.Handler {
+        return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+            user, err := r.getIdentity(req)
+            if err != nil {
+                r.log.Error("no session found in request, redirecting for authorization", zap.Error(err))
+                next.ServeHTTP(w, req.WithContext(r.redirectToAuthorization(w, req)))
+                return
+            }
+
+	    resourceName := r.getResourceName(resource.URL,user.AccessToken)
+	    url := r.idp.TokenEndpoint.String()
+            method := "POST"
+
+            payload := strings.NewReader("grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Auma-ticket&audience="+ r.config.ClientID +"&response_mode=decision&permission=" + resourceName)
+
+            client := &http.Client{}
+            req2, err := http.NewRequest(method, url, payload)
+
+            if err != nil {
+                fmt.Println(err)
+            }
+            req2.Header.Add("Authorization","Bearer " + user.AccessToken)
+            req2.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+            response, err := client.Do(req2)
+            if err != nil {
+                fmt.Println(err)
+            }
+            defer response.Body.Close()
+
+	    body, err := ioutil.ReadAll(response.Body)
+            var dat map[string]interface{}
+            err = json.Unmarshal(body, &dat)
+            if err != nil {
+                fmt.Println(err)
+            }
+
+            result := fmt.Sprint(dat["result"])
+
+            if result == "<nil>" {
+                errDescription := fmt.Sprint(dat["error_description"])
+                next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req)))
+		r.log.Warn("Keycloak Authorization Services : access denied, "+errDescription,
+                    zap.String("access", "denied"),
+                    zap.String("email", user.email),
+                    zap.String("resource", resource.URL))
+            } else {
+                next.ServeHTTP(w, req)
+		r.log.Debug("Keycloak Authorization Services : access permitted to resource",
+                zap.String("access", "permitted"),
+                zap.String("email", user.email),
+                zap.Duration("expires", time.Until(user.expiresAt)),
+                zap.String("resource", resource.URL))
+            }
+        })
+    }
+}
+
+
+func (r *oauthProxy) getResourceName(URLResource string,AccessToken string) string {
+	url := "https://keycloak-gandalf.aubay.com/auth/realms/Royaume_test/authz/protection/resource_set?uri=" + URLResource
+	method := "GET"
+
+	client := &http.Client {
+	}
+	req, err := http.NewRequest(method, url, nil)
+
+	if err != nil {
+	  fmt.Println(err)
+	}
+	req.Header.Add("Authorization", "Bearer " + AccessToken)
+
+	res, err := client.Do(req)
+	if err != nil {
+            r.log.Error("this is the error from getResourceName request",zap.Error(err))
+        }
+	defer res.Body.Close()
+	body, err := ioutil.ReadAll(res.Body)
+
+	var stringcuttedBody = string(body[1:len(body)-1])
+	var StringBody = strings.ReplaceAll(stringcuttedBody, "\"", "")
+	var TabBody =  strings.Split(StringBody, ",")
+	if len(TabBody) > 1{
+	   r.log.Warn("Carefull, there is multiple Resource with the same URI. Make sure that your resource have unique URI. First resource selected by default")
+	}
+	return TabBody[0]
+}
+

@@ -47,7 +47,7 @@ func (r *oauthProxy) getIdentity(req *http.Request) (*userContext, error) {
 		return nil, err
 	}
 	user.bearerToken = isBearer
-
+	user.AccessToken = access
 	r.log.Debug("found the user identity",
 		zap.String("id", user.id),
 		zap.String("name", user.name),
