@@ -8,7 +8,7 @@ Ensure you have Golang 1.11 (or newer) and Git installed
 First clone the Louketo Proxy repository:
     
     git clone https://github.com/louketo/louketo-proxy.git
-    cd louketo
+    cd louketo-proxy
     
 To build Louketo Proxy run:
 
