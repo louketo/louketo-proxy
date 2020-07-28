@@ -279,6 +279,7 @@ func (r *oauthProxy) authenticationMiddleware() func(http.Handler) http.Handler 
 						zap.Duration("expires_in", accessExpiresIn))
 
 					accessToken := token.Encode()
+					user.AccessToken = accessToken
 					if r.config.EnableEncryptedToken || r.config.ForceEncryptedCookie {
 						if accessToken, err = encodeText(accessToken, r.config.EncryptionKey); err != nil {
 							r.log.Error("unable to encode the access token", zap.Error(err))
