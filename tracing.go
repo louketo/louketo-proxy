@@ -133,9 +133,15 @@ func traceError(span *trace.Span, err error, code int) error {
 			traceCode = trace.StatusCodeUnknown
 		}
 	}
-	span.SetStatus(trace.Status{
-		Code:    traceCode,
-		Message: err.Error(),
-	})
+	if err == nil {
+		span.SetStatus(trace.Status{
+			Code: traceCode,
+		})
+	} else {
+		span.SetStatus(trace.Status{
+			Code:    traceCode,
+			Message: err.Error(),
+		})
+	}
 	return err
 }

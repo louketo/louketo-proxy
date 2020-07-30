@@ -213,6 +213,46 @@ func (r *oauthProxy) proxyMiddleware(resource *Resource) func(http.Handler) http
 		stripBasePath = resource.StripBasePath
 	}
 
+	// config-driven header setters
+	setters := make([]func(*http.Request), 0, 20)
+	if len(r.config.CorsOrigins) > 0 {
+		setters = append(setters, func(req *http.Request) {
+			// if CORS is enabled by gatekeeper, do not propagate CORS requests upstream
+			req.Header.Del("Origin")
+		})
+	}
+
+	if len(r.config.Headers) > 0 {
+		setters = append(setters, func(req *http.Request) {
+			// add any custom headers to the request
+			for k, v := range r.config.Headers {
+				req.Header.Set(k, v)
+			}
+		})
+	}
+	cookieFilter := make([]string, 0, 4)
+	cookieFilter = append(cookieFilter, requestURICookie, requestStateCookie)
+	if r.config.EnableCSRF {
+		setters = append(setters, func(req *http.Request) {
+			// remove csrf header
+			req.Header.Del(r.config.CSRFHeader)
+		})
+		cookieFilter = append(cookieFilter, r.config.CSRFCookieName)
+	}
+	if !r.config.EnableAuthorizationCookies {
+		cookieFilter = append(cookieFilter, r.config.CookieAccessName, r.config.CookieRefreshName)
+	}
+	setters = append(setters, func(req *http.Request) {
+		// cookies filtered to upstream
+		_ = filterCookies(req, cookieFilter)
+	})
+
+	setHeaders := func(req *http.Request) {
+		for _, setter := range setters {
+			setter(req)
+		}
+	}
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			next.ServeHTTP(w, req)
@@ -245,27 +285,8 @@ func (r *oauthProxy) proxyMiddleware(resource *Resource) func(http.Handler) http
 				req.Header.Set("X-Forwarded-Proto", upstreamScheme)
 			}
 
-			if len(r.config.CorsOrigins) > 0 {
-				// if CORS is enabled by gatekeeper, do not propagate CORS requests upstream
-				req.Header.Del("Origin")
-			}
-
-			// @step: add any custom headers to the request
-			for k, v := range r.config.Headers {
-				req.Header.Set(k, v)
-			}
-
-			cookieFilter := make([]string, 0, 4)
-			cookieFilter = append(cookieFilter, requestURICookie, requestStateCookie)
-			if r.config.EnableCSRF {
-				// remove csrf header
-				req.Header.Del(r.config.CSRFHeader)
-				cookieFilter = append(cookieFilter, r.config.CSRFCookieName)
-			}
-			if !r.config.EnableAuthorizationCookies {
-				cookieFilter = append(cookieFilter, r.config.CookieAccessName, r.config.CookieRefreshName)
-			}
-			_ = filterCookies(req, cookieFilter)
+			// config-driven headers
+			setHeaders(req)
 
 			req.URL.Host = upstreamHost
 			req.URL.Scheme = upstreamScheme
