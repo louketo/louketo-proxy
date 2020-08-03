@@ -617,6 +617,11 @@ func TestWhiteListedRequests(t *testing.T) {
 			WhiteListed: true,
 			Methods:     allHTTPMethods,
 		},
+		{
+			URL:         "/blacklist*",
+			BlackListed: true,
+			Methods:     allHTTPMethods,
+		},
 	}
 	requests := []fakeRequest{
 		{ // check whitelisted is passed
@@ -645,6 +650,51 @@ func TestWhiteListedRequests(t *testing.T) {
 			ExpectedProxy: true,
 			Roles:         []string{fakeTestRole},
 			ExpectedCode:  http.StatusOK,
+		},
+		{ // check blacklisted is barred
+			URI:           "/blacklist/test",
+			ExpectedProxy: false,
+			ExpectedCode:  http.StatusForbidden,
+		},
+	}
+	newFakeProxy(cfg).RunTests(t, requests)
+}
+
+func TestBlackAndWhiteListedRequests(t *testing.T) {
+	cfg := newFakeKeycloakConfig()
+	cfg.Resources = []*Resource{
+		{
+			URL:         "/*",
+			Methods:     allHTTPMethods,
+			WhiteListed: true,
+			Roles:       []string{fakeTestRole},
+		},
+		{
+			URL:         "/blacklist*",
+			BlackListed: true,
+			Methods:     allHTTPMethods,
+		},
+	}
+	requests := []fakeRequest{
+		{
+			URI:           "/",
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
+		},
+		{
+			URI:           "/anywhere",
+			ExpectedProxy: true,
+			ExpectedCode:  http.StatusOK,
+		},
+		{ // check blacklisted is barred
+			URI:           "/blacklist",
+			ExpectedProxy: false,
+			ExpectedCode:  http.StatusForbidden,
+		},
+		{
+			URI:           "/blacklist/test",
+			ExpectedProxy: false,
+			ExpectedCode:  http.StatusForbidden,
 		},
 	}
 	newFakeProxy(cfg).RunTests(t, requests)
