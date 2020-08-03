@@ -403,14 +403,38 @@ func (r *Config) isReverseProxyValid() error {
 		}
 	}
 	// check: ensure each of the resource are valid
+	newResources := make([]*Resource, 0, len(r.Resources))
 	for _, resource := range r.Resources {
 		if err := resource.valid(); err != nil {
 			return err
+		}
+		// expand resources with multiple urls
+		if len(resource.URLs) > 0 {
+			for _, u := range resource.URLs {
+				res := *resource
+				res.URL = u
+				res.URLs = nil
+				newResources = append(newResources, &res)
+			}
+		} else {
+			newResources = append(newResources, resource)
+		}
+	}
+	r.Resources = newResources
+
+	// check for duplicate uris in resources
+	uris := make(map[string]struct{}, len(r.Resources))
+	for _, resource := range r.Resources {
+		if _, ok := uris[resource.URL]; !ok {
+			uris[resource.URL] = struct{}{}
+		} else {
+			return errors.New("a duplicate entry in resource URIs has been found")
 		}
 		if resource.URL == allRoutes && r.EnableDefaultDeny && resource.WhiteListed {
 			return errors.New("you've asked for a default denial (EnableDefaultDeny is true by default) but whitelisted everything")
 		}
 	}
+
 	// step: validate the claims are validate regex's
 	for k, claim := range r.MatchClaims {
 		if _, err := regexp.Compile(claim); err != nil {

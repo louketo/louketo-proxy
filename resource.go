@@ -27,6 +27,8 @@ import (
 type Resource struct {
 	// URL the url for the resource
 	URL string `json:"uri" yaml:"uri"`
+	// Several URLs sharing the same config: expanded as as many resources
+	URLs []string `json:"uris" yaml:"uris"`
 	// Methods the method type
 	Methods []string `json:"methods" yaml:"methods"`
 	// WhiteListed permits the prefix through
@@ -63,13 +65,21 @@ func (r *Resource) parse(resource string) (*Resource, error) {
 	for _, x := range strings.Split(resource, "|") {
 		kp := strings.Split(x, "=")
 		if len(kp) != 2 {
-			return nil, errors.New("invalid resource keypair, should be (uri|roles|methods|white-listed)=comma_values")
+			return nil, errors.New("invalid resource keypair, should be (uri|uris|roles|methods|white-listed)=comma_values")
 		}
 		switch kp[0] {
 		case "uri":
 			r.URL = kp[1]
 			if !strings.HasPrefix(r.URL, "/") {
 				return nil, errors.New("the resource uri should start with a '/'")
+			}
+		case "uris":
+			r.URLs = strings.Split(kp[1], ",")
+			for _, u := range r.URLs {
+				if !strings.HasPrefix(u, "/") {
+					return nil, errors.New("the resource uri should start with a '/'")
+				}
+
 			}
 		case "methods":
 			r.Methods = strings.Split(kp[1], ",")
@@ -120,8 +130,18 @@ func (r *Resource) valid() error {
 	if r.Roles == nil {
 		r.Roles = make([]string, 0)
 	}
-	if r.URL == "" {
+	if r.URL != "" && len(r.URLs) > 0 {
+		return errors.New("can't specify both uri and uris")
+	}
+	if r.URL == "" && len(r.URLs) == 0 {
 		return errors.New("resource does not have url")
+	}
+	if r.URL == "" && len(r.URLs) > 0 {
+		for _, u := range r.URLs {
+			if u == "" {
+				return errors.New("resource does not have url")
+			}
+		}
 	}
 	if strings.HasSuffix(r.URL, "/") && !r.WhiteListed {
 		return fmt.Errorf("you need a wildcard on the url resource to cover all request i.e. --resources=uri=%s*", r.URL)
