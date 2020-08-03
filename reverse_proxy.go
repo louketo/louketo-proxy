@@ -141,7 +141,8 @@ func (r *oauthProxy) createReverseProxy() error {
 
 	for _, x := range r.config.Resources {
 		r.log.Info("protecting resource", zap.String("resource", x.String()))
-		if !x.WhiteListed {
+		switch {
+		case !x.WhiteListed && !x.BlackListed:
 			e := engine.With(
 				r.proxyMiddleware(x),
 				r.authenticationMiddleware(),
@@ -154,13 +155,17 @@ func (r *oauthProxy) createReverseProxy() error {
 			for _, m := range x.Methods {
 				e.MethodFunc(m, x.URL, emptyHandler)
 			}
-		} else {
+		case x.WhiteListed:
 			e := engine.With(
 				r.proxyMiddleware(x))
 			e.Handle(x.URL, http.HandlerFunc(methodNotAllowedHandler))
 			for _, m := range x.Methods {
 				e.MethodFunc(m, x.URL, emptyHandler)
 			}
+		case x.WhiteListed:
+			fallthrough
+		default:
+			engine.Handle(x.URL, http.HandlerFunc(r.forbiddenHandler))
 		}
 	}
 

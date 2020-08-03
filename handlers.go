@@ -687,3 +687,7 @@ func (r *oauthProxy) refreshToken(w http.ResponseWriter, req *http.Request, user
 	user.token = token
 	return nil
 }
+
+func (r *oauthProxy) forbiddenHandler(w http.ResponseWriter, req *http.Request) {
+	r.accessForbidden(w, req, "access denied")
+}

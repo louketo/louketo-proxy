@@ -164,8 +164,10 @@ func parseTLS(config *tlsAdvancedConfig) (*tlsSettings, error) {
 			parsed.tlsMinVersion = tls.VersionTLS11
 		case "TLS1.2":
 			parsed.tlsMinVersion = tls.VersionTLS12
+		case "TLS1.3":
+			parsed.tlsMinVersion = tls.VersionTLS13
 		default:
-			return nil, errors.New("invalid TLS version configured. Accepted values are: TLS1.0, TLS1.1, TLS1.2")
+			return nil, errors.New("invalid TLS version configured. Accepted values are: TLS1.0, TLS1.1, TLS1.2, TLS.1.3")
 		}
 	} else if config.tlsUseModernSettings {
 		// standard modern setting
@@ -251,6 +253,12 @@ func parseTLS(config *tlsAdvancedConfig) (*tlsSettings, error) {
 				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305)
 			case "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305":
 				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305)
+			case "TLS_CHACHA20_POLY1305_SHA256":
+				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_CHACHA20_POLY1305_SHA256)
+			case "TLS_AES_128_GCM_SHA256":
+				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_AES_128_GCM_SHA256)
+			case "TLS_AES_256_GCM_SHA384":
+				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_AES_256_GCM_SHA384)
 			default:
 				return nil, errors.New("invalid TLS cipher suite configured. Accepted values are listed at https://golang.org/pkg/crypto/tls/#pkg-constants")
 			}
@@ -260,12 +268,15 @@ func parseTLS(config *tlsAdvancedConfig) (*tlsSettings, error) {
 			// See security linter code: https://github.com/securego/gosec/blob/master/rules/tls_config.go#L11
 			// These ciphersuites support Forward Secrecy: https://en.wikipedia.org/wiki/Forward_secrecy
 			parsed.tlsCipherSuites = []uint16{
+				tls.TLS_CHACHA20_POLY1305_SHA256,
 				tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
 				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
 				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
 				tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
 				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
 				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+				tls.TLS_AES_128_GCM_SHA256,
+				tls.TLS_AES_256_GCM_SHA384,
 			}
 		}
 		// when some cipher preferences are explicitly provided, enforce the presence of TLS_FALLBACK_SCSV
@@ -392,14 +403,38 @@ func (r *Config) isReverseProxyValid() error {
 		}
 	}
 	// check: ensure each of the resource are valid
+	newResources := make([]*Resource, 0, len(r.Resources))
 	for _, resource := range r.Resources {
 		if err := resource.valid(); err != nil {
 			return err
+		}
+		// expand resources with multiple urls
+		if len(resource.URLs) > 0 {
+			for _, u := range resource.URLs {
+				res := *resource
+				res.URL = u
+				res.URLs = nil
+				newResources = append(newResources, &res)
+			}
+		} else {
+			newResources = append(newResources, resource)
+		}
+	}
+	r.Resources = newResources
+
+	// check for duplicate uris in resources
+	uris := make(map[string]struct{}, len(r.Resources))
+	for _, resource := range r.Resources {
+		if _, ok := uris[resource.URL]; !ok {
+			uris[resource.URL] = struct{}{}
+		} else {
+			return errors.New("a duplicate entry in resource URIs has been found")
 		}
 		if resource.URL == allRoutes && r.EnableDefaultDeny && resource.WhiteListed {
 			return errors.New("you've asked for a default denial (EnableDefaultDeny is true by default) but whitelisted everything")
 		}
 	}
+
 	// step: validate the claims are validate regex's
 	for k, claim := range r.MatchClaims {
 		if _, err := regexp.Compile(claim); err != nil {

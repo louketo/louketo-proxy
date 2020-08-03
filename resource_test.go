@@ -31,6 +31,7 @@ func TestDecodeResourceBad(t *testing.T) {
 		{Option: "uri=hello"},
 		{Option: "uri=/|white-listed=ERROR"},
 		{Option: "uri=/|require-any-role=BAD"},
+		{Option: "uris=,/toto"},
 	}
 	for i, c := range cs {
 		if _, err := newResource().parse(c.Option); err == nil {
@@ -84,6 +85,10 @@ func TestResourceParseOk(t *testing.T) {
 			Option:   "uri=/*|require-any-role=true",
 			Resource: &Resource{URL: "/*", Methods: allHTTPMethods, RequireAnyRole: true},
 		},
+		{
+			Option:   "uris=/*,/more,/another|require-any-role=true",
+			Resource: &Resource{URLs: []string{"/*", "/more", "/another"}, Methods: allHTTPMethods, RequireAnyRole: true},
+		},
 	}
 	for i, x := range cs {
 		r, err := newResource().parse(x.Option)
@@ -121,6 +126,12 @@ func TestIsValid(t *testing.T) {
 			Resource: &Resource{
 				URL:     "/test",
 				Methods: []string{"NO_SUCH_METHOD"},
+			},
+		},
+		{
+			Resource: &Resource{
+				URL:  "/test",
+				URLs: []string{"/test", "/another"},
 			},
 		},
 	}
