@@ -411,10 +411,20 @@ func (r *Config) isReverseProxyValid() error {
 		// expand resources with multiple urls
 		if len(resource.URLs) > 0 {
 			for _, u := range resource.URLs {
-				res := *resource
-				res.URL = u
-				res.URLs = nil
-				newResources = append(newResources, &res)
+				res := &Resource{
+					URL:            u,
+					URLs:           nil,
+					Methods:        append([]string{}, resource.Methods...),
+					WhiteListed:    resource.WhiteListed,
+					BlackListed:    resource.BlackListed,
+					RequireAnyRole: resource.RequireAnyRole,
+					Roles:          append([]string{}, resource.Roles...),
+					Groups:         append([]string{}, resource.Groups...),
+					EnableCSRF:     resource.EnableCSRF,
+					StripBasePath:  resource.StripBasePath,
+					Upstream:       resource.Upstream,
+				}
+				newResources = append(newResources, res)
 			}
 		} else {
 			newResources = append(newResources, resource)

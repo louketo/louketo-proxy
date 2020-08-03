@@ -127,6 +127,9 @@ func (r *Resource) valid() error {
 	if r.Methods == nil {
 		r.Methods = make([]string, 0)
 	}
+	if r.WhiteListed && r.BlackListed {
+		return errors.New("can't specify both black and white listed")
+	}
 	if r.Roles == nil {
 		r.Roles = make([]string, 0)
 	}
