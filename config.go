@@ -164,8 +164,10 @@ func parseTLS(config *tlsAdvancedConfig) (*tlsSettings, error) {
 			parsed.tlsMinVersion = tls.VersionTLS11
 		case "TLS1.2":
 			parsed.tlsMinVersion = tls.VersionTLS12
+		case "TLS1.3":
+			parsed.tlsMinVersion = tls.VersionTLS13
 		default:
-			return nil, errors.New("invalid TLS version configured. Accepted values are: TLS1.0, TLS1.1, TLS1.2")
+			return nil, errors.New("invalid TLS version configured. Accepted values are: TLS1.0, TLS1.1, TLS1.2, TLS.1.3")
 		}
 	} else if config.tlsUseModernSettings {
 		// standard modern setting
@@ -251,6 +253,12 @@ func parseTLS(config *tlsAdvancedConfig) (*tlsSettings, error) {
 				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305)
 			case "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305":
 				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305)
+			case "TLS_CHACHA20_POLY1305_SHA256":
+				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_CHACHA20_POLY1305_SHA256)
+			case "TLS_AES_128_GCM_SHA256":
+				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_AES_128_GCM_SHA256)
+			case "TLS_AES_256_GCM_SHA384":
+				parsed.tlsCipherSuites = append(parsed.tlsCipherSuites, tls.TLS_AES_256_GCM_SHA384)
 			default:
 				return nil, errors.New("invalid TLS cipher suite configured. Accepted values are listed at https://golang.org/pkg/crypto/tls/#pkg-constants")
 			}
@@ -266,6 +274,9 @@ func parseTLS(config *tlsAdvancedConfig) (*tlsSettings, error) {
 				tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
 				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
 				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+				tls.TLS_CHACHA20_POLY1305_SHA256,
+				tls.TLS_AES_128_GCM_SHA256,
+				tls.TLS_AES_256_GCM_SHA384,
 			}
 		}
 		// when some cipher preferences are explicitly provided, enforce the presence of TLS_FALLBACK_SCSV
