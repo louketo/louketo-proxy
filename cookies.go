@@ -35,7 +35,7 @@ const (
 // dropCookie drops a cookie into the response
 func (r *oauthProxy) dropCookie(w http.ResponseWriter, host, name, value string, duration time.Duration) {
 	cookie := r.cookieDropper(host, name, value, duration)
-	r.log.Warn("returned cookie", zap.Any("cookie", *cookie))
+	r.log.Warn("returned cookie", zap.Any("cookie", *cookie)) // TODO(fred): Debug
 	http.SetCookie(w, cookie)
 }
 
