@@ -3,10 +3,10 @@
 # Generate certs according to kubernetes naming constraints
 #
 set -e -o pipefail
-cd $(git rev-parse --show-toplevel)
+cd "$(git rev-parse --show-toplevel)"
 cd fixtures/certs
 domain=".localtest.me"
-podDomain=""
+#podDomain=""
 for radix in ca app gatekeeper upstream auth ; do
   key=${radix}.pem
   csr=${radix}.csr
@@ -21,6 +21,8 @@ for radix in ca app gatekeeper upstream auth ; do
     openssl req -new -key ${key} -out ${csr} \
      -subj "/C=US/ST=CA/L=Palo Alto/O=OneConcern [test purpose]/OU=OneConcern [test purpose]/CN=${radix}${domain}"
 
-    openssl x509 -req -in ${csr} -CA ./ca.crt -CAkey ./ca.pem -CAcreateserial -out ${crt} -days 1024 -sha256
+    openssl x509 -req -in ${csr} -CA ./ca.crt -CAkey ./ca.pem -CAcreateserial -out ${crt} -days 1024 -sha256 \
+                 -extensions SAN \
+                 -extfile <(printf "\n[SAN]\nsubjectAltName = DNS:%s, DNS:%s, IP:127.0.0.1" "${radix}" "${radix}${domain}")
   fi
 done

@@ -29,7 +29,6 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/rs/cors"
-	"go.opencensus.io/plugin/ochttp/propagation/b3"
 	"go.uber.org/zap"
 	"golang.org/x/net/http2"
 )
@@ -277,8 +276,7 @@ func (r *oauthProxy) proxyMiddleware(resource *Resource) func(http.Handler) http
 			}
 
 			if r.config.EnableTracing {
-				propagation := &b3.HTTPFormat{}
-				propagation.SpanContextToRequest(span.SpanContext(), req)
+				propagateSpan(span, req)
 			}
 
 			// @step: add the proxy forwarding headers
@@ -370,7 +368,12 @@ func (r *oauthProxy) createStdProxy(upstream *url.URL) error {
 		Director:  func(*http.Request) {}, // most of the work is already done by middleware above. Some of this could be done by Director just as well
 		Transport: transport,
 		ErrorHandler: func(w http.ResponseWriter, req *http.Request, err error) {
-			r.log.Warn("reverse proxy error", zap.Error(err))
+			_, span, logger := r.traceSpan(req.Context(), "reverse proxy middleware")
+			if span != nil {
+				defer span.End()
+			}
+
+			logger.Warn("reverse proxy error", zap.Error(err))
 			r.errorResponse(w, req, "", http.StatusBadGateway, err)
 		},
 		ModifyResponse: func(res *http.Response) error {
@@ -400,6 +403,7 @@ func (r *oauthProxy) createStdProxy(upstream *url.URL) error {
 					res.Header.Del(headerXSTS)
 				}
 			}
+			//TODO(fred): filter/merge upstream cors headers
 			for hdr := range r.config.Headers {
 				res.Header.Del(hdr)
 			}

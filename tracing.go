@@ -51,12 +51,22 @@ func (r *oauthProxy) proxyTracingMiddleware(next http.Handler) http.Handler {
 		exporterError := func(err error) {
 			r.log.Warn("could not export trace to datadog agent", zap.Error(err))
 		}
+		service := os.Getenv("DD_SERVICE")
+		if service == "" {
+			service = svc
+		}
+		ns := os.Getenv("DD_NAMESPACE")
 		// enable trace exporting to datadog agent
 		de, err := datadog.NewExporter(datadog.Options{
-			Namespace: os.Getenv("DD_NAMESPACE"),
+			Namespace: ns,
 			Service:   svc,
 			TraceAddr: os.ExpandEnv(r.config.TracingAgentEndpoint),
 			OnError:   exporterError,
+			GlobalTags: map[string]interface{}{
+				"env":       os.Getenv("DD_ENV"),
+				"version":   os.Getenv("DD_VERSION"),
+				"namespace": ns,
+			},
 		})
 		if err != nil {
 			r.log.Info("datadog reporting disabled", zap.Error(err))
@@ -144,4 +154,12 @@ func traceError(span *trace.Span, err error, code int) error {
 		})
 	}
 	return err
+}
+
+func propagateSpan(span *trace.Span, req *http.Request) {
+	// B3 span propagation (e.g. Opentracing)
+	// NOTE: datadog is supposed support opentracing headers
+	propagation := &b3.HTTPFormat{}
+	propagation.SpanContextToRequest(span.SpanContext(), req)
+
 }
