@@ -130,7 +130,6 @@ func runTestTLSUpstream(t *testing.T, listener, route string, markers ...string)
 	return nil
 }
 
-// TODO(fred)nolint: dupl
 func runTestTLSApp(t *testing.T, listener, route string) error {
 	go func() {
 		mux := http.NewServeMux()

@@ -1,5 +1,23 @@
 version: 2.0
 jobs:
+  lint:
+    docker:
+      - image: golangci/golangci-lint:latest-alpine
+    environment:
+      GO111MODULE: "on"
+    working_directory: ~/project
+    steps:
+      - run:
+          name: Install prerequisites for alpine
+          command: |
+            apk add git openssh-client ncurses
+      - checkout
+      - run:
+          name: Run linter
+          environment:
+          command: |
+            golangci-lint run --deadline 2m --new-from-rev master
+
   test:
     working_directory: /go/src/github.com/oneconcern/keycloak-gatekeeper
     docker:
@@ -60,6 +78,14 @@ workflows:
   version: 2
   build_and_test:
     jobs:
+      - lint:
+          context: "OC Common"
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              only: /.*/
+
       - test:
           context: "OC Common"
           filters:
@@ -67,9 +93,11 @@ workflows:
               only: /.*/
             branches:
               only: /.*/
+
       - build_image:
           context: "OC Common"
           requires:
+            - lint
             - test
           filters:
             tags:
