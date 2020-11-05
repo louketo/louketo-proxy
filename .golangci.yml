@@ -37,3 +37,4 @@ linters:
     - gci
     - exhaustivestruct
     - wrapcheck
+    - errorlint
