@@ -64,6 +64,7 @@ func checkListenOrBail(endpoint string) bool {
 	)
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
+			MinVersion: tls.VersionTLS13,
 			RootCAs:    makeTestCACertPool(),
 			NextProtos: []string{"h2", "http/1.1"},
 		},
@@ -75,6 +76,7 @@ func checkListenOrBail(endpoint string) bool {
 	checkListen := http.Client{
 		Transport: transport,
 	}
+	// nolint: noctx
 	resp, err := checkListen.Get(endpoint)
 	if err == nil {
 		defer func() {
@@ -84,6 +86,7 @@ func checkListenOrBail(endpoint string) bool {
 	limit := 0
 	for err != nil && limit < maxWaitCycles {
 		time.Sleep(waitTime)
+		// nolint: noctx
 		resp, err = checkListen.Get(endpoint)
 		if err == nil {
 			defer func() {

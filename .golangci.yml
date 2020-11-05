@@ -27,3 +27,11 @@ linters:
     - funlen
     - godox
     - gomnd
+    - nlreturn
+    - testpackage
+    - goerr113
+    - nestif
+    - exhaustive
+    - gofumpt
+    - godot
+    - gci

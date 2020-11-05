@@ -50,8 +50,8 @@ func runTestWSTLSUpstream(t *testing.T, listener, route string) error {
 	const health = "health"
 	go func() {
 		upstreamHandler := func(w http.ResponseWriter, req *http.Request) {
-			//dump, _ := httputil.DumpRequest(req, false)
-			//t.Logf("upstream received: %q", string(dump))
+			// dump, _ := httputil.DumpRequest(req, false)
+			// t.Logf("upstream received: %q", string(dump))
 			c, err := upgrader.Upgrade(w, req, nil)
 			if err != nil {
 				t.Logf("server upgrade error: %v", err)
@@ -189,7 +189,7 @@ func testBuildWSTLSUpstreamConfig() *Config {
 	config.Listen = e2eWSTLSUpstreamProxyListener
 	config.ListenHTTP = ""
 	config.DiscoveryURL = testTLSDiscoveryURL(e2eWSTLSUpstreamOauthListener, "hod-test")
-	//config.SkipOpenIDProviderTLSVerify = true
+	// config.SkipOpenIDProviderTLSVerify = true
 	config.OpenIDProviderCA = caCert
 
 	config.Upstream = "https://" + e2eWSTLSUpstreamUpstreamListener
@@ -227,7 +227,7 @@ func testBuildWSTLSUpstreamConfig() *Config {
 }
 
 func TestWSTLSUpstream(t *testing.T) {
-	//log.SetOutput(ioutil.Discard)
+	// log.SetOutput(ioutil.Discard)
 
 	config := testBuildWSTLSUpstreamConfig()
 	require.NoError(t, config.isValid())

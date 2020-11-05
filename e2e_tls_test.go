@@ -65,8 +65,8 @@ func runTestTLSUpstream(t *testing.T, listener, route string, markers ...string)
 	go func() {
 		upstreamHandler := func(w http.ResponseWriter, req *http.Request) {
 			// NOTE: to debug, enable request dump
-			//dump, _ := httputil.DumpRequest(req, false)
-			//t.Logf("upstream received: %q", string(dump))
+			// dump, _ := httputil.DumpRequest(req, false)
+			// t.Logf("upstream received: %q", string(dump))
 			nowPushing := false
 			inBody := make([]string, 0, len(markers))
 			inPushed := make([]string, 0, len(markers))
@@ -130,7 +130,7 @@ func runTestTLSUpstream(t *testing.T, listener, route string, markers ...string)
 	return nil
 }
 
-// nolint: dupl
+// TODO(fred)nolint: dupl
 func runTestTLSApp(t *testing.T, listener, route string) error {
 	go func() {
 		mux := http.NewServeMux()
@@ -306,7 +306,7 @@ func testBuildTLSUpstreamConfig() *Config {
 	config.Listen = e2eTLSUpstreamProxyListener
 	config.ListenHTTP = ""
 	config.DiscoveryURL = testTLSDiscoveryURL(e2eTLSUpstreamOauthListener, "hod-test")
-	//config.SkipOpenIDProviderTLSVerify = true
+	// config.SkipOpenIDProviderTLSVerify = true
 	config.OpenIDProviderCA = caCert
 
 	config.Upstream = "https://" + e2eTLSUpstreamUpstreamListener
@@ -348,7 +348,7 @@ func testBuildTLSUpstreamConfig() *Config {
 }
 
 func TestTLSUpstream(t *testing.T) {
-	//log.SetOutput(ioutil.Discard)
+	// log.SetOutput(ioutil.Discard)
 
 	config := testBuildTLSUpstreamConfig()
 	require.NoError(t, config.isValid())
@@ -416,9 +416,9 @@ func TestTLSUpstream(t *testing.T) {
 	}()
 
 	// NOTE: to debug, enable response dump
-	//dump, err := httputil.DumpResponse(resp, true)
-	//require.NoError(t, err)
-	//t.Logf("%q", dump)
+	// dump, err := httputil.DumpResponse(resp, true)
+	// require.NoError(t, err)
+	// t.Logf("%q", dump)
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	// also interactive test may produce HTTP/2 traces:
@@ -429,7 +429,7 @@ func TestTLSUpstream(t *testing.T) {
 	assert.Contains(t, string(buf), "mark1")
 
 	// NOTE: to debug, enable response dump
-	//t.Logf(string(buf))
+	// t.Logf(string(buf))
 
 	// test token endpoint: this returns the json content of the access token
 	// e.g:  {"aud":"test","azp":"clientid","client_session":"f0105893-369a-46bc-9661-ad8c747b1a69","email":"gambol99@gmail.com","exp":1565256043,"family_name":"Jayawardene","given_name":"Rohith","iat":1565252443,"iss":"https://auth.localtest.me:13455/auth/realms/hod-test","jti":"4ee75b8e-3ee6-4382-92d4-3390b4b4937b","name":"Rohith Jayawardene","nbf":0,"preferred_username":"rjayawardene","session_state":"98f4c3d2-1b8c-4932-b8c4-92ec0ea7e195","sub":"1e11e539-8256-4b3b-bda8-cc0d56cddb48","typ":"Bearer"}
@@ -549,7 +549,7 @@ func TestTLSUpstream(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	buf, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
-	//t.Logf("rpcz: %s", string(buf))
+	// t.Logf("rpcz: %s", string(buf))
 	assert.Contains(t, string(buf), `<!DOCTYPE html>`)
 
 	u, _ = url.Parse("https://" + e2eTLSAdminEndpointListener + "/oauth/trace/tracez")
@@ -562,7 +562,7 @@ func TestTLSUpstream(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	buf, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
-	//t.Logf("tracez: %s", string(buf))
+	// t.Logf("tracez: %s", string(buf))
 	assert.Contains(t, string(buf), `<!DOCTYPE html>`)
 
 	u, _ = url.Parse("https://" + e2eTLSAdminEndpointListener + `/oauth/trace/tracez?zspanname=%2foauth%2frefresh&ztype=1&zsubtype=4`)
@@ -575,6 +575,6 @@ func TestTLSUpstream(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	buf, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
-	//t.Logf("tracez: %s", string(buf))
+	// t.Logf("tracez: %s", string(buf))
 	assert.Contains(t, string(buf), `<!DOCTYPE html>`)
 }

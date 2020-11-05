@@ -16,6 +16,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -498,7 +499,7 @@ func makeTestCodeFlowLogin(location string) (*http.Response, error) {
 	// step: get the redirect
 	var resp *http.Response
 	for count := 0; count < 4; count++ {
-		req, err := http.NewRequest(http.MethodGet, location, nil)
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, location, nil)
 		if err != nil {
 			return nil, err
 		}

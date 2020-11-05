@@ -192,7 +192,7 @@ func TestIsConfigValid(t *testing.T) {
 				EnableCSRF:            true,
 				EncryptionKey:         "xx",
 				Resources: []*Resource{
-					&Resource{
+					{
 						URL: "http://localhost/there",
 					},
 				},
@@ -213,7 +213,7 @@ func TestIsConfigValid(t *testing.T) {
 				EnableCSRF:            true,
 				EncryptionKey:         "xx",
 				Resources: []*Resource{
-					&Resource{
+					{
 						URL: "http://localhost/there",
 					},
 				},
@@ -267,7 +267,7 @@ func TestIsConfigValid(t *testing.T) {
 				MaxIdleConns:          100,
 				MaxIdleConnsPerHost:   50,
 				Resources: []*Resource{
-					&Resource{
+					{
 						URL:  "/nowhere",
 						URLs: []string{"/somewhere"},
 					},
@@ -289,10 +289,10 @@ func TestIsConfigValid(t *testing.T) {
 				MaxIdleConns:          100,
 				MaxIdleConnsPerHost:   50,
 				Resources: []*Resource{
-					&Resource{
+					{
 						URLs: []string{"/somewhere", "/everywhere"},
 					},
-					&Resource{
+					{
 						URL: "/somewhere",
 					},
 				},
@@ -357,7 +357,7 @@ func TestIsConfigValid(t *testing.T) {
 				MaxIdleConns:          100,
 				MaxIdleConnsPerHost:   50,
 				Resources: []*Resource{
-					&Resource{
+					{
 						URLs: []string{"/somewhere", "/everywhere"},
 					},
 				},

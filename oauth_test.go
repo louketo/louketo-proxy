@@ -335,6 +335,7 @@ func TestTokenExpired(t *testing.T) {
 func getRandomString(n int) string {
 	b := make([]rune, n)
 	for i := range b {
+		// #nosec
 		b[i] = letterRunes[rand.Intn(len(letterRunes))]
 	}
 	return string(b)

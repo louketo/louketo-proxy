@@ -16,6 +16,7 @@ package log
 
 import (
 	"encoding/base64"
+	"encoding/binary"
 	"math"
 	"time"
 
@@ -33,9 +34,15 @@ type Logger struct {
 
 // New Logger
 func New(logger *zap.Logger, span *trace.Span) *Logger {
+	stx := span.SpanContext()
+	traceID := binary.BigEndian.Uint64(stx.TraceID[8:])
+	spanID := binary.BigEndian.Uint64(stx.SpanID[:])
+
 	return &Logger{
-		logger: logger,
-		span:   span,
+		logger: logger.
+			WithOptions(zap.AddCallerSkip(1)).
+			With(zap.Uint64("dd.trace_id", traceID), zap.Uint64("dd.span_id", spanID)),
+		span: span,
 	}
 }
 

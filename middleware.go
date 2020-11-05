@@ -547,7 +547,7 @@ func (r *oauthProxy) csrfHeaderMiddleware() func(next http.Handler) http.Handler
 					return
 				}
 
-				//skip requests with credentials in header
+				// skip requests with credentials in header
 				if scope.Identity.isBearer() {
 					next.ServeHTTP(w, req)
 					return

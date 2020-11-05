@@ -59,7 +59,7 @@ func (r *oauthProxy) proxyTracingMiddleware(next http.Handler) http.Handler {
 		// enable trace exporting to datadog agent
 		de, err := datadog.NewExporter(datadog.Options{
 			Namespace: ns,
-			Service:   svc,
+			Service:   service,
 			TraceAddr: os.ExpandEnv(r.config.TracingAgentEndpoint),
 			OnError:   exporterError,
 			GlobalTags: map[string]interface{}{
@@ -102,22 +102,19 @@ func (r *oauthProxy) traceSpan(ctx context.Context, title string) (context.Conte
 		return ctx, nil, r.log
 	}
 	newCtx, span := trace.StartSpan(ctx, title)
-	return newCtx, span, spanLogger(ctx, r.log)
+	return newCtx, span, spanlog.New(r.log, span)
 }
 
 func (r *oauthProxy) traceSpanRequest(req *http.Request) (*trace.Span, Logger) {
 	if !r.config.EnableTracing {
 		return nil, r.log
 	}
-	return trace.FromContext(req.Context()), spanLogger(req.Context(), r.log)
-}
+	span := trace.FromContext(req.Context())
 
-// spanLogger wraps the logger with some trace span exporting
-func spanLogger(ctx context.Context, logger *zap.Logger) Logger {
-	if span := trace.FromContext(ctx); span != nil {
-		return spanlog.New(logger, span)
+	if span != nil {
+		return span, spanlog.New(r.log, span)
 	}
-	return logger
+	return span, r.log
 }
 
 func traceError(span *trace.Span, err error, code int) error {
