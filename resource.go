@@ -48,7 +48,7 @@ type Resource struct {
 	// Upstream is the upstream endpoint i.e whom were proxying to
 	Upstream string `json:"upstream-url" yaml:"upstream-url" usage:"url for the upstream endpoint you wish to proxy this resource"`
 	// TODO: UpstreamCA is the path to a CA certificate in PEM format to validate the upstream certificate
-	//UpstreamCA string `json:"upstream-ca" yaml:"upstream-ca" usage:"the path to a file container a CA certificate to validate the upstream tls endpoint for this resource"`
+	// UpstreamCA string `json:"upstream-ca" yaml:"upstream-ca" usage:"the path to a file container a CA certificate to validate the upstream tls endpoint for this resource"`
 }
 
 func newResource() *Resource {

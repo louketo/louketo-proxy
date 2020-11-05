@@ -591,7 +591,10 @@ func (r *oauthProxy) Render(w io.Writer, name string, data interface{}) error {
 
 func (r *oauthProxy) buildProxyTLSConfig() (*tls.Config, error) {
 	//nolint:gas
-	tlsConfig := &tls.Config{InsecureSkipVerify: r.config.SkipUpstreamTLSVerify}
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: r.config.SkipUpstreamTLSVerify,
+		ClientSessionCache: tls.NewLRUClientSessionCache(0),
+	}
 
 	// are we using a client certificate?
 	// @TODO provide a means to reload the client certificate when it expires. I'm not sure if it's just a

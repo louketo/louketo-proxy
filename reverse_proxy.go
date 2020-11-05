@@ -161,7 +161,7 @@ func (r *oauthProxy) createReverseProxy() error {
 			for _, m := range x.Methods {
 				e.MethodFunc(m, x.URL, emptyHandler)
 			}
-		case x.WhiteListed:
+		case x.BlackListed:
 			fallthrough
 		default:
 			engine.Handle(x.URL, http.HandlerFunc(r.forbiddenHandler))
@@ -264,6 +264,7 @@ func (r *oauthProxy) proxyMiddleware(resource *Resource) func(http.Handler) http
 			_, span, logger := r.traceSpan(req.Context(), "reverse proxy middleware")
 			if span != nil {
 				defer span.End()
+				propagateSpan(span, req)
 			}
 
 			// @step: retrieve the request scope
@@ -273,10 +274,6 @@ func (r *oauthProxy) proxyMiddleware(resource *Resource) func(http.Handler) http
 				if sc.AccessDenied {
 					return
 				}
-			}
-
-			if r.config.EnableTracing {
-				propagateSpan(span, req)
 			}
 
 			// @step: add the proxy forwarding headers
@@ -403,9 +400,20 @@ func (r *oauthProxy) createStdProxy(upstream *url.URL) error {
 					res.Header.Del(headerXSTS)
 				}
 			}
-			//TODO(fred): filter/merge upstream cors headers
 			for hdr := range r.config.Headers {
 				res.Header.Del(hdr)
+			}
+
+			if len(r.config.CorsOrigins) > 0 {
+				// remove cors headers from upstream
+				// This avoids the concatenation of multiple headers whenever
+				// upstreams response provides some CORS headers.
+				res.Header.Del("Access-Control-Allow-Origin")
+				res.Header.Del("Access-Control-Allow-Credentials")
+				res.Header.Del("Access-Control-Allow-Headers")
+				res.Header.Del("Access-Control-Allow-Methods")
+				res.Header.Del("Access-Control-Max-Age")
+				res.Header.Del("")
 			}
 			return nil
 		},

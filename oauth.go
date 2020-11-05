@@ -16,6 +16,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -101,9 +102,9 @@ func exchangeAuthenticationCode(client *oauth2.Client, code string) (oauth2.Toke
 	return getToken(client, oauth2.GrantTypeAuthCode, code)
 }
 
-// getUserinfo is responsible for getting the userinfo from the IDPD
+// getUserinfo is responsible for getting the userinfo from the IDP
 func getUserinfo(client *oauth2.Client, endpoint string, token string) (jose.Claims, error) {
-	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, err
 	}
