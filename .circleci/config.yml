@@ -88,6 +88,8 @@ workflows:
 
       - test:
           context: "OC Common"
+          requires:
+            - lint
           filters:
             tags:
               only: /.*/
@@ -97,7 +99,6 @@ workflows:
       - build_image:
           context: "OC Common"
           requires:
-            - lint
             - test
           filters:
             tags:

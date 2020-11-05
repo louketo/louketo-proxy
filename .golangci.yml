@@ -35,3 +35,5 @@ linters:
     - gofumpt
     - godot
     - gci
+    - exhaustivestruct
+    - wrapcheck
