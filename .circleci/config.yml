@@ -36,11 +36,8 @@ jobs:
           username: _json_key
           password: $GCLOUD_SERVICE_KEY
     environment:
-      REPOSITORY: 'gcr.io/onec-co'
-      GOOGLE_PROJECT_ID: onec-co
       GOOGLE_COMPUTE_ZONE: us-west2-c
       IMAGE: gatekeeper
-    shell: /bin/bash
     steps:
       - run:
           name: Initialize gcloud sdk
@@ -61,18 +58,19 @@ jobs:
       - run:
           name: Build tagged docker image then push to gcloud repo
           command: |
-            VERSION=$(git describe --tags --exact-match || true)
+            REPOSITORY='gcr.io/${GOOGLE_PROJECT_ID}'
+            VERSION=$(git describe --tags)
             SHA1=$(git rev-parse HEAD)
             BUILD=$(date +%s)
-            if [[ -n "${VERSION}" ]] ; then
-              docker build --progress plain \
+
+            docker build --progress plain \
               --build-arg TAG=${VERSION} --build-arg SHA1=${SHA1} --build-arg BUILD=${BUILD} \
               -t ${REPOSITORY}/${IMAGE}:${VERSION} \
               -t ${REPOSITORY}/${IMAGE}:latest \
               .
-              docker push ${REPOSITORY}/${IMAGE}:${VERSION}
-              docker push ${REPOSITORY}/${IMAGE}:latest
-            fi
+
+            docker push ${REPOSITORY}/${IMAGE}:${VERSION}
+            docker push ${REPOSITORY}/${IMAGE}:latest
 
 workflows:
   version: 2
