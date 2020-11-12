@@ -139,19 +139,19 @@ func (r *oauthProxy) oauthCallbackHandler(w http.ResponseWriter, req *http.Reque
 		return
 	}
 
+	// step: check the id token is valid
+	if err = verifyToken(r.client, token); err != nil {
+		r.log.Error("unable to verify the id token", zap.Error(err))
+		r.accessForbidden(w, req)
+		return
+	}
+
 	access, id, err := parseToken(resp.AccessToken)
 	if err == nil {
 		token = access
 		identity = id
 	} else {
 		r.log.Warn("unable to parse the access token, using id token only", zap.Error(err))
-	}
-
-	// step: check the access token is valid
-	if err = verifyToken(r.client, token); err != nil {
-		r.log.Error("unable to verify the id token", zap.Error(err))
-		r.accessForbidden(w, req)
-		return
 	}
 	accessToken := token.Encode()
 
