@@ -197,6 +197,9 @@ type Config struct {
 	// ResponseHeader is a map of response headers to add to the response
 	ResponseHeaders map[string]string `json:"response-headers" yaml:"response-headers" usage:"custom headers to added to the http response key=value"`
 
+	// UseAuthorizationHeader indicates if we should read the token from the Authorization header
+	UseAuthorizationHeader bool `json:"use-authorization-header" yaml:"use-authorization-header" usage:"indicates if we should read token from Authorization header" env:"USE_AUTHORIZATION_HEADER"`
+
 	// EnableSelfSignedTLS indicates we should create a self-signed ceritificate for the service
 	EnabledSelfSignedTLS bool `json:"enable-self-signed-tls" yaml:"enable-self-signed-tls" usage:"create self signed certificates for the proxy" env:"ENABLE_SELF_SIGNED_TLS"`
 	// SelfSignedTLSHostnames is the list of hostnames to place on the certificate
