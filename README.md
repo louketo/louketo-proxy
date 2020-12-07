@@ -4,6 +4,10 @@ Louketo Proxy reached end of line in November 21, 2020. This means that we no lo
 
 ## Louketo Proxy
 
+**This project is in EOL procedure (see : https://github.com/louketo/louketo-proxy/issues/683), until November only critical bugs and security issues will be fix**
+
+---
+
 This repository is a work in progress and contains the source code for the Louketo Proxy. You should be able to see what's being planned at our [milestones page](https://github.com/louketo/louketo-proxy/milestones).
 
 ## Help and Documentation
