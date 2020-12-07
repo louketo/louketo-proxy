@@ -1,4 +1,8 @@
-# Louketo Proxy
+# EOL notice
+
+Louketo Proxy reached end of line in November 21, 2020. This means that we no longer support, or update it. The details are available [here](https://www.keycloak.org/2020/08/sunsetting-louketo-project.adoc).
+
+## Louketo Proxy
 
 This repository is a work in progress and contains the source code for the Louketo Proxy. You should be able to see what's being planned at our [milestones page](https://github.com/louketo/louketo-proxy/milestones).
 
