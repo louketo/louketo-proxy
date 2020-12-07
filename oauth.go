@@ -82,9 +82,21 @@ func getRefreshedToken(conf *oauth2.Config, t string) (jose.JWT, string, time.Ti
 		return jose.JWT{}, "", time.Time{}, time.Duration(0), err
 	}
 	refreshExpiresIn := time.Until(tkn.Expiry)
-	token, identity, err := parseToken(tkn.AccessToken)
+
+	rawIDToken, ok := tkn.Extra("id_token").(string)
+	if !ok {
+		return jose.JWT{}, "", time.Time{}, time.Duration(0), errors.New("unable to obtain id token")
+	}
+
+	token, identity, err := parseToken(rawIDToken)
 	if err != nil {
 		return jose.JWT{}, "", time.Time{}, time.Duration(0), err
+	}
+
+	access, id, err := parseToken(tkn.AccessToken)
+	if err == nil {
+		token = access
+		identity = id
 	}
 
 	return token, tkn.RefreshToken, identity.ExpiresAt, refreshExpiresIn, nil
