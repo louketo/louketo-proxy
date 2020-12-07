@@ -304,7 +304,7 @@ type Config struct {
 	Hostnames []string `json:"hostnames" yaml:"hostnames" usage:"list of hostnames the service will respond to"`
 
 	// Store is a url for a store resource, used to hold the refresh tokens
-	StoreURL string `json:"store-url" yaml:"store-url" usage:"url for the storage subsystem, e.g redis://127.0.0.1:6379, file:///etc/tokens.file"`
+	StoreURL string `json:"store-url" yaml:"store-url" usage:"url for the storage subsystem, e.g redis+sentinel://127.0.0.1:6379,127.0.0.2:6379/0?master=mymaster, redis://127.0.0.1:6379/1, file:///etc/tokens.file"`
 	// EncryptionKey is the encryption key used to encrypt the refresh token
 	EncryptionKey string `json:"encryption-key" yaml:"encryption-key" usage:"encryption key used to encryption the session state" env:"ENCRYPTION_KEY"`
 

@@ -36,6 +36,8 @@ func createStorage(location string) (storage, error) {
 	switch u.Scheme {
 	case "redis":
 		store, err = newRedisStore(u)
+	case "redis+sentinel":
+		store, err = newRedisSentinelStore(u)
 	case "boltdb":
 		store, err = newBoltDBStore(u)
 	default:

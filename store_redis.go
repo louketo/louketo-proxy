@@ -17,6 +17,8 @@ package main
 
 import (
 	"net/url"
+	"strconv"
+	"strings"
 	"time"
 
 	redis "gopkg.in/redis.v4"
@@ -34,11 +36,44 @@ func newRedisStore(location *url.URL) (storage, error) {
 		password, _ = location.User.Password()
 	}
 
+	// step: get the db number from url path
+	db, err := strconv.Atoi(strings.Trim(location.Path, "/"))
+	if err != nil {
+		db = 0
+	}
+
 	// step: parse the url notation
 	client := redis.NewClient(&redis.Options{
 		Addr:     location.Host,
-		DB:       0,
+		DB:       db,
 		Password: password,
+	})
+
+	return redisStore{
+		client: client,
+	}, nil
+}
+
+// newRedisSentinelStore creates a new redis store with sentinel client
+func newRedisSentinelStore(location *url.URL) (storage, error) {
+	// step: get any password
+	password := ""
+	if location.User != nil {
+		password, _ = location.User.Password()
+	}
+
+	// step: get the db number from url path
+	db, err := strconv.Atoi(strings.Trim(location.Path, "/"))
+	if err != nil {
+		db = 0
+	}
+
+	// step: parse the url notation
+	client := redis.NewFailoverClient(&redis.FailoverOptions{
+		SentinelAddrs: strings.Split(location.Host, ","),
+		MasterName:    location.Query().Get("master"),
+		DB:            db,
+		Password:      password,
 	})
 
 	return redisStore{
