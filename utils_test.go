@@ -39,10 +39,11 @@ func TestDecodeKeyPairs(t *testing.T) {
 		Ok       bool
 	}{
 		{
-			List: []string{"a=b", "b=3"},
+			List: []string{"a=b", "b=3", "c=d=e"},
 			KeyPairs: map[string]string{
 				"a": "b",
 				"b": "3",
+				"c": "d=e",
 			},
 			Ok: true,
 		},

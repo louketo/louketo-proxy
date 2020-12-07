@@ -16,6 +16,8 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -30,6 +32,55 @@ func TestNewOauthProxyApp(t *testing.T) {
 func TestGetCLIOptions(t *testing.T) {
 	if flags := getCommandLineOptions(); flags == nil {
 		t.Error("we should have received some flags options")
+	}
+}
+
+type cliOption struct {
+	OptionName string
+	FieldValue reflect.Value
+}
+
+func TestParseCLIMapOptions(t *testing.T) {
+	config := newDefaultConfig()
+	c := cli.NewApp()
+	c.Flags = getCommandLineOptions()
+	c.Action = func(cx *cli.Context) error {
+		ero := parseCLIOptions(cx, config)
+		assert.NoError(t, ero)
+		return nil
+	}
+	mapOptions := []cliOption{}
+	command := []string{"test-cmd"}
+	resultMap := make(map[string]string)
+	configPropCount := reflect.TypeOf(config).Elem().NumField()
+	for i := 0; i < configPropCount; i++ {
+		field := reflect.TypeOf(config).Elem().Field(i)
+		if field.Type.Kind() == reflect.Map {
+			name := field.Tag.Get("yaml")
+			option := cliOption{
+				OptionName: name,
+				FieldValue: reflect.ValueOf(config).Elem().FieldByName(field.Name),
+			}
+			mapOptions = append(mapOptions, option)
+			resultMap[fmt.Sprintf("%s:%s", name, "k1")] = "v1"
+			resultMap[fmt.Sprintf("%s:%s", name, "k2")] = "v2=testEqualChar"
+			command = append(command, fmt.Sprintf("--%s=k1=v1", name))
+			command = append(command, fmt.Sprintf("--%s=k2=v2=testEqualChar", name))
+		}
+	}
+	err := c.Run(command)
+	assert.NoError(t, err)
+	errFmt := "the parsed %s cli option is not correct"
+	for i := 0; i < len(mapOptions); i++ {
+		name := mapOptions[i].OptionName
+		fieldValue := mapOptions[i].FieldValue
+		keys := fieldValue.MapKeys()
+		assert.True(t, len(keys) > 0, "we should have received flags for all map options")
+		for j := 0; j < len(keys); j++ {
+			expected := resultMap[fmt.Sprintf("%s:%s", name, keys[j].String())]
+			actual := fieldValue.MapIndex(keys[j]).String()
+			assert.Equal(t, expected, actual, fmt.Sprintf(errFmt, name))
+		}
 	}
 }
 

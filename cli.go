@@ -160,7 +160,7 @@ func getCommandLineOptions() []cli.Flag {
 // parseCLIOptions parses the command line options and constructs a config object
 func parseCLIOptions(cx *cli.Context, config *Config) (err error) {
 	// step: we can ignore these options in the Config struct
-	ignoredOptions := []string{"tag-data", "match-claims", "resources", "headers"}
+	ignoredOptions := []string{"tags", "match-claims", "resources", "headers", "response-headers"}
 	// step: iterate the Config and grab command line options via reflection
 	count := reflect.TypeOf(config).Elem().NumField()
 	for i := 0; i < count; i++ {
@@ -190,8 +190,8 @@ func parseCLIOptions(cx *cli.Context, config *Config) (err error) {
 			}
 		}
 	}
-	if cx.IsSet("tag") {
-		tags, err := decodeKeyPairs(cx.StringSlice("tag"))
+	if cx.IsSet("tags") {
+		tags, err := decodeKeyPairs(cx.StringSlice("tags"))
 		if err != nil {
 			return err
 		}
@@ -210,6 +210,13 @@ func parseCLIOptions(cx *cli.Context, config *Config) (err error) {
 			return err
 		}
 		mergeMaps(config.Headers, headers)
+	}
+	if cx.IsSet("response-headers") {
+		responseHeaders, err := decodeKeyPairs(cx.StringSlice("response-headers"))
+		if err != nil {
+			return err
+		}
+		mergeMaps(config.ResponseHeaders, responseHeaders)
 	}
 	if cx.IsSet("resources") {
 		for _, x := range cx.StringSlice("resources") {
