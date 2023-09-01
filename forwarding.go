@@ -88,8 +88,9 @@ func (r *oauthProxy) proxyMiddleware(next http.Handler) http.Handler {
 // forwardProxyHandler is responsible for signing outbound requests
 func (r *oauthProxy) forwardProxyHandler() func(*http.Request, *http.Response) {
 	ctx := context.Background()
+	fmt.Printf("%+v\n", r.config.RedirectionURL)
 	conf := r.newOAuth2Config(r.config.RedirectionURL)
-
+	fmt.Printf("%+v\n", conf)
 	// the loop state
 	var state struct {
 		// the access token
